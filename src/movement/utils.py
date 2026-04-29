@@ -2,23 +2,100 @@
 Pose utility functions.
 
 This module contains low-level pose operations:
+- select coordinate columns
 - extract joint coordinates
-- convert MediaPipe coordinates to visualization coordinates
+- convert pose coordinates to visualization coordinates
 - create Plotly frame data
+- compute fixed plot ranges
 """
 
 import numpy as np
 import plotly.graph_objects as go
 
 
-def get_joint(row, joint_name: str) -> np.ndarray:
+def get_coord_columns(landmark: str, coord_mode: str = "raw") -> list[str]:
     """
-    Get raw MediaPipe 3D coordinate of a joint.
+    Return x, y, z coordinate column names for a landmark.
 
-    Raw MediaPipe-like coordinate:
-    - x: left-right
-    - y: image vertical
-    - z: depth
+    Parameters
+    ----------
+    landmark : str
+        Landmark name.
+    coord_mode : str
+        Coordinate mode.
+
+        - "raw"  -> <landmark>_x, <landmark>_y, <landmark>_z
+        - "norm" -> <landmark>_norm_x, <landmark>_norm_y, <landmark>_norm_z
+
+    Returns
+    -------
+    list[str]
+        Coordinate column names.
+    """
+    if coord_mode == "raw":
+        return [
+            f"{landmark}_x",
+            f"{landmark}_y",
+            f"{landmark}_z",
+        ]
+
+    if coord_mode == "norm":
+        return [
+            f"{landmark}_norm_x",
+            f"{landmark}_norm_y",
+            f"{landmark}_norm_z",
+        ]
+
+    raise ValueError(
+        f"Unsupported coord_mode: {coord_mode}. "
+        "Use 'raw' or 'norm'."
+    )
+
+
+def validate_landmark_columns(
+    df,
+    landmarks: list[str],
+    coord_mode: str = "raw",
+    require_visibility: bool = False,
+) -> list[str]:
+    """
+    Check whether required landmark coordinate columns exist.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Pose dataframe.
+    landmarks : list[str]
+        Landmark names.
+    coord_mode : str
+        "raw" or "norm".
+    require_visibility : bool
+        If True, also check <landmark>_visibility columns.
+
+    Returns
+    -------
+    list[str]
+        Missing column names. Empty list means valid.
+    """
+    required_cols = []
+
+    for lm in landmarks:
+        required_cols.extend(get_coord_columns(lm, coord_mode=coord_mode))
+
+        if require_visibility:
+            required_cols.append(f"{lm}_visibility")
+
+    missing_cols = [
+        col for col in required_cols
+        if col not in df.columns
+    ]
+
+    return missing_cols
+
+
+def get_joint(row, joint_name: str, coord_mode: str = "raw") -> np.ndarray:
+    """
+    Get 3D coordinate of a joint.
 
     Parameters
     ----------
@@ -26,27 +103,38 @@ def get_joint(row, joint_name: str) -> np.ndarray:
         A single frame row.
     joint_name : str
         Landmark name.
+    coord_mode : str
+        "raw" or "norm".
 
     Returns
     -------
     np.ndarray
         [x, y, z]
     """
+    x_col, y_col, z_col = get_coord_columns(
+        landmark=joint_name,
+        coord_mode=coord_mode,
+    )
+
     return np.array([
-        row[f"{joint_name}_x"],
-        row[f"{joint_name}_y"],
-        row[f"{joint_name}_z"],
+        row[x_col],
+        row[y_col],
+        row[z_col],
     ], dtype=float)
 
 
-def get_plot_coord(row, joint_name: str) -> np.ndarray:
+def get_plot_coord(
+    row,
+    joint_name: str,
+    coord_mode: str = "raw",
+) -> np.ndarray:
     """
-    Convert raw MediaPipe coordinate to visualization coordinate.
+    Convert pose coordinate to visualization coordinate.
 
-    Raw MediaPipe:
-    - x = left-right
-    - y = image vertical, larger value means lower in image
-    - z = depth
+    Input coordinate:
+    - x: left-right
+    - y: image vertical or body-relative vertical coordinate
+    - z: depth
 
     Plot coordinate:
     - X = left-right
@@ -54,9 +142,9 @@ def get_plot_coord(row, joint_name: str) -> np.ndarray:
     - Z = height
 
     Mapping:
-    - plot_x = raw_x
-    - plot_y = raw_z
-    - plot_z = -raw_y
+    - plot_x = x
+    - plot_y = z
+    - plot_z = -y
 
     Parameters
     ----------
@@ -64,13 +152,19 @@ def get_plot_coord(row, joint_name: str) -> np.ndarray:
         A single frame row.
     joint_name : str
         Landmark name.
+    coord_mode : str
+        "raw" or "norm".
 
     Returns
     -------
     np.ndarray
         [plot_x, plot_y, plot_z]
     """
-    raw = get_joint(row, joint_name)
+    raw = get_joint(
+        row=row,
+        joint_name=joint_name,
+        coord_mode=coord_mode,
+    )
 
     return np.array([
         raw[0],
@@ -79,7 +173,13 @@ def get_plot_coord(row, joint_name: str) -> np.ndarray:
     ], dtype=float)
 
 
-def get_frame_data(row, landmarks: list[str], connections: list[tuple[str, str]]):
+def get_frame_data(
+    row,
+    landmarks: list[str],
+    connections: list[tuple[str, str]],
+    coord_mode: str = "raw",
+    show_text: bool = True,
+):
     """
     Create Plotly Scatter3d traces for one frame.
 
@@ -91,6 +191,10 @@ def get_frame_data(row, landmarks: list[str], connections: list[tuple[str, str]]
         Landmark names.
     connections : list[tuple[str, str]]
         Skeleton connections.
+    coord_mode : str
+        "raw" or "norm".
+    show_text : bool
+        If True, show landmark names.
 
     Returns
     -------
@@ -98,7 +202,11 @@ def get_frame_data(row, landmarks: list[str], connections: list[tuple[str, str]]
         Plotly traces for landmarks and skeleton.
     """
     coords = {
-        lm: get_plot_coord(row, lm)
+        lm: get_plot_coord(
+            row=row,
+            joint_name=lm,
+            coord_mode=coord_mode,
+        )
         for lm in landmarks
     }
 
@@ -115,16 +223,19 @@ def get_frame_data(row, landmarks: list[str], connections: list[tuple[str, str]]
         line_y += [coords[a][1], coords[b][1], None]
         line_z += [coords[a][2], coords[b][2], None]
 
+    text = landmarks if show_text else None
+    mode = "markers+text" if show_text else "markers"
+
     return [
         go.Scatter3d(
             x=xs,
             y=ys,
             z=zs,
-            mode="markers+text",
-            text=landmarks,
+            mode=mode,
+            text=text,
             textposition="top center",
             marker=dict(size=4),
-            name="Pose Landmarks",
+            name=f"Pose Landmarks ({coord_mode})",
             showlegend=True,
         ),
         go.Scatter3d(
@@ -133,13 +244,18 @@ def get_frame_data(row, landmarks: list[str], connections: list[tuple[str, str]]
             z=line_z,
             mode="lines",
             line=dict(width=5),
-            name="Skeleton",
+            name=f"Skeleton ({coord_mode})",
             showlegend=True,
         ),
     ]
 
 
-def compute_plot_ranges(df, landmarks: list[str], padding: float = 0.1):
+def compute_plot_ranges(
+    df,
+    landmarks: list[str],
+    padding: float = 0.1,
+    coord_mode: str = "raw",
+):
     """
     Compute fixed plot ranges for transformed visualization coordinates.
 
@@ -153,65 +269,54 @@ def compute_plot_ranges(df, landmarks: list[str], padding: float = 0.1):
         Landmark names.
     padding : float
         Extra margin around min/max values.
+    coord_mode : str
+        "raw" or "norm".
 
     Returns
     -------
     tuple[list[float], list[float], list[float]]
         x_range, y_range, z_range
     """
-    x_cols = [f"{lm}_x" for lm in landmarks]
-    y_cols = [f"{lm}_y" for lm in landmarks]
-    z_cols = [f"{lm}_z" for lm in landmarks]
+    missing_cols = validate_landmark_columns(
+        df=df,
+        landmarks=landmarks,
+        coord_mode=coord_mode,
+        require_visibility=False,
+    )
+
+    if missing_cols:
+        raise ValueError(
+            f"Missing columns for coord_mode='{coord_mode}': {missing_cols}"
+        )
+
+    x_cols = []
+    y_cols = []
+    z_cols = []
+
+    for lm in landmarks:
+        x_col, y_col, z_col = get_coord_columns(
+            landmark=lm,
+            coord_mode=coord_mode,
+        )
+        x_cols.append(x_col)
+        y_cols.append(y_col)
+        z_cols.append(z_col)
 
     x_range = [
         df[x_cols].min().min() - padding,
         df[x_cols].max().max() + padding,
     ]
 
-    # Plot Y uses raw z
+    # Plot Y uses coordinate z
     y_range = [
         df[z_cols].min().min() - padding,
         df[z_cols].max().max() + padding,
     ]
 
-    # Plot Z uses -raw y
+    # Plot Z uses -coordinate y
     z_range = [
         -df[y_cols].max().max() - padding,
         -df[y_cols].min().min() + padding,
     ]
 
     return x_range, y_range, z_range
-
-
-def validate_landmark_columns(df, landmarks: list[str]) -> list[str]:
-    """
-    Check whether all landmark coordinate columns exist.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Pose dataframe.
-    landmarks : list[str]
-        Landmark names.
-
-    Returns
-    -------
-    list[str]
-        Missing column names. Empty list means valid.
-    """
-    required_cols = []
-
-    for lm in landmarks:
-        required_cols.extend([
-            f"{lm}_x",
-            f"{lm}_y",
-            f"{lm}_z",
-            f"{lm}_visibility",
-        ])
-
-    missing_cols = [
-        col for col in required_cols
-        if col not in df.columns
-    ]
-
-    return missing_cols
