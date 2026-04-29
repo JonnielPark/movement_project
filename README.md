@@ -10,12 +10,13 @@ Implemented:
 - Landmark configuration
 - 3D skeleton visualization
 - Basic data validation
+- Basic coordinate normalization
 
 Planned:
 
-- Coordinate normalization
+- Annotation mask application
+- Pipeline runner with on/off module config
 - Preprocessing
-- Movement segmentation
 - Feature extraction
 - Biomechanical proxy modeling
 - Movement quality scoring
@@ -62,8 +63,10 @@ fig.show()
 Concept notes are maintained in `docs/`.
 
 - [Overview](docs/00_overview.md)
+- [Data Format](docs/01_data_format.md)
 - [Validation](docs/02_validation.md)
 - [Normalization](docs/03_normalization.md)
+- [Annotation and Segmentation](docs/04_annotation_and_segmentation.md)
 
 ## Data Format
 

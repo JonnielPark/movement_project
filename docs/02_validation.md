@@ -39,5 +39,17 @@ print(report["passed"])
 
 A failed validation result does not always mean the data is unusable.
 
-It means that the issue should be reviewed before downstream processing.
-For example, missing values may later be handled by interpolation, and noisy trajectories may later be handled by smoothing or Kalman filtering.
+It means that the issue should be reviewed before downstream processing. For example, missing values may later be handled by interpolation, and noisy trajectories may later be handled by smoothing or Kalman filtering.
+
+## Current Role in the Pipeline
+
+Validation is expected to run before preprocessing, normalization, annotation application, and feature extraction.
+
+```text
+Pose CSV
+-> Validation
+-> Preprocessing
+-> Normalization
+-> Annotation Mask Application
+-> Feature Extraction
+```
