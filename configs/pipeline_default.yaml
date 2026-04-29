@@ -1,0 +1,59 @@
+# Movement Project — Pipeline Configuration
+# Run order: validation → preprocessing → normalization → annotation → features → biomech → scoring
+# Toggle each step with enabled: true / false
+
+input:
+  path: "data/sample/mediapipe_forward_bend_sample.csv"
+
+# ── Step 1: Validation ────────────────────────────────────────────────────────
+validation:
+  enabled: true
+  missing_value_threshold: 0.05   # fail if any column has >5% missing values
+  visibility_threshold: 0.5       # landmark visibility quality threshold
+
+# ── Step 2: Preprocessing ─────────────────────────────────────────────────────
+preprocessing:
+  enabled: false
+  kalman_filter:
+    enabled: false
+    process_noise: 0.01
+    measurement_noise: 0.1
+
+# ── Step 3: Normalization ─────────────────────────────────────────────────────
+normalization:
+  enabled: true
+  method: hip_torso               # hip-centered + sequence-median torso scale
+  keep_reference_columns: true    # keep hip_center, shoulder_center, torso_length cols
+
+# ── Step 4: Annotation ────────────────────────────────────────────────────────
+annotation:
+  enabled: false
+
+# ── Step 5: Feature Extraction ────────────────────────────────────────────────
+features:
+  enabled: false
+  spatial:
+    rom: false
+    symmetry: false
+    shape: false
+  temporal:
+    tempo: false
+    variability: false
+  control:
+    stability: false
+    compensation: false
+
+# ── Step 6: Biomechanical Proxy ───────────────────────────────────────────────
+biomech:
+  enabled: false
+
+# ── Step 7: Scoring ───────────────────────────────────────────────────────────
+scoring:
+  enabled: false
+
+# ── Output ────────────────────────────────────────────────────────────────────
+output:
+  save_processed: false
+  processed_path: "data/processed/normalized.csv"
+  save_report: false
+  report_path: "data/processed/report.json"
