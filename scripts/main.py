@@ -19,6 +19,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
+from movement.annotation import load_annotation_csv
 from movement.config import LANDMARKS
 from movement.io import load_pose_csv
 from movement.pipeline import load_pipeline_config, run_pipeline
@@ -62,7 +63,13 @@ def main() -> None:
     df = load_pose_csv(input_path)
     print(f"[INFO] loaded : {len(df)} frames, {df.shape[1]} columns")
 
-    df, report = run_pipeline(df, config, LANDMARKS)
+    ann_df = None
+    if config.annotation.enabled and config.annotation.path is not None:
+        ann_path = _ROOT / config.annotation.path
+        ann_df = load_annotation_csv(ann_path)
+        print(f"[INFO] annotation : {ann_path} ({len(ann_df)} rows)")
+
+    df, report = run_pipeline(df, config, LANDMARKS, ann_df=ann_df)
 
     print("\n[REPORT]")
     print(json.dumps(report, indent=2, default=str))

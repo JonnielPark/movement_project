@@ -1,0 +1,6 @@
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,note
+baseline,,,0,9,false,forward_bend,standing posture before movement
+rep,1,1,10,54,true,forward_bend,descent and ascent cycle 1
+transition,,,55,64,false,forward_bend,brief pause between reps
+rep,1,2,65,109,true,forward_bend,descent and ascent cycle 2
+idle,,,110,119,false,forward_bend,end of sequence
