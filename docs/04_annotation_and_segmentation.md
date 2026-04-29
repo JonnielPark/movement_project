@@ -4,43 +4,231 @@
 
 In the current framework, segmentation is treated as an annotation-based frame selection step rather than a fully automatic movement detection algorithm.
 
-The goal is to identify which frames should be used for movement analysis while preserving the original pose sequence.
+The goal is to mark which frames, sets, and repetitions should be used for analysis while preserving the original pose sequence.
 
-## Design Principle
+This step does not remove frames from the dataframe.
 
-Segmentation should not remove frames from the dataframe.
-
-Instead, it should add annotation columns such as:
+Instead, it adds metadata columns such as:
 
 ```text
 use_for_analysis
 segment_type
+set_id
 rep_id
 phase
 ```
 
-This allows the full sequence to be preserved for visualization, debugging, baseline estimation, and later re-analysis.
+## Terminology
 
-## Manual Annotation
+The annotation structure follows this hierarchy:
 
-For early-stage development, analysis segments are manually annotated.
-
-Example annotation file:
-
-```csv
-segment_type,rep_id,start_frame,end_frame,use_for_analysis
-baseline,,20,60,false
-rep,1,85,160,true
-rep,2,170,245,true
-rep,3,255,330,true
-idle,,331,370,false
+```text
+recording
+└─ set
+   └─ rep
+      └─ phase
 ```
 
-The pipeline applies this annotation to the pose dataframe.
+## Recording
 
-Frames inside a segment with `use_for_analysis=true` are included in feature extraction.
+A recording is one full captured sequence from a video or pose CSV.
 
-Frames outside analysis segments are preserved but excluded from analysis statistics.
+A single recording may contain:
+
+```text
+idle frames
+preparation frames
+one or more sets
+rest periods
+ending frames
+```
+
+A recording may contain only one set, or multiple sets.
+
+## Set
+
+A set is a group of repeated exercise movements performed continuously.
+
+Example:
+
+```text
+squat set 1: 10 reps
+squat set 2: 10 reps
+squat set 3: 10 reps
+```
+
+The framework should allow one recording to contain one or more sets.
+
+## Rep
+
+A repetition, or rep, is one complete movement cycle within a set.
+
+For example, in a squat:
+
+```text
+one rep = standing position
+        → descent
+        → bottom
+        → ascent
+        → standing position
+```
+
+In the initial implementation, rep-level annotation is the main target.
+
+## Phase
+
+A phase is a sub-section within a repetition.
+
+Examples:
+
+```text
+descent
+bottom
+ascent
+transition
+```
+
+Phase-level annotation is reserved for future development.
+
+The initial implementation may allow a `phase` column, but it does not require phase-level annotation or phase-level logic.
+
+## Current Implementation Scope
+
+The first implementation should support:
+
+```text
+- full-sequence fallback when no annotation is provided
+- set-level annotation
+- rep-level annotation
+- idle / baseline / rest / excluded segment marking
+- use_for_analysis mask
+```
+
+The following are not part of the initial implementation:
+
+```text
+- automatic segmentation
+- automatic rep detection
+- automatic phase detection
+- phase-level analysis
+```
+
+## Design Principle
+
+Annotation should not delete or physically crop frames.
+
+Instead, annotation should preserve the full sequence and add metadata columns.
+
+Recommended output columns:
+
+```text
+use_for_analysis
+segment_type
+set_id
+rep_id
+phase
+```
+
+This allows:
+
+```text
+- original frame numbers to be preserved
+- full-sequence visualization
+- repeated annotation updates
+- exclusion of idle or invalid frames from later analysis
+```
+
+## Minimal Annotation Columns
+
+The minimal required annotation file should contain:
+
+```text
+segment_type
+set_id
+rep_id
+start_frame
+end_frame
+use_for_analysis
+```
+
+Optional columns:
+
+```text
+exercise_type
+phase
+note
+```
+
+## Segment Types
+
+Recommended `segment_type` values:
+
+```text
+full_sequence
+baseline
+idle
+rep
+rest
+transition
+excluded
+```
+
+Suggested meaning:
+
+```text
+full_sequence  → default when no annotation is provided
+baseline       → stable posture before movement
+idle           → waiting or non-exercise period
+rep            → one complete repetition
+rest           → rest period between sets
+transition     → movement transition not assigned to a rep
+excluded       → known invalid or unusable frames
+```
+
+## Example: Single Set
+
+Example annotation for one squat set with three repetitions:
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
+baseline,,,20,60,false
+rep,1,1,85,160,true
+rep,1,2,170,245,true
+rep,1,3,255,330,true
+idle,,,331,370,false
+```
+
+## Example: Multiple Sets
+
+Example annotation for one recording containing two squat sets:
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
+baseline,,,20,60,false
+rep,1,1,85,160,true
+rep,1,2,170,245,true
+rep,1,3,255,330,true
+rest,1,,331,430,false
+rep,2,1,450,525,true
+rep,2,2,535,610,true
+rep,2,3,620,700,true
+idle,,,701,760,false
+```
+
+## Optional Phase Column
+
+The `phase` column may be included for future compatibility.
+
+Example:
+
+```csv
+segment_type,set_id,rep_id,phase,start_frame,end_frame,use_for_analysis
+rep,1,1,,85,160,true
+```
+
+For the initial implementation, `phase` can remain empty.
+
+Phase-level annotation should not be required.
 
 ## Missing Annotation Policy
 
@@ -51,101 +239,97 @@ Default behavior:
 ```text
 use_for_analysis = True for all frames
 segment_type = full_sequence
+set_id = None
 rep_id = None
 phase = None
 ```
 
-The report should record:
+The annotation report should record:
 
 ```text
 annotation_provided = False
 policy = use_full_sequence
+num_total_frames
+num_analysis_frames
 ```
 
-This ensures that the pipeline can always run, even without manual segmentation.
+This allows the pipeline to run even when no manual annotation exists.
 
-## Processing Range vs Analysis Range
+## Annotation Provided Policy
 
-Two ranges should be conceptually separated.
+If an annotation file is provided:
 
 ```text
-processing range:
-- frames used for preprocessing, filtering, normalization, and visualization
-- may include idle or preparation frames
-
-analysis range:
-- frames used for feature extraction and movement statistics
-- defined by use_for_analysis=True
+1. all frames are initially set to use_for_analysis = False
+2. frames inside annotated segments are updated according to the annotation file
+3. frames outside annotated ranges remain excluded from analysis
 ```
 
-This is important because filtering and smoothing may require additional frames before and after the main movement to reduce boundary effects.
+This prevents unmarked idle or invalid frames from being included accidentally.
 
-## Repetition-Level Analysis
+## Overlap Policy
 
-For repeated exercises such as squats, each repetition can be annotated separately.
+Overlapping annotation ranges should be treated as an error.
 
-Example:
+Example of invalid annotation:
 
 ```csv
-segment_type,rep_id,start_frame,bottom_frame,end_frame,use_for_analysis
-rep,1,85,120,160,true
-rep,2,170,205,245,true
-rep,3,255,292,330,true
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
+rep,1,1,50,120,true
+rep,1,2,100,180,true
 ```
 
-This enables both rep-level and session-level analysis.
+The initial implementation should not silently overwrite overlapping segments.
 
-Rep-level features may include:
+It should raise an error or return a failed annotation validation report.
 
-```text
-ROM
-tempo
-symmetry
-stability
-compensation
-```
+## Frame Index Policy
 
-Session-level summaries may include:
+Manual annotations should be defined using the original frame indices from the pose CSV.
 
-```text
-mean
-standard deviation
-worst repetition
-fatigue trend
-```
+The annotation step should preserve the original `frame` column.
 
-## Relationship to Automatic Segmentation
-
-Automatic segmentation is not the primary focus of the current research stage.
-
-The initial implementation focuses on reliable annotation application.
-
-Automatic or semi-automatic segmentation may be added later using exercise-specific signals such as:
-
-```text
-hip height
-knee angle
-trunk angle
-COM trajectory
-```
+If needed later, a separate segment-level frame index can be added, but the original frame number should not be overwritten.
 
 ## Pipeline Role
 
-The annotation step is expected to run after validation, preprocessing, and normalization.
+The annotation file is prepared before running the pipeline.
+
+Inside the pipeline, annotation is applied as a mask after validation, preprocessing, and normalization.
 
 Recommended order:
 
 ```text
 load pose CSV
--> validation
--> preprocessing
--> normalization
--> annotation mask application
--> feature extraction
+→ validation
+→ preprocessing
+→ normalization
+→ annotation mask application
+→ later analysis modules
 ```
 
-Feature extraction should use only frames where:
+The key output of this step is an annotated dataframe.
 
 ```text
-use_for_analysis == True
+input:
+pose dataframe
+optional annotation file
+
+output:
+pose dataframe with annotation metadata columns
+annotation report
+```
+
+## Initial Completion Criteria
+
+The first annotation implementation is complete when:
+
+```text
+1. annotation CSV can be loaded
+2. required annotation columns are checked
+3. missing annotation falls back to full-sequence mode
+4. provided annotation adds use_for_analysis, segment_type, set_id, rep_id, and phase columns
+5. overlapping segments are detected
+6. original frame numbers are preserved
+7. annotation report is returned
 ```

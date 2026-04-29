@@ -28,6 +28,7 @@ normalization:
 # ── Step 4: Annotation ────────────────────────────────────────────────────────
 annotation:
   enabled: false
+  path: "data/sample/mediapipe_forward_bend_sample_annotation.csv"
 
 # ── Step 5: Feature Extraction ────────────────────────────────────────────────
 features:

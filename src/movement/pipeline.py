@@ -58,6 +58,7 @@ class NormalizationConfig:
 @dataclass
 class AnnotationConfig:
     enabled: bool = False
+    path: str | None = None  # relative path to annotation CSV; None = full-sequence fallback
 
 
 @dataclass
@@ -168,6 +169,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         ),
         annotation=AnnotationConfig(
             enabled=ann.get("enabled", False),
+            path=ann.get("path", None),
         ),
         features=FeaturesConfig(
             enabled=feat.get("enabled", False),
@@ -206,6 +208,7 @@ def run_pipeline(
     df: pd.DataFrame,
     config: PipelineConfig,
     landmarks: list[str] | None = None,
+    ann_df: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Run the movement analysis pipeline on a pose dataframe.
@@ -221,6 +224,9 @@ def run_pipeline(
         Loaded from YAML via load_pipeline_config().
     landmarks : list[str], optional
         Landmark name list. Defaults to movement.config.LANDMARKS.
+    ann_df : pd.DataFrame | None, optional
+        Pre-loaded annotation table (output of annotation.load_annotation_csv).
+        None triggers full-sequence fallback when the annotation step is enabled.
 
     Returns
     -------
@@ -263,9 +269,9 @@ def run_pipeline(
 
     # Step 4: Annotation
     if config.annotation.enabled:
-        raise NotImplementedError(
-            "annotation step is not yet implemented. Set annotation.enabled: false."
-        )
+        from movement.annotation import apply_annotation
+        df, ann_report = apply_annotation(df, ann_df)
+        report["annotation"] = ann_report
 
     # Step 5: Features
     if config.features.enabled:
