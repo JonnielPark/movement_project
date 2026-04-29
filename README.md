@@ -24,7 +24,7 @@ Planned:
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/JonnielPark/movement_project.git
 cd movement_project
 python -m pip install -e .
 ```
