@@ -1,49 +1,24 @@
 # Movement Project
 
-Monocular pose-based movement analysis framework.
+Monocular pose-based movement analysis framework for interpretable movement quality assessment.
 
-This project is being developed for interpretable movement quality analysis using 3D pose landmark data from a single camera.
-
-## Current Status
+## Status
 
 Implemented:
 
 - Pose CSV loading
-- Basic landmark configuration
+- Landmark configuration
 - 3D skeleton visualization
 - Basic data validation
-  - required columns
-  - frame continuity
-  - timestamp / FPS check
-  - missing values
-  - visibility quality
 
 Planned:
 
-- preprocessing
-- coordinate normalization
-- movement segmentation
-- feature extraction
-- biomechanical proxy modeling
-- movement quality scoring
-
-## Project Structure
-
-```text
-movement_project/
-├─ pyproject.toml
-├─ data/
-│  └─ sample/
-├─ notebook/
-├─ scripts/
-└─ src/
-   └─ movement/
-      ├─ config.py
-      ├─ io.py
-      ├─ utils.py
-      ├─ validation.py
-      └─ visualization.py
-```
+- Coordinate normalization
+- Preprocessing
+- Movement segmentation
+- Feature extraction
+- Biomechanical proxy modeling
+- Movement quality scoring
 
 ## Installation
 
@@ -53,7 +28,7 @@ cd movement_project
 python -m pip install -e .
 ```
 
-## Basic Usage
+## Quick Start
 
 ```python
 from movement.io import load_pose_csv
@@ -78,14 +53,17 @@ report = run_basic_validation(
 
 print(report["passed"])
 
-fig = create_pose_animation(
-    df=df,
-    landmarks=LANDMARKS,
-    connections=CONNECTIONS,
-)
-
+fig = create_pose_animation(df, LANDMARKS, CONNECTIONS)
 fig.show()
 ```
+
+## Documentation
+
+Concept notes are maintained in `docs/`.
+
+- [Overview](docs/00_overview.md)
+- [Validation](docs/02_validation.md)
+- [Normalization](docs/03_normalization.md)
 
 ## Data Format
 
@@ -105,20 +83,8 @@ Visibility columns are optional but recommended.
 ## Notes
 
 - Validation only reports data quality issues. It does not modify the input data.
-- Raw videos, private recordings, clinical data, and API keys should not be committed.
+- Do not commit raw videos, private recordings, clinical data, or API keys.
 - Sample data may be included only if it is safe to share.
-
-## Roadmap
-
-```text
-validation
-→ preprocessing
-→ normalization
-→ segmentation
-→ feature extraction
-→ biomechanical proxy
-→ scoring
-```
 
 ## License
 
