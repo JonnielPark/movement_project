@@ -36,6 +36,7 @@ data/raw/
 data/private/
 data/clinical/
 data/videos/
+data/mediapipe/
 
 # Video files
 *.mp4

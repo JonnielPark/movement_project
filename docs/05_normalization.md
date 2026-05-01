@@ -8,6 +8,22 @@ Normalization converts raw landmark coordinates into a body-relative coordinate 
 
 This step is not intended to estimate absolute force or physical body dimensions. Its purpose is to provide a stable coordinate basis for downstream analysis such as ROM, symmetry, stability, trajectory shape, and biomechanical proxy modeling.
 
+## Pipeline Role
+
+Normalization runs after preprocessing and before motion attribution.
+
+```text
+Pose CSV
+-> Validation
+-> Annotation Mask Application
+-> Preprocessing
+-> Normalization
+-> Motion Attribution
+-> Feature Extraction
+```
+
+This order was selected because reference landmarks (hip and shoulder) should first be cleaned by reliability-based preprocessing so that torso-length scale estimation is not contaminated by a few unreliable frames.
+
 ## Design Summary
 
 The first implementation uses:
@@ -93,6 +109,18 @@ Therefore, the default normalization method is:
 p_norm_i(t) = (p_i(t) - hip_center(t)) / median_torso_length
 ```
 
+## Relationship to Preprocessing
+
+Preprocessing should run before normalization.
+
+If preprocessing has already filtered or interpolated unreliable hip and shoulder landmarks, the median torso length is computed from cleaner data, and the normalization scale is more stable.
+
+```text
+preprocessed raw coordinates
+-> hip-centered translation
+-> torso-scale normalization
+```
+
 ## Relationship to Biomechanical Proxy Modeling
 
 This normalization step is an initial coordinate transformation.
@@ -110,6 +138,12 @@ biomechanics.py
 Later biomechanical modules may use segment-length estimation and anthropometric assumptions to calculate COM and moment-arm-based proxy indicators.
 
 The current normalization only prepares the coordinate system for those later steps.
+
+## Relationship to Motion Attribution
+
+Motion attribution runs on the normalized dataframe.
+
+Working in body-relative coordinates makes motion-energy comparison across reps and subjects more consistent, because absolute body size and camera distance are already factored out.
 
 ## Output Columns
 

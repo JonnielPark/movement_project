@@ -18,6 +18,8 @@ rep_id
 phase
 ```
 
+Annotation also declares exercise-level context that downstream modules use for exercise-aware processing. See [Exercise Context Columns](#exercise-context-columns).
+
 ## Terminology
 
 The annotation structure follows this hierarchy:
@@ -102,6 +104,7 @@ The first implementation should support:
 - rep-level annotation
 - idle / baseline / rest / excluded segment marking
 - use_for_analysis mask
+- exercise context declaration (exercise_type, pattern, starting_side)
 ```
 
 The following are not part of the initial implementation:
@@ -127,6 +130,7 @@ segment_type
 set_id
 rep_id
 phase
+exercise_type
 ```
 
 This allows:
@@ -136,6 +140,7 @@ This allows:
 - full-sequence visualization
 - repeated annotation updates
 - exclusion of idle or invalid frames from later analysis
+- exercise-aware logic in preprocessing, motion attribution, and feature extraction
 ```
 
 ## Minimal Annotation Columns
@@ -158,6 +163,41 @@ exercise_type
 phase
 note
 ```
+
+## Exercise Context Columns
+
+The annotation file may declare exercise-level context that downstream modules use for exercise-aware processing.
+
+```text
+exercise_type   identifier of the exercise
+                examples: squat | lunge | pike_pushup | plank_shoulder_tap
+
+pattern         expected left-right movement pattern
+                values: bilateral | alternating
+
+starting_side   first active side for alternating exercises
+                values: left | right
+                ignored when pattern is bilateral
+```
+
+The recommended convention is to declare these values once per recording (or once per set if a recording contains multiple exercises) using rows whose `segment_type` is `full_sequence`, `baseline`, or any per-set marker.
+
+Example annotation row that only declares exercise context:
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
+full_sequence,,,0,800,false,plank_shoulder_tap,alternating,right
+```
+
+These columns are consumed by:
+
+```text
+preprocessing      -> enable or skip frame-level left-right swap detection
+motion_attribution -> compare detected active limb against the expected pattern
+features           -> apply exercise-specific feature definitions
+```
+
+If `pattern` is missing, downstream modules treat the exercise as bilateral by default.
 
 ## Segment Types
 
@@ -190,12 +230,12 @@ excluded       → known invalid or unusable frames
 Example annotation for one squat set with three repetitions:
 
 ```csv
-segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
-baseline,,,20,60,false
-rep,1,1,85,160,true
-rep,1,2,170,245,true
-rep,1,3,255,330,true
-idle,,,331,370,false
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
+baseline,,,20,60,false,squat,bilateral
+rep,1,1,85,160,true,squat,bilateral
+rep,1,2,170,245,true,squat,bilateral
+rep,1,3,255,330,true,squat,bilateral
+idle,,,331,370,false,squat,bilateral
 ```
 
 ## Example: Multiple Sets
@@ -203,17 +243,33 @@ idle,,,331,370,false
 Example annotation for one recording containing two squat sets:
 
 ```csv
-segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
-baseline,,,20,60,false
-rep,1,1,85,160,true
-rep,1,2,170,245,true
-rep,1,3,255,330,true
-rest,1,,331,430,false
-rep,2,1,450,525,true
-rep,2,2,535,610,true
-rep,2,3,620,700,true
-idle,,,701,760,false
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
+baseline,,,20,60,false,squat,bilateral
+rep,1,1,85,160,true,squat,bilateral
+rep,1,2,170,245,true,squat,bilateral
+rep,1,3,255,330,true,squat,bilateral
+rest,1,,331,430,false,squat,bilateral
+rep,2,1,450,525,true,squat,bilateral
+rep,2,2,535,610,true,squat,bilateral
+rep,2,3,620,700,true,squat,bilateral
+idle,,,701,760,false,squat,bilateral
 ```
+
+## Example: Alternating Exercise
+
+Example annotation for plank shoulder tap, where each rep alternates the active hand:
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
+baseline,,,0,40,false,plank_shoulder_tap,alternating,right
+rep,1,1,50,100,true,plank_shoulder_tap,alternating,right
+rep,1,2,110,160,true,plank_shoulder_tap,alternating,right
+rep,1,3,170,220,true,plank_shoulder_tap,alternating,right
+rep,1,4,230,280,true,plank_shoulder_tap,alternating,right
+idle,,,281,320,false,plank_shoulder_tap,alternating,right
+```
+
+`starting_side = right` means the right hand performs the tap on the first rep, the left hand on the second, and so on.
 
 ## Optional Phase Column
 
@@ -242,6 +298,9 @@ segment_type = full_sequence
 set_id = None
 rep_id = None
 phase = None
+exercise_type = None
+pattern = bilateral
+starting_side = None
 ```
 
 The annotation report should record:
@@ -255,6 +314,8 @@ num_analysis_frames
 
 This allows the pipeline to run even when no manual annotation exists.
 
+When `exercise_type` is not declared, downstream exercise-aware logic falls back to a generic, exercise-agnostic mode.
+
 ## Annotation Provided Policy
 
 If an annotation file is provided:
@@ -263,6 +324,7 @@ If an annotation file is provided:
 1. all frames are initially set to use_for_analysis = False
 2. frames inside annotated segments are updated according to the annotation file
 3. frames outside annotated ranges remain excluded from analysis
+4. exercise context columns are propagated to all frames inside their declared range
 ```
 
 This prevents unmarked idle or invalid frames from being included accidentally.
@@ -295,18 +357,19 @@ If needed later, a separate segment-level frame index can be added, but the orig
 
 The annotation file is prepared before running the pipeline.
 
-Inside the pipeline, annotation is applied as a mask after validation, preprocessing, and normalization.
-
-Recommended order:
+Inside the pipeline, annotation is applied as a metadata layer immediately after validation, so that exercise context and rep boundaries are available to all subsequent modules.
 
 ```text
 load pose CSV
 → validation
+→ annotation mask application
 → preprocessing
 → normalization
-→ annotation mask application
+→ motion attribution
 → later analysis modules
 ```
+
+This order is intentional. Preprocessing reads `exercise_type` and `pattern` to decide whether to enable exercise-specific checks such as frame-level left-right swap detection. Motion attribution reads rep boundaries and exercise context to verify that each rep's active limb matches the expected pattern.
 
 The key output of this step is an annotated dataframe.
 
@@ -329,7 +392,8 @@ The first annotation implementation is complete when:
 2. required annotation columns are checked
 3. missing annotation falls back to full-sequence mode
 4. provided annotation adds use_for_analysis, segment_type, set_id, rep_id, and phase columns
-5. overlapping segments are detected
-6. original frame numbers are preserved
-7. annotation report is returned
+5. exercise context columns (exercise_type, pattern, starting_side) are populated when present
+6. overlapping segments are detected
+7. original frame numbers are preserved
+8. annotation report is returned
 ```
