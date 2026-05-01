@@ -10,16 +10,36 @@ Implemented:
 - Landmark configuration
 - 3D skeleton visualization
 - Basic data validation
-- Basic coordinate normalization
+- Coordinate normalization
+- Annotation mask application
 
 Planned:
 
-- Annotation mask application
-- Pipeline runner with on/off module config
-- Preprocessing
-- Feature extraction
+- Preprocessing (reliability filtering, exercise-aware swap detection, short-gap interpolation)
+- Motion attribution (rep-level active-limb verification)
+- Pipeline runner reordered to: validation → annotation → preprocessing → normalization → motion attribution → features
+- Feature extraction (spatial, temporal, control)
 - Biomechanical proxy modeling
 - Movement quality scoring
+- Simulation-based robustness evaluation
+
+## Pipeline
+
+```text
+Pose CSV
++ optional annotation file
+-> Validation
+-> Annotation Mask Application
+-> Preprocessing
+-> Normalization
+-> Motion Attribution
+-> Feature Extraction
+-> Biomechanical Proxy Modeling
+-> Scoring
+-> Visualization / Report
+```
+
+Annotation runs early so that exercise context (`exercise_type`, `pattern`, `starting_side`) and rep boundaries are available to all downstream modules. Preprocessing and motion attribution use this context to enable or skip exercise-specific logic.
 
 ## Installation
 
@@ -65,8 +85,10 @@ Concept notes are maintained in `docs/`.
 - [Overview](docs/00_overview.md)
 - [Data Format](docs/01_data_format.md)
 - [Validation](docs/02_validation.md)
-- [Normalization](docs/03_normalization.md)
-- [Annotation and Segmentation](docs/04_annotation_and_segmentation.md)
+- [Annotation and Segmentation](docs/03_annotation_and_segmentation.md)
+- [Preprocessing](docs/04_preprocessing.md)
+- [Normalization](docs/05_normalization.md)
+- [Motion Attribution](docs/06_motion_attribution.md)
 
 ## Data Format
 
@@ -81,11 +103,13 @@ timestamp
 <landmark>_visibility
 ```
 
-Visibility columns are optional but recommended.
+Visibility columns are optional but recommended. Preprocessing uses visibility values for reliability gating when present.
 
 ## Notes
 
-- Validation only reports data quality issues. It does not modify the input data.
+- Validation only reports data integrity issues. It does not modify the input data.
+- Preprocessing may modify coordinates, but only to mask, interpolate, or smooth low-reliability landmark detections. It does not modify movement patterns.
+- Motion attribution does not modify coordinates. It produces rep-level metadata about active-limb labeling consistency.
 - Do not commit raw videos, private recordings, clinical data, or API keys.
 - Sample data may be included only if it is safe to share.
 
