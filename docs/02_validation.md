@@ -43,12 +43,13 @@ It means that the issue should be reviewed before downstream processing. For exa
 
 ## Current Role in the Pipeline
 
-Validation runs first, before annotation, preprocessing, normalization, and any later analysis modules.
+Validation runs first, before annotation, exercise definition loading, preprocessing, normalization, and any later analysis modules.
 
 ```text
 Pose CSV
 -> Validation
 -> Annotation Mask Application
+-> Exercise Definition Loading
 -> Preprocessing
 -> Normalization
 -> Motion Attribution

@@ -16,6 +16,7 @@ Normalization runs after preprocessing and before motion attribution.
 Pose CSV
 -> Validation
 -> Annotation Mask Application
+-> Exercise Definition Loading
 -> Preprocessing
 -> Normalization
 -> Motion Attribution
@@ -121,6 +122,12 @@ preprocessed raw coordinates
 -> torso-scale normalization
 ```
 
+## Relationship to Exercise Definition
+
+Normalization itself is exercise-agnostic. It does not branch on the loaded exercise definition.
+
+However, the normalized coordinate system is the input expected by every subsequent module that consults the definition (motion attribution, feature extraction, biomechanical proxy modeling). Working in body-relative coordinates makes definition-driven biomarkers comparable across subjects.
+
 ## Relationship to Biomechanical Proxy Modeling
 
 This normalization step is an initial coordinate transformation.
@@ -133,6 +140,7 @@ normalization.py
 
 biomechanics.py
 -> estimates COM, segment-level relationships, moment arms, and relative load tendency
+   (driven by biomechanical_focus in the loaded exercise definition)
 ```
 
 Later biomechanical modules may use segment-length estimation and anthropometric assumptions to calculate COM and moment-arm-based proxy indicators.
@@ -220,5 +228,5 @@ Later versions may include:
 - visibility-based scale filtering
 - torso length outlier removal
 - rotation normalization using a body-centered coordinate system
-- exercise-specific normalization rules
+- exercise-specific normalization rules driven by definition fields
 - segment-length-based anthropometric modeling

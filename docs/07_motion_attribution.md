@@ -16,6 +16,7 @@ Motion attribution runs after normalization and before feature extraction.
 Pose CSV
 -> Validation
 -> Annotation Mask Application
+-> Exercise Definition Loading
 -> Preprocessing
 -> Normalization
 -> Motion Attribution
@@ -26,7 +27,8 @@ The module requires:
 
 ```text
 - rep boundaries (from annotation)
-- exercise context (from annotation)
+- exercise context (from annotation: exercise_type, pattern, starting_side)
+- exercise definition (from exercise definition loading: laterality, primary_joints)
 - normalized coordinates (from normalization)
 ```
 
@@ -55,12 +57,13 @@ Exercise-specific quality assessment belongs to feature extraction, biomechanica
 
 ## When Does This Module Apply?
 
-Motion attribution is exercise-aware.
+Motion attribution is exercise-aware and is gated by the loaded exercise definition's `classification.laterality` (cross-checked against `pattern` from annotation).
 
 ```text
-pattern = bilateral    -> module is skipped, no rep-level active limb concept
-pattern = alternating  -> module runs and produces attribution metadata
-pattern unknown        -> module is skipped (safe default)
+laterality = bilateral_symmetric  -> module is skipped, no rep-level active limb concept
+laterality = alternating          -> module runs and produces attribution metadata
+laterality = unilateral_*         -> module runs with the declared side as expected
+laterality unknown / generic      -> module is skipped (safe default)
 ```
 
 For bilateral exercises (squat, pike push-up), there is no expected per-rep active side, so attribution is not meaningful at the rep level.
@@ -79,7 +82,7 @@ motion_share = max(left_motion, right_motion)
               / (left_motion + right_motion + ε)
 ```
 
-The paired landmark used for attribution depends on the exercise.
+The paired landmark used for attribution depends on the exercise's `landmarks.primary_joints` field (with optional per-exercise overrides via configuration).
 
 ```text
 plank_shoulder_tap : left_wrist  vs right_wrist
@@ -107,7 +110,7 @@ else:
 
 ## Expected Active Limb
 
-The expected active limb per rep is derived from the exercise template using `pattern` and `starting_side` from annotation.
+The expected active limb per rep is derived from `pattern` and `starting_side` from annotation, cross-checked with the loaded definition's `laterality`.
 
 ```text
 pattern = alternating, starting_side = right:
@@ -175,6 +178,7 @@ Recommended report fields:
 ```text
 method
 exercise_type
+laterality
 pattern
 starting_side
 num_reps
@@ -201,7 +205,7 @@ motion_attribution:
     ambiguous: 0.55
     swap: 0.85
   mode: conservative           # 'conservative' | 'auto_correct'
-  landmark_pairs:
+  landmark_pairs:              # optional; falls back to landmarks.primary_joints
     plank_shoulder_tap:
       - [left_wrist, right_wrist]
     lunge:
@@ -209,7 +213,7 @@ motion_attribution:
       - [left_ankle, right_ankle]
 ```
 
-When `pattern` for the current recording is `bilateral`, the module is skipped regardless of `enabled`.
+When the loaded definition's `laterality` is `bilateral_symmetric`, the module is skipped regardless of `enabled`.
 
 ## Relationship to Preprocessing
 
@@ -249,7 +253,7 @@ The first motion attribution implementation is complete when:
 
 ```text
 1. motion_attribution.py exists
-2. the module skips bilateral exercises automatically
+2. the module skips bilateral exercises automatically (driven by definition laterality)
 3. motion energy is computed per rep over annotated rep windows
 4. detected active limb is produced with a confidence value
 5. expected active limb is derived from pattern and starting_side
