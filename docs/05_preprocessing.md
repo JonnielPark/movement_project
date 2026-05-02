@@ -20,19 +20,20 @@ Preprocessing in this project is structured around that reality.
 
 ## Pipeline Role
 
-Preprocessing runs after annotation and before normalization.
+Preprocessing runs after exercise definition loading and before normalization.
 
 ```text
 Pose CSV
 -> Validation
 -> Annotation Mask Application
+-> Exercise Definition Loading
 -> Preprocessing
 -> Normalization
 -> Motion Attribution
 -> Feature Extraction
 ```
 
-Annotation runs first so that `exercise_type` and `pattern` are available, allowing preprocessing to enable or skip exercise-specific checks.
+Annotation runs first so that `exercise_type` and `pattern` are available. Exercise definition loading runs next so that the property object (which exposes `landmarks`, `laterality`, `quality_rules`, etc.) is available to preprocessing without re-reading annotation metadata. This lets preprocessing enable or skip exercise-specific checks.
 
 Normalization runs after preprocessing so that the median torso length used for scale estimation is computed from cleaned reference landmarks (hip and shoulder).
 
@@ -62,7 +63,7 @@ The preprocessing step should not hide biomechanically or movement-quality meani
 
 ## Input
 
-The input is a pose dataframe after validation and annotation.
+The input is a pose dataframe after validation, annotation, and exercise definition loading.
 
 Required coordinate columns follow the project data format:
 
@@ -85,12 +86,24 @@ exercise_type
 pattern
 ```
 
+Exercise definition fields read by preprocessing:
+
+```text
+landmarks.primary_joints
+landmarks.critical_landmarks
+classification.laterality
+quality_rules.minimum_visible_landmark_ratio
+quality_rules.max_interpolation_gap_frames
+```
+
+When the loaded definition is the generic fallback, preprocessing applies conservative defaults.
+
 ## Output
 
 The preprocessing function should return both a dataframe and a report.
 
 ```python
-pre_df, pre_report = preprocess_pose_dataframe(df, landmarks, exercise_type, pattern)
+pre_df, pre_report = preprocess_pose_dataframe(df, landmarks, exercise_definition)
 ```
 
 The output dataframe should preserve:
@@ -197,11 +210,12 @@ The threshold may be defined relative to the sequence-level torso length per sec
 
 Pose estimators occasionally swap left and right labels of a paired landmark, especially during occlusion, rotation, or in prone postures.
 
-This detection is enabled or disabled based on `exercise_type` and `pattern` declared in annotation.
+This detection is enabled or disabled based on the loaded exercise definition's `classification.laterality` (cross-checked against `pattern` declared in annotation).
 
 ```text
-exercise pattern   = bilateral    -> skip frame-level swap detection
-exercise pattern   = alternating  -> enable frame-level swap detection
+laterality = bilateral_symmetric  -> skip frame-level swap detection
+laterality = alternating          -> enable frame-level swap detection
+laterality = unilateral_*         -> enable, with single-side priority
 ```
 
 ### Detection Heuristics
@@ -249,7 +263,7 @@ output : coordinates for short masked gaps filled by interpolation,
          long masked gaps left as unreliable
 ```
 
-Example policy:
+Example policy (read from `quality_rules.max_interpolation_gap_frames` in the loaded definition; default 3):
 
 ```text
 max_interpolation_gap = 3 frames
@@ -326,19 +340,18 @@ This staged approach keeps the early pipeline interpretable while preserving the
 
 ## Exercise-Specific Branching Summary
 
-Preprocessing reads annotation context and applies the following branching.
+Preprocessing reads the loaded exercise definition's `classification.laterality` (and `pattern` from annotation as a cross-check) and applies the following branching.
 
 ```text
-exercise_type / pattern         visibility   segment   ROM   velocity   L/R swap   smoothing
------------------------------   ----------   -------   ---   --------   --------   ---------
-squat            / bilateral     enabled      enabled   enabled  enabled  skip       optional
-pike_pushup      / bilateral     enabled      enabled   enabled  enabled  skip       optional
-lunge            / alternating   enabled      enabled   enabled  enabled  enabled    optional
-plank_shoulder_tap / alternating enabled      enabled   enabled  enabled  enabled    optional
-unknown          / fallback      enabled      enabled   enabled  enabled  skip       optional
+laterality                       visibility   segment   ROM   velocity   L/R swap   smoothing
+─────────────────────────────    ──────────   ───────   ───   ────────   ────────   ─────────
+bilateral_symmetric              enabled      enabled   enabled  enabled  skip       optional
+alternating                      enabled      enabled   enabled  enabled  enabled    optional
+unilateral_*                     enabled      enabled   enabled  enabled  enabled    optional
+generic fallback (no definition) enabled      enabled   enabled  enabled  skip       optional
 ```
 
-When `exercise_type` is unknown, preprocessing falls back to the bilateral branch, which is the safer default because it cannot introduce false swap corrections.
+When the loaded definition is the generic fallback, preprocessing falls back to the bilateral branch, which is the safer default because it cannot introduce false swap corrections.
 
 ## Invalid Frame Marking
 
@@ -377,14 +390,14 @@ preprocessing:
     joint_angle_check: true
     velocity_threshold_torso_per_sec: 5.0
   swap_detection:
-    enabled: true                # only applied when pattern == alternating
+    enabled: true                # only applied when laterality != bilateral_symmetric
     temporal_consistency: true
     orientation_prior: true
     orientation_disagree_ratio: 0.4
   interpolation:
     enabled: true
     method: linear
-    max_gap_frames: 3
+    max_gap_frames: 3            # may be overridden per-exercise via quality_rules
   smoothing:
     enabled: false
     method: rolling_median
@@ -409,6 +422,7 @@ Recommended report fields:
 method
 exercise_type
 pattern
+laterality
 num_frames
 num_coordinate_columns
 
@@ -452,7 +466,8 @@ The first preprocessing implementation is complete when:
 2. coordinate columns are selected from the landmark list
 3. visibility-based reliability marking works
 4. segment length and velocity checks produce a reliability mask
-5. exercise-aware frame-level left-right swap detection runs only for alternating exercises
+5. exercise-aware frame-level left-right swap detection runs only for
+   non-bilateral exercises (driven by the loaded definition)
 6. short masked gaps can be interpolated
 7. long masked gaps remain unresolved and are reported
 8. optional simple smoothing can be applied

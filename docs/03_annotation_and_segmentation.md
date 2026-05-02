@@ -18,7 +18,9 @@ rep_id
 phase
 ```
 
-Annotation also declares exercise-level context that downstream modules use for exercise-aware processing. See [Exercise Context Columns](#exercise-context-columns).
+Annotation also declares exercise-level context that downstream modules use for exercise-aware processing. The same `exercise_type` value is used by the next pipeline step ([Exercise Definition](04_exercise_definition.md)) to load the corresponding YAML property object.
+
+See [Exercise Context Columns](#exercise-context-columns).
 
 ## Terminology
 
@@ -141,6 +143,7 @@ This allows:
 - repeated annotation updates
 - exclusion of idle or invalid frames from later analysis
 - exercise-aware logic in preprocessing, motion attribution, and feature extraction
+- exercise definition lookup using exercise_type
 ```
 
 ## Minimal Annotation Columns
@@ -192,12 +195,13 @@ full_sequence,,,0,800,false,plank_shoulder_tap,alternating,right
 These columns are consumed by:
 
 ```text
-preprocessing      -> enable or skip frame-level left-right swap detection
-motion_attribution -> compare detected active limb against the expected pattern
-features           -> apply exercise-specific feature definitions
+exercise_definition -> select the YAML property object for this exercise_type
+preprocessing       -> enable or skip frame-level left-right swap detection
+motion_attribution  -> compare detected active limb against the expected pattern
+features            -> apply exercise-specific feature definitions
 ```
 
-If `pattern` is missing, downstream modules treat the exercise as bilateral by default.
+If `pattern` is missing, downstream modules treat the exercise as bilateral by default. If `exercise_type` is missing, the exercise definition layer falls back to a generic definition (see [Exercise Definition: Fallback Behavior](04_exercise_definition.md#fallback-behavior)).
 
 ## Segment Types
 
@@ -314,7 +318,7 @@ num_analysis_frames
 
 This allows the pipeline to run even when no manual annotation exists.
 
-When `exercise_type` is not declared, downstream exercise-aware logic falls back to a generic, exercise-agnostic mode.
+When `exercise_type` is not declared, the exercise definition layer loads the generic fallback definition, and downstream exercise-aware logic operates in a generic, exercise-agnostic mode.
 
 ## Annotation Provided Policy
 
@@ -357,19 +361,20 @@ If needed later, a separate segment-level frame index can be added, but the orig
 
 The annotation file is prepared before running the pipeline.
 
-Inside the pipeline, annotation is applied as a metadata layer immediately after validation, so that exercise context and rep boundaries are available to all subsequent modules.
+Inside the pipeline, annotation is applied as a metadata layer immediately after validation. The next step ([Exercise Definition](04_exercise_definition.md)) then loads the YAML property object identified by `exercise_type`, so that exercise context, rep boundaries, and the loaded definition object are all available to subsequent modules.
 
 ```text
 load pose CSV
 → validation
 → annotation mask application
+→ exercise definition loading
 → preprocessing
 → normalization
 → motion attribution
 → later analysis modules
 ```
 
-This order is intentional. Preprocessing reads `exercise_type` and `pattern` to decide whether to enable exercise-specific checks such as frame-level left-right swap detection. Motion attribution reads rep boundaries and exercise context to verify that each rep's active limb matches the expected pattern.
+This order is intentional. Preprocessing reads `exercise_type` and `pattern` (and the loaded definition's `landmarks`/`quality_rules`) to decide whether to enable exercise-specific checks such as frame-level left-right swap detection. Motion attribution reads rep boundaries, exercise context, and the definition's `laterality` to verify that each rep's active limb matches the expected pattern.
 
 The key output of this step is an annotated dataframe.
 
