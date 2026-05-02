@@ -5,7 +5,8 @@ Each step can be toggled via its `enabled` flag in configs/pipeline_default.yaml
 Steps not yet implemented raise NotImplementedError when enabled=True.
 
 Run order:
-    validation → annotation → preprocessing → normalization → motion_attribution → features → biomech → scoring
+    validation → annotation → exercise_definition → preprocessing → normalization
+    → motion_attribution → features → biomech → scoring
 """
 from __future__ import annotations
 
@@ -59,6 +60,14 @@ class NormalizationConfig:
 class AnnotationConfig:
     enabled: bool = False
     path: str | None = None  # relative path to annotation CSV; None = full-sequence fallback
+
+
+@dataclass
+class ExerciseDefinitionConfig:
+    enabled: bool = True
+    definitions_dir: str = "data/exercise_definitions"
+    # None → derive from annotation's exercise_type column; still None → generic fallback
+    exercise_id: str | None = None
 
 
 @dataclass
@@ -120,11 +129,12 @@ class OutputConfig:
 class PipelineConfig:
     input: InputConfig = field(default_factory=InputConfig)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
+    annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
+    exercise_definition: ExerciseDefinitionConfig = field(default_factory=ExerciseDefinitionConfig)
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
-    annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
-    features: FeaturesConfig = field(default_factory=FeaturesConfig)
     motion_attribution: MotionAttributionConfig = field(default_factory=MotionAttributionConfig)
+    features: FeaturesConfig = field(default_factory=FeaturesConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
@@ -139,10 +149,11 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
 
     inp = raw.get("input", {})
     val = raw.get("validation", {})
+    ann = raw.get("annotation", {})
+    exd = raw.get("exercise_definition", {})
     pre = raw.get("preprocessing", {})
     kal = pre.get("kalman_filter", {})
     nor = raw.get("normalization", {})
-    ann = raw.get("annotation", {})
     feat = raw.get("features", {})
     sp = feat.get("spatial", {})
     te = feat.get("temporal", {})
@@ -161,6 +172,15 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             missing_value_threshold=val.get("missing_value_threshold", 0.05),
             visibility_threshold=val.get("visibility_threshold", 0.5),
         ),
+        annotation=AnnotationConfig(
+            enabled=ann.get("enabled", False),
+            path=ann.get("path", None),
+        ),
+        exercise_definition=ExerciseDefinitionConfig(
+            enabled=exd.get("enabled", True),
+            definitions_dir=exd.get("definitions_dir", "data/exercise_definitions"),
+            exercise_id=exd.get("exercise_id", None),
+        ),
         preprocessing=PreprocessingConfig(
             enabled=pre.get("enabled", False),
             kalman_filter=KalmanConfig(
@@ -173,10 +193,6 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=nor.get("enabled", True),
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
-        ),
-        annotation=AnnotationConfig(
-            enabled=ann.get("enabled", False),
-            path=ann.get("path", None),
         ),
         features=FeaturesConfig(
             enabled=feat.get("enabled", False),
@@ -268,13 +284,46 @@ def run_pipeline(
         df, ann_report = apply_annotation(df, ann_df)
         report["annotation"] = ann_report
 
-    # Step 3: Preprocessing
+    # Step 3: Exercise Definition Loading
+    if config.exercise_definition.enabled:
+        import warnings as _warnings
+        from movement.exercise_definition import load_exercise_definition
+
+        ex_id = config.exercise_definition.exercise_id
+        if ex_id is None and "exercise_type" in df.columns:
+            unique_types = df["exercise_type"].dropna().unique().tolist()
+            if len(unique_types) == 1:
+                ex_id = unique_types[0]
+            elif len(unique_types) > 1:
+                _warnings.warn(
+                    f"Multiple exercise_type values found in dataframe: {unique_types}. "
+                    "Using the first value. For multi-exercise sessions, load definitions "
+                    "per segment.",
+                    stacklevel=2,
+                )
+                ex_id = unique_types[0]
+
+        exercise_def = load_exercise_definition(
+            exercise_id=ex_id,
+            definitions_dir=config.exercise_definition.definitions_dir,
+        )
+        report["exercise_definition"] = {
+            "exercise_id": exercise_def.exercise_id,
+            "display_name": exercise_def.display_name,
+            "version": exercise_def.version,
+            "is_generic_fallback": exercise_def.is_generic_fallback,
+            "laterality": exercise_def.classification.get("laterality"),
+            "primary_plane": exercise_def.classification.get("primary_plane"),
+            "compensation_candidates": exercise_def.compensation_candidates,
+        }
+
+    # Step 4: Preprocessing
     if config.preprocessing.enabled:
         raise NotImplementedError(
             "preprocessing step is not yet implemented. Set preprocessing.enabled: false."
         )
 
-    # Step 4: Normalization
+    # Step 5: Normalization
     if config.normalization.enabled:
         df, norm_report = normalize_pose_by_hip_torso(
             df=df,
@@ -283,25 +332,25 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
-    # Step 5: Motion Attribution
+    # Step 6: Motion Attribution
     if config.motion_attribution.enabled:
         raise NotImplementedError(
             "motion_attribution step is not yet implemented. Set motion_attribution.enabled: false."
         )
 
-    # Step 6: Features
+    # Step 7: Features
     if config.features.enabled:
         raise NotImplementedError(
             "features step is not yet implemented. Set features.enabled: false."
         )
 
-    # Step 7: Biomech
+    # Step 8: Biomech
     if config.biomech.enabled:
         raise NotImplementedError(
             "biomech step is not yet implemented. Set biomech.enabled: false."
         )
 
-    # Step 8: Scoring
+    # Step 9: Scoring
     if config.scoring.enabled:
         raise NotImplementedError(
             "scoring step is not yet implemented. Set scoring.enabled: false."

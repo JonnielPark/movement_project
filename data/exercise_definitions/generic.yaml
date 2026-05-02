@@ -1,0 +1,91 @@
+exercise_id: generic
+display_name: Generic Movement
+description: |
+  Conservative fallback definition used when annotation does not declare an
+  exercise_type or when the corresponding YAML cannot be located. Only
+  exercise-agnostic features are emitted; no compensation biomarkers are
+  produced.
+version: 0.1.0
+tags:
+  - fallback
+  - exercise_agnostic
+
+classification:
+  family: full_body
+  equipment: none
+  load_type: bodyweight
+  external_load_position: none
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  movement_pattern: other
+  primary_plane: sagittal
+  secondary_planes: []
+  complexity: compound
+
+support:
+  base_of_support: bilateral_feet
+  contact_points: []
+  support_surface: floor
+  weight_bearing_regions: []
+
+phase_model:
+  type: cyclic
+  expected_ratio: {}
+
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints: []
+  secondary_joints: []
+  critical_landmarks: [11, 12, 23, 24]
+  optional_landmarks: []
+
+angle_definitions: {}
+
+joint_actions:
+  primary: []
+  secondary: []
+
+biomechanical_focus:
+  expected_com_motion: minimal
+  stability_requirement: low
+  main_load_regions: []
+  primary_constraints: []
+
+compensation_candidates: []
+
+feature_domains:
+  spatial:
+    - rom
+  temporal:
+    - tempo
+    - rep_duration
+  control:
+    - stability
+    - com_stability
+  biomechanical_proxy: []
+
+view_requirements:
+  preferred_views:
+    - any
+  acceptable_views:
+    - any
+  critical_landmarks: [11, 12, 23, 24]
+  visibility_sensitive_landmarks: []
+  occlusion_risk: medium
+
+quality_rules:
+  minimum_visible_landmark_ratio: 0.7
+  minimum_critical_landmark_ratio: 0.8
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3
+  exclude_rep_if_critical_landmark_missing: false
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true
+
+notes: |
+  This generic definition is intentionally minimal. Selecting it means the
+  pipeline cannot derive interpretable, exercise-specific biomarkers. The
+  loader should emit a warning so that the user is aware analysis is running
+  in fallback mode. To restore full biomarker output, either provide an
+  exercise YAML or declare exercise_type in the annotation file.

@@ -1,0 +1,168 @@
+exercise_id: pike_pushup
+display_name: Pike Push-up
+description: Inverted closed-chain upper-body push movement; head descends toward the floor between the hands while the hips remain piked.
+version: 0.1.0
+tags:
+  - bodyweight
+  - upper_body
+  - closed_chain
+  - bilateral
+  - strength
+
+classification:
+  family: upper_body
+  equipment: none
+  load_type: bodyweight
+  external_load_position: none
+  posture_type: inverted_closed_chain
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  movement_pattern: push
+  primary_plane: sagittal
+  secondary_planes:
+    - frontal
+  complexity: compound
+
+support:
+  base_of_support: hands_and_feet
+  contact_points:
+    - left_hand
+    - right_hand
+    - left_foot
+    - right_foot
+  support_surface: floor
+  weight_bearing_regions:
+    - left_hand
+    - right_hand
+    - left_foot
+    - right_foot
+
+phase_model:
+  type: resistance_phase
+  expected_ratio:
+    eccentric: 0.45
+    isometric: 0.10
+    concentric: 0.45
+
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints:
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+  secondary_joints:
+    - trunk
+    - pelvis
+    - left_hip
+    - right_hip
+    - head
+  critical_landmarks: [11, 12, 13, 14, 15, 16, 23, 24]
+  optional_landmarks: [0, 25, 26, 27, 28]
+
+angle_definitions:
+  left_shoulder_angle:  { points: [23, 11, 13], vertex: 11 }
+  right_shoulder_angle: { points: [24, 12, 14], vertex: 12 }
+  left_elbow_angle:     { points: [11, 13, 15], vertex: 13 }
+  right_elbow_angle:    { points: [12, 14, 16], vertex: 14 }
+  left_hip_angle:       { points: [11, 23, 25], vertex: 23 }
+  right_hip_angle:      { points: [12, 24, 26], vertex: 24 }
+  shoulder_line_angle:  { points: [11, 12] }
+  pelvis_line_angle:    { points: [23, 24] }
+
+joint_actions:
+  primary:
+    - shoulder_flexion_extension
+    - elbow_flexion_extension
+    - scapular_stability_proxy
+  secondary:
+    - trunk_flexion_extension
+    - pelvis_anterior_posterior_tilt_proxy
+    - hip_flexion_extension
+
+biomechanical_focus:
+  expected_com_motion: vertical
+  stability_requirement: high
+  main_load_regions:
+    - shoulder
+    - elbow
+    - wrist
+    - trunk
+  primary_constraints:
+    - maintain_hand_contact
+    - maintain_trunk_alignment
+    - maintain_neutral_spine_proxy
+    - maintain_head_position
+    - maintain_support_symmetry
+
+compensation_candidates:
+  - elbow_flare
+  - elbow_asymmetry
+  - shoulder_asymmetry
+  - shoulder_collapse
+  - shoulder_elevation_compensation
+  - scapular_instability_proxy
+  - insufficient_head_descent
+  - head_forward_shift
+  - hip_drop
+  - hip_pike
+  - lateral_trunk_lean
+  - tempo_instability
+
+feature_domains:
+  spatial:
+    - rom
+    - symmetry
+    - shape
+    - alignment
+    - depth_proxy
+    - reach_distance
+  temporal:
+    - tempo
+    - rep_duration
+    - eccentric_duration
+    - isometric_duration
+    - concentric_duration
+    - timing_ratio
+  control:
+    - stability
+    - compensation
+    - com_stability
+    - trunk_stability
+    - joint_tracking_error
+    - movement_smoothness
+  biomechanical_proxy:
+    - com_displacement
+    - segment_length_normalized_displacement
+    - moment_arm_proxy
+    - relative_joint_load_proxy
+    - support_moment_proxy
+    - compensation_load_shift_proxy
+
+view_requirements:
+  preferred_views:
+    - sagittal_left
+    - sagittal_right
+  acceptable_views:
+    - side_oblique
+    - front_oblique
+  critical_landmarks: [11, 12, 13, 14, 15, 16, 23, 24]
+  visibility_sensitive_landmarks: [13, 14, 15, 16, 0]
+  occlusion_risk: high
+
+quality_rules:
+  minimum_visible_landmark_ratio: 0.75
+  minimum_critical_landmark_ratio: 0.9
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3
+  exclude_rep_if_critical_landmark_missing: true
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true
+
+notes: |
+  Pike push-up validates upper-body bilateral symmetry under inverted load.
+  Shoulder and elbow landmarks frequently self-occlude in the bottom phase;
+  sagittal views are strongly preferred. Head landmark (nose, idx 0) is the
+  primary descent reference for depth_proxy.

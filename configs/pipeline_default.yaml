@@ -1,5 +1,6 @@
 # Movement Project — Pipeline Configuration
-# Run order: validation → preprocessing → normalization → annotation → features → biomech → scoring
+# Run order: validation → annotation → exercise_definition → preprocessing
+#            → normalization → motion_attribution → features → biomech → scoring
 # Toggle each step with enabled: true / false
 
 input:
@@ -11,7 +12,20 @@ validation:
   missing_value_threshold: 0.05   # fail if any column has >5% missing values
   visibility_threshold: 0.5       # landmark visibility quality threshold
 
-# ── Step 2: Preprocessing ─────────────────────────────────────────────────────
+# ── Step 2: Annotation ────────────────────────────────────────────────────────
+annotation:
+  enabled: false
+  path: "data/sample/mediapipe_forward_bend_sample_annotation.csv"
+
+# ── Step 3: Exercise Definition Loading ──────────────────────────────────────
+exercise_definition:
+  enabled: true
+  definitions_dir: "data/exercise_definitions"
+  # exercise_id: null means derive from annotation's exercise_type column;
+  # if still null after annotation, falls back to the generic definition.
+  exercise_id: null
+
+# ── Step 4: Preprocessing ─────────────────────────────────────────────────────
 preprocessing:
   enabled: false
   kalman_filter:
@@ -19,18 +33,17 @@ preprocessing:
     process_noise: 0.01
     measurement_noise: 0.1
 
-# ── Step 3: Normalization ─────────────────────────────────────────────────────
+# ── Step 5: Normalization ─────────────────────────────────────────────────────
 normalization:
   enabled: true
   method: hip_torso               # hip-centered + sequence-median torso scale
   keep_reference_columns: true    # keep hip_center, shoulder_center, torso_length cols
 
-# ── Step 4: Annotation ────────────────────────────────────────────────────────
-annotation:
+# ── Step 6: Motion Attribution ────────────────────────────────────────────────
+motion_attribution:
   enabled: false
-  path: "data/sample/mediapipe_forward_bend_sample_annotation.csv"
 
-# ── Step 5: Feature Extraction ────────────────────────────────────────────────
+# ── Step 7: Feature Extraction ────────────────────────────────────────────────
 features:
   enabled: false
   spatial:
@@ -44,11 +57,11 @@ features:
     stability: false
     compensation: false
 
-# ── Step 6: Biomechanical Proxy ───────────────────────────────────────────────
+# ── Step 8: Biomechanical Proxy ───────────────────────────────────────────────
 biomech:
   enabled: false
 
-# ── Step 7: Scoring ───────────────────────────────────────────────────────────
+# ── Step 9: Scoring ───────────────────────────────────────────────────────────
 scoring:
   enabled: false
 

@@ -15,14 +15,14 @@ Implemented:
 - Coordinate normalization
 - Annotation mask application
 - Exercise definition schema and field dictionary
+- Exercise definition YAML loader and validator (with generic fallback)
+- Pipeline runner with full step sequence: validation → annotation → exercise_definition → preprocessing → normalization → motion_attribution → features → biomech → scoring
 
 Planned:
 
-- Exercise definition YAML loader and validator (with generic fallback)
 - Definition authoring notebook (dropdown-based) and annotation interpretation export
 - Preprocessing (reliability filtering, exercise-aware swap detection, short-gap interpolation)
 - Motion attribution (rep-level active-limb verification)
-- Pipeline runner reordered to: validation → annotation → exercise definition → preprocessing → normalization → motion attribution → features
 - Feature extraction (spatial, temporal, control), driven by `feature_domains`
 - Biomechanical proxy modeling, driven by `biomechanical_focus`
 - Compensation biomarkers, driven by `compensation_candidates`
