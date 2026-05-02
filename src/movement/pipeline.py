@@ -5,7 +5,7 @@ Each step can be toggled via its `enabled` flag in configs/pipeline_default.yaml
 Steps not yet implemented raise NotImplementedError when enabled=True.
 
 Run order:
-    validation → preprocessing → normalization → annotation → features → biomech → scoring
+    validation → annotation → preprocessing → normalization → motion_attribution → features → biomech → scoring
 """
 from __future__ import annotations
 
@@ -94,6 +94,11 @@ class BiomechConfig:
 
 
 @dataclass
+class MotionAttributionConfig:
+    enabled: bool = False
+
+
+@dataclass
 class ScoringConfig:
     enabled: bool = False
 
@@ -119,6 +124,7 @@ class PipelineConfig:
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
+    motion_attribution: MotionAttributionConfig = field(default_factory=MotionAttributionConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
@@ -141,6 +147,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sp = feat.get("spatial", {})
     te = feat.get("temporal", {})
     co = feat.get("control", {})
+    ma = raw.get("motion_attribution", {})
     bio = raw.get("biomech", {})
     sc = raw.get("scoring", {})
     out = raw.get("output", {})
@@ -186,6 +193,9 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 stability=co.get("stability", False),
                 compensation=co.get("compensation", False),
             ),
+        ),
+        motion_attribution=MotionAttributionConfig(
+            enabled=ma.get("enabled", False),
         ),
         biomech=BiomechConfig(
             enabled=bio.get("enabled", False),
@@ -252,13 +262,19 @@ def run_pipeline(
         if not validation_report["passed"]:
             print("[WARN] validation: one or more checks failed.")
 
-    # Step 2: Preprocessing
+    # Step 2: Annotation
+    if config.annotation.enabled:
+        from movement.annotation import apply_annotation
+        df, ann_report = apply_annotation(df, ann_df)
+        report["annotation"] = ann_report
+
+    # Step 3: Preprocessing
     if config.preprocessing.enabled:
         raise NotImplementedError(
             "preprocessing step is not yet implemented. Set preprocessing.enabled: false."
         )
 
-    # Step 3: Normalization
+    # Step 4: Normalization
     if config.normalization.enabled:
         df, norm_report = normalize_pose_by_hip_torso(
             df=df,
@@ -267,25 +283,25 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
-    # Step 4: Annotation
-    if config.annotation.enabled:
-        from movement.annotation import apply_annotation
-        df, ann_report = apply_annotation(df, ann_df)
-        report["annotation"] = ann_report
+    # Step 5: Motion Attribution
+    if config.motion_attribution.enabled:
+        raise NotImplementedError(
+            "motion_attribution step is not yet implemented. Set motion_attribution.enabled: false."
+        )
 
-    # Step 5: Features
+    # Step 6: Features
     if config.features.enabled:
         raise NotImplementedError(
             "features step is not yet implemented. Set features.enabled: false."
         )
 
-    # Step 6: Biomech
+    # Step 7: Biomech
     if config.biomech.enabled:
         raise NotImplementedError(
             "biomech step is not yet implemented. Set biomech.enabled: false."
         )
 
-    # Step 7: Scoring
+    # Step 8: Scoring
     if config.scoring.enabled:
         raise NotImplementedError(
             "scoring step is not yet implemented. Set scoring.enabled: false."

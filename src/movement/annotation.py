@@ -35,6 +35,8 @@ ANNOTATION_REQUIRED_COLUMNS: list[str] = [
 
 ANNOTATION_OPTIONAL_COLUMNS: list[str] = [
     "exercise_type",
+    "pattern",
+    "starting_side",
     "phase",
     "note",
 ]
@@ -55,6 +57,9 @@ ANNOTATION_OUTPUT_COLUMNS: list[str] = [
     "set_id",
     "rep_id",
     "phase",
+    "exercise_type",
+    "pattern",
+    "starting_side",
 ]
 
 
@@ -210,6 +215,9 @@ def _full_sequence_fallback(pose_df: pd.DataFrame) -> pd.DataFrame:
     result["set_id"] = pd.array([pd.NA] * n, dtype="Int64")
     result["rep_id"] = pd.array([pd.NA] * n, dtype="Int64")
     result["phase"] = pd.array([pd.NA] * n, dtype=object)
+    result["exercise_type"] = pd.array([None] * n, dtype=object)
+    result["pattern"] = "bilateral"
+    result["starting_side"] = pd.array([None] * n, dtype=object)
     return result
 
 
@@ -278,6 +286,9 @@ def apply_annotation(
     result["set_id"] = pd.array([pd.NA] * n, dtype="Int64")
     result["rep_id"] = pd.array([pd.NA] * n, dtype="Int64")
     result["phase"] = pd.array([pd.NA] * n, dtype=object)
+    result["exercise_type"] = pd.array([None] * n, dtype=object)
+    result["pattern"] = pd.array([None] * n, dtype=object)
+    result["starting_side"] = pd.array([None] * n, dtype=object)
 
     frame_series = result[frame_col].astype(int)
     has_phase_col = "phase" in ann_df.columns
@@ -298,6 +309,18 @@ def apply_annotation(
 
         phase_val = row["phase"] if has_phase_col else pd.NA
         result.loc[mask, "phase"] = None if pd.isna(phase_val) else str(phase_val)
+
+        if "exercise_type" in ann_df.columns:
+            ex_val = row["exercise_type"]
+            result.loc[mask, "exercise_type"] = None if pd.isna(ex_val) else str(ex_val)
+
+        if "pattern" in ann_df.columns:
+            pat_val = row["pattern"]
+            result.loc[mask, "pattern"] = None if pd.isna(pat_val) else str(pat_val)
+
+        if "starting_side" in ann_df.columns:
+            ss_val = row["starting_side"]
+            result.loc[mask, "starting_side"] = None if pd.isna(ss_val) else str(ss_val)
 
     num_analysis = int(result["use_for_analysis"].sum())
 
