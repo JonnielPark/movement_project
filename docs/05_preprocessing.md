@@ -474,7 +474,7 @@ The first preprocessing implementation is complete when:
 9. original frame and timestamp columns are preserved
 10. preprocessing report is returned
 11. pipeline.py can run preprocessing when enabled
-12. notebook/06_preprocessing_test.ipynb verifies the behavior
+12. notebook/07_preprocessing_test.ipynb verifies the behavior
 ```
 
 ## Future Extensions

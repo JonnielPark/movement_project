@@ -1,0 +1,181 @@
+exercise_id: plank_shoulder_tap
+display_name: Plank Shoulder Tap
+description: Plank-position anti-rotation task; one hand alternately taps the opposite shoulder while the trunk and pelvis must remain stable.
+version: 0.1.0
+tags:
+  - bodyweight
+  - core
+  - closed_chain
+  - alternating
+  - stability
+  - anti_rotation
+
+classification:
+  family: core
+  equipment: none
+  load_type: bodyweight
+  external_load_position: none
+  posture_type: plank
+  kinetic_chain: closed_chain_alternating
+  laterality: alternating
+  movement_pattern: anti_rotation
+  primary_plane: frontal
+  secondary_planes:
+    - transverse
+  complexity: compound
+
+support:
+  base_of_support: hands_and_feet
+  contact_points:
+    - left_hand
+    - right_hand
+    - left_foot
+    - right_foot
+  support_surface: floor
+  weight_bearing_regions:
+    - left_hand
+    - right_hand
+    - left_foot
+    - right_foot
+    - trunk
+
+phase_model:
+  type: task_phase
+  expected_ratio:
+    support_stable: 0.25
+    weight_shift: 0.25
+    tap: 0.25
+    return: 0.25
+
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints:
+    - left_wrist
+    - right_wrist
+    - left_shoulder
+    - right_shoulder
+  secondary_joints:
+    - trunk
+    - pelvis
+    - left_hip
+    - right_hip
+    - left_ankle
+    - right_ankle
+  critical_landmarks: [11, 12, 15, 16, 23, 24]
+  optional_landmarks: [13, 14, 25, 26, 27, 28]
+
+angle_definitions:
+  left_shoulder_angle:  { points: [23, 11, 13], vertex: 11 }
+  right_shoulder_angle: { points: [24, 12, 14], vertex: 12 }
+  left_elbow_angle:     { points: [11, 13, 15], vertex: 13 }
+  right_elbow_angle:    { points: [12, 14, 16], vertex: 14 }
+  left_hip_angle:       { points: [11, 23, 25], vertex: 23 }
+  right_hip_angle:      { points: [12, 24, 26], vertex: 24 }
+  shoulder_line_angle:  { points: [11, 12] }
+  pelvis_line_angle:    { points: [23, 24] }
+
+joint_actions:
+  primary:
+    - anti_rotation_control
+    - weight_shift_control
+    - shoulder_flexion_extension
+    - scapular_stability_proxy
+  secondary:
+    - trunk_rotation_proxy
+    - trunk_lateral_flexion
+    - pelvis_rotation_proxy
+    - pelvis_lateral_tilt_proxy
+    - hip_flexion_extension
+
+biomechanical_focus:
+  expected_com_motion: medial_lateral
+  stability_requirement: very_high
+  main_load_regions:
+    - shoulder
+    - trunk
+    - core
+    - pelvis
+    - hip
+  primary_constraints:
+    - maintain_hand_contact
+    - maintain_foot_contact
+    - maintain_trunk_alignment
+    - maintain_pelvis_level
+    - avoid_excessive_rotation
+    - avoid_excessive_lateral_shift
+    - maintain_controlled_tempo
+
+compensation_candidates:
+  - pelvis_rotation
+  - trunk_rotation
+  - lateral_pelvic_shift
+  - lateral_trunk_lean
+  - hip_drop
+  - shoulder_collapse
+  - shoulder_asymmetry
+  - excessive_com_lateral_shift
+  - excessive_com_variability
+  - left_right_timing_variability
+  - phase_timing_asymmetry
+  - tempo_instability
+  - movement_discontinuity
+
+feature_domains:
+  spatial:
+    - alignment
+    - symmetry
+    - reach_distance
+    - support_width
+    - base_of_support_width
+  temporal:
+    - tempo
+    - rep_duration
+    - phase_duration
+    - rhythm_consistency
+    - left_right_timing_variability
+    - pause_duration
+  control:
+    - stability
+    - compensation
+    - com_stability
+    - trunk_stability
+    - pelvis_stability
+    - balance_control
+    - lateral_shift
+    - rotation_control
+    - movement_smoothness
+    - endpoint_control
+  biomechanical_proxy:
+    - com_displacement
+    - com_velocity_proxy
+    - segment_length_normalized_displacement
+    - support_moment_proxy
+    - load_distribution_proxy
+    - compensation_load_shift_proxy
+
+view_requirements:
+  preferred_views:
+    - top_down
+    - frontal
+  acceptable_views:
+    - front_oblique
+    - rear_oblique
+  critical_landmarks: [11, 12, 15, 16, 23, 24]
+  visibility_sensitive_landmarks: [11, 12, 15, 16, 23, 24]
+  occlusion_risk: very_high
+
+quality_rules:
+  minimum_visible_landmark_ratio: 0.75
+  minimum_critical_landmark_ratio: 0.85
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3
+  exclude_rep_if_critical_landmark_missing: true
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true
+
+notes: |
+  Plank shoulder tap is the primary stability-under-perturbation exercise.
+  Active hand per rep is determined by annotation.starting_side and
+  pattern=alternating. Top-down or frontal views give the cleanest read of
+  pelvis_rotation and com_lateral_shift; sagittal views are not recommended
+  because the active wrist self-occludes in profile.

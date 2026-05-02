@@ -261,7 +261,7 @@ The first motion attribution implementation is complete when:
 7. conservative mode flags inconsistencies without modifying labels
 8. attribution report is returned
 9. pipeline.py can run motion attribution when enabled
-10. notebook/07_motion_attribution_test.ipynb verifies the behavior
+10. notebook/08_motion_attribution_test.ipynb verifies the behavior
 ```
 
 ## Future Extensions

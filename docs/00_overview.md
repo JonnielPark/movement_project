@@ -45,20 +45,20 @@ Preprocessing and normalization can then apply exercise-aware logic without re-l
 
 ## Current Scope
 
-Current development focuses on:
+Implemented components (as of 2026-05):
 
 - pose data loading
 - data validation
 - 3D skeleton visualization
 - coordinate normalization
-- annotation-based frame selection design
-- exercise definition schema and field dictionary
+- annotation mask application
+- exercise definition schema (YAML + field dictionary)
+- exercise definition YAML loader and validator (with generic fallback)
+- pipeline runner with exercise_definition step integrated
 
 The following components are planned but not yet implemented:
 
-- preprocessing options
-- annotation mask application
-- exercise definition loader and validator
+- preprocessing (reliability filtering, exercise-aware swap detection, short-gap interpolation)
 - definition authoring notebook (dropdown-based) and annotation interpretation export
 - motion attribution
 - feature extraction
@@ -171,13 +171,13 @@ completed:
 - basic coordinate normalization
 - annotation mask application
 - exercise definition schema and field dictionary
-
-next:
 - exercise definition YAML loader and validator
 - generic-fallback definition for missing exercise_type
+- pipeline runner with reordered step sequence (validation → annotation → exercise_definition → preprocessing → normalization → motion_attribution → features → biomech → scoring)
+
+next:
 - preprocessing with reliability filtering
 - exercise-aware frame-level swap detection
-- pipeline runner with reordered step sequence
 - short-gap interpolation tied to reliability mask
 - motion attribution (rep-level active limb verification)
 - definition authoring notebook (dropdown-based) and annotation interpretation export
