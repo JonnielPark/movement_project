@@ -1,59 +1,88 @@
-# Validation
+# 02. 데이터 검증 (Validation)
 
-## Purpose
+본 단계는 입력 포즈 데이터의 **구조적·형식적 무결성**을 점검한다. 데이터 자체를 수정하지 않으며, 분석 가능 여부를 판단할 수 있는 보고서를 산출한다.
 
-The validation module checks whether pose landmark data is structurally valid and suitable for downstream analysis.
+> 용어 주의: 본 문서의 “검증(validation)”은 **데이터 무결성 점검**을 의미한다. 연구계획서의 “검증 및 논문 작성” 단계에서 수행하는 **강건성 검증(robustness evaluation)**과는 별개의 개념이다 (자세한 구분은 [`_terminology.md`](_terminology.md) §6).
 
-Validation does not modify the input data.
+---
 
-## Current Checks
-
-- Required column existence
-- Frame continuity
-- Duplicated frames
-- Timestamp monotonicity
-- Estimated FPS
-- Missing coordinate values
-- Visibility quality
-
-## Design Rule
-
-Validation should only report potential problems.
+## 1. 분석 단계에서의 위치
 
 ```text
-validation.py     -> detect and report data integrity issues
-preprocessing.py  -> handle low-reliability landmarks and frame-level noise
-features.py       -> compute indicators from corrected data
+Pose CSV
+→ ① 데이터 검증
+→ ② Annotation 적용
+→ ③ 운동 정의 로딩
+→ ④ 전처리
+→ ⑤ 정규화
+→ ⑥ 귀속
+→ ⑦ 특징 추출
 ```
 
-## Output
+검증은 모든 다른 단계보다 먼저 수행된다. 후속 단계는 검증 보고서를 통해 입력의 무결성 가정을 신뢰할 수 있다.
 
-The validation module returns a dictionary-based report.
+## 2. 점검 항목
+
+본 단계가 점검하는 항목은 다음과 같다.
+
+- 필수 컬럼 존재 여부 (`frame`, `timestamp`, 랜드마크 좌표 컬럼)
+- 프레임 연속성 (frame index gap)
+- 프레임 중복
+- 타임스탬프 단조 증가 여부
+- 추정 FPS
+- 좌표 결측값 비율
+- 가시도 분포 / 품질 (가시도 컬럼이 존재할 경우)
+
+## 3. 설계 원칙
+
+본 단계는 **잠재 문제를 보고만** 한다.
+
+```text
+② Annotation 적용     → 분석 구간 메타데이터화
+③ 운동 정의 로딩      → 생체역학적 속성 객체 적재
+④ 전처리              → 단일 비전 데이터 품질 보정
+⑦ 특징 추출           → 보정된 데이터로부터 동작 품질 지표 산출
+```
+
+데이터 보정은 ④ 전처리 단계의 책임이며, ① 데이터 검증은 보정 정책 결정에 필요한 진단 정보를 제공한다.
+
+## 4. 출력
+
+본 단계의 함수는 보고서 딕셔너리를 반환한다.
 
 ```python
 report = run_basic_validation(...)
 print(report["passed"])
 ```
 
-## Interpretation
+보고서는 후속 단계에서 어떤 보정 옵션을 활성화할지 결정하는 근거로 사용된다. 예를 들어 가시도 분포가 한쪽으로 치우쳐 있다면 ④ 전처리에서 가시도 임계값을 보수적으로 조정할 근거가 된다.
 
-A failed validation result does not always mean the data is unusable.
+## 5. 결과 해석
 
-It means that the issue should be reviewed before downstream processing. For example, missing values may later be handled by interpolation, and noisy trajectories may later be handled by smoothing or robust filtering.
+검증 실패는 항상 분석 불가능을 의미하지는 않는다.
 
-## Current Role in the Pipeline
+- 결측값이 존재해도 단기 결손은 ④ 전처리의 보간으로 처리될 수 있다.
+- 잡음이 있는 궤적은 평활화 또는 견고한 필터링으로 보완될 수 있다.
+- 다만, 후속 단계에서 검증 보고를 인지한 상태에서 처리 정책을 명시적으로 선택해야 한다.
 
-Validation runs first, before annotation, exercise definition loading, preprocessing, normalization, and any later analysis modules.
+따라서 검증 실패는 **수동 검토 필요** 신호이며, 자동 무시 대상이 아니다.
 
-```text
-Pose CSV
--> Validation
--> Annotation Mask Application
--> Exercise Definition Loading
--> Preprocessing
--> Normalization
--> Motion Attribution
--> Feature Extraction
-```
+## 6. 강건성 검증과의 구분 (중요)
 
-Validation in this project refers to data integrity checking. It is not the same as the simulation-based robustness validation described in the research plan, which evaluates the framework's engineering robustness under synthetic abnormal conditions.
+연구계획서의 4단계(2027.02 ~ 2027.05)에서 수행되는 **강건성 검증**은 본 단계와 다음과 같은 점에서 구별된다.
+
+| 구분 | ① 데이터 검증 | 강건성 검증 |
+|---|---|---|
+| 입력 | 실제 포즈 CSV | 합성 비정상 동작 데이터 |
+| 대상 | 데이터의 형식적 무결성 | 분석 체계가 노이즈/가려짐/왜곡에 일관되게 반응하는지 |
+| 산출 | 무결성 보고서 | 지표 단조성·반응성 평가 결과 |
+| 단계 위치 | 모든 분석 전 매 실행마다 | 4단계 (논문 검증 단계) |
+| 코드 위치(예정) | `src/movement/validation.py` | `src/movement/simulation/` (예정) |
+
+문서·코드·논문에서 두 개념을 혼용하지 않는다.
+
+## 7. 향후 확장
+
+- 시각화 단계에서 결측값 히트맵·프레임 커버리지 시각화 추가
+- 공간 좌표 단위 자동 추정(픽셀/정규화 여부 식별)
+- 시간 축 결손 분포 통계 보고 강화

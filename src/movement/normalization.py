@@ -1,17 +1,20 @@
 """
-Coordinate normalization utilities for pose landmark data.
+⑤ 정규화 (Normalization)
 
-This module converts raw pose coordinates into a body-relative coordinate system.
+포즈 랜드마크 좌표를 신체 기준 좌표계로 변환한다.
+개인 간 체격 차이를 제거하여 이후 특징 추출·생체역학 모델링이
+상대 지표(torso_length_ratio)를 사용할 수 있도록 한다.
 
-Current method:
-    - Translation reference: frame-wise hip center
-    - Scale reference: sequence-wise median torso length
+현재 방법 (hip_torso):
+    - 이동 기준: 프레임별 엉덩이 중심(hip center)
+    - 스케일 기준: 시퀀스 중간값 몸통 길이(torso length)
 
-Raw coordinates are preserved.
-Normalized coordinates are added as new columns:
+원본 좌표는 보존되며, 정규화 좌표가 새 컬럼으로 추가된다:
     <landmark>_norm_x
     <landmark>_norm_y
     <landmark>_norm_z
+
+Pipeline position: ④ preprocessing 이후, ⑥ motion_attribution 이전.
 """
 
 from typing import Any, Dict, List, Tuple

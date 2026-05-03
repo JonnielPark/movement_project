@@ -1,176 +1,151 @@
-# Coordinate Normalization
+# 06. 정규화 (Normalization)
 
-## Purpose
+본 단계는 원본 포즈 좌표를 **신체 기준 좌표계**로 변환해, 카메라 위치·피험자 위치·신체 크기·포즈 추정 배율의 영향을 줄인다. 이로써 후속 단계가 동작 패턴을 프레임·피험자 간 비교 가능한 형태로 다룰 수 있다.
 
-Raw pose coordinates are affected by camera position, subject location, body size, and pose estimation scale.
+본 단계는 절대값 힘이나 절대 신체 치수를 추정하지 않는다. 본 단계의 목적은 ⑦ 특징 추출 / ⑧ 생체역학적 근사 모델링이 사용할 안정적인 좌표 기반을 마련하는 것이다.
 
-Normalization converts raw landmark coordinates into a body-relative coordinate system so that movement patterns can be compared across frames and subjects.
+> 용어는 [`_terminology.md`](_terminology.md)의 단일 정의를 따른다.
 
-This step is not intended to estimate absolute force or physical body dimensions. Its purpose is to provide a stable coordinate basis for downstream analysis such as ROM, symmetry, stability, trajectory shape, and biomechanical proxy modeling.
+---
 
-## Pipeline Role
-
-Normalization runs after preprocessing and before motion attribution.
+## 1. 분석 단계에서의 위치
 
 ```text
 Pose CSV
--> Validation
--> Annotation Mask Application
--> Exercise Definition Loading
--> Preprocessing
--> Normalization
--> Motion Attribution
--> Feature Extraction
+→ ① 데이터 검증
+→ ② Annotation 적용
+→ ③ 운동 정의 로딩
+→ ④ 전처리
+→ ⑤ 정규화                ← 본 단계
+→ ⑥ 귀속
+→ ⑦ 특징 추출
 ```
 
-This order was selected because reference landmarks (hip and shoulder) should first be cleaned by reliability-based preprocessing so that torso-length scale estimation is not contaminated by a few unreliable frames.
+본 단계가 ④ 전처리 후에 수행되는 이유는, 배율 추정에 사용되는 hip·shoulder 랜드마크가 신뢰도 점검을 거친 후에야 안정적이기 때문이다.
 
-## Design Summary
+## 2. 설계 요약
 
-The first implementation uses:
+초기 구현이 채택하는 정규화 방법:
 
 ```text
-translation reference: frame-wise hip center
-scale reference:       sequence-wise median torso length
+이동 기준 (translation reference) : 프레임별 엉덩이 중심 (frame-wise hip center)
+배율 기준 (scale reference)        : 시퀀스 중간값 몸통 길이 (sequence-wise median torso length)
 ```
 
-This design was selected to reduce frame-to-frame scale jitter caused by monocular pose estimation noise.
+단일 비전 환경의 잡음에 의한 프레임별 배율 진동을 피하기 위한 설계이다.
 
-## Step 1. Translation Normalization
+## 3. Step 1. Translation Normalization
 
-The hip center is used as the body reference point.
+엉덩이 중심을 신체 기준점으로 사용한다.
 
 ```text
 hip_center(t) = (left_hip(t) + right_hip(t)) / 2
 ```
 
-Each landmark is translated by subtracting the hip center.
+각 랜드마크에서 엉덩이 중심을 빼서 이동시킨다.
 
 ```text
 p_translated_i(t) = p_i(t) - h(t)
 ```
 
-Where:
+이 단계 후, 각 랜드마크는 카메라 / 영상 좌표계가 아니라 **골반(pelvis)을 원점으로 하는 좌표계**에서 표현된다.
 
-```text
-p_i(t) = landmark i at frame t
-h(t)   = hip center at frame t
-```
+## 4. Step 2. Scale Normalization
 
-After this step, each landmark is represented relative to the pelvis rather than the original camera or image coordinate system.
-
-## Step 2. Scale Normalization
-
-The torso length is used as the initial body scale.
+몸통 길이(torso length)를 신체 배율 단위로 사용한다.
 
 ```text
 shoulder_center(t) = (left_shoulder(t) + right_shoulder(t)) / 2
 torso_length(t)    = distance(hip_center(t), shoulder_center(t))
 ```
 
-Instead of using the torso length of each frame, the sequence-level median torso length is used as the representative scale.
+프레임별 몸통 길이가 아니라 **시퀀스 중간값**을 대표 배율로 사용한다.
 
 ```text
 s = median(torso_length over all valid frames)
 ```
 
-Each translated landmark is divided by this scale.
+각 이동된 랜드마크를 이 배율로 나눈다.
 
 ```text
 p_norm_i(t) = (p_i(t) - h(t)) / s
 ```
 
-Where:
+여기서 `s`는 시퀀스 중간값 몸통 길이이다.
+
+## 5. 왜 시퀀스 중간값 배율인가
+
+단일 비전 포즈 데이터에서는 잡음·가려짐·심도 추정 불안정성으로 인해 프레임별 몸통 길이 추정이 불안정할 수 있다.
 
 ```text
-s = sequence-level median torso length
+프레임별 배율:
+- 매 프레임 반응한다.
+- 포즈 추정 잡음에 민감하다.
+- 인공적 skeleton 흔들림을 야기할 수 있다.
+
+시퀀스 중간값 배율:
+- 시퀀스 전체에서 안정적이다.
+- 단기 잡음에 견고하다.
+- 특징 추출에 적합하다.
 ```
 
-## Why Sequence-wise Median Scale?
-
-A frame-wise scale can be unstable in monocular pose data because the estimated torso length may fluctuate due to landmark noise, occlusion, or depth estimation instability.
-
-Using a sequence-wise median scale provides a more stable body-relative coordinate system.
-
-```text
-frame-wise scale:
-- reacts to every frame
-- sensitive to pose estimation noise
-- may cause artificial skeleton jitter
-
-sequence-wise median scale:
-- stable across the sequence
-- robust to short-term noise
-- suitable for feature extraction
-```
-
-Therefore, the default normalization method is:
+따라서 본 프레임워크의 기본 정규화 식:
 
 ```text
 p_norm_i(t) = (p_i(t) - hip_center(t)) / median_torso_length
 ```
 
-## Relationship to Preprocessing
+## 6. ④ 전처리와의 관계
 
-Preprocessing should run before normalization.
-
-If preprocessing has already filtered or interpolated unreliable hip and shoulder landmarks, the median torso length is computed from cleaner data, and the normalization scale is more stable.
+④ 전처리가 신뢰도 마스크와 보간을 거친 후에 본 단계가 수행되어야 hip·shoulder 랜드마크의 노이즈에 의한 배율 왜곡이 줄어든다.
 
 ```text
-preprocessed raw coordinates
--> hip-centered translation
--> torso-scale normalization
+전처리된 좌표
+→ 엉덩이 중심 이동
+→ 몸통 배율 정규화
 ```
 
-## Relationship to Exercise Definition
+## 7. ③ 운동 정의와의 관계
 
-Normalization itself is exercise-agnostic. It does not branch on the loaded exercise definition.
+본 단계 자체는 운동에 따라 분기하지 않는다. 즉, 모든 운동에 동일한 정규화가 적용된다.
 
-However, the normalized coordinate system is the input expected by every subsequent module that consults the definition (motion attribution, feature extraction, biomechanical proxy modeling). Working in body-relative coordinates makes definition-driven biomarkers comparable across subjects.
+다만 본 단계의 출력 좌표계는 ③ 운동 정의를 참조하는 모든 후속 단계(⑥ 귀속, ⑦ 특징 추출, ⑧ 생체역학적 근사 모델링)의 입력으로 사용된다. 신체 기준 좌표에서 작업하는 것이 정의 기반 바이오마커를 피험자 간 비교 가능하게 만든다.
 
-## Relationship to Biomechanical Proxy Modeling
+## 8. ⑧ 생체역학적 근사 모델링과의 관계
 
-This normalization step is an initial coordinate transformation.
-
-It should not be confused with the later biomechanical proxy model.
+본 단계는 좌표계의 1차 변환이며, 후속 ⑧ 생체역학적 근사 모델링과 혼동되어서는 안 된다.
 
 ```text
-normalization.py
--> creates stable body-relative coordinates
+정규화 (본 단계)
+→ 안정적인 신체 기준 좌표 산출
 
-biomechanics.py
--> estimates COM, segment-level relationships, moment arms, and relative load tendency
-   (driven by biomechanical_focus in the loaded exercise definition)
+생체역학적 근사 모델링 (⑧)
+→ CoM, 분절 단위 관계, 모멘트 암, 상대 부하 분포 추정
+   (운동 정의의 biomechanical_focus 가 구동)
 ```
 
-Later biomechanical modules may use segment-length estimation and anthropometric assumptions to calculate COM and moment-arm-based proxy indicators.
+⑧ 단계는 분절 길이 추정과 통계적 인체 계측 가정을 사용해 CoM과 모멘트 암 기반 근사 지표를 산출한다. 본 단계는 단지 그 단계를 위한 좌표계를 마련한다.
 
-The current normalization only prepares the coordinate system for those later steps.
+## 9. ⑥ 귀속과의 관계
 
-## Relationship to Motion Attribution
+⑥ 귀속(motion attribution)은 정규화된 데이터프레임 위에서 작동한다. 신체 기준 좌표에서 작업하면 절대 신체 크기와 카메라 거리가 이미 제거되어, 반복·피험자 간 motion energy 비교가 더 일관된다.
 
-Motion attribution runs on the normalized dataframe.
+## 10. 출력 컬럼
 
-Working in body-relative coordinates makes motion-energy comparison across reps and subjects more consistent, because absolute body size and camera distance are already factored out.
-
-## Output Columns
-
-Raw coordinates are preserved.
-
-Normalized coordinates are added as new columns.
+원본 좌표는 보존한다. 정규화 좌표는 새 컬럼으로 추가한다.
 
 ```text
-left_knee_x      -> raw x coordinate
-left_knee_norm_x -> normalized x coordinate
+left_knee_x      → 원본 x
+left_knee_norm_x → 정규화 x
 
-left_knee_y      -> raw y coordinate
-left_knee_norm_y -> normalized y coordinate
+left_knee_y      → 원본 y
+left_knee_norm_y → 정규화 y
 
-left_knee_z      -> raw z coordinate
-left_knee_norm_z -> normalized z coordinate
+left_knee_z      → 원본 z
+left_knee_norm_z → 정규화 z
 ```
 
-Additional helper columns may also be added:
+보조 참조 컬럼:
 
 ```text
 hip_center_x
@@ -184,15 +159,15 @@ shoulder_center_z
 torso_length
 ```
 
-## Normalization Report
+## 11. 정규화 보고서
 
-The normalization function should return both the normalized dataframe and a report.
+본 단계는 정규화 데이터프레임과 함께 보고서를 반환한다.
 
 ```python
 norm_df, norm_report = normalize_pose_by_hip_torso(df, landmarks)
 ```
 
-The report should include:
+보고서에 포함될 항목:
 
 ```text
 method
@@ -206,27 +181,12 @@ num_invalid_torso_frames
 num_normalized_landmarks
 ```
 
-This allows abnormal scale estimation or landmark problems to be inspected later.
+이 보고는 비정상 배율 추정이나 랜드마크 문제를 사후 점검할 수 있도록 한다.
 
-## Initial Completion Criteria
+## 12. 향후 확장
 
-The first implementation is complete when:
-
-```text
-1. raw coordinates are preserved
-2. normalized coordinates are added
-3. hip center is approximately zero after normalization
-4. median normalized torso length is approximately 1.0
-5. normalization report is returned
-6. raw and normalized skeletons can be visualized
-```
-
-## Future Extensions
-
-Later versions may include:
-
-- visibility-based scale filtering
-- torso length outlier removal
-- rotation normalization using a body-centered coordinate system
-- exercise-specific normalization rules driven by definition fields
-- segment-length-based anthropometric modeling
+- 가시도 기반 배율 필터링
+- torso length 이상치 제거
+- 신체 중심 좌표계 기반 회전 정규화
+- 운동 정의 필드 기반 운동별 정규화 규칙
+- 분절 길이 기반 통계적 인체 계측 모델링

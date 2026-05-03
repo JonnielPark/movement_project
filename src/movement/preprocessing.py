@@ -1,10 +1,13 @@
 """
-Preprocessing module for monocular pose data.
+④ 전처리 (Preprocessing)
 
-Reliability detection, swap correction, short-gap interpolation, and optional smoothing.
-Pipeline position: after exercise_definition loading, before normalization.
+단일 비전 포즈 데이터의 신뢰도 탐지, 좌우 교차(swap) 보정,
+단기 결손 보간, 선택적 평활화를 수행한다.
+입력 데이터프레임을 직접 수정하지 않고 보정된 복사본을 반환한다.
 
-Coordinate convention: columns as <landmark>_{x,y,z}.  Input shape: (T, columns).
+Pipeline position: ③ exercise_definition 로딩 이후, ⑤ normalization 이전.
+
+좌표 규약: 컬럼명 <landmark>_{x,y,z}. 입력 shape: (T, columns).
 """
 from __future__ import annotations
 

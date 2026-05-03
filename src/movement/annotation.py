@@ -1,18 +1,20 @@
 """
-Annotation mask application for pose dataframes.
+② Annotation 적용 (Annotation)
 
-Applies pre-annotated frame labels to a pose dataframe.
-Does not perform automatic segmentation or rep detection.
+사전 레이블된 구간 메타데이터를 포즈 데이터프레임에 병합한다.
+자동 분할(rep detection)은 수행하지 않으며, 입력 데이터를 수정하지 않는다.
 
-Annotation hierarchy:
+Annotation 계층:
     recording → set → rep → phase
 
-Output columns added to pose dataframe:
+포즈 데이터프레임에 추가되는 출력 컬럼:
     use_for_analysis : bool
     segment_type     : str    (full_sequence | baseline | idle | rep | rest | transition | excluded)
     set_id           : Int64  (nullable)
     rep_id           : Int64  (nullable)
     phase            : object (nullable, reserved for future use)
+
+Pipeline position: ① validation 이후, ③ exercise_definition 로딩 이전.
 """
 from __future__ import annotations
 

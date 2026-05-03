@@ -1,154 +1,122 @@
-# Annotation and Segmentation
+# 03. Annotation 및 분석 구간 (Annotation & Segmentation)
 
-## Purpose
+본 단계는 분석 대상 구간(set, 반복rep, 수행 단계phase)과 운동 맥락(`exercise_type`, `pattern`, `starting_side`)을 메타데이터로 표시한다. 프레임을 삭제하지 않고, 메타데이터 컬럼만 추가한다.
 
-In the current framework, segmentation is treated as an annotation-based frame selection step rather than a fully automatic movement detection algorithm.
+> 용어는 [`_terminology.md`](_terminology.md)의 단일 정의를 따른다.
 
-The goal is to mark which frames, sets, and repetitions should be used for analysis while preserving the original pose sequence.
+---
 
-This step does not remove frames from the dataframe.
+## 1. 본 단계의 역할
 
-Instead, it adds metadata columns such as:
+연구계획서의 “annotation 기반 분석 구간 정의”에 해당하는 단계이다. 자동 분할(automatic segmentation)은 본 연구의 1차 기여 항목이 아니며, 사전에 준비한 annotation 파일로 분석 구간을 명시한다. annotation 파일이 없을 경우 시퀀스 전체를 분석 대상으로 사용한다.
 
-```text
-use_for_analysis
-segment_type
-set_id
-rep_id
-phase
-```
-
-Annotation also declares exercise-level context that downstream modules use for exercise-aware processing. The same `exercise_type` value is used by the next pipeline step ([Exercise Definition](04_exercise_definition.md)) to load the corresponding YAML property object.
-
-See [Exercise Context Columns](#exercise-context-columns).
-
-## Terminology
-
-The annotation structure follows this hierarchy:
+본 단계가 추가하는 메타데이터 컬럼:
 
 ```text
-recording
-└─ set
-   └─ rep
-      └─ phase
+use_for_analysis    분석 대상 여부 (bool)
+segment_type        구간 종류 (rep, baseline, idle, rest, transition, excluded, full_sequence)
+set_id              세트 식별자
+rep_id              반복 식별자
+phase               수행 단계(선택, 향후 확장)
+exercise_type       운동 정의 YAML 식별자
+pattern             좌우 패턴 (bilateral / alternating)
+starting_side       좌우 교번 운동에서 첫 반복의 활성 측
 ```
 
-## Recording
+`exercise_type` 컬럼은 ③ 운동 정의 로딩 단계가 어떤 YAML 파일을 적재할지 결정한다.
 
-A recording is one full captured sequence from a video or pose CSV.
-
-A single recording may contain:
+## 2. 분석 단계에서의 위치
 
 ```text
-idle frames
-preparation frames
-one or more sets
-rest periods
-ending frames
+Pose CSV
+→ ① 데이터 검증
+→ ② Annotation 적용              ← 본 단계
+→ ③ 운동 정의 로딩
+→ ④ 전처리
+→ ⑤ 정규화
+→ ⑥ 귀속
+→ 후속 단계
 ```
 
-A recording may contain only one set, or multiple sets.
+② Annotation이 ③ 운동 정의 로딩보다 먼저 수행되는 이유: annotation에서 선언된 `exercise_type`을 사용해 운동 정의 YAML을 식별하기 위해서이다.
 
-## Set
-
-A set is a group of repeated exercise movements performed continuously.
-
-Example:
+## 3. 분석 구간의 용어 위계
 
 ```text
-squat set 1: 10 reps
-squat set 2: 10 reps
-squat set 3: 10 reps
+recording                 한 번의 영상 / 한 개의 포즈 CSV
+└─ set                    동일 운동을 연속 수행한 묶음
+   └─ rep                 한 반복(완전한 동작 한 사이클)
+      └─ phase            반복 내부의 의미 있는 구간 (선택)
 ```
 
-The framework should allow one recording to contain one or more sets.
+### 3-1. Recording
 
-## Rep
-
-A repetition, or rep, is one complete movement cycle within a set.
-
-For example, in a squat:
+하나의 녹화 시퀀스. 한 영상은 다음을 포함할 수 있다.
 
 ```text
-one rep = standing position
-        → descent
-        → bottom
-        → ascent
-        → standing position
+대기 프레임 (idle)
+준비 프레임 (preparation)
+하나 이상의 set
+세트 간 휴식 (rest)
+종료 프레임
 ```
 
-In the initial implementation, rep-level annotation is the main target.
+### 3-2. Set
 
-## Phase
-
-A phase is a sub-section within a repetition.
-
-Examples:
+동일 운동을 연속해서 반복한 묶음.
 
 ```text
-descent
-bottom
-ascent
-transition
+스쿼트 set 1: 10 reps
+스쿼트 set 2: 10 reps
+스쿼트 set 3: 10 reps
 ```
 
-Phase-level annotation is reserved for future development.
+### 3-3. Rep (반복)
 
-The initial implementation may allow a `phase` column, but it does not require phase-level annotation or phase-level logic.
+한 사이클의 완전한 동작. 예: 스쿼트의 한 반복 = 기립 → 하강 → 최저점 → 상승 → 기립.
 
-## Current Implementation Scope
+본 분석 체계의 1차 분석 단위는 rep이다.
 
-The first implementation should support:
+### 3-4. Phase (수행 단계)
+
+반복 내부의 의미 있는 구간. 운동 정의의 `phase_model`이 어떤 단계가 기대되는지 선언한다 (예: 저항성 운동의 `eccentric / isometric / concentric`, 과제형 운동의 `setup / shift / tap / return`). 초기 구현은 phase 컬럼을 보존하지만, phase 단위 분석은 향후 확장으로 둔다.
+
+## 4. 초기 구현 범위
+
+본 단계의 초기 구현이 지원하는 항목:
 
 ```text
-- full-sequence fallback when no annotation is provided
-- set-level annotation
-- rep-level annotation
-- idle / baseline / rest / excluded segment marking
-- use_for_analysis mask
-- exercise context declaration (exercise_type, pattern, starting_side)
+- annotation 파일이 없을 때 시퀀스 전체 사용 (full-sequence fallback)
+- 세트 단위 annotation
+- 반복 단위 annotation
+- idle / baseline / rest / excluded 구간 표시
+- use_for_analysis 마스크
+- 운동 맥락 컬럼(exercise_type, pattern, starting_side) 선언
 ```
 
-The following are not part of the initial implementation:
+본 단계가 초기에 다루지 않는 항목:
 
 ```text
-- automatic segmentation
-- automatic rep detection
-- automatic phase detection
-- phase-level analysis
+- 자동 분할 (automatic segmentation)
+- 자동 반복 검출
+- 자동 phase 검출
+- phase 단위 분석
 ```
 
-## Design Principle
+## 5. 설계 원칙: 프레임을 삭제하지 않는다
 
-Annotation should not delete or physically crop frames.
-
-Instead, annotation should preserve the full sequence and add metadata columns.
-
-Recommended output columns:
+annotation은 프레임을 물리적으로 잘라내지 않는다. 원본 시퀀스를 보존하면서 메타데이터 컬럼만 추가한다. 이로써 다음이 가능해진다.
 
 ```text
-use_for_analysis
-segment_type
-set_id
-rep_id
-phase
-exercise_type
+- 원본 frame 번호 보존
+- 시퀀스 전체 시각화
+- annotation 반복 갱신
+- idle / 무효 프레임의 분석 제외
+- ④ 전처리 / ⑥ 귀속 / ⑦ 특징 추출의 운동-인지 처리
+- ③ 운동 정의 단계의 exercise_type 기반 YAML 적재
 ```
 
-This allows:
-
-```text
-- original frame numbers to be preserved
-- full-sequence visualization
-- repeated annotation updates
-- exclusion of idle or invalid frames from later analysis
-- exercise-aware logic in preprocessing, motion attribution, and feature extraction
-- exercise definition lookup using exercise_type
-```
-
-## Minimal Annotation Columns
-
-The minimal required annotation file should contain:
+## 6. 최소 annotation 컬럼
 
 ```text
 segment_type
@@ -159,7 +127,7 @@ end_frame
 use_for_analysis
 ```
 
-Optional columns:
+선택 컬럼:
 
 ```text
 exercise_type
@@ -167,71 +135,57 @@ phase
 note
 ```
 
-## Exercise Context Columns
+## 7. 운동 맥락 컬럼
 
-The annotation file may declare exercise-level context that downstream modules use for exercise-aware processing.
+annotation 파일은 운동 단위의 맥락 정보를 함께 선언한다.
 
 ```text
-exercise_type   identifier of the exercise
-                examples: squat | lunge | pike_pushup | plank_shoulder_tap
+exercise_type   운동 정의 YAML 식별자
+                예: squat | lunge | pike_pushup | plank_shoulder_tap
 
-pattern         expected left-right movement pattern
-                values: bilateral | alternating
+pattern         기대되는 좌우 패턴
+                bilateral | alternating
 
-starting_side   first active side for alternating exercises
-                values: left | right
-                ignored when pattern is bilateral
+starting_side   alternating 운동에서 첫 반복의 활성 측
+                left | right
+                pattern == bilateral 인 경우 무시
 ```
 
-The recommended convention is to declare these values once per recording (or once per set if a recording contains multiple exercises) using rows whose `segment_type` is `full_sequence`, `baseline`, or any per-set marker.
+권장 작성 방식: recording 단위(또는 한 recording에 다수 운동이 있을 경우 set 단위)에서 `segment_type`이 `full_sequence`, `baseline`, 혹은 set-level marker인 행에 한 번 선언한다.
 
-Example annotation row that only declares exercise context:
+운동 맥락 행 예 (분석에는 사용하지 않고 맥락만 선언):
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
 full_sequence,,,0,800,false,plank_shoulder_tap,alternating,right
 ```
 
-These columns are consumed by:
+이들 컬럼이 후속 단계에서 어떻게 사용되는지:
 
 ```text
-exercise_definition -> select the YAML property object for this exercise_type
-preprocessing       -> enable or skip frame-level left-right swap detection
-motion_attribution  -> compare detected active limb against the expected pattern
-features            -> apply exercise-specific feature definitions
+③ 운동 정의 로딩  → exercise_type으로 YAML 식별
+④ 전처리          → 좌우 라벨 스왑 검출 활성화 여부 결정
+⑥ 귀속            → 검출된 활성 측과 기대 패턴 비교
+⑦ 특징 추출       → 운동별 특징 정의 적용
 ```
 
-If `pattern` is missing, downstream modules treat the exercise as bilateral by default. If `exercise_type` is missing, the exercise definition layer falls back to a generic definition (see [Exercise Definition: Fallback Behavior](04_exercise_definition.md#fallback-behavior)).
+`pattern`이 누락되면 후속 단계는 `bilateral`로 가정한다. `exercise_type`이 누락되면 ③ 운동 정의 단계는 generic fallback 정의를 적재한다 ([`04_exercise_definition.md`](04_exercise_definition.md) §“Fallback Behavior”).
 
-## Segment Types
-
-Recommended `segment_type` values:
+## 8. 권장 segment_type 값과 의미
 
 ```text
-full_sequence
-baseline
-idle
-rep
-rest
-transition
-excluded
+full_sequence   annotation 미제공 시 기본값
+baseline        동작 시작 전 안정 자세
+idle            대기 또는 비운동 구간
+rep             한 반복
+rest            세트 간 휴식
+transition      특정 반복에 귀속되지 않은 전이
+excluded        명시적으로 무효한 구간
 ```
 
-Suggested meaning:
+## 9. 예시: 단일 세트
 
-```text
-full_sequence  → default when no annotation is provided
-baseline       → stable posture before movement
-idle           → waiting or non-exercise period
-rep            → one complete repetition
-rest           → rest period between sets
-transition     → movement transition not assigned to a rep
-excluded       → known invalid or unusable frames
-```
-
-## Example: Single Set
-
-Example annotation for one squat set with three repetitions:
+스쿼트 1세트, 3반복 예:
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
@@ -242,9 +196,9 @@ rep,1,3,255,330,true,squat,bilateral
 idle,,,331,370,false,squat,bilateral
 ```
 
-## Example: Multiple Sets
+## 10. 예시: 다중 세트
 
-Example annotation for one recording containing two squat sets:
+스쿼트 2세트, 각 3반복 예:
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
@@ -259,9 +213,9 @@ rep,2,3,620,700,true,squat,bilateral
 idle,,,701,760,false,squat,bilateral
 ```
 
-## Example: Alternating Exercise
+## 11. 예시: 좌우 교번 운동 (Plank Shoulder Tap)
 
-Example annotation for plank shoulder tap, where each rep alternates the active hand:
+각 반복에서 활성 손이 교대된다.
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
@@ -273,41 +227,33 @@ rep,1,4,230,280,true,plank_shoulder_tap,alternating,right
 idle,,,281,320,false,plank_shoulder_tap,alternating,right
 ```
 
-`starting_side = right` means the right hand performs the tap on the first rep, the left hand on the second, and so on.
+`starting_side = right`은 1번째 반복의 활성 손이 우측, 2번째는 좌측, 이후 교번을 의미한다.
 
-## Optional Phase Column
+## 12. 선택 컬럼: phase
 
-The `phase` column may be included for future compatibility.
-
-Example:
+향후 확장을 위해 `phase` 컬럼을 둘 수 있다. 초기 구현에서는 빈 값으로 두어도 된다.
 
 ```csv
 segment_type,set_id,rep_id,phase,start_frame,end_frame,use_for_analysis
 rep,1,1,,85,160,true
 ```
 
-For the initial implementation, `phase` can remain empty.
+## 13. annotation 미제공 정책
 
-Phase-level annotation should not be required.
-
-## Missing Annotation Policy
-
-If no annotation file is provided, the pipeline should not fail.
-
-Default behavior:
+annotation 파일이 없으면 분석 단계는 실패하지 않는다. 기본값:
 
 ```text
-use_for_analysis = True for all frames
-segment_type = full_sequence
-set_id = None
-rep_id = None
-phase = None
-exercise_type = None
-pattern = bilateral
-starting_side = None
+use_for_analysis = True (모든 프레임)
+segment_type      = full_sequence
+set_id            = None
+rep_id            = None
+phase             = None
+exercise_type     = None
+pattern           = bilateral
+starting_side     = None
 ```
 
-The annotation report should record:
+annotation 보고서에 다음을 기록한다.
 
 ```text
 annotation_provided = False
@@ -316,28 +262,24 @@ num_total_frames
 num_analysis_frames
 ```
 
-This allows the pipeline to run even when no manual annotation exists.
+`exercise_type`이 선언되지 않았으면 ③ 운동 정의 로딩 단계는 generic fallback 정의를 적재하고, 후속 단계의 운동-인지 처리는 운동 무관 모드(generic mode)로 작동한다.
 
-When `exercise_type` is not declared, the exercise definition layer loads the generic fallback definition, and downstream exercise-aware logic operates in a generic, exercise-agnostic mode.
+## 14. annotation 제공 정책
 
-## Annotation Provided Policy
-
-If an annotation file is provided:
+annotation 파일이 있을 경우:
 
 ```text
-1. all frames are initially set to use_for_analysis = False
-2. frames inside annotated segments are updated according to the annotation file
-3. frames outside annotated ranges remain excluded from analysis
-4. exercise context columns are propagated to all frames inside their declared range
+1. 모든 프레임을 use_for_analysis = False 로 초기화한다.
+2. annotation 파일에 표시된 구간의 use_for_analysis 값을 갱신한다.
+3. annotation에 표시되지 않은 프레임은 분석에서 제외된다.
+4. 운동 맥락 컬럼은 해당 구간에 속한 모든 프레임으로 전파된다.
 ```
 
-This prevents unmarked idle or invalid frames from being included accidentally.
+annotation에 명시되지 않은 idle / 무효 프레임이 우연히 분석에 포함되는 것을 방지한다.
 
-## Overlap Policy
+## 15. 구간 중첩 정책
 
-Overlapping annotation ranges should be treated as an error.
-
-Example of invalid annotation:
+annotation 구간이 중첩되면 오류로 처리한다. 다음은 잘못된 예이다.
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis
@@ -345,60 +287,53 @@ rep,1,1,50,120,true
 rep,1,2,100,180,true
 ```
 
-The initial implementation should not silently overwrite overlapping segments.
+본 단계의 초기 구현은 중첩 구간을 조용히 덮어쓰지 않는다. 오류를 발생시키거나, annotation 검증 보고서에 실패로 기록한다.
 
-It should raise an error or return a failed annotation validation report.
+## 16. 프레임 인덱스 규약
 
-## Frame Index Policy
+수동 annotation은 원본 포즈 CSV의 프레임 인덱스를 사용한다. 본 단계는 원본 `frame` 컬럼을 보존한다. 향후 segment-level frame index를 별도 컬럼으로 추가할 수 있으나, 원본 frame 번호를 덮어쓰지 않는다.
 
-Manual annotations should be defined using the original frame indices from the pose CSV.
+## 17. 분석 단계에서의 의의
 
-The annotation step should preserve the original `frame` column.
-
-If needed later, a separate segment-level frame index can be added, but the original frame number should not be overwritten.
-
-## Pipeline Role
-
-The annotation file is prepared before running the pipeline.
-
-Inside the pipeline, annotation is applied as a metadata layer immediately after validation. The next step ([Exercise Definition](04_exercise_definition.md)) then loads the YAML property object identified by `exercise_type`, so that exercise context, rep boundaries, and the loaded definition object are all available to subsequent modules.
+annotation 파일은 분석 단계 실행 전에 준비한다. 분석 단계 안에서는 ① 데이터 검증 직후에 메타데이터 레이어로 적용되며, 이후 ③ 운동 정의 로딩 단계가 `exercise_type`을 사용해 YAML 정의 객체를 적재한다.
 
 ```text
-load pose CSV
-→ validation
-→ annotation mask application
-→ exercise definition loading
-→ preprocessing
-→ normalization
-→ motion attribution
-→ later analysis modules
+포즈 CSV 적재
+→ ① 데이터 검증
+→ ② Annotation 적용
+→ ③ 운동 정의 로딩
+→ ④ 전처리
+→ ⑤ 정규화
+→ ⑥ 귀속
+→ 후속 단계
 ```
 
-This order is intentional. Preprocessing reads `exercise_type` and `pattern` (and the loaded definition's `landmarks`/`quality_rules`) to decide whether to enable exercise-specific checks such as frame-level left-right swap detection. Motion attribution reads rep boundaries, exercise context, and the definition's `laterality` to verify that each rep's active limb matches the expected pattern.
+이 순서가 의도된 이유:
 
-The key output of this step is an annotated dataframe.
+- ④ 전처리는 `exercise_type`, `pattern`(및 운동 정의의 `landmarks`/`quality_rules`)을 읽고 운동별 점검(예: 좌우 라벨 스왑 검출)을 활성화할지 결정한다.
+- ⑥ 귀속은 반복 경계, 운동 맥락, 운동 정의의 `laterality`를 읽고 각 반복의 활성 측이 기대 패턴과 일치하는지 검증한다.
+
+본 단계의 핵심 출력은 annotation 메타데이터가 부착된 데이터프레임이다.
 
 ```text
-input:
-pose dataframe
-optional annotation file
+입력
+  포즈 데이터프레임
+  선택적 annotation 파일
 
-output:
-pose dataframe with annotation metadata columns
-annotation report
+출력
+  annotation 메타데이터 컬럼이 부착된 포즈 데이터프레임
+  annotation 보고서
 ```
 
-## Initial Completion Criteria
-
-The first annotation implementation is complete when:
+## 18. 초기 완료 기준
 
 ```text
-1. annotation CSV can be loaded
-2. required annotation columns are checked
-3. missing annotation falls back to full-sequence mode
-4. provided annotation adds use_for_analysis, segment_type, set_id, rep_id, and phase columns
-5. exercise context columns (exercise_type, pattern, starting_side) are populated when present
-6. overlapping segments are detected
-7. original frame numbers are preserved
-8. annotation report is returned
+1. annotation CSV를 적재할 수 있다.
+2. 필수 annotation 컬럼이 점검된다.
+3. annotation 미제공 시 full-sequence 모드로 폴백한다.
+4. annotation 제공 시 use_for_analysis, segment_type, set_id, rep_id, phase 컬럼이 추가된다.
+5. 운동 맥락 컬럼(exercise_type, pattern, starting_side)이 적절히 채워진다.
+6. 중첩 구간이 검출된다.
+7. 원본 frame 번호가 보존된다.
+8. annotation 보고서가 반환된다.
 ```

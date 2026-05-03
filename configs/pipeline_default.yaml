@@ -1,31 +1,34 @@
 # Movement Project — Pipeline Configuration
-# Run order: validation → annotation → exercise_definition → preprocessing
-#            → normalization → motion_attribution → features → biomech → scoring
+# 분석 단계 (Pipeline) — docs/00_overview.md / docs/_terminology.md 참조
+# Run order:
+#   ① validation            ② annotation            ③ exercise_definition
+#   ④ preprocessing         ⑤ normalization         ⑥ motion_attribution
+#   ⑦ features              ⑧ biomech               ⑨ biomarker
+#   ⑩ visualization (보고용; pipeline 외부 호출)
 # Toggle each step with enabled: true / false
 
 input:
   path: "data/sample/mediapipe_squat_synthetic.csv"
 
-# ── Step 1: Validation ────────────────────────────────────────────────────────
+# ── ① 데이터 검증 (Validation) ───────────────────────────────────────────────
 validation:
   enabled: true
-  missing_value_threshold: 0.05   # fail if any column has >5% missing values
-  visibility_threshold: 0.5       # landmark visibility quality threshold
+  missing_value_threshold: 0.05   # 컬럼 결측 비율 > 5% 이면 경고
+  visibility_threshold: 0.5       # 랜드마크 가시도 품질 임계
 
-# ── Step 2: Annotation ────────────────────────────────────────────────────────
+# ── ② Annotation 적용 ─────────────────────────────────────────────────────────
 annotation:
   enabled: false
   path: "data/sample/mediapipe_squat_synthetic_annotation.csv"
 
-# ── Step 3: Exercise Definition Loading ──────────────────────────────────────
+# ── ③ 이동 정의 로딩 (Exercise Definition Loading) ────────────────────────────
 exercise_definition:
   enabled: true
   definitions_dir: "data/exercise_definitions"
-  # exercise_id: null means derive from annotation's exercise_type column;
-  # if still null after annotation, falls back to the generic definition.
+  # null = annotation의 exercise_type 컬럼에서 도출; 여전히 null이면 generic fallback
   exercise_id: null
 
-# ── Step 4: Preprocessing ─────────────────────────────────────────────────────
+# ── ④ 전처리 (Preprocessing) ──────────────────────────────────────────────────
 preprocessing:
   enabled: false
   reliability:
@@ -34,34 +37,39 @@ preprocessing:
     joint_angle_check: true
     velocity_threshold_torso_per_sec: 5.0
   swap_detection:
-    enabled: true             # applied only when laterality != bilateral_symmetric
+    enabled: true             # bilateral_symmetric 운동에서는 자동 비활성
     temporal_consistency: true
     orientation_prior: true
     orientation_disagree_ratio: 0.4
   interpolation:
     enabled: true
     method: linear
-    max_gap_frames: 3         # overridden per-exercise via quality_rules
+    max_gap_frames: 3         # 운동 정의의 quality_rules로 override 가능
   smoothing:
     enabled: false
     method: rolling_median
     window_size: 3
   kalman_filter:
-    enabled: false
+    enabled: false            # 베이스라인 확립 후 활성화 예정
     process_noise: 0.01
     measurement_noise: 0.1
 
-# ── Step 5: Normalization ─────────────────────────────────────────────────────
+# ── ⑤ 정규화 (Normalization) ─────────────────────────────────────────────────
 normalization:
   enabled: true
-  method: hip_torso               # hip-centered + sequence-median torso scale
-  keep_reference_columns: true    # keep hip_center, shoulder_center, torso_length cols
+  method: hip_torso           # 엉덩이 중심 이동 + 시퀀스 중간값 몸통 배율
+  keep_reference_columns: true  # hip_center, shoulder_center, torso_length 컬럼 보존
 
-# ── Step 6: Motion Attribution ────────────────────────────────────────────────
+# ── ⑥ 귀속 (Motion Attribution) ──────────────────────────────────────────────
 motion_attribution:
   enabled: false
+  thresholds:
+    active: 0.70              # motion_share > τ_active → 단측 감지
+    ambiguous: 0.55           # τ_ambiguous < share ≤ τ_active → ambiguous
+    swap: 0.85                # auto_correct 모드에서 swap 수행 최소 확신
+  mode: conservative          # conservative | auto_correct
 
-# ── Step 7: Feature Extraction ────────────────────────────────────────────────
+# ── ⑦ 특징 추출 (Feature Extraction) ─────────────────────────────────────────
 features:
   enabled: false
   spatial:
@@ -75,17 +83,40 @@ features:
     stability: false
     compensation: false
 
-# ── Step 8: Biomechanical Proxy ───────────────────────────────────────────────
+# ── ⑧ 생체역학적 근사 모델링 (Biomechanical Proxy Modeling) ──────────────────
 biomech:
   enabled: false
+  anthropometric_model: winter_1990   # 분절 질량 비율 기준 (Winter 1990)
+  include_com_estimation: true
+  include_moment_arm: true
+  output_unit: torso_length_ratio     # 절대 단위(N·m, kg) 사용 금지
 
-# ── Step 9: Scoring ───────────────────────────────────────────────────────────
-scoring:
+# ── ⑨ 지표화 (Biomarker Derivation) ──────────────────────────────────────────
+biomarker:
   enabled: false
+  emit_provenance: true       # 모든 바이오마커에 source_fields 부착
+  unit: torso_length_ratio
 
-# ── Output ────────────────────────────────────────────────────────────────────
+# ── 출력 ──────────────────────────────────────────────────────────────────────
 output:
   save_processed: false
   processed_path: "data/processed/normalized.csv"
   save_report: false
   report_path: "data/processed/report.json"
+
+# ── (외부) 강건성 시뮬레이션 (Robustness Simulation) ─────────────────────────
+# pipeline.py 외부에서 simulation/ 패키지를 별도로 호출한다.
+# 분석 단계(① ~ ⑨)에 포함되지 않음.
+simulation:
+  enabled: false
+  rom_restriction:
+    enabled: false
+    target_joint: knee
+    restriction_levels_deg: [10, 20, 30]
+  visual_noise:
+    enabled: false
+    sigma_torso_ratio: [0.005, 0.01, 0.02]
+  occlusion:
+    enabled: false
+    target_landmarks: [left_ankle, right_ankle]
+    duration_frames: [5, 15, 30]

@@ -1,12 +1,10 @@
 """
-Exercise definition loader for the movement analysis pipeline.
+③ 이동 정의 로딩 (Exercise Definition Loading)
 
-Loads and validates exercise YAML files from data/exercise_definitions/.
-Each definition describes the biomechanical properties of an exercise and
-drives downstream feature extraction, proxy modeling, and scoring.
+data/exercise_definitions/ 의 YAML 파일을 로드하여 ExerciseDefinition 객체를 반환한다.
+각 정의는 운동의 생체역학적 속성을 기술하며, 이후 특징 추출·프록시 모델링·지표화를 구동한다.
 
-Run order context:
-    Validation → Annotation → Exercise Definition Loading → Preprocessing → ...
+Pipeline position: ② annotation 이후, ④ preprocessing 이전.
 
 Public API
 ----------

@@ -1,115 +1,137 @@
-# Exercise Definition
+# 04. 운동 정의 (Exercise Definition)
 
-## Purpose
+본 단계는 분석 대상 운동의 **생체역학적 속성(주요 관절, 지지면, 수행 단계, 보상 움직임 후보, 품질 기준 등)**을 데이터(YAML)로 표현한다. 후속 단계(annotation 다음의 모든 단계)는 이 운동 정의 객체를 참조해 운동별 처리 규칙을 적용한다.
 
-The exercise definition layer describes the semantic and biomechanical structure of an exercise as data, before annotation, motion attribution, feature extraction, biomechanical proxy modeling, and scoring are applied.
+> 용어는 [`_terminology.md`](_terminology.md)의 단일 정의를 따른다. 새 어휘를 추가할 때는 그 문서에 먼저 등록한다.
 
-Earlier framework drafts treated four target exercises (squat, lunge, pike push-up, plank shoulder tap) as fixed analysis targets. The exercise definition layer reframes that scope.
+---
+
+## 1. 분석의 단위 재정의
+
+### 1-1. 핵심 변화
+
+연구계획서의 핵심 아이디어는 운동을 **명칭 단위**가 아니라 **생체역학적 속성 단위**로 정의하는 것이다.
 
 ```text
-old framing: implement analysis logic for four exercises
-new framing: define exercises as biomechanical property objects,
-             then derive interpretable biomarkers from those properties
+이전 관점: 4가지 운동(스쿼트, 런지, 파이크 푸쉬업, 플랭크 숄더탭)
+            각각에 대한 분석 코드를 구현한다.
+
+현재 관점: 운동을 생체역학적 속성 객체로 정의하고,
+            동일한 분석 단계를 모든 운동에 적용한다.
+            4가지 운동은 그 속성 공간 위의 4개 표본일 뿐이다.
 ```
 
-The four target exercises remain the validation set used for the initial development. They are no longer the unit of analysis.
+운동 정의 객체가 명시하는 것:
 
-The unit of analysis is the exercise definition object, which specifies:
+- 어떤 종류의 동작인가 (자세, 운동 사슬, 좌우 패턴, 주된 평면)
+- 어떤 관절·신체 부위가 주된 작용 부위인가
+- 어떤 수행 단계가 기대되는가
+- 어떤 보상 움직임을 모니터링해야 하는가
+- 어떤 특징과 생체역학적 근사 지표가 적용되어야 하는가
+- 어떤 카메라 시야와 랜드마크가 필요한가
+- 분석 가능 여부를 판정하는 품질 기준
+
+이 설계는 분석 체계를 **이식 가능**하게 만든다. 새 운동 추가는 코드 분기 작성이 아니라 YAML 파일 작성이다.
+
+### 1-2. 의대 자문위원을 위한 해석
+
+자문위원이 “이 시스템은 스쿼트만 분석하는가, 런지만 분석하는가?”라고 물을 경우의 답:
+
+> 본 분석 체계는 운동을 명칭이 아니라 생체역학적 속성 객체로 다룹니다. 4가지 동작은 분석 체계의 일관성과 일반화 가능성을 검증하기 위한 표본이며, 추후 새로운 동작을 추가할 때는 운동 정의 한 장(YAML)을 작성하면 됩니다. 산출되는 디지털 바이오마커가 어떤 생체역학적 근거에서 나왔는지는 항상 운동 정의의 필드로 추적할 수 있습니다.
+
+---
+
+## 2. 왜 속성 기반 정의인가 (배경)
+
+기존의 단일 비전 기반 동작 분석 코드는 운동마다 분기를 갖는 경향이 있다.
 
 ```text
-- what type of movement it is
-- which joints and body regions are important
-- which phases are expected
-- which compensation patterns should be monitored
-- which features and biomechanical proxies are relevant
-- which camera views and landmarks are required
-- which quality rules apply
-```
-
-This makes the framework portable. Adding a new exercise becomes a YAML authoring task, not a feature engineering task.
-
-## Background — Why a Property-Based Definition
-
-Movement quality assessment from monocular pose data has a recurring problem: feature extraction code tends to grow exercise-specific branches that are hard to interpret and hard to reuse.
-
-```text
-typical drift:
-- if exercise == "squat":      check knee valgus
-- elif exercise == "lunge":    check rear hip extension
-- elif exercise == "pushup":   check elbow flare
+전형적 패턴:
+- if exercise == "squat":   knee valgus 점검
+- elif exercise == "lunge": rear hip extension 점검
+- elif exercise == "pushup": elbow flare 점검
 - ...
 ```
 
-Each branch encodes implicit assumptions about which joints matter, which planes are dominant, and which deviations should count as compensation. Those assumptions are buried inside code rather than expressed as data.
+각 분기는 어떤 관절이 중요한지·어떤 평면이 주된지·어떤 편차를 보상으로 볼 것인지에 대한 가정을 코드 안에 묻어둔다. 이 가정은 데이터로 표현되지 않으므로 다음 문제를 만든다.
 
-The exercise definition layer extracts those assumptions into a structured schema. Downstream modules read the definition and apply a common rule set, so each biomarker is traceable back to a declared property of the exercise.
+- 가정이 코드에 산재해 일관성을 잃는다.
+- 새 운동 추가 시 분기를 늘려야 한다.
+- 산출 지표가 어떤 생체역학적 근거에서 나왔는지 추적이 어렵다.
+
+본 단계는 그 가정을 운동 정의 스키마로 추출한다. 후속 단계는 정의를 읽고 공통 규칙을 적용한다.
 
 ```text
 biomarker = function(definition_property, normalized_pose, annotation)
 ```
 
-This is the basis for the framework's interpretability claim. A biomarker value can be explained by pointing at the definition fields that justified its computation.
+이것이 본 프레임워크의 **해석 가능성** 주장의 근거이다. 모든 바이오마커 값은 정의의 어떤 필드가 산출 근거였는지 가리킬 수 있다.
 
-## Pipeline Role
+---
 
-The exercise definition is loaded together with annotation, immediately after validation, and is made available to all subsequent modules.
+## 3. 분석 단계에서의 위치
+
+운동 정의는 ② Annotation 직후에 적재되어, 이후 모든 단계에 제공된다.
 
 ```text
 Pose CSV
 + optional annotation file
 + exercise definition (YAML)
--> Validation
--> Annotation Mask Application      (loads exercise_type and pattern)
--> Exercise Definition Loading      (loads YAML for that exercise_type)
--> Preprocessing                    (uses laterality, landmarks, quality_rules)
--> Normalization
--> Motion Attribution               (uses laterality, primary_joints)
--> Feature Extraction               (uses joint_actions, feature_domains)
--> Biomechanical Proxy Modeling     (uses biomechanical_focus)
--> Scoring                          (uses compensation_candidates)
--> Visualization / Report
+→ ① 데이터 검증
+→ ② Annotation 적용                  (exercise_type, pattern 적재)
+→ ③ 운동 정의 로딩                    (exercise_type에 해당하는 YAML 적재)  ← 본 단계
+→ ④ 전처리                            (laterality, landmarks, quality_rules 사용)
+→ ⑤ 정규화
+→ ⑥ 귀속                              (laterality, primary_joints 사용)
+→ ⑦ 특징 추출                          (joint_actions, feature_domains 사용)
+→ ⑧ 생체역학적 근사 모델링              (biomechanical_focus 사용)
+→ ⑨ 지표화                            (compensation_candidates 사용)
+→ ⑩ 시각화 / 보고서
 ```
 
-The exercise definition does not mark frames. Annotation marks frames. The exercise definition tells downstream modules how the frames should be interpreted.
+운동 정의는 프레임을 표시하지 않는다. annotation이 프레임을 표시한다. 운동 정의는 “표시된 프레임이 무엇을 의미하는지”를 후속 단계에 알려준다.
 
 ```text
-exercise definition  -> what the movement means
-annotation           -> where the movement occurs
-features             -> what indicators are computed
-biomechanics         -> how the indicators are interpreted
+운동 정의           : 동작이 무엇을 의미하는가
+annotation         : 동작이 어디에서 일어났는가
+특징 추출           : 어떤 정량 지표를 산출하는가
+생체역학적 근사      : 그 지표를 어떻게 해석하는가
 ```
 
-When `exercise_type` is missing from annotation, the pipeline falls back to a generic, exercise-agnostic definition (described in [Fallback Behavior](#fallback-behavior)).
-
-## Design Principle
-
-Exercise-specific information should be represented as data, not hidden inside code.
-
-```text
-do:
-- declare primary joints in YAML
-- declare expected phases in YAML
-- declare compensation candidates in YAML
-- let feature extraction read those declarations
-- let scoring read those declarations
-
-avoid:
-- if exercise == "squat" inside every feature function
-- assuming all exercises are bilateral symmetric
-- assuming all exercises have eccentric / isometric / concentric phases
-- using the same symmetry rule for squats and lunges
-```
-
-A second principle is auditability. Every computed biomarker should be traceable to one or more definition fields. This is what makes the output interpretable rather than just numeric.
+`exercise_type`이 annotation에 누락되면 generic fallback 정의가 적재된다 (§"Fallback Behavior").
 
 ---
 
-## From Exercise List to Biomechanical Property Schema
+## 4. 설계 원칙
 
-Each exercise is represented as an object in a property space. The property space is the schema. The four initial exercises are simply four points in that space.
+### 4-1. 운동별 정보는 코드가 아니라 데이터로 표현한다
 
 ```text
-property space (schema fields)
+권장:
+- 주요 관절을 YAML에 명시한다.
+- 기대되는 수행 단계를 YAML에 명시한다.
+- 보상 움직임 후보를 YAML에 명시한다.
+- 특징 추출과 지표화는 그 명시 사항을 읽는다.
+
+지양:
+- if exercise == "squat" 분기를 모든 함수에 두는 것
+- 모든 운동을 양측 대칭으로 가정하는 것
+- 모든 운동에 eccentric/isometric/concentric 단계가 있다고 가정하는 것
+- 스쿼트와 런지에 동일한 좌우 대칭 규칙을 적용하는 것
+```
+
+### 4-2. 모든 산출 바이오마커는 정의 필드로 추적 가능해야 한다
+
+본 프레임워크의 출력이 “단지 숫자”가 아니라 “해석 가능한 지표”인 근거이다.
+
+---
+
+## 5. 운동 정의의 속성 공간
+
+운동은 속성 공간 위의 한 객체로 표현된다. 속성 공간이 곧 스키마이며, 4가지 표본 운동은 그 속성 공간 위의 4개 점이다.
+
+```text
+속성 공간 (스키마 필드)
 ─────────────────────────────────
 classification.posture_type            ∈ standing | plank | inverted_closed_chain | ...
 classification.kinetic_chain           ∈ open | closed | mixed | ...
@@ -125,7 +147,7 @@ view_requirements                      ⊆ view vocabulary
 quality_rules                          ⊆ quality rule vocabulary
 ```
 
-The four target exercises occupy the following positions:
+4가지 표본 운동의 위치:
 
 ```text
                        posture        kinetic_chain          laterality              primary_plane
@@ -136,36 +158,36 @@ pike_pushup            inverted_cc    closed_chain           bilateral_symmetric
 plank_shoulder_tap     plank          closed_chain_alt       alternating             frontal
 ```
 
-Adding a new exercise means choosing values along the same axes. No new code path is required for the analysis to remain interpretable, as long as the value falls inside the allowed vocabulary.
+새 운동을 추가하려면 동일한 축 위에서 값을 선택한다. 어휘 안에 들어가는 한, 새 코드 분기 없이 분석이 동일한 규칙으로 적용된다.
 
 ---
 
-## Definition → Biomarker Mapping
+## 6. 정의 → 바이오마커 매핑
 
-This section explains how property fields drive biomarker selection. The exact formulas belong to the feature extraction and biomechanical proxy modules. The mapping below is the contract between those modules and the definition layer.
+본 절은 정의 필드가 어떻게 바이오마커 선택을 구동하는지를 설명한다. 산출 공식은 ⑦ 특징 추출과 ⑧ 생체역학적 근사 모델링 단계에 속하며, 본 절의 매핑은 두 단계와 정의 단계 사이의 계약(contract)이다.
 
-### Mapping Principles
+### 6-1. 매핑 원칙
 
 ```text
-principle 1: every biomarker is owned by at least one definition field
-             (no biomarker is computed without a justification field)
+원칙 1: 모든 바이오마커는 적어도 하나의 정의 필드가 소유한다.
+        (산출 근거 필드가 없는 바이오마커는 산출하지 않는다.)
 
-principle 2: when a definition field is absent, the dependent biomarkers
-             are skipped, not silently approximated
+원칙 2: 정의 필드가 누락되면 의존 바이오마커는 생략된다.
+        (조용히 근사값으로 대체하지 않는다.)
 
-principle 3: when a property changes, the biomarker set updates automatically
-             (e.g., changing laterality enables/disables symmetry biomarkers)
+원칙 3: 속성 변경 시 바이오마커 집합이 자동으로 갱신된다.
+        (예: laterality를 변경하면 좌우 대칭성 바이오마커가 활성/비활성된다.)
 
-principle 4: biomarker output should carry provenance
-             (which definition fields produced it, which annotation rep it belongs to)
+원칙 4: 바이오마커 출력은 provenance를 동반한다.
+        (어떤 정의 필드가 산출했는지, 어떤 annotation 반복에 속하는지)
 ```
 
-### Table 1. Property Fields → Feature Domains
+### 6-2. 표 1. 속성 필드 → 특징 영역
 
-This table shows how high-level definition properties select which feature domains apply.
+다음 표는 정의 속성이 어떤 특징 영역을 활성화하는지 요약한다.
 
 ```text
-definition field                       value                          enabled feature domains
+정의 필드                              값                              활성화되는 특징 영역
 ─────────────────────────────────────  ─────────────────────────────  ──────────────────────────────────────────
 classification.laterality              bilateral_symmetric            spatial.symmetry, control.lateral_shift
 classification.laterality              alternating                    temporal.left_right_timing_variability,
@@ -198,44 +220,34 @@ biomechanical_focus.expected_com_motion minimal                       control.co
                                                                       compensation: excessive_com_lateral_shift
 ```
 
-Reading guide: a row says "if the definition declares this value for this field, then these feature-domain entries become eligible candidates for the exercise." Eligible candidates are still subject to landmark availability and quality rules.
+읽기 안내: “정의가 이 필드에 이 값을 선언했다면, 이 특징 영역 항목들이 후보가 된다”라는 의미이다. 후보는 랜드마크 가용성과 품질 기준에 의해 다시 걸러진다.
 
-### Table 2. Compensation Candidates → Biomarker Sketch
+### 6-3. 표 2. 보상 움직임 후보 → 바이오마커 스케치
 
-Each compensation candidate listed in a definition selects a single biomarker. The formulas below are sketches; the actual implementations are the responsibility of feature extraction and biomechanical proxy modules.
+각 보상 움직임 후보는 하나의 바이오마커를 선택한다. 아래 공식은 산출 정의의 윤곽이며, 실제 구현은 ⑦ 특징 추출과 ⑧ 생체역학적 근사 모델링이 책임진다.
 
 ```text
-compensation candidate                  biomarker name                          sketch (interpretation only)
+보상 움직임 후보                          바이오마커 명                              스케치 (해석용)
 ──────────────────────────────────────  ──────────────────────────────────────  ──────────────────────────────────────────────
-knee_valgus                             knee_valgus_index                       frontal-plane deviation of knee from
-                                                                                hip–ankle line, normalized by torso length
-asymmetric_depth                        depth_asymmetry_ratio                   |left_depth − right_depth| /
-                                                                                max(left_depth, right_depth)
-excessive_trunk_flexion                 trunk_flexion_excess                    peak trunk_angle minus expected
-                                                                                trunk_angle band (defined per exercise)
-lateral_pelvic_shift                    pelvis_shift_index                      max horizontal pelvis displacement
-                                                                                during rep, normalized by torso length
-heel_lift                               heel_lift_ratio                         frames where heel landmark height
-                                                                                exceeds threshold, divided by rep length
-elbow_flare                             elbow_flare_angle                       angle between humerus and trunk
-                                                                                in frontal plane during press phase
-shoulder_asymmetry                      shoulder_height_asymmetry               |left_shoulder.y − right_shoulder.y|
-                                                                                normalized by shoulder width
-hip_pike                                hip_pike_index                          deviation of hip_angle from neutral
-                                                                                during plank-style holds
-tempo_instability                       tempo_cv                                coefficient of variation of rep duration
-                                                                                across reps in a set
-left_right_timing_variability           lr_phase_offset_cv                      CV of |left_phase_end − right_phase_end|
-                                                                                across reps
-phase_timing_asymmetry                  phase_ratio_drift                       distance between observed phase ratios
-                                                                                and expected_ratio in phase_model
+knee_valgus                             knee_valgus_index                       전두면(frontal) 무릎이 hip–ankle 선에서 벗어난 정도,
+                                                                                몸통 길이 정규화
+asymmetric_depth                        depth_asymmetry_ratio                   |left_depth − right_depth| / max(left_depth, right_depth)
+excessive_trunk_flexion                 trunk_flexion_excess                    peak trunk_angle 에서 운동별 기대 범위까지의 초과량
+lateral_pelvic_shift                    pelvis_shift_index                      반복 동안 골반 수평 이동 최대값, 몸통 길이 정규화
+heel_lift                               heel_lift_ratio                         heel landmark 높이가 임계값을 넘은 프레임 / 반복 길이
+elbow_flare                             elbow_flare_angle                       press 단계의 humerus–trunk 전두면 각도
+shoulder_asymmetry                      shoulder_height_asymmetry               |left_shoulder.y − right_shoulder.y| / shoulder width
+hip_pike                                hip_pike_index                          plank 자세 hold 동안 hip_angle의 중립 이탈 정도
+tempo_instability                       tempo_cv                                반복별 rep_duration의 변동계수
+left_right_timing_variability           lr_phase_offset_cv                      반복별 |left_phase_end − right_phase_end|의 변동계수
+phase_timing_asymmetry                  phase_ratio_drift                       관측 phase 비율과 phase_model.expected_ratio의 거리
 ```
 
-A definition that does not list a given compensation candidate will not produce the corresponding biomarker. This is intentional and is what makes the biomarker set interpretable per exercise.
+정의에 명시되지 않은 보상 움직임 후보는 산출되지 않는다. 이는 의도된 설계이며, 운동마다 어떤 지표가 “해석 가능한지”를 명확히 하기 위함이다.
 
-### Provenance Convention
+### 6-4. Provenance 규약
 
-Each biomarker emitted by feature extraction should carry the definition fields that produced it. This is the recommended record format used by downstream scoring and visualization modules:
+⑦ 특징 추출이 산출하는 모든 바이오마커는 다음 형식의 provenance 레코드를 포함한다. ⑨ 지표화와 ⑩ 시각화가 이를 사용한다.
 
 ```text
 biomarker_id        : knee_valgus_index
@@ -249,13 +261,11 @@ value               : 0.13
 unit                : torso_length_ratio
 ```
 
-Scoring should never compute a biomarker that does not have a `source_fields` entry. This keeps interpretation auditable.
+⑨ 지표화는 `source_fields` 항목이 없는 바이오마커를 산출하지 않는다. 이는 분석 결과의 감사 가능성(auditability)을 보장한다.
 
 ---
 
-## Schema Overview
-
-A minimal definition contains a small number of fields. The full field dictionary follows in the next section.
+## 7. 스키마 개요 (Minimal Example)
 
 ```yaml
 exercise_id: squat
@@ -292,7 +302,7 @@ feature_domains:
   control: [stability, compensation]
 ```
 
-Recommended top-level fields:
+권장 최상위 필드 (전체):
 
 ```yaml
 exercise_id: string
@@ -315,17 +325,19 @@ quality_rules: object
 notes: string
 ```
 
-The initial implementation does not need to populate every field. The schema is designed so that later additions do not require restructuring the document.
+초기 구현은 모든 필드를 채울 필요가 없다. 스키마는 후속 추가가 구조 재설계를 요구하지 않도록 설계되었다.
 
 ---
 
-# Field Dictionary
+# 필드 사전 (Field Dictionary)
 
-## 1. Basic Metadata
+본 절은 운동 정의 YAML의 각 필드와 허용 어휘를 정의한다. 본 사전은 ⑦ 특징 추출 / ⑧ 생체역학적 근사 모델링 / ⑨ 지표화가 공통으로 참조하는 어휘이며, 자유 텍스트 입력은 허용하지 않는다 (어휘 외 값은 산출 비활성을 야기하므로).
+
+## 8. 기본 메타데이터
 
 ### `exercise_id`
 
-Unique machine-readable exercise name in lowercase snake_case.
+영문 lowercase snake_case의 고유 식별자.
 
 ```text
 squat
@@ -339,7 +351,7 @@ side_plank
 
 ### `display_name`
 
-Human-readable exercise name.
+사람이 읽기 위한 운동 명.
 
 ```text
 Bodyweight Squat
@@ -350,25 +362,19 @@ Plank Shoulder Tap
 
 ### `description`
 
-Short explanation of the exercise.
+짧은 운동 설명. 의대 자문위원이 읽었을 때도 의미가 명확해야 한다.
 
 ```yaml
-description: Bilateral lower-limb closed-chain movement emphasizing hip, knee, and ankle coordination.
+description: 양측 하지 폐쇄 사슬 동작으로 hip·knee·ankle 협응을 평가한다.
 ```
 
 ### `version`
 
-Schema or exercise definition version, semantic.
-
-```text
-0.1.0
-0.2.0
-1.0.0
-```
+운동 정의 버전(semantic).
 
 ### `tags`
 
-Optional search or grouping labels.
+검색·그룹핑용 태그. 어휘:
 
 ```text
 bodyweight   lower_body   upper_body   core
@@ -379,9 +385,9 @@ sports       screening
 
 ---
 
-## 2. Classification
+## 9. classification
 
-The `classification` field defines the broad movement category.
+운동의 거시적 분류.
 
 ```yaml
 classification:
@@ -397,139 +403,13 @@ classification:
   complexity: compound
 ```
 
-### `family`
-
-```text
-lower_body   upper_body   core           full_body
-balance      locomotion   mobility       plyometric
-rehabilitation
-```
-
-### `equipment`
-
-```text
-none                  bodyweight_only       barbell
-dumbbell              kettlebell            machine
-cable                 resistance_band       suspension_trainer
-medicine_ball         bench                 box
-wall                  chair                 foam_roller
-other
-```
-
-Use `none` for exercises that do not require equipment. Use `bodyweight_only` when the distinction from unloaded clinical movement is meaningful.
-
-### `load_type`
-
-```text
-bodyweight             external_load          assisted
-resisted               partner_assisted       machine_guided
-partial_weight_bearing non_weight_bearing
-```
-
-### `external_load_position`
-
-```text
-none           front_rack       back_rack       overhead
-goblet         suitcase         bilateral_hands unilateral_hand
-vest           ankle_weight     machine_path    other
-```
-
-### `posture_type`
-
-```text
-standing               standing_split         single_leg_standing
-kneeling               half_kneeling          quadruped
-prone                  supine                 side_lying
-seated                 plank                  side_plank
-inverted               inverted_closed_chain  hanging
-locomotion             transitioning
-```
-
-Examples:
-
-```text
-squat              -> standing
-lunge              -> standing_split
-pike_pushup        -> inverted_closed_chain
-plank_shoulder_tap -> plank
-```
-
-### `kinetic_chain`
-
-```text
-open_chain                closed_chain
-mixed_chain               closed_chain_alternating
-open_chain_alternating
-```
-
-Examples:
-
-```text
-squat              -> closed_chain
-lunge              -> closed_chain
-pike_pushup        -> closed_chain
-plank_shoulder_tap -> closed_chain_alternating
-```
-
-### `laterality`
-
-```text
-bilateral_symmetric    bilateral_asymmetric
-unilateral_left        unilateral_right
-unilateral_unspecified alternating
-anti_rotation          cross_body
-```
-
-Interpretation:
-
-```text
-bilateral_symmetric  -> left and right are expected to behave similarly
-bilateral_asymmetric -> left and right have different roles
-unilateral_*         -> one side is the primary working side
-alternating          -> sides alternate across reps or phases
-anti_rotation        -> movement challenges rotational control
-cross_body           -> opposite-side coordination is central
-```
-
-### `movement_pattern`
-
-```text
-squat       hinge       lunge       step
-push        pull        press       row
-carry       plank       anti_rotation rotation
-locomotion  jump        landing     balance_hold
-reach       raise       bridge      crawl
-other
-```
-
-### `primary_plane`
-
-```text
-sagittal   frontal   transverse   multiplanar   static
-```
-
-### `secondary_planes`
-
-```text
-sagittal   frontal   transverse
-```
-
-```text
-primary_plane    -> where intended movement mainly occurs
-secondary_planes -> where compensation or instability may appear
-```
-
-### `complexity`
-
-```text
-single_joint   multi_joint   compound   whole_body   skill_based
-```
+각 필드의 어휘는 §부록 A에 정리한다.
 
 ---
 
-## 3. Support and Contact
+## 10. support
 
-The `support` field defines how the body contacts the ground or support surface.
+신체가 지면·지지면과 어떻게 접촉하는지를 정의한다.
 
 ```yaml
 support:
@@ -539,47 +419,13 @@ support:
   weight_bearing_regions: [left_foot, right_foot]
 ```
 
-### `base_of_support`
-
-```text
-bilateral_feet         single_foot_left   single_foot_right
-split_stance           hands_and_feet     forearms_and_feet
-hands_only             knees              hands_and_knees
-side_support           seated_support     external_support
-moving_support
-```
-
-### `contact_points`
-
-```text
-left_foot    right_foot     left_heel    right_heel
-left_toe     right_toe      left_hand    right_hand
-left_wrist   right_wrist    left_forearm right_forearm
-left_knee    right_knee     left_hip     right_hip
-pelvis       back           head         external_object
-```
-
-### `support_surface`
-
-```text
-floor        mat            bench        box
-wall         chair          machine      unstable_surface
-suspension   other
-```
-
-### `weight_bearing_regions`
-
-```text
-left_foot     right_foot     left_hand     right_hand
-left_forearm  right_forearm  left_knee     right_knee
-pelvis        trunk
-```
+어휘는 §부록 A 참조.
 
 ---
 
-## 4. Phase Model
+## 11. phase_model
 
-The `phase_model` field defines the expected temporal structure of the movement.
+운동의 시간적 구조.
 
 ```yaml
 phase_model:
@@ -590,101 +436,41 @@ phase_model:
     concentric: 0.5
 ```
 
-The sum of `expected_ratio` values should be approximately `1.0`.
+`expected_ratio` 합은 약 1.0 (허용 0.98 ~ 1.02).
 
-### `type`
-
-```text
-resistance_phase   task_phase     static_hold
-cyclic             locomotion_phase balance_phase
-transition_phase   custom
-```
-
-Recommended use:
+`type` 어휘:
 
 ```text
-resistance_phase -> eccentric / isometric / concentric structure
-task_phase       -> task-specific phases such as support, shift, tap, return
-static_hold      -> no repeated dynamic phase; stability is the main output
-cyclic           -> repeated cyclic movement without clear resistance phase
-locomotion_phase -> gait-like or step-based movement
-balance_phase    -> stability challenge over time
-custom           -> exercise-specific user-defined phase model
+resistance_phase   eccentric / isometric / concentric 구조
+task_phase         과제형: setup / shift / tap / return 등
+static_hold        정적 자세 유지
+cyclic             반복적 순환 동작 (저항 단계 구분 없음)
+locomotion_phase   보행 / step 기반
+balance_phase      시간 경과에 따른 균형 도전
+transition_phase
+custom
 ```
 
-### Standard `resistance_phase` names
-
-```text
-eccentric            isometric           concentric
-transition_top       transition_bottom
-```
-
-### Standard `task_phase` names
-
-```text
-setup        support_stable   weight_shift   tap
-reach        return           reset          hold
-release      contact          recovery       transition
-```
-
-Example:
-
-```yaml
-phase_model:
-  type: task_phase
-  expected_ratio:
-    support_stable: 0.25
-    weight_shift: 0.25
-    tap: 0.25
-    return: 0.25
-```
-
-### Standard `static_hold` names
-
-```text
-setup   hold   fatigue   release
-```
-
-### Standard `locomotion_phase` names
-
-```text
-initial_contact   loading_response   mid_stance       terminal_stance
-pre_swing         initial_swing      mid_swing        terminal_swing
-```
-
-### Phase Ratio Rules
-
-```text
-0.0 <= phase_ratio <= 1.0
-sum(expected_ratio.values()) ~= 1.0    (tolerance 0.98 to 1.02)
-```
+상세 어휘(저항성 / 과제형 / 정적 / 보행)는 §부록 A.
 
 ---
 
-## 5. Landmark Model
+## 12. landmarks
 
-The initial landmark convention is `mediapipe_pose_33`. MediaPipe Pose Landmarker outputs 33 body landmarks.
+### 12-1. 모델
+
+초기 모델은 MediaPipe Pose 33 (`mediapipe_pose_33`).
 
 ```yaml
 landmarks:
   model: mediapipe_pose_33
 ```
 
-### MediaPipe Pose 33 Landmark Index
+MediaPipe Pose 33 인덱스는 §부록 B 참조.
 
-```text
-0  nose               1  left_eye_inner    2  left_eye          3  left_eye_outer
-4  right_eye_inner    5  right_eye         6  right_eye_outer
-7  left_ear           8  right_ear         9  mouth_left        10 mouth_right
-11 left_shoulder      12 right_shoulder    13 left_elbow        14 right_elbow
-15 left_wrist         16 right_wrist       17 left_pinky        18 right_pinky
-19 left_index         20 right_index       21 left_thumb        22 right_thumb
-23 left_hip           24 right_hip         25 left_knee         26 right_knee
-27 left_ankle         28 right_ankle       29 left_heel         30 right_heel
-31 left_foot_index    32 right_foot_index
-```
+### 12-2. 권장 관절·영역 명
 
-### Recommended Joint Names
+본 프레임워크 내 코드·논문에서 사용하는 표준 명명:
 
 ```text
 left_shoulder   right_shoulder   left_elbow   right_elbow
@@ -693,19 +479,9 @@ left_knee       right_knee       left_ankle   right_ankle
 left_foot       right_foot       trunk        pelvis        head
 ```
 
-### Recommended Region Names
+### 12-3. `primary_joints`
 
-```text
-head            neck_proxy       shoulder_girdle  trunk
-thorax_proxy    pelvis           left_upper_arm   right_upper_arm
-left_forearm    right_forearm    left_hand        right_hand
-left_thigh      right_thigh      left_shank       right_shank
-left_foot       right_foot
-```
-
-### `primary_joints`
-
-Joints that define the main movement.
+운동의 주된 작용 관절.
 
 ```yaml
 primary_joints:
@@ -717,9 +493,9 @@ primary_joints:
   - right_ankle
 ```
 
-### `secondary_joints`
+### 12-4. `secondary_joints`
 
-Joints that are not the main driver but matter for stability, alignment, or compensation.
+주된 작용은 아니지만 안정성·정렬·보상에 관여하는 관절.
 
 ```yaml
 secondary_joints:
@@ -729,27 +505,20 @@ secondary_joints:
   - pelvis
 ```
 
-### `critical_landmarks`
-
-Landmarks required for reliable analysis.
+### 12-5. `critical_landmarks`, `optional_landmarks`
 
 ```yaml
 critical_landmarks: [23, 24, 25, 26, 27, 28]
-```
-
-### `optional_landmarks`
-
-Helpful but not essential landmarks.
-
-```yaml
 optional_landmarks: [11, 12, 29, 30, 31, 32]
 ```
 
+`critical_landmarks` 누락은 분석 가능성을 직접 위협한다. `optional_landmarks`는 보조 지표 산출에 도움이 된다.
+
 ---
 
-## 6. Angle Definitions
+## 13. angle_definitions
 
-Angle definitions specify how joint angles should be computed.
+관절 각도 산출 규약.
 
 ```yaml
 angle_definitions:
@@ -761,44 +530,13 @@ angle_definitions:
     vertex: 26
 ```
 
-### Common Angle Names
-
-```text
-left_shoulder_angle     right_shoulder_angle
-left_elbow_angle        right_elbow_angle
-left_hip_angle          right_hip_angle
-left_knee_angle         right_knee_angle
-left_ankle_angle        right_ankle_angle
-trunk_angle             pelvis_tilt_angle
-shoulder_line_angle     pelvis_line_angle
-```
-
-### Common MediaPipe Angle Triplets
-
-```yaml
-left_shoulder_angle:  [23, 11, 13]
-right_shoulder_angle: [24, 12, 14]
-
-left_elbow_angle:     [11, 13, 15]
-right_elbow_angle:    [12, 14, 16]
-
-left_hip_angle:       [11, 23, 25]
-right_hip_angle:      [12, 24, 26]
-
-left_knee_angle:      [23, 25, 27]
-right_knee_angle:     [24, 26, 28]
-
-left_ankle_angle:     [25, 27, 31]
-right_ankle_angle:    [26, 28, 32]
-```
-
-These triplets are proxy definitions and should be interpreted carefully in monocular data.
+표준 각도 명·MediaPipe triplet은 §부록 B 참조. 단일 비전 기반 angle은 모두 “proxy”로 해석한다.
 
 ---
 
-## 7. Joint Actions
+## 14. joint_actions
 
-The `joint_actions` field describes expected movement at primary and secondary joints.
+각 관절에서 기대되는 작용. `_proxy` 접미사는 단일 비전에서 간접적으로 추정함을 의미한다.
 
 ```yaml
 joint_actions:
@@ -811,29 +549,13 @@ joint_actions:
     - pelvis_frontal_plane_control
 ```
 
-```text
-shoulder_flexion_extension                  shoulder_abduction_adduction
-shoulder_horizontal_abduction_adduction     shoulder_internal_external_rotation_proxy
-elbow_flexion_extension                     wrist_extension_flexion_proxy
-
-hip_flexion_extension                       hip_abduction_adduction
-hip_internal_external_rotation_proxy        knee_flexion_extension
-ankle_dorsiflexion_plantarflexion           foot_pronation_supination_proxy
-
-trunk_flexion_extension                     trunk_lateral_flexion
-trunk_rotation_proxy                        pelvis_anterior_posterior_tilt_proxy
-pelvis_lateral_tilt_proxy                   pelvis_rotation_proxy
-scapular_stability_proxy                    anti_rotation_control
-weight_shift_control
-```
-
-Use the `_proxy` suffix when the measurement is only indirectly estimated from pose landmarks.
+전체 어휘는 §부록 A.
 
 ---
 
-## 8. Biomechanical Focus
+## 15. biomechanical_focus
 
-The `biomechanical_focus` field defines how the exercise should be interpreted mechanically.
+운동을 어떻게 역학적으로 해석할지 명시한다. ⑧ 생체역학적 근사 모델링 단계가 직접 참조한다.
 
 ```yaml
 biomechanical_focus:
@@ -843,7 +565,7 @@ biomechanical_focus:
   primary_constraints: [maintain_foot_contact, maintain_trunk_alignment]
 ```
 
-### `expected_com_motion`
+`expected_com_motion` 어휘:
 
 ```text
 minimal                          vertical
@@ -852,35 +574,17 @@ vertical_and_anterior_posterior  vertical_and_medial_lateral
 rotational                       multidirectional
 ```
 
-### `stability_requirement`
+`stability_requirement`: `low | medium | high | very_high`.
 
-```text
-low   medium   high   very_high
-```
+`main_load_regions`, `primary_constraints` 어휘는 §부록 A.
 
-### `main_load_regions`
-
-```text
-shoulder   elbow   wrist   trunk   core
-hip        knee    ankle   foot    pelvis
-```
-
-### `primary_constraints`
-
-```text
-maintain_foot_contact          maintain_hand_contact
-maintain_trunk_alignment       maintain_pelvis_level
-maintain_neutral_spine_proxy   avoid_excessive_rotation
-avoid_excessive_lateral_shift  avoid_knee_valgus
-avoid_heel_lift                maintain_head_position
-maintain_support_symmetry      maintain_controlled_tempo
-```
+> 본 단계의 산출 지표는 모두 “상대적 부하 분포의 경향성”이며, 절대 토크가 아니다 ([`_terminology.md`](_terminology.md) §4, §8).
 
 ---
 
-## 9. Compensation Candidates
+## 16. compensation_candidates
 
-Compensation candidates declare which deviations should be monitored.
+해당 운동에서 모니터링할 보상 움직임 후보. 본 리스트에 명시된 후보만 ⑨ 지표화에서 바이오마커로 산출된다.
 
 ```yaml
 compensation_candidates:
@@ -889,44 +593,13 @@ compensation_candidates:
   - lateral_pelvic_shift
 ```
 
-```text
-# Lower body
-knee_valgus                      knee_varus
-asymmetric_depth                 asymmetric_knee_flexion
-asymmetric_hip_flexion           limited_ankle_dorsiflexion_proxy
-heel_lift                        foot_external_rotation_proxy
-foot_collapse_proxy              pelvis_drop
-lateral_pelvic_shift             hip_shift
-insufficient_rear_hip_extension  unstable_step_width
-
-# Trunk and pelvis
-excessive_trunk_flexion          trunk_extension_compensation
-lateral_trunk_lean               trunk_rotation
-trunk_sway                       pelvis_rotation
-pelvis_anterior_tilt_proxy       pelvis_posterior_tilt_proxy
-hip_pike                         hip_drop
-loss_of_neutral_spine_proxy
-
-# Upper body
-shoulder_elevation_compensation  shoulder_asymmetry
-shoulder_collapse                elbow_flare
-elbow_asymmetry                  wrist_shift
-scapular_instability_proxy       insufficient_head_descent
-head_forward_shift
-
-# Control and timing
-excessive_com_lateral_shift      excessive_com_variability
-phase_timing_asymmetry           tempo_instability
-left_right_timing_variability    movement_discontinuity
-```
-
-This list is intentionally broad. Each exercise should select only the compensation candidates that are biomechanically relevant.
+전체 어휘 (하지 / 체간·골반 / 상지 / 제어·타이밍 4 그룹)는 §부록 A.
 
 ---
 
-## 10. Feature Domains
+## 17. feature_domains
 
-The `feature_domains` field selects which feature groups are relevant.
+활성화되는 특징 영역.
 
 ```yaml
 feature_domains:
@@ -945,55 +618,13 @@ feature_domains:
     - moment_arm_proxy
 ```
 
-### Spatial Features
-
-```text
-rom                            joint_angle_min
-joint_angle_max                joint_angle_range
-symmetry                       shape
-trajectory_similarity          alignment
-posture_angle                  depth_proxy
-reach_distance                 support_width
-base_of_support_width
-```
-
-### Temporal Features
-
-```text
-tempo                          rep_duration
-phase_duration                 eccentric_duration
-isometric_duration             concentric_duration
-timing_ratio                   variability
-rhythm_consistency             left_right_timing_variability
-pause_duration
-```
-
-### Control Features
-
-```text
-stability                      compensation
-com_stability                  trunk_stability
-pelvis_stability               joint_tracking_error
-lateral_shift                  rotation_control
-balance_control                movement_smoothness
-endpoint_control
-```
-
-### Biomechanical Proxy Features
-
-```text
-com_displacement               com_velocity_proxy
-segment_length_normalized_displacement
-moment_arm_proxy               relative_joint_load_proxy
-load_distribution_proxy        support_moment_proxy
-compensation_load_shift_proxy
-```
+각 하위 어휘는 §부록 A.
 
 ---
 
-## 11. View Requirements
+## 18. view_requirements
 
-The `view_requirements` field defines camera-view expectations and occlusion risks.
+카메라 시야와 가려짐 위험을 명시한다. 단일 비전 환경에서 시야 선택은 산출 신뢰도에 직결된다.
 
 ```yaml
 view_requirements:
@@ -1003,41 +634,13 @@ view_requirements:
   occlusion_risk: medium
 ```
 
-### `preferred_views`
-
-```text
-frontal           sagittal_left      sagittal_right
-front_oblique     rear_oblique       side_oblique
-top_down          any
-```
-
-### `acceptable_views`
-
-```text
-frontal           sagittal_left      sagittal_right
-front_oblique     rear_oblique       side_oblique
-any
-```
-
-### `occlusion_risk`
-
-```text
-low   medium   high   very_high
-```
-
-### `visibility_sensitive_landmarks`
-
-Landmarks that are especially likely to affect feature reliability.
-
-```yaml
-visibility_sensitive_landmarks: [23, 24, 25, 26, 27, 28]
-```
+어휘는 §부록 A.
 
 ---
 
-## 12. Quality Rules
+## 19. quality_rules
 
-Quality rules define whether a recording, set, rep, or phase is usable for downstream analysis.
+분석 가능성을 판정하는 임계값 집합.
 
 ```yaml
 quality_rules:
@@ -1050,24 +653,13 @@ quality_rules:
   allow_partial_feature_output: true
 ```
 
-Recommended fields:
-
-```yaml
-quality_rules:
-  minimum_visible_landmark_ratio: float
-  minimum_critical_landmark_ratio: float
-  max_missing_gap_frames: integer
-  max_interpolation_gap_frames: integer
-  exclude_rep_if_critical_landmark_missing: boolean
-  exclude_rep_if_phase_missing: boolean
-  allow_partial_feature_output: boolean
-```
+본 필드는 ④ 전처리와 ⑦ 특징 추출이 직접 읽는다.
 
 ---
 
-## Relationship with Annotation
+## 20. annotation과의 관계
 
-The exercise definition does not replace annotation. It makes annotation meaningful.
+annotation은 “이 프레임이 한 반복(rep)이다”를 표시한다. 운동 정의는 “그 반복이 무엇을 의미하는가”를 표시한다.
 
 ```csv
 segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
@@ -1075,24 +667,22 @@ rep,1,1,100,180,true,squat,bilateral
 rep,1,2,190,270,true,squat,bilateral
 ```
 
-Annotation says: "frames 100–180 are rep 1 of a squat."
-
-The exercise definition for `squat` says:
+`squat` 운동 정의가 명시하는 것:
 
 ```text
-- hip, knee, and ankle are primary joints
-- the primary movement plane is sagittal
-- the exercise is bilateral symmetric
-- knee valgus and lateral pelvic shift are relevant compensation candidates
-- expected eccentric / isometric / concentric ratios are 0.4 / 0.1 / 0.5
-- expected COM motion is vertical
+- 주요 관절: hip, knee, ankle
+- 주된 평면: sagittal
+- 좌우 패턴: bilateral_symmetric
+- 보상 움직임 후보: knee_valgus, lateral_pelvic_shift, ...
+- 기대 phase 비율: eccentric 0.4 / isometric 0.1 / concentric 0.5
+- 기대 CoM 이동: vertical
 ```
 
-Together, downstream modules know which features to compute, which biomarkers to derive, and how to interpret each rep.
+이 둘이 결합되어 후속 단계는 어떤 특징을 산출하고, 어떤 바이오마커를 도출하며, 각 반복을 어떻게 해석할지를 결정한다.
 
-## Fallback Behavior
+## 21. Fallback Behavior
 
-If `exercise_type` is missing in annotation, or if the corresponding YAML file is not found, the pipeline loads a generic definition.
+`exercise_type`이 annotation에 누락되었거나, 해당 YAML 파일을 찾지 못하면 generic 정의가 적재된다.
 
 ```yaml
 exercise_id: generic
@@ -1115,56 +705,54 @@ quality_rules:
   minimum_visible_landmark_ratio: 0.8
 ```
 
-In generic mode, the pipeline still runs, but biomarker output is restricted to exercise-agnostic spatial, temporal, and stability features. No compensation biomarkers are emitted.
+generic 모드에서도 분석 단계는 실행되며, 산출 지표는 운동 무관 spatial / temporal / 안정성 특징으로 제한된다. 보상 움직임 바이오마커는 산출되지 않는다.
 
 ---
 
-## Authoring Workflow (Notebook → Annotation Hints)
+## 22. 운동 정의 작성 워크플로 (노트북 → annotation 해석 파일)
 
-Definitions can be authored by hand in YAML, or interactively in a notebook that exposes each schema field as a dropdown / checkbox / numeric input.
+운동 정의는 YAML로 직접 작성하거나, 본 프로젝트의 노트북(드롭다운/체크박스/숫자 입력)을 통해 대화식으로 작성할 수 있다.
 
-### Goals
-
-```text
-1. allow non-developers to author exercise definitions
-2. validate field values against the controlled vocabulary at authoring time
-3. produce two artifacts:
-   - the exercise definition YAML
-   - an annotation interpretation file consumed by visualization and reporting
-```
-
-### Notebook Layout (planned)
+### 목표
 
 ```text
-Cell 1. Pick exercise_id and display_name
-Cell 2. classification           (dropdowns: family, posture_type, ...)
-Cell 3. support                  (dropdowns: base_of_support, support_surface)
-Cell 4. phase_model              (dropdown: type; numeric inputs: expected_ratio)
-Cell 5. landmarks                (multi-select: primary_joints, secondary_joints)
-Cell 6. joint_actions            (multi-select: primary, secondary)
-Cell 7. biomechanical_focus      (dropdowns + multi-select)
-Cell 8. compensation_candidates  (multi-select)
-Cell 9. feature_domains          (multi-select per domain)
-Cell 10. view_requirements       (multi-select + dropdown)
-Cell 11. quality_rules           (numeric inputs + booleans)
-Cell 12. Validate and preview    (schema check, vocabulary check, ratio sum check)
-Cell 13. Export                  (writes YAML + annotation interpretation file)
+1. 비개발자(예: 임상 자문위원, 운동 처방자)도 운동 정의를 작성할 수 있게 한다.
+2. 작성 시점에 어휘 검증을 수행한다.
+3. 다음 두 산출물을 생성한다:
+   - 운동 정의 YAML
+   - 시각화·보고서가 사용할 annotation 해석 파일
 ```
 
-Each dropdown is restricted to the controlled vocabulary defined in the field dictionary above. This prevents free-text typos that would silently disable downstream biomarkers.
-
-### Annotation Interpretation File
-
-When a definition is exported, the notebook also writes a small companion file. It contains the human-readable interpretation hints that visualization, reporting, and biomarker provenance use.
-
-Suggested filename:
+### 노트북 셀 배치 (예정)
 
 ```text
-exercise_definitions/<exercise_id>.yaml             # the definition itself
-annotation_hints/<exercise_id>_interpretation.yaml  # the hints
+Cell 1.  exercise_id, display_name 선택
+Cell 2.  classification           (드롭다운: family, posture_type, ...)
+Cell 3.  support                  (드롭다운: base_of_support, support_surface)
+Cell 4.  phase_model              (type 드롭다운, expected_ratio 숫자 입력)
+Cell 5.  landmarks                (다중 선택: primary_joints, secondary_joints)
+Cell 6.  joint_actions            (다중 선택: primary, secondary)
+Cell 7.  biomechanical_focus      (드롭다운 + 다중 선택)
+Cell 8.  compensation_candidates  (다중 선택)
+Cell 9.  feature_domains          (영역별 다중 선택)
+Cell 10. view_requirements        (다중 선택 + 드롭다운)
+Cell 11. quality_rules            (숫자/불리언)
+Cell 12. 검증 / 미리보기           (스키마·어휘·비율 합 점검)
+Cell 13. 내보내기                  (YAML + annotation 해석 파일)
 ```
 
-Suggested content:
+각 드롭다운은 어휘 외 값을 거부해 향후 산출 비활성을 만드는 오타를 사전에 막는다.
+
+### Annotation 해석 파일
+
+운동 정의를 내보낼 때 함께 작성되는 보조 파일.
+
+```text
+exercise_definitions/<exercise_id>.yaml             # 정의
+annotation_hints/<exercise_id>_interpretation.yaml  # 해석 힌트
+```
+
+내용 예:
 
 ```yaml
 exercise_id: squat
@@ -1173,9 +761,8 @@ definition_version: 0.1.0
 
 annotation_hints:
   rep_meaning: |
-    One rep is one full descent and ascent. Eccentric and concentric
-    durations should be roughly balanced; large asymmetry suggests
-    pacing or control problems.
+    한 반복은 완전한 하강과 상승이다. eccentric / concentric 지속 시간이
+    크게 비대칭이면 페이싱 또는 제어 문제를 시사한다.
   expected_pattern: bilateral
   expected_phases: [eccentric, isometric, concentric]
   primary_indicators:
@@ -1185,96 +772,90 @@ annotation_hints:
     - tempo_cv
   reading_guide:
     knee_valgus_index: |
-      Higher values indicate frontal-plane knee collapse during descent.
-      Compare against the contralateral side and across reps in the set.
+      값이 클수록 하강 단계 무릎의 전두면 collapse를 의미한다.
+      반대측·세트 내 다른 반복과 함께 비교한다.
     depth_asymmetry_ratio: |
-      Values above ~0.15 suggest unilateral depth bias; check landmark
-      reliability before interpretation.
+      0.15 이상이면 단측 깊이 편향 가능성. 해석 전 랜드마크 신뢰도를 확인한다.
     trunk_flexion_excess: |
-      Positive values indicate trunk flexion beyond the expected band;
-      may be a hip mobility or balance signal.
+      양수는 기대 범위 초과 trunk flexion. hip mobility 또는 균형 신호일 수 있다.
   view_advice: |
-    Frontal view is preferred for knee_valgus_index; sagittal view is
-    preferred for trunk_flexion_excess and depth_asymmetry_ratio.
+    knee_valgus_index는 frontal 시야가 권장된다.
+    trunk_flexion_excess와 depth_asymmetry_ratio는 sagittal 시야가 권장된다.
 ```
 
-This file is consumed by:
+이 파일이 사용되는 곳:
 
 ```text
-visualization  -> per-biomarker reading guide and chart annotations
-report         -> auto-generated report sections per exercise
-biomarker provenance -> source_fields explanation surfaced to the user
+⑩ 시각화        → 바이오마커별 reading guide / 차트 주석
+보고서 자동 생성 → 운동별 보고서 섹션
+provenance      → 사용자에게 노출되는 source_fields 설명
 ```
 
-The notebook does not need to compute any biomarker values. Its only job is to author and export the two YAML files.
+노트북은 바이오마커 값을 계산하지 않는다. 노트북의 단일 책임은 두 YAML 파일 작성이다.
 
-### Validation at Authoring Time
+### 작성 시점 검증
 
-The notebook should run the same validation that the loader runs at pipeline start time.
+노트북은 분석 단계 시작 시 로더가 수행하는 검증과 동일한 검증을 수행한다.
 
 ```text
-- required fields are present
-- vocabulary values are inside the allowed set
-- expected_ratio sums to 1.0 ± 0.02
-- primary_joints is non-empty
-- compensation_candidates only contains items from the allowed list
-- feature_domains only contains items from the allowed lists
+- 필수 필드 존재
+- 어휘 값이 허용 집합 안에 있는지
+- expected_ratio 합이 1.0 ± 0.02 인지
+- primary_joints가 비어있지 않은지
+- compensation_candidates가 허용 어휘 안에 있는지
+- feature_domains가 허용 어휘 안에 있는지
 ```
 
-Failed validation should block export of the YAML and surface a readable error message in the notebook.
+검증 실패 시 YAML 내보내기를 차단하고 노트북에 읽기 쉬운 오류를 표시한다.
 
 ---
 
-## Initial Completion Criteria
-
-The first implementation of the exercise definition layer is complete when:
+## 23. 초기 완료 기준
 
 ```text
-1. exercise YAML files can be loaded
-2. required fields are validated
-3. vocabulary values are validated
-4. phase ratios are checked to sum approximately to 1.0
-5. primary and secondary joints are parsed
-6. compensation candidates are parsed
-7. feature domains are parsed
-8. fallback to a generic definition works when exercise_type is missing
-9. a downstream module can query exercise-specific analysis rules
+1. 운동 정의 YAML 파일을 적재할 수 있다.
+2. 필수 필드가 검증된다.
+3. 어휘 값이 검증된다.
+4. phase 비율 합이 1.0에 근접하는지 점검된다.
+5. primary / secondary 관절이 파싱된다.
+6. compensation_candidates 가 파싱된다.
+7. feature_domains 가 파싱된다.
+8. exercise_type 누락 시 generic fallback이 동작한다.
+9. 후속 단계가 운동별 분석 규칙을 정의 객체로부터 조회할 수 있다.
 ```
 
-The first implementation does not need to:
+초기 구현이 다루지 않는 항목:
 
 ```text
-- automatically generate exercise definitions from data
-- automatically detect exercise type from pose
-- automatically detect phases
-- compute biomechanical proxies directly
-- score movement quality
-- ship the dropdown notebook
+- 데이터로부터 운동 정의 자동 생성
+- 포즈로부터 운동 종류 자동 판별
+- phase 자동 검출
+- 생체역학적 근사 직접 산출
+- 동작 품질 점수화
+- 드롭다운 노트북
 ```
 
-The dropdown notebook and the annotation interpretation export are planned in the next development step.
+드롭다운 노트북과 annotation 해석 파일 내보내기는 다음 개발 단계에서 추가된다.
 
 ---
 
-## Future Extensions
+## 24. 향후 확장
 
-Later versions may include:
-
-- a JSON schema file generated from this dictionary, used by the loader and the notebook for shared validation
-- a definition diffing tool that summarizes which biomarkers will appear or disappear when a definition is edited
-- a curated definition library (`exercise_definitions/`) covering common screening and rehab movements
-- automatic suggestion of `compensation_candidates` based on `classification` and `phase_model`
-- per-population variants of the same exercise (e.g., elderly, post-surgical) using inheritance from a base definition
-- linking biomarker provenance to the scoring layer so that score explanations cite definition fields directly
+- 본 사전으로부터 JSON 스키마 자동 생성, 로더와 노트북이 공통 검증 사용
+- 정의 diffing 도구: 정의 수정 시 어떤 바이오마커가 활성/비활성되는지 요약
+- 큐레이션된 정의 라이브러리(`exercise_definitions/`): 일반 스크리닝·재활 동작 포함
+- `compensation_candidates` 자동 제안 (classification + phase_model 기반)
+- 동일 운동의 인구 변종(예: 노인, 술후) 정의 — 기본 정의 상속
+- 바이오마커 provenance를 ⑨ 지표화에 직접 연결해 점수 설명에서 정의 필드를 인용
 
 ---
 
-# Example: Bodyweight Squat
+## 25. 예시: Bodyweight Squat (Full)
 
 ```yaml
 exercise_id: squat
 display_name: Bodyweight Squat
-description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and ankle coordination.
+description: 양측 하지 폐쇄 사슬 동작으로 hip·knee·ankle 협응을 평가한다.
 version: 0.1.0
 tags:
   - bodyweight
@@ -1428,5 +1009,306 @@ quality_rules:
   exclude_rep_if_phase_missing: false
   allow_partial_feature_output: true
 
-notes: Squat is a suitable reference exercise for validating bilateral symmetry, sagittal-plane ROM, COM displacement, and lower-limb compensation indicators.
+notes: |
+  스쿼트는 좌우 대칭, 시상면 ROM, CoM 변위, 하지 보상 움직임을 평가하기 위한
+  대표 참조 운동이다.
 ```
+
+---
+
+# 부록 A. 어휘 표 (Vocabulary Reference)
+
+본 부록은 운동 정의 작성 시 허용되는 어휘를 분야별로 정리한다.
+
+### A-1. classification.family
+
+```text
+lower_body   upper_body   core           full_body
+balance      locomotion   mobility       plyometric
+rehabilitation
+```
+
+### A-2. classification.equipment
+
+```text
+none                  bodyweight_only       barbell
+dumbbell              kettlebell            machine
+cable                 resistance_band       suspension_trainer
+medicine_ball         bench                 box
+wall                  chair                 foam_roller
+other
+```
+
+### A-3. classification.load_type / external_load_position
+
+```text
+load_type:
+bodyweight             external_load          assisted
+resisted               partner_assisted       machine_guided
+partial_weight_bearing non_weight_bearing
+
+external_load_position:
+none           front_rack       back_rack       overhead
+goblet         suitcase         bilateral_hands unilateral_hand
+vest           ankle_weight     machine_path    other
+```
+
+### A-4. classification.posture_type
+
+```text
+standing               standing_split         single_leg_standing
+kneeling               half_kneeling          quadruped
+prone                  supine                 side_lying
+seated                 plank                  side_plank
+inverted               inverted_closed_chain  hanging
+locomotion             transitioning
+```
+
+### A-5. classification.kinetic_chain / laterality / movement_pattern / planes / complexity
+
+```text
+kinetic_chain:
+open_chain                closed_chain
+mixed_chain               closed_chain_alternating
+open_chain_alternating
+
+laterality:
+bilateral_symmetric    bilateral_asymmetric
+unilateral_left        unilateral_right
+unilateral_unspecified alternating
+anti_rotation          cross_body
+
+movement_pattern:
+squat       hinge       lunge       step
+push        pull        press       row
+carry       plank       anti_rotation rotation
+locomotion  jump        landing     balance_hold
+reach       raise       bridge      crawl
+other
+
+primary_plane:
+sagittal   frontal   transverse   multiplanar   static
+
+secondary_planes:
+sagittal   frontal   transverse
+
+complexity:
+single_joint   multi_joint   compound   whole_body   skill_based
+```
+
+### A-6. support 어휘
+
+```text
+base_of_support:
+bilateral_feet         single_foot_left   single_foot_right
+split_stance           hands_and_feet     forearms_and_feet
+hands_only             knees              hands_and_knees
+side_support           seated_support     external_support
+moving_support
+
+contact_points:
+left_foot    right_foot     left_heel    right_heel
+left_toe     right_toe      left_hand    right_hand
+left_wrist   right_wrist    left_forearm right_forearm
+left_knee    right_knee     left_hip     right_hip
+pelvis       back           head         external_object
+
+support_surface:
+floor        mat            bench        box
+wall         chair          machine      unstable_surface
+suspension   other
+
+weight_bearing_regions:
+left_foot     right_foot     left_hand     right_hand
+left_forearm  right_forearm  left_knee     right_knee
+pelvis        trunk
+```
+
+### A-7. phase_model 표준 단계명
+
+```text
+resistance_phase:
+eccentric            isometric           concentric
+transition_top       transition_bottom
+
+task_phase:
+setup        support_stable   weight_shift   tap
+reach        return           reset          hold
+release      contact          recovery       transition
+
+static_hold:
+setup   hold   fatigue   release
+
+locomotion_phase:
+initial_contact   loading_response   mid_stance       terminal_stance
+pre_swing         initial_swing      mid_swing        terminal_swing
+```
+
+### A-8. joint_actions 어휘
+
+```text
+shoulder_flexion_extension                  shoulder_abduction_adduction
+shoulder_horizontal_abduction_adduction     shoulder_internal_external_rotation_proxy
+elbow_flexion_extension                     wrist_extension_flexion_proxy
+
+hip_flexion_extension                       hip_abduction_adduction
+hip_internal_external_rotation_proxy        knee_flexion_extension
+ankle_dorsiflexion_plantarflexion           foot_pronation_supination_proxy
+
+trunk_flexion_extension                     trunk_lateral_flexion
+trunk_rotation_proxy                        pelvis_anterior_posterior_tilt_proxy
+pelvis_lateral_tilt_proxy                   pelvis_rotation_proxy
+scapular_stability_proxy                    anti_rotation_control
+weight_shift_control
+```
+
+### A-9. biomechanical_focus 어휘
+
+`expected_com_motion`:
+
+```text
+minimal                          vertical
+anterior_posterior               medial_lateral
+vertical_and_anterior_posterior  vertical_and_medial_lateral
+rotational                       multidirectional
+```
+
+`stability_requirement`: `low | medium | high | very_high`.
+
+`main_load_regions`:
+
+```text
+shoulder   elbow   wrist   trunk   core
+hip        knee    ankle   foot    pelvis
+```
+
+`primary_constraints`:
+
+```text
+maintain_foot_contact          maintain_hand_contact
+maintain_trunk_alignment       maintain_pelvis_level
+maintain_neutral_spine_proxy   avoid_excessive_rotation
+avoid_excessive_lateral_shift  avoid_knee_valgus
+avoid_heel_lift                maintain_head_position
+maintain_support_symmetry      maintain_controlled_tempo
+```
+
+### A-10. compensation_candidates 어휘 (그룹별)
+
+```text
+# 하지
+knee_valgus                      knee_varus
+asymmetric_depth                 asymmetric_knee_flexion
+asymmetric_hip_flexion           limited_ankle_dorsiflexion_proxy
+heel_lift                        foot_external_rotation_proxy
+foot_collapse_proxy              pelvis_drop
+lateral_pelvic_shift             hip_shift
+insufficient_rear_hip_extension  unstable_step_width
+
+# 체간 / 골반
+excessive_trunk_flexion          trunk_extension_compensation
+lateral_trunk_lean               trunk_rotation
+trunk_sway                       pelvis_rotation
+pelvis_anterior_tilt_proxy       pelvis_posterior_tilt_proxy
+hip_pike                         hip_drop
+loss_of_neutral_spine_proxy
+
+# 상지
+shoulder_elevation_compensation  shoulder_asymmetry
+shoulder_collapse                elbow_flare
+elbow_asymmetry                  wrist_shift
+scapular_instability_proxy       insufficient_head_descent
+head_forward_shift
+
+# 제어 / 타이밍
+excessive_com_lateral_shift      excessive_com_variability
+phase_timing_asymmetry           tempo_instability
+left_right_timing_variability    movement_discontinuity
+```
+
+### A-11. feature_domains 어휘
+
+```text
+spatial:
+rom                            joint_angle_min
+joint_angle_max                joint_angle_range
+symmetry                       shape
+trajectory_similarity          alignment
+posture_angle                  depth_proxy
+reach_distance                 support_width
+base_of_support_width
+
+temporal:
+tempo                          rep_duration
+phase_duration                 eccentric_duration
+isometric_duration             concentric_duration
+timing_ratio                   variability
+rhythm_consistency             left_right_timing_variability
+pause_duration
+
+control:
+stability                      compensation
+com_stability                  trunk_stability
+pelvis_stability               joint_tracking_error
+lateral_shift                  rotation_control
+balance_control                movement_smoothness
+endpoint_control
+
+biomechanical_proxy:
+com_displacement               com_velocity_proxy
+segment_length_normalized_displacement
+moment_arm_proxy               relative_joint_load_proxy
+load_distribution_proxy        support_moment_proxy
+compensation_load_shift_proxy
+```
+
+### A-12. view_requirements 어휘
+
+```text
+preferred_views / acceptable_views:
+frontal           sagittal_left      sagittal_right
+front_oblique     rear_oblique       side_oblique
+top_down          any
+
+occlusion_risk:
+low   medium   high   very_high
+```
+
+---
+
+# 부록 B. MediaPipe Pose 33 인덱스 / 표준 angle triplet
+
+### B-1. MediaPipe Pose 33 인덱스
+
+```text
+0  nose               1  left_eye_inner    2  left_eye          3  left_eye_outer
+4  right_eye_inner    5  right_eye         6  right_eye_outer
+7  left_ear           8  right_ear         9  mouth_left        10 mouth_right
+11 left_shoulder      12 right_shoulder    13 left_elbow        14 right_elbow
+15 left_wrist         16 right_wrist       17 left_pinky        18 right_pinky
+19 left_index         20 right_index       21 left_thumb        22 right_thumb
+23 left_hip           24 right_hip         25 left_knee         26 right_knee
+27 left_ankle         28 right_ankle       29 left_heel         30 right_heel
+31 left_foot_index    32 right_foot_index
+```
+
+### B-2. 표준 angle triplet
+
+```yaml
+left_shoulder_angle:  [23, 11, 13]
+right_shoulder_angle: [24, 12, 14]
+
+left_elbow_angle:     [11, 13, 15]
+right_elbow_angle:    [12, 14, 16]
+
+left_hip_angle:       [11, 23, 25]
+right_hip_angle:      [12, 24, 26]
+
+left_knee_angle:      [23, 25, 27]
+right_knee_angle:     [24, 26, 28]
+
+left_ankle_angle:     [25, 27, 31]
+right_ankle_angle:    [26, 28, 32]
+```
+
+이 triplet은 단일 비전 환경에서의 proxy 정의이며, 절대 해부학적 각도가 아니다.

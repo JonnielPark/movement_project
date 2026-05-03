@@ -1,195 +1,234 @@
-# Movement Analysis Framework Overview
+# 00. 개요 (Overview)
 
-## Goal
+본 문서는 [`README.md`](../README.md)와 [`docs/_terminology.md`](_terminology.md)에서 정의한 연구 목표·용어를 분석 단계 관점에서 다시 풀어 쓴 것이다. 코드 구조 설명이 아니라, **연구계획서의 분석 체계와 본 프레임워크가 어떻게 대응되는지**에 초점을 둔다.
 
-This project aims to develop an interpretable movement quality analysis framework using monocular 3D pose landmark data.
+> 용어는 `_terminology.md`의 단일 정의를 따른다. 새 용어가 필요하면 그 문서에 먼저 추가한다.
 
-The framework is designed to quantify movement quality using spatial, temporal, control-related, and biomechanical proxy features.
+---
 
-Movement quality is not assessed against a fixed list of exercises. Each exercise is described as a **biomechanical property object** (an exercise definition), and the framework derives interpretable biomarkers from those properties. This shifts the unit of analysis from "the exercise" to "the property profile of the exercise," and is what makes biomarker output traceable.
+## 1. 연구 목표 한 줄 요약
 
-## Validation Exercises
+> 단일 비전 기반 3D 포즈 데이터로부터, 신체 동작 품질의 생체역학적 속성(관절 정렬, 신체 중심 안정성, 좌우 대칭성, 관절 간 협응, 보상 움직임)을 정량화하고, 해석 가능한 디지털 바이오마커로 표현하는 분석 체계를 제안한다.
 
-The following exercises form the initial validation set used during framework development:
+## 2. 본 프레임워크의 설계 원리
 
-- Squat
-- Lunge
-- Pike push-up
-- Plank shoulder tap
+### 2-1. 운동을 “명칭”이 아니라 “생체역학적 속성 객체”로 정의한다
 
-These movements were selected to cover lower-limb support, left-right compensation, upper-body strength, and core stability. They are not the unit of analysis. Each is defined as a property object under [Exercise Definition](04_exercise_definition.md), and the framework treats them as four sample points in the schema's property space.
+기존 분석 시스템은 운동마다 분석 규칙을 따로 설계하는 경향이 있어, 다양한 운동을 일관된 기준으로 해석·비교하는 데 한계가 있다. 본 프레임워크는 운동을 **운동 정의 객체(exercise definition)**로 표현하고 다음 정보를 분석 기준으로 사용한다.
 
-## Pipeline
+- 주요 관절 (primary joints)
+- 지지면 / 접촉부 (base of support, contact points)
+- 수행 단계 (phase model)
+- 보상 움직임 후보 (compensation candidates)
+- 품질 기준 (quality rules)
+- 적합한 카메라 시야 / 뷰 (view requirements)
 
-```text
-Pose CSV
-+ optional annotation file
-+ exercise definition (YAML)
--> Validation
--> Annotation Mask Application
--> Exercise Definition Loading
--> Preprocessing
--> Normalization
--> Motion Attribution
--> Feature Extraction
--> Biomechanical Proxy Modeling
--> Scoring
--> Visualization / Report
+이 설계로 분석의 단위가 “스쿼트”, “런지”와 같은 동작 명칭에서, “동일한 속성 공간 위의 한 점”으로 이동한다. 동작이 추가되면 코드 분기를 만드는 대신 YAML 한 장을 작성한다.
+
+### 2-2. 모든 지표는 `source_fields`(provenance)로 정의 근거를 추적한다
+
+산출된 모든 디지털 바이오마커는 **운동 정의의 어떤 속성에서 도출되었는지**를 함께 기록한다.
+
+```
+biomarker_id        : knee_valgus_index
+exercise_id         : squat
+source_fields       : [compensation_candidates.knee_valgus,
+                       classification.primary_plane,
+                       landmarks.primary_joints]
+rep_id              : 2
+value               : 0.13
+unit                : torso_length_ratio
 ```
 
-Annotation runs early so that exercise context (`exercise_type`, expected movement pattern, starting side) and rep boundaries are available to all downstream modules.
+자문위원(의대 교수)이 “이 지표는 어떤 생체역학적 근거에서 산출되었는가?”를 물었을 때, 항상 운동 정의의 필드로 거슬러 올라갈 수 있어야 한다.
 
-The exercise definition is loaded immediately after annotation, using `exercise_type` to select the YAML file. The loaded definition object is passed to every downstream module so that they can apply exercise-specific rules without re-reading annotation metadata.
+### 2-3. 단일 비전이라는 제약을 분석 체계 안에 명시적으로 둔다
 
-Preprocessing and normalization can then apply exercise-aware logic without re-loading annotation metadata.
+단일 카메라 환경은 깊이 정보 불안정성·랜드마크 누락·시야 한계가 있다[6]. 따라서 본 프레임워크는 다음을 명시적으로 가정한다.
 
-## Current Scope
+- 절대값 토크·근력은 산출하지 않는다. 산출 대상은 **관절 간 상대적 부하 분포의 경향성**이다[8][9].
+- 신체 분절 길이로 정규화한 무차원 지표(`torso_length_ratio` 등)를 기본 출력으로 사용한다.
+- 데이터 품질 문제는 **전처리 단계**에서 다루고, 동작의 질적 패턴(보상 움직임 등)은 **수정하지 않는다.**
 
-Implemented components (as of 2026-05):
+---
 
-- pose data loading
-- data validation
-- 3D skeleton visualization
-- coordinate normalization
-- annotation mask application
-- exercise definition schema (YAML + field dictionary)
-- exercise definition YAML loader and validator (with generic fallback)
-- pipeline runner with exercise_definition step integrated
+## 3. 분석 대상 동작 (Validation Set)
 
-The following components are planned but not yet implemented:
+분석 체계의 일관성과 운동 정의 스키마의 일반화 가능성을 검증하기 위해 4가지 대표 대관절 동작을 사용한다. 분석의 단위는 동작 명칭이 아니라 운동 정의 객체이며, 아래 4가지는 속성 공간 위의 4개 표본이다.
 
-- preprocessing (reliability filtering, exercise-aware swap detection, short-gap interpolation)
-- definition authoring notebook (dropdown-based) and annotation interpretation export
-- motion attribution
-- feature extraction
-- biomechanical proxy modeling
-- scoring
-- simulation-based robustness evaluation
+| 동작 | 속성 표본 의의 |
+|---|---|
+| 스쿼트 (squat) | 양측 대칭(bilateral) · 시상면 ROM · 폐쇄 사슬 · 수직 CoM 변위 |
+| 런지 (lunge) | 좌우 교번(alternating) · 시상면 · 좌우 비대칭 보상 움직임 |
+| 파이크 푸쉬업 (pike push-up) | 양측 대칭 · 역지지 폐쇄 사슬 · 상체-체간 협응 |
+| 플랭크 숄더탭 (plank shoulder tap) | 좌우 교번 · 정적 자세 위 동적 작업 · 신체 중심 안정성 |
 
-## Design Principle
+이들 동작은 하체 체중 지지·좌우 비대칭 보상·상체 폐쇄 사슬·신체 중심 안정성을 모두 포함하는 복합 동작 표본이다.
 
-Each module should have a clearly separated responsibility.
+---
+
+## 4. 분석 단계 (Pipeline)
 
 ```text
-validation         -> diagnose data quality
-annotation         -> mark frames, reps, and declare exercise context
-exercise_definition -> declare semantic and biomechanical structure as data
-preprocessing      -> handle low-reliability landmarks and frame-level noise
-normalization      -> convert coordinates into comparable body-relative space
-motion attribution -> verify exercise-level active-limb labeling per rep
-features           -> compute measurable movement indicators
-biomechanics       -> estimate interpretable biomechanical proxies
-scoring            -> convert indicators into movement quality scores
-visualization      -> inspect pose data and analysis results
+입력
+    Pose CSV (단일 비전 3D 포즈 시계열)
+    Annotation file (선택)
+    Exercise definition YAML
+
+단계
+    ① 데이터 검증            구조 무결성 점검 (수정하지 않음)
+    ② Annotation 적용        분석 구간·운동 맥락 메타데이터화
+    ③ 운동 정의 로딩          생체역학적 속성 객체 적재 (generic fallback 포함)
+    ④ 전처리                 단일 비전 데이터 품질 보정
+    ⑤ 정규화                 신체 기준 좌표 변환
+    ⑥ 귀속 (Motion Attribution)  반복별 활성 측 일관성 확인
+    ⑦ 특징 추출              공간·시간·제어 영역
+    ⑧ 생체역학적 근사 모델링  CoM, 모멘트 암, 통계적 인체 계측
+    ⑨ 지표화                 해석 가능한 디지털 바이오마커 + provenance
+    ⑩ 시각화 / 보고서         단계별 시각화 + 최종 요약
+
+출력
+    분석 단계별 데이터프레임
+    각 단계의 보고서(report)
+    동작 품질 특징 표 (provenance 포함)
+    생체역학적 근사 지표 표
+    디지털 바이오마커 요약
+    시각화 결과물
 ```
 
-A second cross-cutting principle is that exercise-specific information must live in YAML, not in code. This is what allows the biomarker set to be derived from declared properties and to remain interpretable per exercise.
+`②`가 `③`보다 먼저 적용되는 이유: annotation에서 선언된 `exercise_type`이 운동 정의 YAML 파일을 식별한다. 이후 모든 단계가 동일한 운동 정의 객체를 참조한다.
 
-## Annotation Strategy
+---
 
-Automatic segmentation is not treated as the primary contribution in the initial implementation.
+## 5. 단계별 책임 분리 (Design Principle)
 
-Instead, manually prepared annotation files can be used to mark frames or repetitions for analysis. If no annotation is provided, the pipeline uses the full sequence by default.
+각 단계는 책임을 명확히 분리해 문서·코드·논문 서술이 일관되도록 한다.
 
-The annotation file also declares exercise-level context such as `exercise_type`, expected movement pattern, and starting side. The exercise definition layer reads `exercise_type` to load the corresponding property object, which is then consumed by preprocessing, motion attribution, and feature extraction.
+| 단계 | 책임 | 하지 않는 일 |
+|---|---|---|
+| ① 데이터 검증 | 무결성 진단 | 데이터 수정 |
+| ② Annotation | 프레임/반복/수행단계 표시, 운동 맥락 선언 | 좌표 수정 |
+| ③ 운동 정의 | 생체역학적 속성 객체 적재 | 좌표·annotation 수정 |
+| ④ 전처리 | 단일 비전 데이터 품질 보정 | 동작의 질적 패턴 변경 |
+| ⑤ 정규화 | 신체 기준 좌표 공간으로 변환 | 운동 정의에 따라 분기하지 않음 |
+| ⑥ 귀속 | 반복별 활성 측 일관성 확인 | 좌표 수정, 품질 점수화 |
+| ⑦ 특징 추출 | 공간·시간·제어 지표 산출 | 라벨 보정 |
+| ⑧ 생체역학적 근사 모델링 | CoM, 모멘트 암, 상대 부하 분포 추정 | 절대 토크 산출 |
+| ⑨ 지표화 | 해석 가능한 디지털 바이오마커 표현 | provenance 없는 지표 산출 |
+| ⑩ 시각화 | 단계별 검토용·결과 보고용 그림 산출 | 데이터 수정 |
 
-Details are described in [Annotation and Segmentation](03_annotation_and_segmentation.md) and [Exercise Definition](04_exercise_definition.md).
+> 두 번째 교차 원칙: 운동마다 다른 정보는 **YAML로 표현하고 코드에 두지 않는다.** 이것이 디지털 바이오마커가 운동별로 해석 가능한 형태로 유지되는 근거이다.
 
-## Coordinate Strategy
+---
 
-The initial coordinate normalization method uses:
+## 6. Annotation 전략
+
+자동 분할(automatic segmentation)은 본 연구의 1차 기여 항목이 아니다. 분석 구간은 사전에 준비한 annotation 파일로 표시하며, annotation 파일이 없을 경우 시퀀스 전체를 분석 대상으로 사용한다.
+
+annotation 파일은 분석 구간 외에도 다음 운동 맥락 정보를 선언한다.
+
+- `exercise_type` — 운동 정의 YAML 식별자
+- `pattern` — `bilateral` / `alternating`
+- `starting_side` — 좌우 교번 운동에서 첫 반복의 활성 측
+
+자세한 사양은 [`03_annotation_and_segmentation.md`](03_annotation_and_segmentation.md)와 [`04_exercise_definition.md`](04_exercise_definition.md)를 참고한다.
+
+---
+
+## 7. 좌표 정규화 전략
+
+초기 정규화 방법:
 
 ```text
-translation reference: frame-wise hip center
-scale reference:       sequence-wise median torso length
+이동 기준  : 프레임별 엉덩이 중심
+배율 기준  : 시퀀스 중간값 몸통 길이
 ```
 
-This reduces global position offsets and scale differences while avoiding frame-wise scale jitter.
+이 설계는 카메라 위치·개인 신체 크기 차이를 줄이면서, 프레임별 배율 진동을 피하기 위한 것이다. 절대 힘이나 절대 길이를 추정하지 않는다. 자세한 내용은 [`06_normalization.md`](06_normalization.md).
 
-The normalization step is not intended to estimate physical force or absolute body dimensions. Later biomechanical modules may use segment-length estimation and anthropometric assumptions for COM and moment-arm-based proxy indicators.
+---
 
-## Planned Feature Domains
+## 8. 동작 품질 특성의 3대 영역
 
-The final framework is expected to quantify movement quality using multiple feature domains.
+연구계획서에서 정의한 공간·시간·제어 영역 그대로 사용한다.
 
 ```text
-spatial:
-- ROM
-- shape
-- symmetry
+공간적 (Spatial)
+- ROM (관절 가동범위)
+- 좌우 대칭성
+- 궤적 형태 (shape)
 
-temporal:
-- tempo
-- variability
+시간적 (Temporal)
+- 수행 속도 (tempo)
+- 반복 간 변동성 (variability)
 
-control:
-- stability
-- compensation
+제어적 (Control)
+- 신체 중심 안정성
+- 보상 움직임
 ```
 
-Which feature domains are activated for a given recording is determined by the loaded exercise definition (`feature_domains` field). See [Exercise Definition](04_exercise_definition.md) for the property → biomarker mapping.
+특정 운동에서 어떤 영역이 활성화되는지는 운동 정의의 `feature_domains` 필드가 결정한다.
 
-## Simulation-Based Validation Plan
+---
 
-The later validation stage will evaluate engineering robustness using simulated abnormal or noisy conditions.
+## 9. 강건성 시뮬레이션 검증 계획
 
-Planned simulation scenarios include:
+연구의 4단계(2027.02 ~ 2027.05)에서 합성 비정상 동작을 사용해 본 분석 체계의 강건성을 평가한다. 시뮬레이션 시나리오:
 
-- artificial ROM restriction
-- visual noise injection
-- landmark occlusion or dropout
-- pose estimation instability
+- 인위적 ROM 제한 (ankle 또는 hip 가동 제한 등)
+- 시각 노이즈 주입 (좌표에 σ-단위 가우시안 노이즈)
+- 랜드마크 가려짐 / 누락 (특정 분절 가시도 0 처리)
+- 포즈 추정 불안정성 (시계열 흔들림 시뮬레이션)
 
-This stage is planned for later development and is not implemented yet.
+평가 기준은 **지표의 단조성(monotonicity)**(왜곡 강도가 커질수록 지표가 일관된 방향으로 변하는가)과 **반응성(responsiveness)**(예상한 보상 움직임에 해당 지표가 반응하는가)이다.
 
-## Expected Output
+본 단계는 임상 진단 검증이 아니라 분석 체계의 **공학적 강건성** 검증이다.
 
-The pipeline should eventually return:
+---
+
+## 10. 출력물 (Expected Output)
 
 ```text
-processed dataframe
-validation report
-annotation report
-exercise definition load report
-preprocessing report
-normalization report
-motion attribution report
-feature table (with biomarker provenance: source definition fields)
-biomechanical proxy table
-scoring summary
-visualization artifacts
+처리된 데이터프레임 (단계별 누적 컬럼)
+검증 보고서
+annotation 보고서
+운동 정의 로딩 보고서
+전처리 보고서
+정규화 보고서
+귀속 보고서
+특징 표 (바이오마커 provenance 포함)
+생체역학적 근사 지표 표
+지표 요약(최종 디지털 바이오마커 표)
+시각화 결과물
 ```
 
-## Development Roadmap
+---
+
+## 11. 개발 로드맵
+
+연구계획서 일정에 정렬한다.
 
 ```text
-completed:
-- package structure
-- CSV loading
-- validation
-- 3D visualization
-- basic coordinate normalization
-- annotation mask application
-- exercise definition schema and field dictionary
-- exercise definition YAML loader and validator
-- generic-fallback definition for missing exercise_type
-- pipeline runner with reordered step sequence (validation → annotation → exercise_definition → preprocessing → normalization → motion_attribution → features → biomech → scoring)
+2026.03 ~ 2026.05  연구 환경 구축 및 분석 체계 설계
+- 포즈 CSV 로딩, 데이터 검증, 3D 시각화          [완료]
+- 좌표 정규화, annotation 적용                 [완료]
+- 운동 정의 스키마, YAML 로더, 검증, 일반 fallback [완료]
+- 분석 단계 러너 + 전처리                       [완료]
 
-next:
-- preprocessing with reliability filtering
-- exercise-aware frame-level swap detection
-- short-gap interpolation tied to reliability mask
-- motion attribution (rep-level active limb verification)
-- definition authoring notebook (dropdown-based) and annotation interpretation export
+2026.06 ~ 2026.09  전처리 및 동작 품질 특성 추출
+- 귀속 (Motion Attribution)
+- 공간·시간·제어 특징 추출 (feature_domains 구동)
+- 운동 정의-지표 산출의 연계 구조 (provenance)
+- 시각화: 신뢰도 마스크, 관절각 시계열, 단계별 결과 차트
 
-later:
-- feature extraction (driven by feature_domains in the definition)
-- biomechanical proxy modeling (driven by biomechanical_focus)
-- compensation biomarkers (driven by compensation_candidates)
-- biomarker provenance carried into scoring and visualization
-- scoring
-- synthetic abnormal movement generation
-- ROM restriction simulation
-- visual noise / occlusion simulation
-- robustness evaluation
+2026.10 ~ 2027.01  생체역학적 모델링 및 지표화
+- CoM 및 모멘트 암 기반 biomechanical proxy 모델
+- 관절 간 상대적 부하 분포 / 보상 작용 지표
+- 디지털 바이오마커 지표화
+- 비정상 동작 시뮬레이션을 위한 합성 데이터 생성
+
+2027.02 ~ 2027.05  검증 및 논문 작성
+- 합성 데이터 기반 비정상·노이즈 조건 강건성 평가
+- 지표의 생체역학적 타당성·일관성 분석
+- 박사학위 논문 작성
 ```
