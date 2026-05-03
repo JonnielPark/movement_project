@@ -1,0 +1,5 @@
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,note
+baseline,1,,0,14,false,squat,bilateral,standing posture before movement
+rep,1,1,15,59,true,squat,bilateral,descent and ascent cycle 1
+transition,,,60,74,false,squat,bilateral,brief pause between reps
+rep,1,2,75,119,true,squat,bilateral,descent and ascent cycle 2
