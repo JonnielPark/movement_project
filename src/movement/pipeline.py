@@ -26,6 +26,16 @@ from movement.config import (
 from movement.normalization import normalize_pose_by_hip_torso
 from movement.validation import run_basic_validation
 
+# Project root: src/movement/pipeline.py → up 3 levels
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _resolve_path(p: str | Path) -> Path:
+    """Resolve a path: absolute paths are kept as-is; relative paths are
+    anchored to the project root so notebooks can run from any CWD."""
+    p = Path(p)
+    return p if p.is_absolute() else _PROJECT_ROOT / p
+
 
 # ── Step configs ──────────────────────────────────────────────────────────────
 
@@ -44,8 +54,42 @@ class KalmanConfig:
 
 
 @dataclass
+class ReliabilityConfig:
+    visibility_threshold: float = 0.5
+    segment_length_tolerance: float = 0.25
+    joint_angle_check: bool = True
+    velocity_threshold_torso_per_sec: float = 5.0
+
+
+@dataclass
+class SwapDetectionConfig:
+    enabled: bool = True
+    temporal_consistency: bool = True
+    orientation_prior: bool = True
+    orientation_disagree_ratio: float = 0.4
+
+
+@dataclass
+class InterpolationConfig:
+    enabled: bool = True
+    method: str = "linear"
+    max_gap_frames: int = 3
+
+
+@dataclass
+class SmoothingConfig:
+    enabled: bool = False
+    method: str = "rolling_median"
+    window_size: int = 3
+
+
+@dataclass
 class PreprocessingConfig:
     enabled: bool = False
+    reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
+    swap_detection: SwapDetectionConfig = field(default_factory=SwapDetectionConfig)
+    interpolation: InterpolationConfig = field(default_factory=InterpolationConfig)
+    smoothing: SmoothingConfig = field(default_factory=SmoothingConfig)
     kalman_filter: KalmanConfig = field(default_factory=KalmanConfig)
 
 
@@ -114,7 +158,7 @@ class ScoringConfig:
 
 @dataclass
 class InputConfig:
-    path: str = "data/sample/mediapipe_forward_bend_sample.csv"
+    path: str = "data/sample/mediapipe_squat_synthetic.csv"
 
 
 @dataclass
@@ -152,6 +196,10 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     ann = raw.get("annotation", {})
     exd = raw.get("exercise_definition", {})
     pre = raw.get("preprocessing", {})
+    rel = pre.get("reliability", {})
+    sw  = pre.get("swap_detection", {})
+    itp = pre.get("interpolation", {})
+    sm  = pre.get("smoothing", {})
     kal = pre.get("kalman_filter", {})
     nor = raw.get("normalization", {})
     feat = raw.get("features", {})
@@ -165,7 +213,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
 
     return PipelineConfig(
         input=InputConfig(
-            path=inp.get("path", "data/sample/mediapipe_forward_bend_sample.csv"),
+            path=inp.get("path", "data/sample/mediapipe_squat_synthetic.csv"),
         ),
         validation=ValidationConfig(
             enabled=val.get("enabled", True),
@@ -183,10 +231,32 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         ),
         preprocessing=PreprocessingConfig(
             enabled=pre.get("enabled", False),
+            reliability=ReliabilityConfig(
+                visibility_threshold=float(rel.get("visibility_threshold", 0.5)),
+                segment_length_tolerance=float(rel.get("segment_length_tolerance", 0.25)),
+                joint_angle_check=bool(rel.get("joint_angle_check", True)),
+                velocity_threshold_torso_per_sec=float(rel.get("velocity_threshold_torso_per_sec", 5.0)),
+            ),
+            swap_detection=SwapDetectionConfig(
+                enabled=bool(sw.get("enabled", True)),
+                temporal_consistency=bool(sw.get("temporal_consistency", True)),
+                orientation_prior=bool(sw.get("orientation_prior", True)),
+                orientation_disagree_ratio=float(sw.get("orientation_disagree_ratio", 0.4)),
+            ),
+            interpolation=InterpolationConfig(
+                enabled=bool(itp.get("enabled", True)),
+                method=itp.get("method", "linear"),
+                max_gap_frames=int(itp.get("max_gap_frames", 3)),
+            ),
+            smoothing=SmoothingConfig(
+                enabled=bool(sm.get("enabled", False)),
+                method=sm.get("method", "rolling_median"),
+                window_size=int(sm.get("window_size", 3)),
+            ),
             kalman_filter=KalmanConfig(
-                enabled=kal.get("enabled", False),
-                process_noise=kal.get("process_noise", 0.01),
-                measurement_noise=kal.get("measurement_noise", 0.1),
+                enabled=bool(kal.get("enabled", False)),
+                process_noise=float(kal.get("process_noise", 0.01)),
+                measurement_noise=float(kal.get("measurement_noise", 0.1)),
             ),
         ),
         normalization=NormalizationConfig(
@@ -265,6 +335,7 @@ def run_pipeline(
         landmarks = LANDMARKS
 
     report: dict[str, Any] = {}
+    exercise_def = None   # preserved for Step 4 (Appendix A)
 
     # Step 1: Validation
     if config.validation.enabled:
@@ -305,9 +376,9 @@ def run_pipeline(
 
         exercise_def = load_exercise_definition(
             exercise_id=ex_id,
-            definitions_dir=config.exercise_definition.definitions_dir,
+            definitions_dir=_resolve_path(config.exercise_definition.definitions_dir),
         )
-        report["exercise_definition"] = {
+        report["exercise_definition"] = {  # noqa: dict kept for report; object in exercise_def
             "exercise_id": exercise_def.exercise_id,
             "display_name": exercise_def.display_name,
             "version": exercise_def.version,
@@ -319,9 +390,14 @@ def run_pipeline(
 
     # Step 4: Preprocessing
     if config.preprocessing.enabled:
-        raise NotImplementedError(
-            "preprocessing step is not yet implemented. Set preprocessing.enabled: false."
+        from movement.preprocessing import preprocess_pose_dataframe
+        df, pre_report = preprocess_pose_dataframe(
+            df=df,
+            landmarks=landmarks,
+            exercise_definition=exercise_def,
+            config=config.preprocessing,
         )
+        report["preprocessing"] = pre_report
 
     # Step 5: Normalization
     if config.normalization.enabled:

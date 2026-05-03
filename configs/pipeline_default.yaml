@@ -4,7 +4,7 @@
 # Toggle each step with enabled: true / false
 
 input:
-  path: "data/sample/mediapipe_forward_bend_sample.csv"
+  path: "data/sample/mediapipe_squat_synthetic.csv"
 
 # ── Step 1: Validation ────────────────────────────────────────────────────────
 validation:
@@ -15,7 +15,7 @@ validation:
 # ── Step 2: Annotation ────────────────────────────────────────────────────────
 annotation:
   enabled: false
-  path: "data/sample/mediapipe_forward_bend_sample_annotation.csv"
+  path: "data/sample/mediapipe_squat_synthetic_annotation.csv"
 
 # ── Step 3: Exercise Definition Loading ──────────────────────────────────────
 exercise_definition:
@@ -28,6 +28,24 @@ exercise_definition:
 # ── Step 4: Preprocessing ─────────────────────────────────────────────────────
 preprocessing:
   enabled: false
+  reliability:
+    visibility_threshold: 0.5
+    segment_length_tolerance: 0.25
+    joint_angle_check: true
+    velocity_threshold_torso_per_sec: 5.0
+  swap_detection:
+    enabled: true             # applied only when laterality != bilateral_symmetric
+    temporal_consistency: true
+    orientation_prior: true
+    orientation_disagree_ratio: 0.4
+  interpolation:
+    enabled: true
+    method: linear
+    max_gap_frames: 3         # overridden per-exercise via quality_rules
+  smoothing:
+    enabled: false
+    method: rolling_median
+    window_size: 3
   kalman_filter:
     enabled: false
     process_noise: 0.01
