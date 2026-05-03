@@ -1,5 +1,15 @@
-# src/movement/validation.py
+"""
+① 데이터 검증 (Validation)
 
+포즈 랜드마크 데이터의 구조적 무결성을 점검하고 진단 보고서를 반환한다.
+입력 데이터를 수정하지 않는다.
+
+본 단계는 데이터 무결성 검증(data integrity validation)이다.
+합성 데이터 기반 강건성 평가(robustness evaluation)와 다른 개념이다 —
+docs/_terminology.md §6 참조.
+
+Pipeline position: 첫 번째 단계. 이후 모든 단계의 입력 품질을 보장한다.
+"""
 from __future__ import annotations
 
 import pandas as pd

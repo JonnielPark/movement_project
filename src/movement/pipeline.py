@@ -1,12 +1,18 @@
 """
-Pipeline configuration and runner for movement analysis.
+분석 단계 러너 (Pipeline Runner)
 
-Each step can be toggled via its `enabled` flag in configs/pipeline_default.yaml.
-Steps not yet implemented raise NotImplementedError when enabled=True.
+분석 단계 (docs/00_overview.md / docs/_terminology.md 참조):
+  ① validation             데이터 무결성 검증
+  ② annotation             분석 구간·이동 맥락 표시
+  ③ exercise_definition    이동 정의 (생체역학적 속성 객체) 로딩
+  ④ preprocessing          단일 비전 데이터 품질 보정
+  ⑤ normalization          신체 기준 좌표 정규화
+  ⑥ motion_attribution     반복 단위 활성 측 일관성
+  ⑦ features               공간·시간·제어 특징 추출
+  ⑧ biomech                생체역학적 근사 모델 (CoM, 모멘트 암)
+  ⑨ biomarker              해석 가능한 디지털 바이오마커 (provenance 포함)
 
-Run order:
-    validation → annotation → exercise_definition → preprocessing → normalization
-    → motion_attribution → features → biomech → scoring
+각 단계는 configs/pipeline_default.yaml의 enabled 플래그로 활성화/비활성화.
 """
 from __future__ import annotations
 
@@ -31,13 +37,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _resolve_path(p: str | Path) -> Path:
-    """Resolve a path: absolute paths are kept as-is; relative paths are
-    anchored to the project root so notebooks can run from any CWD."""
+    """절대 경로는 그대로, 상대 경로는 프로젝트 루트 기준으로 변환."""
     p = Path(p)
     return p if p.is_absolute() else _PROJECT_ROOT / p
 
 
-# ── Step configs ──────────────────────────────────────────────────────────────
+# ── 단계별 설정 dataclass ──────────────────────────────────────────────────────
 
 @dataclass
 class ValidationConfig:
@@ -103,15 +108,23 @@ class NormalizationConfig:
 @dataclass
 class AnnotationConfig:
     enabled: bool = False
-    path: str | None = None  # relative path to annotation CSV; None = full-sequence fallback
+    path: str | None = None
 
 
 @dataclass
 class ExerciseDefinitionConfig:
     enabled: bool = True
     definitions_dir: str = "data/exercise_definitions"
-    # None → derive from annotation's exercise_type column; still None → generic fallback
     exercise_id: str | None = None
+
+
+@dataclass
+class MotionAttributionConfig:
+    enabled: bool = False
+    tau_active: float = 0.70
+    tau_ambiguous: float = 0.55
+    tau_swap: float = 0.85
+    mode: str = "conservative"
 
 
 @dataclass
@@ -144,16 +157,21 @@ class FeaturesConfig:
 @dataclass
 class BiomechConfig:
     enabled: bool = False
+    anthropometric_model: str = "winter_1990"
+    include_com_estimation: bool = True
+    include_moment_arm: bool = True
+    output_unit: str = "torso_length_ratio"
 
 
 @dataclass
-class MotionAttributionConfig:
+class BiomarkerConfig:
     enabled: bool = False
+    emit_provenance: bool = True
+    unit: str = "torso_length_ratio"
 
 
-@dataclass
-class ScoringConfig:
-    enabled: bool = False
+# backward-compatibility alias
+ScoringConfig = BiomarkerConfig
 
 
 @dataclass
@@ -180,36 +198,37 @@ class PipelineConfig:
     motion_attribution: MotionAttributionConfig = field(default_factory=MotionAttributionConfig)
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
-    scoring: ScoringConfig = field(default_factory=ScoringConfig)
+    biomarker: BiomarkerConfig = field(default_factory=BiomarkerConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
 
 
-# ── Config loader ─────────────────────────────────────────────────────────────
+# ── 설정 로더 ─────────────────────────────────────────────────────────────────
 
 def load_pipeline_config(path: Path | str) -> PipelineConfig:
-    """Load PipelineConfig from a YAML file."""
+    """YAML 파일에서 PipelineConfig를 로드한다."""
     with open(path, encoding="utf-8") as f:
         raw: dict = yaml.safe_load(f) or {}
 
-    inp = raw.get("input", {})
-    val = raw.get("validation", {})
-    ann = raw.get("annotation", {})
-    exd = raw.get("exercise_definition", {})
-    pre = raw.get("preprocessing", {})
-    rel = pre.get("reliability", {})
-    sw  = pre.get("swap_detection", {})
-    itp = pre.get("interpolation", {})
-    sm  = pre.get("smoothing", {})
-    kal = pre.get("kalman_filter", {})
-    nor = raw.get("normalization", {})
+    inp  = raw.get("input", {})
+    val  = raw.get("validation", {})
+    ann  = raw.get("annotation", {})
+    exd  = raw.get("exercise_definition", {})
+    pre  = raw.get("preprocessing", {})
+    rel  = pre.get("reliability", {})
+    sw   = pre.get("swap_detection", {})
+    itp  = pre.get("interpolation", {})
+    sm   = pre.get("smoothing", {})
+    kal  = pre.get("kalman_filter", {})
+    nor  = raw.get("normalization", {})
+    ma   = raw.get("motion_attribution", {})
     feat = raw.get("features", {})
-    sp = feat.get("spatial", {})
-    te = feat.get("temporal", {})
-    co = feat.get("control", {})
-    ma = raw.get("motion_attribution", {})
-    bio = raw.get("biomech", {})
-    sc = raw.get("scoring", {})
-    out = raw.get("output", {})
+    sp   = feat.get("spatial", {})
+    te   = feat.get("temporal", {})
+    co   = feat.get("control", {})
+    bio  = raw.get("biomech", {})
+    # backward-compat: 'biomarker' 키 없으면 'scoring' 키로 폴백
+    bm   = raw.get("biomarker", raw.get("scoring", {}))
+    out  = raw.get("output", {})
 
     return PipelineConfig(
         input=InputConfig(
@@ -264,6 +283,13 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
         ),
+        motion_attribution=MotionAttributionConfig(
+            enabled=ma.get("enabled", False),
+            tau_active=float(ma.get("thresholds", {}).get("active", 0.70)),
+            tau_ambiguous=float(ma.get("thresholds", {}).get("ambiguous", 0.55)),
+            tau_swap=float(ma.get("thresholds", {}).get("swap", 0.85)),
+            mode=ma.get("mode", "conservative"),
+        ),
         features=FeaturesConfig(
             enabled=feat.get("enabled", False),
             spatial=SpatialConfig(
@@ -280,14 +306,17 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 compensation=co.get("compensation", False),
             ),
         ),
-        motion_attribution=MotionAttributionConfig(
-            enabled=ma.get("enabled", False),
-        ),
         biomech=BiomechConfig(
             enabled=bio.get("enabled", False),
+            anthropometric_model=bio.get("anthropometric_model", "winter_1990"),
+            include_com_estimation=bool(bio.get("include_com_estimation", True)),
+            include_moment_arm=bool(bio.get("include_moment_arm", True)),
+            output_unit=bio.get("output_unit", "torso_length_ratio"),
         ),
-        scoring=ScoringConfig(
-            enabled=sc.get("enabled", False),
+        biomarker=BiomarkerConfig(
+            enabled=bm.get("enabled", False),
+            emit_provenance=bool(bm.get("emit_provenance", True)),
+            unit=bm.get("unit", "torso_length_ratio"),
         ),
         output=OutputConfig(
             save_processed=out.get("save_processed", False),
@@ -298,7 +327,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     )
 
 
-# ── Pipeline runner ───────────────────────────────────────────────────────────
+# ── 파이프라인 러너 ────────────────────────────────────────────────────────────
 
 def run_pipeline(
     df: pd.DataFrame,
@@ -307,37 +336,36 @@ def run_pipeline(
     ann_df: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
-    Run the movement analysis pipeline on a pose dataframe.
+    분석 단계 러너.
 
-    Steps are executed in order only when their `enabled` flag is True.
-    Not-yet-implemented steps raise NotImplementedError when enabled.
+    enabled 플래그가 True인 단계만 순서대로 실행된다.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Input pose dataframe. Shape: (T, J*4+2) — frame, timestamp, landmark xyz + visibility.
+        입력 포즈 데이터프레임. 형태: (T, J*4+2) — frame, timestamp, landmark xyz + visibility.
     config : PipelineConfig
-        Loaded from YAML via load_pipeline_config().
+        load_pipeline_config()로 로드.
     landmarks : list[str], optional
-        Landmark name list. Defaults to movement.config.LANDMARKS.
+        랜드마크 이름 목록. None이면 movement.config.LANDMARKS 사용.
     ann_df : pd.DataFrame | None, optional
-        Pre-loaded annotation table (output of annotation.load_annotation_csv).
-        None triggers full-sequence fallback when the annotation step is enabled.
+        사전 로드된 annotation 테이블 (annotation.load_annotation_csv 출력).
+        None이면 ② Annotation 단계에서 전체 시퀀스로 폴백.
 
     Returns
     -------
     df : pd.DataFrame
-        Processed dataframe with columns added by each enabled step.
+        각 단계가 추가한 컬럼이 포함된 처리된 데이터프레임.
     report : dict
-        Per-step result dicts, keyed by step name.
+        단계별 결과 dict (단계명을 키로).
     """
     if landmarks is None:
         landmarks = LANDMARKS
 
     report: dict[str, Any] = {}
-    exercise_def = None   # preserved for Step 4 (Appendix A)
+    exercise_def = None
 
-    # Step 1: Validation
+    # ── ① 데이터 검증 (Validation) ───────────────────────────────────────────
     if config.validation.enabled:
         validation_report = run_basic_validation(
             df=df,
@@ -347,15 +375,15 @@ def run_pipeline(
         )
         report["validation"] = validation_report
         if not validation_report["passed"]:
-            print("[WARN] validation: one or more checks failed.")
+            print("[Step ①] 데이터 검증 (Validation): 하나 이상의 항목 실패.")
 
-    # Step 2: Annotation
+    # ── ② Annotation 적용 ────────────────────────────────────────────────────
     if config.annotation.enabled:
         from movement.annotation import apply_annotation
         df, ann_report = apply_annotation(df, ann_df)
         report["annotation"] = ann_report
 
-    # Step 3: Exercise Definition Loading
+    # ── ③ 이동 정의 로딩 (Exercise Definition Loading) ────────────────────────
     if config.exercise_definition.enabled:
         import warnings as _warnings
         from movement.exercise_definition import load_exercise_definition
@@ -367,9 +395,8 @@ def run_pipeline(
                 ex_id = unique_types[0]
             elif len(unique_types) > 1:
                 _warnings.warn(
-                    f"Multiple exercise_type values found in dataframe: {unique_types}. "
-                    "Using the first value. For multi-exercise sessions, load definitions "
-                    "per segment.",
+                    f"[Step ③] 데이터프레임에 복수의 exercise_type 발견: {unique_types}. "
+                    "첫 번째 값 사용. 다중 운동 세션은 구간별 정의 로딩 권장.",
                     stacklevel=2,
                 )
                 ex_id = unique_types[0]
@@ -378,7 +405,7 @@ def run_pipeline(
             exercise_id=ex_id,
             definitions_dir=_resolve_path(config.exercise_definition.definitions_dir),
         )
-        report["exercise_definition"] = {  # noqa: dict kept for report; object in exercise_def
+        report["exercise_definition"] = {
             "exercise_id": exercise_def.exercise_id,
             "display_name": exercise_def.display_name,
             "version": exercise_def.version,
@@ -388,7 +415,7 @@ def run_pipeline(
             "compensation_candidates": exercise_def.compensation_candidates,
         }
 
-    # Step 4: Preprocessing
+    # ── ④ 전처리 (Preprocessing) ─────────────────────────────────────────────
     if config.preprocessing.enabled:
         from movement.preprocessing import preprocess_pose_dataframe
         df, pre_report = preprocess_pose_dataframe(
@@ -399,7 +426,7 @@ def run_pipeline(
         )
         report["preprocessing"] = pre_report
 
-    # Step 5: Normalization
+    # ── ⑤ 정규화 (Normalization) ─────────────────────────────────────────────
     if config.normalization.enabled:
         df, norm_report = normalize_pose_by_hip_torso(
             df=df,
@@ -408,28 +435,110 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
-    # Step 6: Motion Attribution
+    # ── ⑥ 귀속 (Motion Attribution) ──────────────────────────────────────────
     if config.motion_attribution.enabled:
-        raise NotImplementedError(
-            "motion_attribution step is not yet implemented. Set motion_attribution.enabled: false."
+        from movement.motion_attribution import AttributionThresholds, attribute_motion
+        thresholds = AttributionThresholds(
+            active=config.motion_attribution.tau_active,
+            ambiguous=config.motion_attribution.tau_ambiguous,
+            swap=config.motion_attribution.tau_swap,
         )
+        if exercise_def is None:
+            print("[Step ⑥] 귀속 (Motion Attribution): exercise_def 없음 — 건너뜀.")
+        else:
+            df, attr_report = attribute_motion(
+                df=df,
+                exercise_definition=exercise_def,
+                thresholds=thresholds,
+                mode=config.motion_attribution.mode,
+            )
+            report["motion_attribution"] = attr_report.as_dict()
 
-    # Step 7: Features
+    # ── ⑦ 특징 추출 (Feature Extraction) ─────────────────────────────────────
     if config.features.enabled:
-        raise NotImplementedError(
-            "features step is not yet implemented. Set features.enabled: false."
-        )
+        from movement.features.control import compute_compensation, compute_stability
+        from movement.features.spatial import compute_rom, compute_shape, compute_symmetry
+        from movement.features.temporal import compute_tempo, compute_variability
 
-    # Step 8: Biomech
+        feat_records: list[Any] = []
+        cfg_sp = config.features.spatial
+        cfg_te = config.features.temporal
+        cfg_co = config.features.control
+
+        if exercise_def is None:
+            print("[Step ⑦] 특징 추출 (Features): exercise_def 없음 — 건너뜀.")
+        else:
+            if cfg_sp.rom:
+                feat_records += compute_rom(df, exercise_def)
+            if cfg_sp.symmetry:
+                feat_records += compute_symmetry(df, exercise_def)
+            if cfg_sp.shape:
+                feat_records += compute_shape(df, exercise_def)
+            if cfg_te.tempo:
+                feat_records += compute_tempo(df, exercise_def)
+            if cfg_te.variability:
+                feat_records += compute_variability(df, exercise_def)
+            if cfg_co.stability:
+                feat_records += compute_stability(df, exercise_def)
+            if cfg_co.compensation:
+                feat_records += compute_compensation(df, exercise_def)
+
+            report["features"] = [
+                {
+                    "feature_id": r.feature_id,
+                    "rep_id": r.rep_id,
+                    "value": r.value,
+                    "unit": r.unit,
+                    "source_fields": r.source_fields,
+                }
+                for r in feat_records
+            ]
+
+    # ── ⑧ 생체역학적 근사 모델링 (Biomechanical Proxy Modeling) ───────────────
     if config.biomech.enabled:
-        raise NotImplementedError(
-            "biomech step is not yet implemented. Set biomech.enabled: false."
-        )
+        biomech_records: list[Any] = []
 
-    # Step 9: Scoring
-    if config.scoring.enabled:
-        raise NotImplementedError(
-            "scoring step is not yet implemented. Set scoring.enabled: false."
-        )
+        if exercise_def is None:
+            print("[Step ⑧] 생체역학적 근사 (Biomech): exercise_def 없음 — 건너뜀.")
+        else:
+            if config.biomech.include_com_estimation:
+                from movement.biomech.com import compute_com_metrics
+                biomech_records += compute_com_metrics(df, exercise_def)
+            if config.biomech.include_moment_arm:
+                from movement.biomech.moment_arm import compute_moment_arms
+                biomech_records += compute_moment_arms(df, exercise_def)
+
+            report["biomech"] = [
+                {
+                    "metric_id": r.metric_id,
+                    "rep_id": r.rep_id,
+                    "value": r.value,
+                    "unit": r.unit,
+                    "source_fields": r.source_fields,
+                    "note": r.note,
+                }
+                for r in biomech_records
+            ]
+
+    # ── ⑨ 지표화 (Biomarker Derivation) ──────────────────────────────────────
+    if config.biomarker.enabled:
+        from movement.biomarker import from_biomech_record, from_feature_record
+
+        biomarker_records: list[Any] = []
+        def_version = exercise_def.version if exercise_def else "unknown"
+
+        for r in feat_records if config.features.enabled else []:
+            try:
+                biomarker_records.append(from_feature_record(r, def_version))
+            except ValueError:
+                pass
+
+        for r in biomech_records if config.biomech.enabled else []:
+            try:
+                biomarker_records.append(from_biomech_record(r, def_version))
+            except ValueError:
+                pass
+
+        report["biomarker"] = [b.as_dict() for b in biomarker_records]
 
     return df, report
