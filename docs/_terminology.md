@@ -53,7 +53,9 @@ The "control" domain is not abbreviated to "stability" alone.
 | CoM stability (Center of Mass) | Degree to which the estimated whole-body center of mass follows a predictable trajectory with low unpredicted variance during a movement phase. |
 | Left/right symmetry | Similarity of bilateral segment/joint metrics across time and space. Evaluated directly only for `bilateral_symmetric` exercises. |
 | Inter-joint coordination | Degree to which adjacent joints' phase and velocity match biomechanical expectations during multi-joint movement. |
-| Compensatory movement | Non-primary movement produced by segments other than the main working joints, substituting for limited ROM, insufficient strength, or balance loss. |
+| Compensatory movement | Non-primary movement produced by segments other than the main working joints, substituting for limited ROM, insufficient strength, or balance loss. Detected via the compensation rule registry (COMPENSATION_RULES) which maps candidate names to geometric compute functions. |
+| Synthetic-normal baseline | Per-metric (μ, σ) reference statistics computed from a normal-condition synthetic pipeline run and stored in `data/reference/baseline_zscore.json`. Z-scores for the movement quality score are computed relative to this baseline, not against absolute clinical thresholds. |
+| Movement quality score | Per-rep composite score (0–100) computed as a weighted average of domain scores (spatial 40 %, temporal 30 %, control 20 %, biomech 10 %). Each domain score uses Z-score deduction against the synthetic-normal baseline, bounded from below by the dynamic floor derived from the mandatory-ROM ratio. |
 | Center of mass (CoM) | Whole-body center of mass estimated using a statistical anthropometric model (segment mass ratios). Must be estimable in both upright and prone postures. |
 | Moment arm | Perpendicular distance between a joint's rotation axis and the line of action. Used as a simplified estimate of relative load distribution tendency, not absolute torque. |
 | Anthropometric model | Statistical body proportion model for estimating segment length, mass, and joint center position. Used for relative normalized metrics, not individual absolute values. |
@@ -86,7 +88,8 @@ are not used — if an absolute unit appears in an output, it is a bug.
 | Motion attribution | Checks whether the observed active limb per rep matches the exercise-expected side. Adds metadata only; does not modify coordinates. |
 | Feature extraction | Computes spatial, temporal, and control domain quantitative metrics from normalized coordinates and exercise definition. |
 | Biomechanical proxy modeling | Estimates relative joint load distribution tendencies using statistical anthropometry, CoM, and moment arm approximations. |
-| Biomarker derivation | Integrates feature and proxy metrics into interpretable digital biomarkers with `source_fields` provenance. |
+| Biomarker derivation | Integrates feature and proxy metrics into (1) individual `BiomarkerRecord` entries with `source_fields` provenance and (2) per-rep `BiomarkerScoreRecord` composite scores (0–100) computed against a synthetic-normal baseline. |
+| Visibility-based confidence weighting | Per-frame weight scheme for ⑧ biomech proxy modeling. Frame weight = mean visibility of primary-joint landmarks; frames below `minimum_visible_landmark_ratio` receive weight = 0 and are excluded from metric computation. Reduces the influence of depth-estimation noise inherent in monocular vision. |
 | Robustness simulation | Applies ROM restriction, Gaussian noise, occlusion, or velocity spikes to normal movement data to generate synthetic abnormal data for pipeline evaluation. |
 
 ---

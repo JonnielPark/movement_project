@@ -43,21 +43,24 @@ Step activation is controlled by `enabled` flags in `configs/pipeline_default.ya
   optional smoothing (`preprocessing.py`)
 - Motion attribution — per-rep active-side consistency, conservative / auto-correct modes
   (`motion_attribution.py`)
-- Feature extraction — per-rep ROM, left/right symmetry, trajectory shape, tempo,
-  inter-rep variability, CoM stability (`features/`)
-- Pipeline runner — steps ①–⑦ connected (`pipeline.py`)
+- Feature extraction — per-rep ROM, symmetry, shape, tempo, variability, CoM stability,
+  compensation rule engine (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`,
+  `heel_lift`, `pelvis_rotation`) (`features/`)
+- Biomechanical proxy — CoM range/path + knee/hip moment arms, rep-level,
+  visibility-weighted (`biomech/`)
+- Biomarker derivation — individual `BiomarkerRecord` pass-through + per-rep
+  `BiomarkerScoreRecord` (Z-score deduction, dynamic floor, composite domain score),
+  synthetic-normal baseline at `data/reference/baseline_zscore.json` (`biomarker/`)
+- Pipeline runner — steps ①–⑨ connected (`pipeline.py`)
 
 **Partial**
 
-- Biomechanical proxy — CoM trajectory metrics, knee/hip moment arm proxies implemented
-  at sequence level; rep-level iteration and pipeline ⑧ connection pending (`biomech/`)
-- Biomarker derivation — FeatureRecord → BiomarkerRecord conversion done;
-  domain scoring and composite movement quality score pending (`biomarker/`)
+- Visualization — 3D pose animation done; feature / biomarker charts pending (`visualization.py`)
+- Robustness simulation — condition injectors scaffolded; experiment runner pending (`simulation/`)
 
 **Planned**
 
-- Compensation rule engine: `knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, …
-- Domain score (0–100) and composite movement quality score
+- Asymmetric depth, foot rotation, tempo instability compensation rules
 - Robustness simulation runner: ROM restriction, Gaussian noise, occlusion, velocity spikes
 - Visualization: reliability overlay, joint angle time series, rep timeline, biomarker radar
 
@@ -176,7 +179,6 @@ See [docs/01_data_format.md](docs/01_data_format.md) for the full column spec.
 - [06. Normalization](docs/06_normalization.md)
 - [07. Motion Attribution](docs/07_motion_attribution.md)
 - [08. Visualization](docs/08_visualization.md)
-- [Code Revision Plan](docs/code_revision_plan.md)
 
 ---
 

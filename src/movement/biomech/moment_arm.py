@@ -73,18 +73,25 @@ def compute_moment_arms(
     df: pd.DataFrame,
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
+    weights: np.ndarray | None = None,
 ) -> list[BiomechRecord]:
     """Compute moment arms based on main_load_regions in the exercise definition.
 
     Supported joints:
-      knee  → perpendicular distance from CoM projection to knee axis (ankle-knee line), sagittal
-      hip   → perpendicular distance from CoM projection to hip axis (knee-hip line), sagittal
+      knee  → perpendicular distance from CoM to knee axis (ankle-knee line), sagittal
+      hip   → perpendicular distance from CoM to hip axis (knee-hip line), sagittal
+
+    Median of the per-frame distance is returned as a summary statistic; the
+    median is more robust to pose-estimation outliers than the mean.
 
     Parameters
     ----------
     df : pd.DataFrame
     exercise_definition : ExerciseDefinition
     rep_id : int | None
+    weights : np.ndarray | None
+        Per-frame visibility weights. Frames with weight = 0 are excluded
+        before computing the median. None = include all frames.
 
     Returns
     -------
@@ -105,7 +112,37 @@ def compute_moment_arms(
     ]
 
     com_xyz = estimate_com(df)  # (T, 3)
+    T = len(com_xyz)
+
+    # Resolve visibility mask
+    if weights is not None:
+        valid_mask = weights > 0
+        n_excluded = int(np.sum(~valid_mask))
+        n_used = int(np.sum(valid_mask))
+        vis_applied = True
+    else:
+        valid_mask = np.ones(T, dtype=bool)
+        n_excluded = 0
+        n_used = T
+        vis_applied = False
+
     records: list[BiomechRecord] = []
+
+    def _append(metric_id: str, dist: np.ndarray, note: str) -> None:
+        dist_valid = dist[valid_mask] if vis_applied else dist
+        median_dist = float(np.nanmedian(dist_valid))
+        records.append(BiomechRecord(
+            metric_id=metric_id,
+            exercise_id=ex_id,
+            rep_id=rep_id,
+            value=round(median_dist, 4),
+            unit="torso_length_ratio",
+            source_fields=source_fields,
+            note=note,
+            visibility_weight_applied=vis_applied,
+            n_frames_used=n_used,
+            n_frames_excluded_low_visibility=n_excluded,
+        ))
 
     # ── knee moment arm (sagittal plane xz) ──────────────────────────────────
     if any("knee" in r for r in load_regions):
@@ -116,16 +153,11 @@ def compute_moment_arms(
             except KeyError:
                 continue
             dist = _point_to_line_dist_2d(com_xyz, ankle, knee, plane="xz")
-            median_dist = float(np.nanmedian(dist))
-            records.append(BiomechRecord(
-                metric_id=f"biomech.moment_arm.knee.{side}.median",
-                exercise_id=ex_id,
-                rep_id=rep_id,
-                value=round(median_dist, 4),
-                unit="torso_length_ratio",
-                source_fields=source_fields,
-                note=f"Median sagittal perpendicular distance from CoM to {side} knee axis (ankle-knee line)",
-            ))
+            _append(
+                f"biomech.moment_arm.knee.{side}.median",
+                dist,
+                f"Median sagittal perpendicular distance from CoM to {side} knee axis (ankle-knee line)",
+            )
 
     # ── hip moment arm (sagittal plane xz) ───────────────────────────────────
     if any("hip" in r for r in load_regions):
@@ -136,15 +168,10 @@ def compute_moment_arms(
             except KeyError:
                 continue
             dist = _point_to_line_dist_2d(com_xyz, knee, hip, plane="xz")
-            median_dist = float(np.nanmedian(dist))
-            records.append(BiomechRecord(
-                metric_id=f"biomech.moment_arm.hip.{side}.median",
-                exercise_id=ex_id,
-                rep_id=rep_id,
-                value=round(median_dist, 4),
-                unit="torso_length_ratio",
-                source_fields=source_fields,
-                note=f"Median sagittal perpendicular distance from CoM to {side} hip axis (knee-hip line)",
-            ))
+            _append(
+                f"biomech.moment_arm.hip.{side}.median",
+                dist,
+                f"Median sagittal perpendicular distance from CoM to {side} hip axis (knee-hip line)",
+            )
 
     return records
