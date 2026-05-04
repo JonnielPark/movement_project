@@ -1,9 +1,10 @@
 # Movement Project — Pipeline Configuration
 # Step order:
-#   ① validation            ② annotation            ③ exercise_definition
-#   ④ preprocessing         ⑤ normalization         ⑥ motion_attribution
-#   ⑦ features              ⑧ biomech               ⑨ biomarker
-#   ⑩ visualization (called outside the runner)
+#   ①  validation           ②  annotation          ③  exercise_definition
+#   ④  preprocessing        ⑤  normalization        ⑥  phase_segmentation
+#   ⑦  motion_attribution   ⑧  features             ⑨  biomech
+#   ⑩  biomarker            ⑪  visualization (called outside the runner)
+#   ⑫  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
 # Toggle each step with enabled: true / false
 
 input:
@@ -59,7 +60,17 @@ normalization:
   method: hip_torso           # hip center translation + sequence median torso scale
   keep_reference_columns: true  # preserve hip_center, shoulder_center, torso_length columns
 
-# ── ⑥ Motion Attribution ─────────────────────────────────────────────────────
+# ── ⑥ Phase Segmentation ─────────────────────────────────────────────────────
+# Inserts kinematic phase labels (e.g., Descent / Ascent) into the `phase` column
+# for each annotated rep. Auto-skips when the exercise definition has no
+# `phase_segmentation` block (e.g., generic.yaml) or when no rep frames are present.
+phase_segmentation:
+  enabled: false              # set to true after annotation is enabled
+  fps_default: 30.0           # used when df.attrs["fps"] is absent
+  multi_inflection_policy: global_extremum   # global_extremum | first | reject_rep
+  minimum_rep_length_frames: 8
+
+# ── ⑦ Motion Attribution ─────────────────────────────────────────────────────
 motion_attribution:
   enabled: false
   thresholds:
@@ -68,19 +79,30 @@ motion_attribution:
     swap: 0.85                # minimum confidence to perform swap in auto_correct mode
   mode: conservative          # conservative | auto_correct
 
-# ── ⑦ Feature Extraction ─────────────────────────────────────────────────────
+# ── ⑧ Feature Extraction ─────────────────────────────────────────────────────
+# extract_rep_features() runs all spatial / temporal / control features.
+# When phase_segmentation is enabled and the phase column is populated,
+# features in PHASE_AWARE_FEATURE_FAMILIES are also emitted per (rep_id, phase).
 features:
-  enabled: false    # extract_rep_features() runs all spatial / temporal / control features
+  enabled: false
+  spatial:    {rom: true, symmetry: true, shape: true}
+  temporal:   {tempo: true, variability: true}
+  control:    {stability: true, compensation: true}
+  compensation:
+    enabled: true
+    registry: COMPENSATION_RULES   # dispatched via features/compensation.py
 
-# ── ⑧ Biomechanical Proxy Modeling ───────────────────────────────────────────
+# ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────────
 biomech:
   enabled: false
   anthropometric_model: winter_1990   # segment mass ratio reference (Winter 1990)
   include_com_estimation: true
   include_moment_arm: true
   output_unit: torso_length_ratio     # absolute units (N·m, kg) are not used
+  use_visibility_weight: true
+  minimum_visible_landmark_ratio: 0.6
 
-# ── ⑨ Biomarker Derivation ───────────────────────────────────────────────────
+# ── ⑩ Biomarker Derivation ───────────────────────────────────────────────────
 biomarker:
   enabled: false
   emit_provenance: true       # attach source_fields to all biomarkers
@@ -93,14 +115,18 @@ output:
   save_report: false
   report_path: "data/processed/report.json"
 
-# ── (External) Robustness Simulation ─────────────────────────────────────────
-# Called separately via the simulation/ package, outside pipeline steps ①–⑨.
+# ── ⑫ Robustness Simulation ──────────────────────────────────────────────────
+# Called separately via scripts/run_robustness_experiment.py, outside ①–⑩.
+# Mirrors the §D-1 experimental condition matrix from docs/code_revision_plan.md.
 simulation:
   enabled: false
+  viewpoint_variation:
+    enabled: false
+    deviations_deg: [-30, -15, 15, 30]
   rom_restriction:
     enabled: false
     target_joint: knee
-    restriction_levels_deg: [10, 20, 30]
+    levels_deg: [30, 60, 90]
   visual_noise:
     enabled: false
     sigma_torso_ratio: [0.005, 0.01, 0.02]
@@ -108,3 +134,6 @@ simulation:
     enabled: false
     target_landmarks: [left_ankle, right_ankle]
     duration_frames: [5, 15, 30]
+  velocity_spike:
+    enabled: false
+    magnitude_torso_ratio: [0.2, 0.5, 1.0]

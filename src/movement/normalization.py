@@ -13,7 +13,7 @@ Raw coordinates are preserved. Normalized coordinates are added as new columns:
     <landmark>_norm_y
     <landmark>_norm_z
 
-Pipeline position: after ④ preprocessing, before ⑥ motion attribution.
+Pipeline position: after ④ preprocessing, before ⑥ phase segmentation.
 """
 
 from typing import Any, Dict, List, Tuple

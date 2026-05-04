@@ -1,7 +1,7 @@
 exercise_id: pike_pushup
 display_name: Pike Push-up
 description: Inverted closed-chain upper-body push movement; head descends toward the floor between the hands while the hips remain piked.
-version: 0.1.0
+version: 0.2.0
 tags:
   - bodyweight
   - upper_body
@@ -39,10 +39,27 @@ support:
 
 phase_model:
   type: resistance_phase
+  # kinetic abstraction; for kinematic phase boundaries see phase_segmentation
   expected_ratio:
     eccentric: 0.45
     isometric: 0.10
     concentric: 0.45
+
+phase_segmentation:
+  # Head (nose) descends during Descent and rises during Ascent in pike push-up
+  reference_landmark: nose           # landmark idx 0; fallback to shoulder_center if absent
+  reference_axis: vertical           # norm_z — nose descends to the floor in Descent
+  phase_sequence: [Descent, Ascent]
+  split_logic: local_minimum         # lowest nose z = bottom of the push-up
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  bottom_hold:
+    enabled: true
+    half_window_frames: 3
+  minimum_rep_length_frames: 8
+  multi_inflection_policy: global_extremum
 
 landmarks:
   model: mediapipe_pose_33

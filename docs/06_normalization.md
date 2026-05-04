@@ -4,7 +4,7 @@ Pipeline step ⑤. Converts raw pose coordinates to a body-relative coordinate s
 removing the effects of camera position, subject position, and body size.
 
 Does not estimate absolute forces or absolute body dimensions.
-Provides a stable coordinate base for ⑦ feature extraction and ⑧ biomechanical proxy modeling.
+Provides a stable coordinate base for ⑧ feature extraction and ⑨ biomechanical proxy modeling.
 
 ---
 
@@ -17,8 +17,9 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization          ← this step
-→ ⑥ Motion Attribution
-→ ⑦ Feature Extraction
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution
+→ ⑧ Feature Extraction
 ```
 
 Runs after ④ preprocessing because the scale reference (median torso length) is more
@@ -128,10 +129,10 @@ Report fields:
 
 - **④ Preprocessing**: unreliable landmarks (low visibility, swap-corrected) should be
   resolved or marked before normalization to prevent scale contamination.
-- **⑥ Motion Attribution**: uses normalized coordinates; body-size and camera-distance
+- **⑦ Motion Attribution**: uses normalized coordinates; body-size and camera-distance
   effects are already removed, making per-rep motion energy comparison more consistent.
-- **⑧ Biomech Proxy**: uses normalized coordinates as input for CoM and moment arm estimation.
-  This step provides the coordinate system; ⑧ adds the biomechanical computation.
+- **⑨ Biomech Proxy**: uses normalized coordinates as input for CoM and moment arm estimation.
+  This step provides the coordinate system; ⑨ adds the biomechanical computation.
 
 ## 9. Planned Extensions
 

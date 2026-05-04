@@ -1,5 +1,5 @@
 """
-⑨ Biomarker Scoring — Movement Quality Composite Score
+⑩ Biomarker Scoring — Movement Quality Composite Score
 
 Z-score deduction model anchored to a synthetic-normal baseline stored in
 data/reference/baseline_zscore.json. Scores are relative to the baseline
@@ -343,7 +343,7 @@ def derive_biomarkers(
     *,
     baseline_path: Path | str | None = None,
 ) -> tuple[list[Any], list[BiomarkerScoreRecord]]:
-    """Main entry point for ⑨ Biomarker Derivation.
+    """Main entry point for ⑩ Biomarker Derivation.
 
     Converts FeatureRecord and BiomechRecord into:
     1. BiomarkerRecord list — individual metrics with provenance (pass-through).

@@ -43,24 +43,29 @@ Input
     Exercise YAML      exercise definition
 
 Steps
-    ① Validation           structural integrity check — does not modify data
-    ② Annotation           merge segment / rep metadata from annotation file
-    ③ Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
-    ④ Preprocessing        reliability detection, swap correction, interpolation, smoothing
-    ⑤ Normalization        hip-center translation + median torso-length scale
-    ⑥ Motion Attribution   per-rep active-side consistency check
-    ⑦ Feature Extraction   spatial / temporal / control features
-    ⑧ Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
-    ⑨ Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
-    ⑩ Visualization        called outside the ①–⑨ runner; diagnostic and result charts
+    ①  Validation           structural integrity check — does not modify data
+    ②  Annotation           merge segment / rep metadata from annotation file
+    ③  Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
+    ④  Preprocessing        reliability detection, swap correction, interpolation, smoothing
+    ⑤  Normalization        hip-center translation + median torso-length scale
+    ⑥  Phase Segmentation  semi-automatic intra-rep kinematic phase splitting (Descent/Ascent/…)
+    ⑦  Motion Attribution   per-rep active-side consistency check
+    ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level)
+    ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
+    ⑩  Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
+    ⑪  Visualization        called outside the ①–⑩ runner; diagnostic and result charts
+    ⑫  Simulation           robustness simulation, called outside the runner
 
 Output
     Per-step dataframes (columns accumulate)
     Per-step report dicts
-    Feature table — FeatureRecord list with provenance (source_fields)
+    phase column        — 'Descent' | 'Ascent' | 'Bottom_Hold' | 'Lift' | 'Tap' | 'Return' | NA
+    Feature table       — FeatureRecord list, rep-level (phase=None) + phase-level (phase=str)
+    Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
+    Phase segmentation report — PhaseSegmentationReport list, one per rep
     Visualization figures
 ```
 
@@ -74,15 +79,16 @@ which exercise YAML to load. All steps from ③ onward reference the same defini
 | Step | Does | Does NOT |
 |---|---|---|
 | ① Validation | integrity diagnostics | modify data |
-| ② Annotation | add frame-level metadata columns | modify coordinates |
+| ② Annotation | add frame-level metadata columns; pre-fills `phase` as NA | modify coordinates |
 | ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
 | ④ Preprocessing | correct data quality issues | alter movement quality patterns |
 | ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
-| ⑥ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
-| ⑦ Feature Extraction | compute spatial / temporal / control features | correct labels |
-| ⑧ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
-| ⑨ Biomarker Derivation | produce BiomarkerRecord + BiomarkerScoreRecord with provenance | emit records without source_fields |
-| ⑩ Visualization | produce diagnostic and result figures | modify data |
+| ⑥ Phase Segmentation | populate `phase` column for rep frames (kinematic labels) | overwrite existing non-NA phase values; modify coordinates |
+| ⑦ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
+| ⑧ Feature Extraction | compute rep-level and phase-level spatial / temporal / control features | correct labels |
+| ⑨ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
+| ⑩ Biomarker Derivation | produce BiomarkerRecord + BiomarkerScoreRecord with provenance | emit records without source_fields |
+| ⑪ Visualization | produce diagnostic and result figures | modify data |
 
 ---
 
@@ -124,7 +130,7 @@ Key annotation columns that drive downstream steps:
 ```text
 exercise_type      identifies which exercise YAML to load (③)
 pattern            bilateral | alternating
-starting_side      first active side in alternating exercises (⑥)
+starting_side      first active side in alternating exercises (⑦)
 ```
 
 See [03_annotation_and_segmentation.md](03_annotation_and_segmentation.md).
@@ -156,27 +162,31 @@ See [06_normalization.md](06_normalization.md).
   [done]  Coordinate normalization, annotation
   [done]  Exercise definition schema, YAML loader, generic fallback
   [done]  Pipeline runner + preprocessing
-  [done]  Motion attribution module (⑥)
+  [done]  Motion attribution module (⑦)
   [done]  Module scaffolding for features / biomech / biomarker / simulation
 
-2026.06 – 2026.09  Feature extraction (⑦)
+2026.06 – 2026.09  Feature extraction (⑧)
   [done]  compute_rom() connected to YAML angle_definitions (points + vertex index format)
   [done]  compute_symmetry() — left/right ROM symmetry index per rep
   [done]  compute_shape() — primary joint arc length per rep
   [done]  extract_rep_features() — per-rep spatial / temporal / control feature extraction
   [done]  features_to_dataframe() — FeatureRecord list → DataFrame export
-  [done]  pipeline ⑦ connected — extract_rep_features() wired into run_pipeline()
+  [done]  pipeline ⑧ connected — extract_rep_features() wired into run_pipeline()
   [done]  Compensation rule engine — COMPENSATION_RULES registry (knee_valgus, knee_varus, lateral_pelvic_shift, excessive_trunk_flexion, heel_lift, pelvis_rotation)
   Visualization: reliability overlay, joint angle time series, step result charts
 
-2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑨)
+2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑨–⑩)
   [done]  CoM trajectory metrics — rep-level (range_x, range_z, path_length) + visibility weighting
   [done]  Moment arm proxy — knee / hip sagittal plane, rep-level + visibility weighting
-  [done]  extract_rep_biomech() orchestrator wired into pipeline ⑧
+  [done]  extract_rep_biomech() orchestrator wired into pipeline ⑨
   [done]  Biomarker record conversion (FeatureRecord / BiomechRecord → BiomarkerRecord)
   [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, composite domain score (0–100)
-  [done]  derive_biomarkers() entry point wired into pipeline ⑨
+  [done]  derive_biomarkers() entry point wired into pipeline ⑩
   [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
+  [done]  Phase segmentation (⑥) — segment_phases() with SG smoothing + find_peaks, wired into pipeline
+  [done]  Exercise YAMLs updated with phase_segmentation blocks (v0.2.0); PhaseSegmentationSpec parsed
+  [done]  FeatureRecord.phase field; extract_rep_features() emits rep-level + phase-level records
+  [done]  summarize_phase_to_rep() hierarchical aggregator (Descent/Ascent ROM ratio)
 
 2027.02 – 2027.05  Robustness simulation and evaluation
   [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike

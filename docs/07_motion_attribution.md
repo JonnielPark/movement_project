@@ -1,6 +1,6 @@
 # 07. Motion Attribution
 
-Pipeline step ⑥. Checks whether the limb that moved most in each rep matches the
+Pipeline step ⑦. Checks whether the limb that moved most in each rep matches the
 expected active side (from annotation `pattern` / `starting_side`).
 
 Does not modify coordinates. Adds per-rep metadata columns only.
@@ -16,8 +16,9 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Motion Attribution     ← this step
-→ ⑦ Feature Extraction
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution     ← this step
+→ ⑧ Feature Extraction
 ```
 
 Required inputs:
@@ -186,12 +187,12 @@ motion_attribution:
 It cannot reliably detect rep-level label mismatches (e.g., active limb occluded for
 the entire rep, causing the stationary side to appear as the mover).
 
-⑥ motion attribution operates on rep windows using rep boundaries and exercise context,
+⑦ motion attribution operates on rep windows using rep boundaries and exercise context,
 catching higher-level consistency issues that ④ misses.
 
-## 11. Relationship to ⑦ Feature Extraction
+## 11. Relationship to ⑧ Feature Extraction
 
-⑦ uses the attribution metadata to assign features to the correct side:
+⑧ uses the attribution metadata to assign features to the correct side:
 
 ```text
 attribution_consistent == True

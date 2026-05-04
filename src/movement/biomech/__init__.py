@@ -1,5 +1,5 @@
 """
-⑧ Biomechanical Proxy Modeling
+⑨ Biomechanical Proxy Modeling
 
 Applies simplified biomechanical rules to produce relative proxy metrics
 from normalized pose data.

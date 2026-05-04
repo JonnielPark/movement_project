@@ -12,16 +12,17 @@ Repository: <https://github.com/JonnielPark/movement_project>
 ```text
 Pose CSV + optional annotation file + exercise definition YAML
 
-→ ① Validation           structural integrity check
-→ ② Annotation           frame-level segment metadata
-→ ③ Exercise Definition  biomechanical property object loading
-→ ④ Preprocessing        monocular data quality correction
-→ ⑤ Normalization        body-relative coordinate normalization
-→ ⑥ Motion Attribution   per-rep active-side consistency
-→ ⑦ Feature Extraction   spatial / temporal / control features
-→ ⑧ Biomech Proxy        CoM, moment arms, anthropometry
-→ ⑨ Biomarker Derivation interpretable digital biomarkers with provenance
-→ ⑩ Visualization        per-step visualization and reporting
+→ ①  Validation           structural integrity check
+→ ②  Annotation           frame-level segment metadata (phase column reserved)
+→ ③  Exercise Definition  biomechanical property object loading
+→ ④  Preprocessing        monocular data quality correction
+→ ⑤  Normalization        body-relative coordinate normalization
+→ ⑥  Phase Segmentation  semi-automatic intra-rep kinematic phase splitting
+→ ⑦  Motion Attribution   per-rep active-side consistency
+→ ⑧  Feature Extraction   spatial / temporal / control features (rep + phase level)
+→ ⑨  Biomech Proxy        CoM, moment arms, anthropometry
+→ ⑩  Biomarker Derivation interpretable digital biomarkers with provenance
+→ ⑪  Visualization        per-step visualization and reporting
 ```
 
 Step activation is controlled by `enabled` flags in `configs/pipeline_default.yaml`.
@@ -36,33 +37,35 @@ Step activation is controlled by `enabled` flags in `configs/pipeline_default.ya
 - Data validation — structural integrity checks (`validation.py`)
 - 3D pose animation — Plotly, raw / normalized (`visualization.py`)
 - Coordinate normalization — hip center translation + sequence median torso scale (`normalization.py`)
-- Annotation — frame-level metadata merge (`annotation.py`)
-- Exercise definition — YAML schema, loader, validator, generic fallback (`exercise_definition.py`)
+- Annotation — frame-level metadata merge; `phase` column reserved for ⑥ (`annotation.py`)
+- Exercise definition — YAML schema, loader, validator, generic fallback; `PhaseSegmentationSpec` for ⑥ (`exercise_definition.py`)
 - Preprocessing — visibility gating, segment length consistency, joint angle bounds,
   velocity outlier detection, L/R swap detection and correction, short-gap interpolation,
   optional smoothing (`preprocessing.py`)
+- **Phase segmentation ⑥** — SG-smoothed inflection detection, Descent / Ascent / Bottom_Hold labeling,
+  multi-inflection policy; all 4 exercise YAMLs updated to v0.2.0 (`segmentation.py`)
 - Motion attribution — per-rep active-side consistency, conservative / auto-correct modes
   (`motion_attribution.py`)
-- Feature extraction — per-rep ROM, symmetry, shape, tempo, variability, CoM stability,
+- Feature extraction — rep-level + **phase-level** ROM, symmetry, shape, tempo, variability, CoM stability,
   compensation rule engine (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`,
-  `heel_lift`, `pelvis_rotation`) (`features/`)
+  `heel_lift`, `pelvis_rotation`); `summarize_phase_to_rep()` hierarchical aggregator (`features/`)
 - Biomechanical proxy — CoM range/path + knee/hip moment arms, rep-level,
   visibility-weighted (`biomech/`)
 - Biomarker derivation — individual `BiomarkerRecord` pass-through + per-rep
   `BiomarkerScoreRecord` (Z-score deduction, dynamic floor, composite domain score),
   synthetic-normal baseline at `data/reference/baseline_zscore.json` (`biomarker/`)
-- Pipeline runner — steps ①–⑨ connected (`pipeline.py`)
+- Pipeline runner — steps ①–⑩ all connected (`pipeline.py`)
 
 **Partial**
 
-- Visualization — 3D pose animation done; feature / biomarker charts pending (`visualization.py`)
+- Visualization — 3D pose animation done; biomarker / phase-overlay charts pending (`visualization.py`)
 - Robustness simulation — condition injectors scaffolded; experiment runner pending (`simulation/`)
 
 **Planned**
 
-- Asymmetric depth, foot rotation, tempo instability compensation rules
-- Robustness simulation runner: ROM restriction, Gaussian noise, occlusion, velocity spikes
-- Visualization: reliability overlay, joint angle time series, rep timeline, biomarker radar
+- Robustness experiment runner: full condition matrix (viewpoint, ROM restriction, noise, occlusion, velocity spike)
+- Visualization: biomech overlay, attribution heatmap with phase bands, biomarker radar, phase trajectory plot
+- Notebooks and unit tests for ⑥, compensation rules, biomech, scoring, simulation, visualization
 
 ---
 

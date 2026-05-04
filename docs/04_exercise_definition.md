@@ -15,10 +15,11 @@ Pose CSV + annotation + exercise YAML
 → ③ Exercise Definition           ← this step
 → ④ Preprocessing                 (reads laterality, landmarks, quality_rules)
 → ⑤ Normalization
-→ ⑥ Motion Attribution            (reads laterality, primary_joints)
-→ ⑦ Feature Extraction            (reads feature_domains, joint_actions)
-→ ⑧ Biomech Proxy                 (reads biomechanical_focus)
-→ ⑨ Biomarker Derivation          (reads compensation_candidates)
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution            (reads laterality, primary_joints)
+→ ⑧ Feature Extraction            (reads feature_domains, joint_actions)
+→ ⑨ Biomech Proxy                 (reads biomechanical_focus)
+→ ⑩ Biomarker Derivation          (reads compensation_candidates)
 ```
 
 Exercise definitions describe *what* the movement means.
@@ -29,7 +30,7 @@ Annotation describes *where* the movement happened.
 Exercise-specific behavior is expressed as YAML data, not code branches.
 Adding a new exercise = writing one YAML file in `data/exercise_definitions/`.
 
-Every biomarker produced by ⑦–⑨ must reference `source_fields` pointing to the
+Every biomarker produced by ⑧–⑩ must reference `source_fields` pointing to the
 definition fields that drove its computation.
 
 ## 3. Available Definitions
@@ -112,7 +113,7 @@ classification:
 
 `laterality` controls:
 - ④ preprocessing: whether to run L/R swap detection
-- ⑥ motion attribution: whether to run per-rep active-side check (`bilateral_symmetric` → skipped)
+- ⑦ motion attribution: whether to run per-rep active-side check (`bilateral_symmetric` → skipped)
 
 ### support
 
@@ -211,7 +212,7 @@ compensation_candidates:
   - lateral_pelvic_shift
 ```
 
-Only compensation movements listed here are produced as biomarkers by ⑨.
+Only compensation movements listed here are produced as biomarkers by ⑩.
 
 Full vocabulary:
 
@@ -295,11 +296,11 @@ quality_rules:
   allow_partial_feature_output: true
 ```
 
-Read directly by ④ preprocessing and ⑦ feature extraction.
+Read directly by ④ preprocessing and ⑧ feature extraction.
 
 ## 7. Provenance Convention
 
-Every biomarker produced by ⑦–⑨ includes `source_fields` pointing to the definition fields
+Every biomarker produced by ⑧–⑩ includes `source_fields` pointing to the definition fields
 that drove the computation. Biomarkers without `source_fields` are not produced (raises
 `ValueError` in `BiomarkerRecord`).
 
