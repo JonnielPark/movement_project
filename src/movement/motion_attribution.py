@@ -1,19 +1,19 @@
 """
-⑥ 귀속 (Motion Attribution)
+⑥ Motion Attribution
 
-반복(rep) 단위로 관측된 motion energy와 기대 활성 측(annotation의 pattern / starting_side)을
-비교해 라벨 일관성을 표시한다.
+Compares per-rep observed motion energy against the expected active side
+(from annotation pattern / starting_side) and flags label consistency.
 
-좌표를 수정하지 않는다. 반복 단위 메타데이터 컬럼만 추가한다.
+Does not modify coordinates. Adds per-rep metadata columns only.
 
-적용 조건 (laterality 기반):
-  bilateral_symmetric  → 본 단계를 건너뛴다 (활성 측 개념이 없음)
-  alternating          → 반복별 귀속 수행
-  unilateral_*         → 선언된 측이 기대 활성 측
+Activation by laterality:
+    bilateral_symmetric  → skipped (no active-side concept)
+    alternating          → per-rep attribution
+    unilateral_*         → declared side is the expected active side
 
-Pipeline position: ⑤ 정규화 후, ⑦ 특징 추출 전.
+Pipeline position: after ⑤ normalization, before ⑦ feature extraction.
 Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
-Column convention: <landmark>_norm_x/y/z (정규화 좌표 사용).
+Column convention: <landmark>_norm_x/y/z (normalized coordinates).
 """
 from __future__ import annotations
 
@@ -235,29 +235,29 @@ def attribute_motion(
     custom_landmark_pairs: list[tuple[str, str]] | None = None,
 ) -> tuple[pd.DataFrame, AttributionReport]:
     """
-    ⑥ 귀속 (Motion Attribution)
+    ⑥ Motion Attribution
 
-    반복 단위로 motion energy를 계산해 활성 측 일관성을 표시한다.
+    Computes per-rep motion energy and flags active-side label consistency.
 
     Parameters
     ----------
     df : pd.DataFrame
-        ⑤ 정규화 후 데이터프레임. annotation 컬럼(segment_type, rep_id, pattern,
-        starting_side)이 존재해야 반복 경계를 읽을 수 있다.
+        Normalized dataframe from ⑤. Annotation columns (segment_type, rep_id,
+        pattern, starting_side) must be present to read rep boundaries.
     exercise_definition : ExerciseDefinition
-        ③ 운동 정의 로딩에서 반환된 객체.
+        Object returned by ③ exercise definition loading.
     thresholds : AttributionThresholds, optional
-        τ 임계값. None이면 기본값 사용.
+        τ thresholds. None uses defaults.
     mode : 'conservative' | 'auto_correct'
-        conservative  → flag만 사용, 라벨 변경 없음
-        auto_correct  → confidence > τ_swap이면 반복 윈도우 라벨 교체
+        conservative  → flag only; no label modification
+        auto_correct  → swap L/R labels when confidence > τ_swap
     custom_landmark_pairs : list[tuple[str,str]], optional
-        운동별 paired landmark 목록 override.
+        Override per-exercise paired landmark list.
 
     Returns
     -------
     df : pd.DataFrame
-        귀속 컬럼 추가된 데이터프레임.
+        Dataframe with attribution columns added.
     report : AttributionReport
     """
     if thresholds is None:
@@ -269,30 +269,30 @@ def attribute_motion(
     laterality: str = exercise_definition.classification.get("laterality", "") or ""
     report.laterality = laterality
 
-    # ── 건너뜀 조건 ──────────────────────────────────────────────────────────
+    # ── Skip conditions ───────────────────────────────────────────────────────
     if laterality == "bilateral_symmetric":
         report.skipped = True
-        report.skip_reason = "laterality = bilateral_symmetric; 활성 측 개념 없음"
+        report.skip_reason = "laterality = bilateral_symmetric; no active-side concept"
         for col in _ATTR_COLS:
             df[col] = None
         return df, report
 
     if laterality not in _APPLICABLE_LATERALITIES:
         report.skipped = True
-        report.skip_reason = f"laterality = '{laterality}'; 귀속 적용 불가"
+        report.skip_reason = f"laterality = '{laterality}'; attribution not applicable"
         for col in _ATTR_COLS:
             df[col] = None
         return df, report
 
-    # ── annotation 컬럼 존재 확인 ─────────────────────────────────────────────
+    # ── Check annotation columns ──────────────────────────────────────────────
     if "segment_type" not in df.columns or "rep_id" not in df.columns:
         report.skipped = True
-        report.skip_reason = "annotation 컬럼(segment_type, rep_id) 없음"
+        report.skip_reason = "annotation columns (segment_type, rep_id) absent"
         for col in _ATTR_COLS:
             df[col] = None
         return df, report
 
-    # ── 공통 맥락 ─────────────────────────────────────────────────────────────
+    # ── Common context ────────────────────────────────────────────────────────
     pattern = df["pattern"].dropna().iloc[0] if "pattern" in df.columns and not df["pattern"].dropna().empty else None
     starting_side = df["starting_side"].dropna().iloc[0] if "starting_side" in df.columns and not df["starting_side"].dropna().empty else None
     exercise_type = df["exercise_type"].dropna().iloc[0] if "exercise_type" in df.columns and not df["exercise_type"].dropna().empty else None
@@ -309,11 +309,11 @@ def attribute_motion(
     pairs = _select_landmark_pairs(exercise_definition, custom_landmark_pairs)
     report.landmark_pairs_used = pairs
 
-    # ── 출력 컬럼 초기화 ─────────────────────────────────────────────────────
+    # ── Initialize output columns ─────────────────────────────────────────────
     for col in _ATTR_COLS:
         df[col] = None
 
-    # ── 반복 단위 처리 ────────────────────────────────────────────────────────
+    # ── Per-rep processing ────────────────────────────────────────────────────
     rep_mask = df["segment_type"] == "rep"
     rep_ids = df.loc[rep_mask, "rep_id"].dropna().unique()
     rep_ids_sorted = sorted(rep_ids)
@@ -327,17 +327,17 @@ def attribute_motion(
 
         detected, confidence = _detect_active(df_rep, pairs, thresholds)
 
-        # 기대 활성 측
+        # expected active side
         use_starting = starting_side if starting_side else inferred_starting_side
         expected = _expected_active(rep_num_one, pattern, use_starting, laterality)
 
-        # 첫 반복에서 starting_side 추론 (alternating + unknown)
+        # infer starting_side from first rep when alternating + unknown
         if rep_num_zero == 0 and pattern == "alternating" and use_starting is None:
             if detected in ("left", "right"):
                 inferred_starting_side = detected
-            expected = detected  # 첫 반복은 자기 자신을 기대로 설정
+            expected = detected  # first rep: treat detected side as expected
 
-        # 일관성 판정
+        # consistency judgement
         if detected in ("ambiguous", "bilateral"):
             consistent = None
             action = "flag"
@@ -356,16 +356,16 @@ def attribute_motion(
             if mode == "auto_correct" and confidence > thresholds.swap:
                 action = "swap"
                 report.num_swapped += 1
-                # 라벨 교체: 해당 반복 프레임에서 left↔right 컬럼 rename
-                # (좌표값은 변경하지 않고 컬럼 이름만 교체)
-                # 복잡한 in-place rename은 향후 구현. 현재는 flag와 동일.
+                # label swap: rename left↔right columns for this rep's frames
+                # (coordinate values unchanged; column names only)
+                # in-place rename not yet implemented; treat as flag for now
                 action = "flag"
                 report.num_flagged += 1
             else:
                 action = "flag"
                 report.num_flagged += 1
 
-        # 컬럼 기록
+        # write columns
         df.loc[row_mask, "detected_active_limb"] = detected
         df.loc[row_mask, "expected_active_limb"] = expected
         df.loc[row_mask, "attribution_consistent"] = consistent

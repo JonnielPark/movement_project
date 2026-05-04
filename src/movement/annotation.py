@@ -1,20 +1,20 @@
 """
-② Annotation 적용 (Annotation)
+② Annotation
 
-사전 레이블된 구간 메타데이터를 포즈 데이터프레임에 병합한다.
-자동 분할(rep detection)은 수행하지 않으며, 입력 데이터를 수정하지 않는다.
+Merges pre-labelled segment metadata into the pose dataframe.
+Does not perform automatic rep detection or segmentation.
+Does not modify coordinates.
 
-Annotation 계층:
-    recording → set → rep → phase
+Annotation hierarchy:  recording → set → rep → phase
 
-포즈 데이터프레임에 추가되는 출력 컬럼:
+Output columns added to the pose dataframe:
     use_for_analysis : bool
     segment_type     : str    (full_sequence | baseline | idle | rep | rest | transition | excluded)
     set_id           : Int64  (nullable)
     rep_id           : Int64  (nullable)
     phase            : object (nullable, reserved for future use)
 
-Pipeline position: ① validation 이후, ③ exercise_definition 로딩 이전.
+Pipeline position: after ① validation, before ③ exercise definition loading.
 """
 from __future__ import annotations
 

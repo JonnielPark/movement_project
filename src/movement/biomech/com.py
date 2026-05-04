@@ -1,10 +1,10 @@
 """
-CoM(신체 중심) 추정 — 분절 질량 비율 × 분절 중심 위치
+CoM (Center of Mass) estimation — segment mass ratio × segment center position.
 
-입력: 정규화 좌표 (torso_length_ratio 기준).
-출력: 전신 CoM 위치 (T, 3) 및 BiomechRecord 목록.
+Input  : normalized coordinates (torso_length_ratio units).
+Output : whole-body CoM position (T, 3) and a list of BiomechRecord.
 
-절대 단위(kg, m) 사용 불가. 모든 거리는 torso_length_ratio.
+Absolute units (kg, m) are not used. All distances are in torso_length_ratio.
 """
 from __future__ import annotations
 
@@ -35,19 +35,19 @@ def estimate_com(
     df: pd.DataFrame,
     segments: list[str] | None = None,
 ) -> np.ndarray:
-    """전신 CoM 위치를 분절 질량 가중 평균으로 추정한다.
+    """Estimate whole-body CoM position as a segment-mass-weighted average.
 
     Parameters
     ----------
     df : pd.DataFrame
-        정규화 좌표 포함 데이터프레임.
+        Dataframe with normalized coordinates.
     segments : list[str], optional
-        포함할 분절 목록. None이면 SEGMENT_ENDPOINTS 전체 사용.
+        Segments to include. None uses all entries in SEGMENT_ENDPOINTS.
 
     Returns
     -------
     np.ndarray, shape (T, 3)
-        프레임별 전신 CoM 위치 (torso_length_ratio 단위).
+        Per-frame whole-body CoM position in torso_length_ratio units.
     """
     if segments is None:
         segments = list(SEGMENT_ENDPOINTS.keys())
@@ -73,7 +73,7 @@ def estimate_com(
         except KeyError:
             continue
 
-        # 분절 중심 위치 = 근위단 + ratio × (원위단 - 근위단)
+        # segment center = proximal + ratio × (distal - proximal)
         seg_com = p_prox + com_ratio * (p_dist - p_prox)
         com_numerator += mass_ratio * seg_com
         total_mass += mass_ratio
@@ -89,12 +89,12 @@ def compute_com_metrics(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[BiomechRecord]:
-    """CoM 궤적 통계를 BiomechRecord 목록으로 반환한다.
+    """Return CoM trajectory statistics as a list of BiomechRecord.
 
-    산출 지표:
-      - com_range_x   : 수평 이동 범위 (좌우, torso_length_ratio)
-      - com_range_z   : 수직 이동 범위 (높이, torso_length_ratio)
-      - com_path_length : CoM 궤적 전체 호 길이 (torso_length_ratio)
+    Metrics produced:
+      - com_range_x     : lateral displacement range (torso_length_ratio)
+      - com_range_z     : vertical displacement range (torso_length_ratio)
+      - com_path_length : total arc length of CoM trajectory (torso_length_ratio)
     """
     ex_id = exercise_definition.exercise_id
     com_xyz = estimate_com(df)  # (T, 3)
@@ -109,7 +109,7 @@ def compute_com_metrics(
 
     records: list[BiomechRecord] = []
 
-    # 수평 범위 (x)
+    # horizontal range (x)
     x_vals = com_xyz[:, 0]
     valid_x = x_vals[~np.isnan(x_vals)]
     if len(valid_x) > 0:
@@ -122,7 +122,7 @@ def compute_com_metrics(
             source_fields=source_fields,
         ))
 
-    # 수직 범위 (z = height)
+    # vertical range (z = height)
     z_vals = com_xyz[:, 2]
     valid_z = z_vals[~np.isnan(z_vals)]
     if len(valid_z) > 0:
@@ -135,7 +135,7 @@ def compute_com_metrics(
             source_fields=source_fields,
         ))
 
-    # 궤적 호 길이
+    # trajectory arc length
     path = float(np.nansum(np.linalg.norm(np.diff(com_xyz, axis=0), axis=1)))
     records.append(BiomechRecord(
         metric_id="biomech.com.path_length",

@@ -1,234 +1,171 @@
-# 00. 개요 (Overview)
+# 00. Overview
 
-본 문서는 [`README.md`](../README.md)와 [`docs/_terminology.md`](_terminology.md)에서 정의한 연구 목표·용어를 분석 단계 관점에서 다시 풀어 쓴 것이다. 코드 구조 설명이 아니라, **연구계획서의 분석 체계와 본 프레임워크가 어떻게 대응되는지**에 초점을 둔다.
-
-> 용어는 `_terminology.md`의 단일 정의를 따른다. 새 용어가 필요하면 그 문서에 먼저 추가한다.
+This document describes the overall design of the analysis pipeline.
+For terminology definitions see [`docs/_terminology.md`](_terminology.md).
 
 ---
 
-## 1. 연구 목표 한 줄 요약
+## 1. Core Design: Exercise Definitions as YAML Objects
 
-> 단일 비전 기반 3D 포즈 데이터로부터, 신체 동작 품질의 생체역학적 속성(관절 정렬, 신체 중심 안정성, 좌우 대칭성, 관절 간 협응, 보상 움직임)을 정량화하고, 해석 가능한 디지털 바이오마커로 표현하는 분석 체계를 제안한다.
-
-## 2. 본 프레임워크의 설계 원리
-
-### 2-1. 운동을 “명칭”이 아니라 “생체역학적 속성 객체”로 정의한다
-
-기존 분석 시스템은 운동마다 분석 규칙을 따로 설계하는 경향이 있어, 다양한 운동을 일관된 기준으로 해석·비교하는 데 한계가 있다. 본 프레임워크는 운동을 **운동 정의 객체(exercise definition)**로 표현하고 다음 정보를 분석 기준으로 사용한다.
-
-- 주요 관절 (primary joints)
-- 지지면 / 접촉부 (base of support, contact points)
-- 수행 단계 (phase model)
-- 보상 움직임 후보 (compensation candidates)
-- 품질 기준 (quality rules)
-- 적합한 카메라 시야 / 뷰 (view requirements)
-
-이 설계로 분석의 단위가 “스쿼트”, “런지”와 같은 동작 명칭에서, “동일한 속성 공간 위의 한 점”으로 이동한다. 동작이 추가되면 코드 분기를 만드는 대신 YAML 한 장을 작성한다.
-
-### 2-2. 모든 지표는 `source_fields`(provenance)로 정의 근거를 추적한다
-
-산출된 모든 디지털 바이오마커는 **운동 정의의 어떤 속성에서 도출되었는지**를 함께 기록한다.
+Instead of writing per-exercise analysis code, each exercise is described as a YAML object
+(`data/exercise_definitions/<exercise_id>.yaml`). All pipeline steps consume the same
+`ExerciseDefinition` object; exercise-specific behavior comes from the YAML fields, not from
+code branches.
 
 ```
-biomarker_id        : knee_valgus_index
-exercise_id         : squat
-source_fields       : [compensation_candidates.knee_valgus,
-                       classification.primary_plane,
-                       landmarks.primary_joints]
-rep_id              : 2
-value               : 0.13
-unit                : torso_length_ratio
+Before : separate analysis code per exercise (squat, lunge, …)
+After  : one YAML file per exercise, same pipeline steps for all exercises
 ```
 
-자문위원(의대 교수)이 “이 지표는 어떤 생체역학적 근거에서 산출되었는가?”를 물었을 때, 항상 운동 정의의 필드로 거슬러 올라갈 수 있어야 한다.
-
-### 2-3. 단일 비전이라는 제약을 분석 체계 안에 명시적으로 둔다
-
-단일 카메라 환경은 깊이 정보 불안정성·랜드마크 누락·시야 한계가 있다[6]. 따라서 본 프레임워크는 다음을 명시적으로 가정한다.
-
-- 절대값 토크·근력은 산출하지 않는다. 산출 대상은 **관절 간 상대적 부하 분포의 경향성**이다[8][9].
-- 신체 분절 길이로 정규화한 무차원 지표(`torso_length_ratio` 등)를 기본 출력으로 사용한다.
-- 데이터 품질 문제는 **전처리 단계**에서 다루고, 동작의 질적 패턴(보상 움직임 등)은 **수정하지 않는다.**
-
----
-
-## 3. 분석 대상 동작 (Validation Set)
-
-분석 체계의 일관성과 운동 정의 스키마의 일반화 가능성을 검증하기 위해 4가지 대표 대관절 동작을 사용한다. 분석의 단위는 동작 명칭이 아니라 운동 정의 객체이며, 아래 4가지는 속성 공간 위의 4개 표본이다.
-
-| 동작 | 속성 표본 의의 |
-|---|---|
-| 스쿼트 (squat) | 양측 대칭(bilateral) · 시상면 ROM · 폐쇄 사슬 · 수직 CoM 변위 |
-| 런지 (lunge) | 좌우 교번(alternating) · 시상면 · 좌우 비대칭 보상 움직임 |
-| 파이크 푸쉬업 (pike push-up) | 양측 대칭 · 역지지 폐쇄 사슬 · 상체-체간 협응 |
-| 플랭크 숄더탭 (plank shoulder tap) | 좌우 교번 · 정적 자세 위 동적 작업 · 신체 중심 안정성 |
-
-이들 동작은 하체 체중 지지·좌우 비대칭 보상·상체 폐쇄 사슬·신체 중심 안정성을 모두 포함하는 복합 동작 표본이다.
-
----
-
-## 4. 분석 단계 (Pipeline)
+Fields defined in the exercise YAML:
 
 ```text
-입력
-    Pose CSV (단일 비전 3D 포즈 시계열)
-    Annotation file (선택)
-    Exercise definition YAML
-
-단계
-    ① 데이터 검증            구조 무결성 점검 (수정하지 않음)
-    ② Annotation 적용        분석 구간·운동 맥락 메타데이터화
-    ③ 운동 정의 로딩          생체역학적 속성 객체 적재 (generic fallback 포함)
-    ④ 전처리                 단일 비전 데이터 품질 보정
-    ⑤ 정규화                 신체 기준 좌표 변환
-    ⑥ 귀속 (Motion Attribution)  반복별 활성 측 일관성 확인
-    ⑦ 특징 추출              공간·시간·제어 영역
-    ⑧ 생체역학적 근사 모델링  CoM, 모멘트 암, 통계적 인체 계측
-    ⑨ 지표화                 해석 가능한 디지털 바이오마커 + provenance
-    ⑩ 시각화 / 보고서         단계별 시각화 + 최종 요약
-
-출력
-    분석 단계별 데이터프레임
-    각 단계의 보고서(report)
-    동작 품질 특징 표 (provenance 포함)
-    생체역학적 근사 지표 표
-    디지털 바이오마커 요약
-    시각화 결과물
+classification        laterality, primary_plane, movement_chain, posture_type
+landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_of_support
+phases                phase model (e.g., eccentric / concentric)
+compensation_candidates  movement patterns to monitor
+feature_domains       which spatial / temporal / control features to activate
+biomechanical_focus   which proxy metrics to compute
+quality_rules         visibility threshold, max interpolation gap, …
 ```
 
-`②`가 `③`보다 먼저 적용되는 이유: annotation에서 선언된 `exercise_type`이 운동 정의 YAML 파일을 식별한다. 이후 모든 단계가 동일한 운동 정의 객체를 참조한다.
+A generic fallback definition (`generic.yaml`) is loaded when no exercise-specific YAML
+is found.
 
 ---
 
-## 5. 단계별 책임 분리 (Design Principle)
+## 2. Pipeline Steps
 
-각 단계는 책임을 명확히 분리해 문서·코드·논문 서술이 일관되도록 한다.
+```text
+Input
+    Pose CSV           monocular 3D pose time series
+    Annotation file    (optional) segment and rep labels
+    Exercise YAML      exercise definition
 
-| 단계 | 책임 | 하지 않는 일 |
+Steps
+    ① Validation           structural integrity check — does not modify data
+    ② Annotation           merge segment / rep metadata from annotation file
+    ③ Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
+    ④ Preprocessing        reliability detection, swap correction, interpolation, smoothing
+    ⑤ Normalization        hip-center translation + median torso-length scale
+    ⑥ Motion Attribution   per-rep active-side consistency check
+    ⑦ Feature Extraction   spatial / temporal / control features
+    ⑧ Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
+    ⑨ Biomarker Derivation BiomarkerRecord with source_fields provenance
+    ⑩ Visualization        called outside the ①–⑨ runner; diagnostic and result charts
+
+Output
+    Per-step dataframes (columns accumulate)
+    Per-step report dicts
+    Feature table (with provenance)
+    Biomechanical proxy metric table
+    Biomarker summary
+    Visualization figures
+```
+
+② runs before ③ because the `exercise_type` column in the annotation file identifies
+which exercise YAML to load. All steps from ③ onward reference the same definition object.
+
+---
+
+## 3. Stage Responsibility Table
+
+| Step | Does | Does NOT |
 |---|---|---|
-| ① 데이터 검증 | 무결성 진단 | 데이터 수정 |
-| ② Annotation | 프레임/반복/수행단계 표시, 운동 맥락 선언 | 좌표 수정 |
-| ③ 운동 정의 | 생체역학적 속성 객체 적재 | 좌표·annotation 수정 |
-| ④ 전처리 | 단일 비전 데이터 품질 보정 | 동작의 질적 패턴 변경 |
-| ⑤ 정규화 | 신체 기준 좌표 공간으로 변환 | 운동 정의에 따라 분기하지 않음 |
-| ⑥ 귀속 | 반복별 활성 측 일관성 확인 | 좌표 수정, 품질 점수화 |
-| ⑦ 특징 추출 | 공간·시간·제어 지표 산출 | 라벨 보정 |
-| ⑧ 생체역학적 근사 모델링 | CoM, 모멘트 암, 상대 부하 분포 추정 | 절대 토크 산출 |
-| ⑨ 지표화 | 해석 가능한 디지털 바이오마커 표현 | provenance 없는 지표 산출 |
-| ⑩ 시각화 | 단계별 검토용·결과 보고용 그림 산출 | 데이터 수정 |
-
-> 두 번째 교차 원칙: 운동마다 다른 정보는 **YAML로 표현하고 코드에 두지 않는다.** 이것이 디지털 바이오마커가 운동별로 해석 가능한 형태로 유지되는 근거이다.
+| ① Validation | integrity diagnostics | modify data |
+| ② Annotation | add frame-level metadata columns | modify coordinates |
+| ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
+| ④ Preprocessing | correct data quality issues | alter movement quality patterns |
+| ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
+| ⑥ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
+| ⑦ Feature Extraction | compute spatial / temporal / control features | correct labels |
+| ⑧ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
+| ⑨ Biomarker Derivation | produce BiomarkerRecord with provenance | emit records without source_fields |
+| ⑩ Visualization | produce diagnostic and result figures | modify data |
 
 ---
 
-## 6. Annotation 전략
-
-자동 분할(automatic segmentation)은 본 연구의 1차 기여 항목이 아니다. 분석 구간은 사전에 준비한 annotation 파일로 표시하며, annotation 파일이 없을 경우 시퀀스 전체를 분석 대상으로 사용한다.
-
-annotation 파일은 분석 구간 외에도 다음 운동 맥락 정보를 선언한다.
-
-- `exercise_type` — 운동 정의 YAML 식별자
-- `pattern` — `bilateral` / `alternating`
-- `starting_side` — 좌우 교번 운동에서 첫 반복의 활성 측
-
-자세한 사양은 [`03_annotation_and_segmentation.md`](03_annotation_and_segmentation.md)와 [`04_exercise_definition.md`](04_exercise_definition.md)를 참고한다.
-
----
-
-## 7. 좌표 정규화 전략
-
-초기 정규화 방법:
+## 4. Feature Domains
 
 ```text
-이동 기준  : 프레임별 엉덩이 중심
-배율 기준  : 시퀀스 중간값 몸통 길이
+Spatial
+    ROM (range of motion)
+    Left/right symmetry
+    Trajectory shape
+
+Temporal
+    Tempo (execution speed)
+    Inter-rep variability
+
+Control
+    CoM stability
+    Compensation movements
 ```
 
-이 설계는 카메라 위치·개인 신체 크기 차이를 줄이면서, 프레임별 배율 진동을 피하기 위한 것이다. 절대 힘이나 절대 길이를 추정하지 않는다. 자세한 내용은 [`06_normalization.md`](06_normalization.md).
+Which domains are active for a given exercise is controlled by the `feature_domains` field
+in the exercise YAML.
 
 ---
 
-## 8. 동작 품질 특성의 3대 영역
+## 5. Annotation Strategy
 
-연구계획서에서 정의한 공간·시간·제어 영역 그대로 사용한다.
+Automatic segmentation is not in scope. Rep boundaries are provided via a pre-prepared
+annotation CSV. If no annotation file is supplied, the full sequence is treated as a single
+analysis segment.
+
+Key annotation columns that drive downstream steps:
 
 ```text
-공간적 (Spatial)
-- ROM (관절 가동범위)
-- 좌우 대칭성
-- 궤적 형태 (shape)
-
-시간적 (Temporal)
-- 수행 속도 (tempo)
-- 반복 간 변동성 (variability)
-
-제어적 (Control)
-- 신체 중심 안정성
-- 보상 움직임
+exercise_type      identifies which exercise YAML to load (③)
+pattern            bilateral | alternating
+starting_side      first active side in alternating exercises (⑥)
 ```
 
-특정 운동에서 어떤 영역이 활성화되는지는 운동 정의의 `feature_domains` 필드가 결정한다.
+See [03_annotation_and_segmentation.md](03_annotation_and_segmentation.md).
 
 ---
 
-## 9. 강건성 시뮬레이션 검증 계획
-
-연구의 4단계(2027.02 ~ 2027.05)에서 합성 비정상 동작을 사용해 본 분석 체계의 강건성을 평가한다. 시뮬레이션 시나리오:
-
-- 인위적 ROM 제한 (ankle 또는 hip 가동 제한 등)
-- 시각 노이즈 주입 (좌표에 σ-단위 가우시안 노이즈)
-- 랜드마크 가려짐 / 누락 (특정 분절 가시도 0 처리)
-- 포즈 추정 불안정성 (시계열 흔들림 시뮬레이션)
-
-평가 기준은 **지표의 단조성(monotonicity)**(왜곡 강도가 커질수록 지표가 일관된 방향으로 변하는가)과 **반응성(responsiveness)**(예상한 보상 움직임에 해당 지표가 반응하는가)이다.
-
-본 단계는 임상 진단 검증이 아니라 분석 체계의 **공학적 강건성** 검증이다.
-
----
-
-## 10. 출력물 (Expected Output)
+## 6. Normalization Strategy
 
 ```text
-처리된 데이터프레임 (단계별 누적 컬럼)
-검증 보고서
-annotation 보고서
-운동 정의 로딩 보고서
-전처리 보고서
-정규화 보고서
-귀속 보고서
-특징 표 (바이오마커 provenance 포함)
-생체역학적 근사 지표 표
-지표 요약(최종 디지털 바이오마커 표)
-시각화 결과물
+Translation reference : frame-wise hip center
+Scale reference       : sequence-wise median torso length
 ```
 
+Using the sequence-wise median (rather than per-frame scale) avoids artificial skeleton
+jitter caused by per-frame torso length noise in monocular data.
+
+All downstream features and biomarkers are expressed in `torso_length_ratio` units
+(dimensionless) or degrees. Absolute force/length units are not used.
+
+See [06_normalization.md](06_normalization.md).
+
 ---
 
-## 11. 개발 로드맵
-
-연구계획서 일정에 정렬한다.
+## 7. Development Roadmap
 
 ```text
-2026.03 ~ 2026.05  연구 환경 구축 및 분석 체계 설계
-- 포즈 CSV 로딩, 데이터 검증, 3D 시각화          [완료]
-- 좌표 정규화, annotation 적용                 [완료]
-- 운동 정의 스키마, YAML 로더, 검증, 일반 fallback [완료]
-- 분석 단계 러너 + 전처리                       [완료]
+2026.03 – 2026.05  Environment setup and pipeline design
+  [done]  Pose CSV loading, validation, 3D visualization
+  [done]  Coordinate normalization, annotation
+  [done]  Exercise definition schema, YAML loader, generic fallback
+  [done]  Pipeline runner + preprocessing
+  [done]  Motion attribution module (⑥)
+  [done]  Module scaffolding for features / biomech / biomarker / simulation
 
-2026.06 ~ 2026.09  전처리 및 동작 품질 특성 추출
-- 귀속 (Motion Attribution)
-- 공간·시간·제어 특징 추출 (feature_domains 구동)
-- 운동 정의-지표 산출의 연계 구조 (provenance)
-- 시각화: 신뢰도 마스크, 관절각 시계열, 단계별 결과 차트
+2026.06 – 2026.09  Feature extraction (⑦)
+  Spatial: ROM, symmetry, shape
+  Temporal: tempo, variability
+  Control: stability, compensation
+  Visualization: reliability overlay, joint angle time series, step result charts
 
-2026.10 ~ 2027.01  생체역학적 모델링 및 지표화
-- CoM 및 모멘트 암 기반 biomechanical proxy 모델
-- 관절 간 상대적 부하 분포 / 보상 작용 지표
-- 디지털 바이오마커 지표화
-- 비정상 동작 시뮬레이션을 위한 합성 데이터 생성
+2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑨)
+  CoM and moment arm estimation
+  Relative load distribution / compensation metrics
+  Digital biomarker derivation with provenance
+  Synthetic data generation for robustness simulation
 
-2027.02 ~ 2027.05  검증 및 논문 작성
-- 합성 데이터 기반 비정상·노이즈 조건 강건성 평가
-- 지표의 생체역학적 타당성·일관성 분석
-- 박사학위 논문 작성
+2027.02 – 2027.05  Robustness simulation and evaluation
+  Abnormal motion simulation (ROM restriction, noise, occlusion)
+  Monotonicity and consistency analysis of biomarker outputs
 ```
