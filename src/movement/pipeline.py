@@ -473,19 +473,13 @@ def run_pipeline(
             ]
 
     # ── ⑧ Biomechanical Proxy Modeling ───────────────────────────────────────
+    biomech_records: list[Any] = []
     if config.biomech.enabled:
-        biomech_records: list[Any] = []
-
         if exercise_def is None:
             print("[Step ⑧] Biomech Proxy: exercise_def not available — skipped.")
         else:
-            if config.biomech.include_com_estimation:
-                from movement.biomech.com import compute_com_metrics
-                biomech_records += compute_com_metrics(df, exercise_def)
-            if config.biomech.include_moment_arm:
-                from movement.biomech.moment_arm import compute_moment_arms
-                biomech_records += compute_moment_arms(df, exercise_def)
-
+            from movement.biomech import extract_rep_biomech
+            biomech_records = extract_rep_biomech(df, exercise_def, use_visibility_weight=True)
             report["biomech"] = [
                 {
                     "metric_id": r.metric_id,
@@ -494,29 +488,29 @@ def run_pipeline(
                     "unit": r.unit,
                     "source_fields": r.source_fields,
                     "note": r.note,
+                    "visibility_weight_applied": r.visibility_weight_applied,
+                    "n_frames_used": r.n_frames_used,
+                    "n_frames_excluded_low_visibility": r.n_frames_excluded_low_visibility,
                 }
                 for r in biomech_records
             ]
 
     # ── ⑨ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
-        from movement.biomarker import from_biomech_record, from_feature_record
+        if exercise_def is None:
+            print("[Step ⑨] Biomarker Derivation: exercise_def not available — skipped.")
+        else:
+            from movement.biomarker.scoring import derive_biomarkers
 
-        biomarker_records: list[Any] = []
-        def_version = exercise_def.version if exercise_def else "unknown"
-
-        for r in feat_records if config.features.enabled else []:
-            try:
-                biomarker_records.append(from_feature_record(r, def_version))
-            except ValueError:
-                pass
-
-        for r in biomech_records if config.biomech.enabled else []:
-            try:
-                biomarker_records.append(from_biomech_record(r, def_version))
-            except ValueError:
-                pass
-
-        report["biomarker"] = [b.as_dict() for b in biomarker_records]
+            def_version = exercise_def.version
+            biomarker_records, score_records = derive_biomarkers(
+                feat_records=feat_records,
+                biomech_records=biomech_records,
+                exercise_definition=exercise_def,
+                definition_version=def_version,
+            )
+            report["biomarker"] = [b.as_dict() for b in biomarker_records]
+            if score_records:
+                report["biomarker_scores"] = [s.as_dict() for s in score_records]
 
     return df, report

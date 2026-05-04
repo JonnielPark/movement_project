@@ -1,0 +1,148 @@
+{
+  "squat": {
+    "spatial.rom.left_hip_angle": {
+      "mean": 43.650366,
+      "std": 2.182518
+    },
+    "spatial.rom.right_hip_angle": {
+      "mean": 42.702665,
+      "std": 2.135133
+    },
+    "spatial.rom.left_knee_angle": {
+      "mean": 60.23448,
+      "std": 3.011724
+    },
+    "spatial.rom.right_knee_angle": {
+      "mean": 61.100309,
+      "std": 3.055015
+    },
+    "spatial.rom.left_ankle_angle": {
+      "mean": 24.340511,
+      "std": 1.955409
+    },
+    "spatial.rom.right_ankle_angle": {
+      "mean": 28.882341,
+      "std": 1.444117
+    },
+    "spatial.symmetry.hip": {
+      "mean": 0.02195,
+      "std": 0.010394
+    },
+    "spatial.symmetry.knee": {
+      "mean": 0.01425,
+      "std": 0.003889
+    },
+    "spatial.symmetry.ankle": {
+      "mean": 0.1721,
+      "std": 0.08853
+    },
+    "spatial.shape.arc_length.left_hip": {
+      "mean": 0.46775,
+      "std": 0.023388
+    },
+    "spatial.shape.arc_length.right_hip": {
+      "mean": 0.46775,
+      "std": 0.023388
+    },
+    "spatial.shape.arc_length.left_knee": {
+      "mean": 1.5414,
+      "std": 0.07707
+    },
+    "spatial.shape.arc_length.right_knee": {
+      "mean": 1.55085,
+      "std": 0.077543
+    },
+    "spatial.shape.arc_length.left_ankle": {
+      "mean": 1.42575,
+      "std": 0.071287
+    },
+    "spatial.shape.arc_length.right_ankle": {
+      "mean": 1.44875,
+      "std": 0.072438
+    },
+    "control.stability.hip_center_x_std": {
+      "mean": 0.0,
+      "std": 1e-06
+    },
+    "control.stability.hip_center_z_std": {
+      "mean": 0.0,
+      "std": 1e-06
+    },
+    "control.compensation.knee_valgus.left": {
+      "mean": 0.24205,
+      "std": 0.045467
+    },
+    "control.compensation.knee_valgus.right": {
+      "mean": 0.19535,
+      "std": 0.037547
+    },
+    "control.compensation.knee_varus.left": {
+      "mean": 0.23965,
+      "std": 0.017466
+    },
+    "control.compensation.knee_varus.right": {
+      "mean": 0.21325,
+      "std": 0.027224
+    },
+    "control.compensation.excessive_trunk_flexion": {
+      "mean": 94.695,
+      "std": 4.73475
+    },
+    "control.compensation.lateral_pelvic_shift": {
+      "mean": 0.0,
+      "std": 1e-06
+    },
+    "control.compensation.heel_lift.left": {
+      "mean": 0.03625,
+      "std": 0.005303
+    },
+    "control.compensation.heel_lift.right": {
+      "mean": 0.0434,
+      "std": 0.010748
+    },
+    "control.compensation.pelvic_rotation": {
+      "mean": 0.0182,
+      "std": 0.001131
+    },
+    "temporal.tempo.rep_1": {
+      "mean": 1.467,
+      "std": 0.07335
+    },
+    "temporal.tempo.rep_2": {
+      "mean": 1.467,
+      "std": 0.07335
+    },
+    "temporal.variability.tempo_cv": {
+      "mean": 0.0,
+      "std": 1e-06
+    },
+    "biomech.com.range_x": {
+      "mean": 0.0174,
+      "std": 0.00087
+    },
+    "biomech.com.range_z": {
+      "mean": 0.1103,
+      "std": 0.005515
+    },
+    "biomech.com.path_length": {
+      "mean": 0.51035,
+      "std": 0.025517
+    },
+    "biomech.moment_arm.knee.left.median": {
+      "mean": 0.04775,
+      "std": 0.002388
+    },
+    "biomech.moment_arm.knee.right.median": {
+      "mean": 0.31345,
+      "std": 0.015673
+    },
+    "biomech.moment_arm.hip.left.median": {
+      "mean": 0.0481,
+      "std": 0.002405
+    },
+    "biomech.moment_arm.hip.right.median": {
+      "mean": 0.31275,
+      "std": 0.015637
+    }
+  }
+}

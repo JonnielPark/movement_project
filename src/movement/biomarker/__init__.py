@@ -106,4 +106,32 @@ def from_biomech_record(
     )
 
 
-__all__ = ["BiomarkerRecord", "from_feature_record", "from_biomech_record"]
+def derive_biomarkers(
+    feat_records,
+    biomech_records,
+    exercise_definition,
+    definition_version: str,
+    *,
+    baseline_path=None,
+):
+    """Convenience re-export of biomarker.scoring.derive_biomarkers.
+
+    See biomarker/scoring.py for full documentation.
+    Returns (list[BiomarkerRecord], list[BiomarkerScoreRecord]).
+    """
+    from movement.biomarker.scoring import derive_biomarkers as _derive
+    return _derive(
+        feat_records,
+        biomech_records,
+        exercise_definition,
+        definition_version,
+        baseline_path=baseline_path,
+    )
+
+
+__all__ = [
+    "BiomarkerRecord",
+    "from_feature_record",
+    "from_biomech_record",
+    "derive_biomarkers",
+]

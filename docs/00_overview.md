@@ -51,15 +51,16 @@ Steps
     ⑥ Motion Attribution   per-rep active-side consistency check
     ⑦ Feature Extraction   spatial / temporal / control features
     ⑧ Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
-    ⑨ Biomarker Derivation BiomarkerRecord with source_fields provenance
+    ⑨ Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
     ⑩ Visualization        called outside the ①–⑨ runner; diagnostic and result charts
 
 Output
     Per-step dataframes (columns accumulate)
     Per-step report dicts
-    Feature table (with provenance)
-    Biomechanical proxy metric table
-    Biomarker summary
+    Feature table — FeatureRecord list with provenance (source_fields)
+    Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
+    Biomarker record list — BiomarkerRecord (individual metric pass-through)
+    Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
     Visualization figures
 ```
 
@@ -80,7 +81,7 @@ which exercise YAML to load. All steps from ③ onward reference the same defini
 | ⑥ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
 | ⑦ Feature Extraction | compute spatial / temporal / control features | correct labels |
 | ⑧ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
-| ⑨ Biomarker Derivation | produce BiomarkerRecord with provenance | emit records without source_fields |
+| ⑨ Biomarker Derivation | produce BiomarkerRecord + BiomarkerScoreRecord with provenance | emit records without source_fields |
 | ⑩ Visualization | produce diagnostic and result figures | modify data |
 
 ---
@@ -98,8 +99,13 @@ Temporal
     Inter-rep variability
 
 Control
-    CoM stability
-    Compensation movements
+    CoM stability (hip-center displacement std)
+    Compensation movements — rule-based registry:
+        knee_valgus / knee_varus     frontal-plane knee deviation from hip-ankle line
+        lateral_pelvic_shift         pelvis center lateral displacement
+        excessive_trunk_flexion      trunk lean angle from vertical
+        heel_lift                    heel elevation from rep minimum
+        pelvis_rotation              left-right hip depth asymmetry (transverse proxy)
 ```
 
 Which domains are active for a given exercise is controlled by the `feature_domains` field
@@ -164,15 +170,16 @@ See [06_normalization.md](06_normalization.md).
   Visualization: reliability overlay, joint angle time series, step result charts
 
 2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑨)
-  [partial]  CoM trajectory metrics — sequence-level (range_x, range_z, path_length)
-  [partial]  Moment arm proxy — knee / hip sagittal plane, sequence-level
-  [partial]  Biomarker record conversion (FeatureRecord / BiomechRecord → BiomarkerRecord)
-  Biomech rep-level iteration + pipeline ⑧ connection
-  Domain score derivation (0–100, anchored to synthetic baseline)
-  Composite movement quality score
+  [done]  CoM trajectory metrics — rep-level (range_x, range_z, path_length) + visibility weighting
+  [done]  Moment arm proxy — knee / hip sagittal plane, rep-level + visibility weighting
+  [done]  extract_rep_biomech() orchestrator wired into pipeline ⑧
+  [done]  Biomarker record conversion (FeatureRecord / BiomechRecord → BiomarkerRecord)
+  [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, composite domain score (0–100)
+  [done]  derive_biomarkers() entry point wired into pipeline ⑨
+  [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
 
 2027.02 – 2027.05  Robustness simulation and evaluation
   [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike
-  Robustness experiment runner script
-  Monotonicity and consistency analysis of biomarker outputs
+  Robustness experiment runner script (scripts/run_robustness_experiment.py)
+  Monotonicity / responsiveness / specificity analysis of biomarker outputs
 ```
