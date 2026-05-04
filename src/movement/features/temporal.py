@@ -1,13 +1,13 @@
 """
-⑦-시간 특징 (Temporal Features)
+⑦ Temporal Features
 
-tempo(반복 소요 시간), 반복 간 변동성(CV)을 산출한다.
+Computes rep tempo (duration in seconds) and inter-rep variability (CV).
 
 Unit convention:
   tempo       : second
-  variability : dimensionless_cv  (표준편차 / 평균, 무차원)
+  variability : dimensionless_cv  (std / mean, dimensionless)
 
-Input: ⑤ 정규화 후 데이터프레임 (annotation 컬럼 포함), ExerciseDefinition.
+Input: normalized pose dataframe (with annotation columns) and ExerciseDefinition.
 """
 from __future__ import annotations
 
@@ -27,18 +27,18 @@ def compute_tempo(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """반복 소요 시간(초)을 산출한다.
+    """Compute per-rep duration in seconds.
 
-    annotation 컬럼 segment_type == 'rep' + rep_id를 이용해 반복 경계를 결정한다.
-    tempo = timestamp[end] - timestamp[start] (초).
+    Rep boundaries are determined from annotation columns (segment_type == 'rep' + rep_id).
+    tempo = timestamp[end] - timestamp[start] (seconds).
 
     Parameters
     ----------
     df : pd.DataFrame
-        annotation 컬럼(segment_type, rep_id, timestamp)이 필요하다.
+        Requires annotation columns: segment_type, rep_id, timestamp.
     exercise_definition : ExerciseDefinition
     rep_id : int | None
-        특정 반복만 산출. None이면 해당 데이터프레임 전체.
+        Compute only for this rep. None computes for all reps in df.
 
     Returns
     -------
@@ -83,10 +83,10 @@ def compute_variability(
     df: pd.DataFrame,
     exercise_definition: "ExerciseDefinition",
 ) -> list[FeatureRecord]:
-    """반복 간 tempo 변동성(CV = std / mean)을 산출한다.
+    """Compute inter-rep tempo variability (CV = std / mean).
 
-    최소 2개 반복이 있어야 의미 있는 값이 산출된다.
-    단위: dimensionless_cv.
+    Requires at least 2 reps to produce a meaningful value.
+    Unit: dimensionless_cv.
     """
     ex_id = exercise_definition.exercise_id
     tempo_records = compute_tempo(df, exercise_definition)

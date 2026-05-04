@@ -1,13 +1,14 @@
 """
-⑦-제어 특징 (Control Features)
+⑦ Control Features
 
-CoM(신체 중심) 수평 이동 안정성과 보상 움직임 후보 지표를 산출한다.
+Computes CoM (Center of Mass) horizontal displacement stability and
+compensation movement candidate metrics.
 
 Unit convention:
-  stability : torso_length_ratio  (CoM 수평 변위의 표준편차)
-  compensation : torso_length_ratio (보상 후보 관절의 arc length)
+  stability    : torso_length_ratio  (std of CoM horizontal displacement)
+  compensation : torso_length_ratio  (arc length of compensation candidate joint)
 
-Input: ⑤ 정규화 후 데이터프레임 (norm 컬럼 포함), ExerciseDefinition.
+Input: normalized pose dataframe (norm columns) and ExerciseDefinition.
 """
 from __future__ import annotations
 
@@ -34,12 +35,12 @@ def compute_stability(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """CoM 수평 이동 안정성을 산출한다.
+    """Compute CoM horizontal displacement stability.
 
-    CoM 근사: hip_center(norm) 의 수평 좌표 표준편차.
-    (⑧ 생체역학적 근사 모델링이 구현되면 com.py의 CoM 추정값으로 대체.)
+    CoM approximation: standard deviation of hip_center(norm) horizontal coordinates.
+    (To be replaced by com.py estimate once ⑧ biomech proxy is implemented.)
 
-    Unit: torso_length_ratio. 값이 작을수록 안정적이다.
+    Unit: torso_length_ratio. Smaller values indicate greater stability.
     """
     ex_id = exercise_definition.exercise_id
 
@@ -80,10 +81,10 @@ def compute_compensation(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """보상 움직임 후보 관절의 arc length를 산출한다.
+    """Compute arc length of compensation candidate joints.
 
-    compensation_candidates 필드에 정의된 관절에 대해 궤적 길이를 산출한다.
-    값이 클수록 해당 부위에서 보상 움직임이 발생했을 가능성이 높다.
+    Joints are taken from compensation_candidates in the exercise definition.
+    Larger arc length suggests greater likelihood of compensatory movement at that joint.
 
     Unit: torso_length_ratio.
     """

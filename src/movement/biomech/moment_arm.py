@@ -1,14 +1,15 @@
 """
-모멘트 암 근사 (Moment Arm Proxy)
+Moment Arm Proxy
 
-관절 축에서 하중 작용선까지의 수직 거리를 torso_length_ratio로 산출한다.
+Perpendicular distance from the joint axis to the load line of action,
+expressed in torso_length_ratio units.
 
-단일 비전 2D 근사:
-  - 정면 또는 측면 투영 기준.
-  - 절대값 힘·토크(N·m) 산출 불가. 상대적 경향성만 제공.
-  - 분절 길이 정규화(torso_length_ratio)로 신체 크기 영향 제거.
+Monocular 2D approximation:
+  - Sagittal or frontal plane projection.
+  - Absolute force/torque (N·m) cannot be estimated; relative tendencies only.
+  - Segment-length normalization (torso_length_ratio) removes body-size effects.
 
-출력 단위: torso_length_ratio (절대 단위 사용 금지).
+Output unit: torso_length_ratio (absolute units are forbidden).
 """
 from __future__ import annotations
 
@@ -36,21 +37,21 @@ def _point_to_line_dist_2d(
     line_end: np.ndarray,
     plane: str = "xz",
 ) -> np.ndarray:
-    """2D 투영에서 점에서 직선까지의 수직 거리 (T,).
+    """Perpendicular distance from a point to a line in 2D projection, shape (T,).
 
     Parameters
     ----------
-    point      : (T, 3) 하중 작용 위치
-    line_start : (T, 3) 관절 축 근위단
-    line_end   : (T, 3) 관절 축 원위단
-    plane      : 투영 평면 ('xz' = 시상면, 'xy' = 관상면)
+    point      : (T, 3) load application position
+    line_start : (T, 3) proximal end of joint axis
+    line_end   : (T, 3) distal end of joint axis
+    plane      : projection plane ('xz' = sagittal, 'xy' = frontal)
     """
     if plane == "xz":
         idx = [0, 2]
     elif plane == "xy":
         idx = [0, 1]
     else:
-        raise ValueError(f"지원하지 않는 plane: '{plane}'. 'xz' 또는 'xy' 사용.")
+        raise ValueError(f"Unsupported plane: '{plane}'. Use 'xz' or 'xy'.")
 
     p = point[:, idx]
     a = line_start[:, idx]
@@ -73,11 +74,11 @@ def compute_moment_arms(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[BiomechRecord]:
-    """운동 정의의 main_load_regions 기반으로 모멘트 암을 산출한다.
+    """Compute moment arms based on main_load_regions in the exercise definition.
 
-    현재 지원하는 관절:
-      knee  → CoM 투영점에서 무릎 관절축(ankle-knee 선)까지 거리 (시상면)
-      hip   → CoM 투영점에서 고관절축(knee-hip 선)까지 거리 (시상면)
+    Supported joints:
+      knee  → perpendicular distance from CoM projection to knee axis (ankle-knee line), sagittal
+      hip   → perpendicular distance from CoM projection to hip axis (knee-hip line), sagittal
 
     Parameters
     ----------
@@ -106,7 +107,7 @@ def compute_moment_arms(
     com_xyz = estimate_com(df)  # (T, 3)
     records: list[BiomechRecord] = []
 
-    # ── 무릎 모멘트 암 (시상면 xz) ───────────────────────────────────────────
+    # ── knee moment arm (sagittal plane xz) ──────────────────────────────────
     if any("knee" in r for r in load_regions):
         for side in ("left", "right"):
             try:
@@ -123,10 +124,10 @@ def compute_moment_arms(
                 value=round(median_dist, 4),
                 unit="torso_length_ratio",
                 source_fields=source_fields,
-                note="CoM에서 무릎 관절축(ankle-knee 선)까지 시상면 수직 거리 중간값",
+                note=f"Median sagittal perpendicular distance from CoM to {side} knee axis (ankle-knee line)",
             ))
 
-    # ── 고관절 모멘트 암 (시상면 xz) ─────────────────────────────────────────
+    # ── hip moment arm (sagittal plane xz) ───────────────────────────────────
     if any("hip" in r for r in load_regions):
         for side in ("left", "right"):
             try:
@@ -143,7 +144,7 @@ def compute_moment_arms(
                 value=round(median_dist, 4),
                 unit="torso_length_ratio",
                 source_fields=source_fields,
-                note="CoM에서 고관절축(knee-hip 선)까지 시상면 수직 거리 중간값",
+                note=f"Median sagittal perpendicular distance from CoM to {side} hip axis (knee-hip line)",
             ))
 
     return records

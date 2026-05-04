@@ -1,88 +1,114 @@
-# 02. 데이터 검증 (Validation)
+# 02. Validation
 
-본 단계는 입력 포즈 데이터의 **구조적·형식적 무결성**을 점검한다. 데이터 자체를 수정하지 않으며, 분석 가능 여부를 판단할 수 있는 보고서를 산출한다.
+Pipeline step ①. Checks structural and formal integrity of input pose data.
+Does not modify the data. Returns a diagnostic report dict.
 
-> 용어 주의: 본 문서의 “검증(validation)”은 **데이터 무결성 점검**을 의미한다. 연구계획서의 “검증 및 논문 작성” 단계에서 수행하는 **강건성 검증(robustness evaluation)**과는 별개의 개념이다 (자세한 구분은 [`_terminology.md`](_terminology.md) §6).
+Note: "validation" here means data integrity checking only.
+      Robustness evaluation (simulation-based testing with synthetic data) is a separate concept.
 
 ---
 
-## 1. 분석 단계에서의 위치
+## 1. Pipeline Position
 
 ```text
 Pose CSV
-→ ① 데이터 검증
-→ ② Annotation 적용
-→ ③ 운동 정의 로딩
-→ ④ 전처리
-→ ⑤ 정규화
-→ ⑥ 귀속
-→ ⑦ 특징 추출
+→ ① Validation             ← this step
+→ ② Annotation
+→ ③ Exercise Definition
+→ ④ Preprocessing
+→ ⑤ Normalization
+→ ⑥ Motion Attribution
+→ ⑦ Feature Extraction
 ```
 
-검증은 모든 다른 단계보다 먼저 수행된다. 후속 단계는 검증 보고서를 통해 입력의 무결성 가정을 신뢰할 수 있다.
+Runs before all other steps. Downstream steps can rely on the integrity assumptions
+confirmed by the validation report.
 
-## 2. 점검 항목
+## 2. Checks
 
-본 단계가 점검하는 항목은 다음과 같다.
+| Check | Description |
+|---|---|
+| Required columns | `frame`, `timestamp`, landmark coordinate columns |
+| Frame continuity | gaps in frame index |
+| Frame duplicates | repeated frame values |
+| Timestamp monotonicity | non-positive time diffs |
+| Estimated FPS | derived from median timestamp delta |
+| Missing value ratio | per coordinate column |
+| Visibility quality | distribution / ratio below threshold (if visibility columns present) |
 
-- 필수 컬럼 존재 여부 (`frame`, `timestamp`, 랜드마크 좌표 컬럼)
-- 프레임 연속성 (frame index gap)
-- 프레임 중복
-- 타임스탬프 단조 증가 여부
-- 추정 FPS
-- 좌표 결측값 비율
-- 가시도 분포 / 품질 (가시도 컬럼이 존재할 경우)
-
-## 3. 설계 원칙
-
-본 단계는 **잠재 문제를 보고만** 한다.
-
-```text
-② Annotation 적용     → 분석 구간 메타데이터화
-③ 운동 정의 로딩      → 생체역학적 속성 객체 적재
-④ 전처리              → 단일 비전 데이터 품질 보정
-⑦ 특징 추출           → 보정된 데이터로부터 동작 품질 지표 산출
-```
-
-데이터 보정은 ④ 전처리 단계의 책임이며, ① 데이터 검증은 보정 정책 결정에 필요한 진단 정보를 제공한다.
-
-## 4. 출력
-
-본 단계의 함수는 보고서 딕셔너리를 반환한다.
+## 3. Output
 
 ```python
-report = run_basic_validation(...)
-print(report["passed"])
+report = run_basic_validation(
+    df=df,
+    required_columns=make_required_columns(),
+    coordinate_columns=make_coordinate_columns(),
+    visibility_columns=make_visibility_columns(),
+)
+print(report["passed"])   # bool
 ```
 
-보고서는 후속 단계에서 어떤 보정 옵션을 활성화할지 결정하는 근거로 사용된다. 예를 들어 가시도 분포가 한쪽으로 치우쳐 있다면 ④ 전처리에서 가시도 임계값을 보수적으로 조정할 근거가 된다.
+Report structure:
 
-## 5. 결과 해석
+```python
+{
+    "passed": bool,
+    "required_columns": {
+        "passed": bool,
+        "missing_columns": list[str],
+        "num_missing_columns": int,
+    },
+    "frame_continuity": {
+        "passed": bool,
+        "start_frame": int,
+        "end_frame": int,
+        "num_frames": int,
+        "num_missing_frames": int,
+        "missing_frames": list[int],
+        "num_duplicated_frames": int,
+        "duplicated_frames": list[int],
+    },
+    "timestamp": {
+        "passed": bool,
+        "num_timestamps": int,
+        "median_dt": float,
+        "estimated_fps": float | None,
+        "min_dt": float,
+        "max_dt": float,
+        "num_non_positive_diffs": int,
+    },
+    "missing_values": {
+        "passed": bool,
+        "num_columns": int,
+        "total_missing_values": int,
+        "missing_ratio_by_column": dict[str, float],
+    },
+    "visibility": { ... },   # only if visibility_columns provided
+}
+```
 
-검증 실패는 항상 분석 불가능을 의미하지는 않는다.
+## 4. Design Principle
 
-- 결측값이 존재해도 단기 결손은 ④ 전처리의 보간으로 처리될 수 있다.
-- 잡음이 있는 궤적은 평활화 또는 견고한 필터링으로 보완될 수 있다.
-- 다만, 후속 단계에서 검증 보고를 인지한 상태에서 처리 정책을 명시적으로 선택해야 한다.
+This step only reports potential issues. It does not correct them.
 
-따라서 검증 실패는 **수동 검토 필요** 신호이며, 자동 무시 대상이 아니다.
+- Short gaps → handled by ④ preprocessing interpolation.
+- Noisy trajectories → handled by ④ preprocessing smoothing.
+- Low visibility → handled by ④ preprocessing reliability gating.
 
-## 6. 강건성 검증과의 구분 (중요)
+A failed validation is a signal for manual review, not automatic discard.
 
-연구계획서의 4단계(2027.02 ~ 2027.05)에서 수행되는 **강건성 검증**은 본 단계와 다음과 같은 점에서 구별된다.
+## 5. Thresholds
 
-| 구분 | ① 데이터 검증 | 강건성 검증 |
-|---|---|---|
-| 입력 | 실제 포즈 CSV | 합성 비정상 동작 데이터 |
-| 대상 | 데이터의 형식적 무결성 | 분석 체계가 노이즈/가려짐/왜곡에 일관되게 반응하는지 |
-| 산출 | 무결성 보고서 | 지표 단조성·반응성 평가 결과 |
-| 단계 위치 | 모든 분석 전 매 실행마다 | 4단계 (논문 검증 단계) |
-| 코드 위치(예정) | `src/movement/validation.py` | `src/movement/simulation/` (예정) |
+Configured in `configs/pipeline_default.yaml`:
 
-문서·코드·논문에서 두 개념을 혼용하지 않는다.
+```yaml
+validation:
+  missing_value_threshold: 0.05   # column missing ratio > 5% → warn
+  visibility_threshold: 0.5       # landmark visibility quality threshold
+```
 
-## 7. 향후 확장
+## 6. Planned Extensions
 
-- 시각화 단계에서 결측값 히트맵·프레임 커버리지 시각화 추가
-- 공간 좌표 단위 자동 추정(픽셀/정규화 여부 식별)
-- 시간 축 결손 분포 통계 보고 강화
+- Missing value heatmap visualization (⑩ step)
+- Coordinate unit auto-detection (pixel vs. normalized)
+- Enhanced temporal gap distribution statistics

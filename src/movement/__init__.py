@@ -1,23 +1,23 @@
 """
-movement_project — Digital Biomarker Framework
+movement — Digital Biomarker Framework
 
-단일 비전(모바일 카메라) 3D 포즈 데이터로부터 신체 동작의 질을
-생체역학적으로 정량화해 해석 가능한 디지털 바이오마커로 표현하는 분석 프레임워크.
+Biomechanical analysis framework that quantifies movement quality from monocular 3D pose data
+and produces interpretable digital biomarkers.
 
-분석 단계 (Pipeline) — docs/00_overview.md / docs/_terminology.md 참조:
-  ① validation             데이터 무결성 검증
-  ② annotation             분석 구간·이동 맥락 표시
-  ③ exercise_definition    이동 정의 (생체역학적 속성 객체) 로딩
-  ④ preprocessing          단일 비전 데이터 품질 보정
-  ⑤ normalization          신체 기준 좌표 정규화
-  ⑥ motion_attribution     반복 단위 활성 측 일관성
-  ⑦ features.{spatial, temporal, control}  공간·시간·제어 특징
-  ⑧ biomech.{com, moment_arm, anthropometry}  생체역학적 근사 모델
-  ⑨ biomarker              해석 가능한 디지털 바이오마커 (provenance 포함)
-  ⑩ visualization          단계별 시각화 / 보고서
+Pipeline steps:
+    ① validation             structural integrity check
+    ② annotation             frame-level segment metadata
+    ③ exercise_definition    biomechanical property object loading
+    ④ preprocessing          monocular data quality correction
+    ⑤ normalization          body-relative coordinate normalization
+    ⑥ motion_attribution     per-rep active-side consistency
+    ⑦ features               spatial / temporal / control feature extraction
+    ⑧ biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
+    ⑨ biomarker              interpretable digital biomarkers with provenance
+    ⑩ visualization          per-step visualization and reporting
 
-각 단계의 활성화는 configs/pipeline_default.yaml의 enabled 플래그로 제어한다.
-용어 단일 정의는 docs/_terminology.md 참조.
+Step activation: enabled flags in configs/pipeline_default.yaml.
+Terminology: docs/_terminology.md.
 """
 from __future__ import annotations
 
@@ -48,30 +48,30 @@ from movement.biomarker import BiomarkerRecord, from_feature_record, from_biomec
 __all__ = [
     # I/O
     "load_pose_csv",
-    # ① 데이터 검증
+    # ① validation
     "run_basic_validation",
-    # ② Annotation
+    # ② annotation
     "apply_annotation",
     "load_annotation_csv",
-    # ③ 이동 정의
+    # ③ exercise definition
     "load_exercise_definition",
     "load_all_exercise_definitions",
-    # ④ 전처리
+    # ④ preprocessing
     "preprocess_pose_dataframe",
-    # ⑤ 정규화
+    # ⑤ normalization
     "normalize_pose_by_hip_torso",
-    # ⑥ 귀속
+    # ⑥ motion attribution
     "attribute_motion",
     "AttributionThresholds",
-    # ⑦ 특징 (하위 모듈에서 직접 import 권장)
+    # ⑦ features (prefer direct import from submodules)
     "FeatureRecord",
-    # ⑧ 생체역학적 근사 (하위 모듈에서 직접 import 권장)
+    # ⑧ biomech proxy (prefer direct import from submodules)
     "BiomechRecord",
-    # ⑨ 지표화
+    # ⑨ biomarker
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
-    # ⑩ 시각화
+    # ⑩ visualization
     "create_pose_animation",
     "create_pose_comparison_animation",
     "plot_reliability_overlay",
@@ -79,7 +79,7 @@ __all__ = [
     "plot_rep_timeline",
     "plot_attribution_chart",
     "plot_biomarker_radar",
-    # 파이프라인 러너
+    # pipeline runner
     "load_pipeline_config",
     "run_pipeline",
 ]

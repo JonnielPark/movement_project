@@ -1,19 +1,20 @@
 """
-⑧ 생체역학적 근사 모델링 (Biomechanical Proxy Modeling)
+⑧ Biomechanical Proxy Modeling
 
-단일 비전 환경에서 단순화된 생체역학 규칙을 적용해 근사 지표를 산출한다.
+Applies simplified biomechanical rules to produce relative proxy metrics
+from normalized pose data.
 
-  - 절대값 힘(N, N·m, kg) 측정이 아니라 분절 길이 정규화 비율이 출력 단위.
-  - 개인별 절대값이 아닌 상대적 정규화 지표 산출이 목적.
+All outputs are in torso_length_ratio units (dimensionless).
+Absolute force units (N, N·m, kg) are not used.
 
-하위 모듈:
-  biomech.anthropometry → 통계적 인체 계측 비율 (Winter 1990 기준)
-  biomech.com           → CoM 추정 (분절 질량 비율 × 분절 위치)
-  biomech.moment_arm    → 관절 모멘트 암 (2D 근사, torso_length_ratio)
+Submodules:
+    biomech.anthropometry → segment mass and CoM ratios (Winter 1990)
+    biomech.com           → CoM estimation (segment mass ratio × segment position)
+    biomech.moment_arm    → joint moment arms (2D sagittal projection, torso_length_ratio)
 
-Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
-Column convention     : <landmark>_norm_x/y/z 정규화 좌표 사용.
-Unit restriction      : 모든 출력 단위는 torso_length_ratio. 절대 단위 사용 금지.
+Coordinate convention : (T, J, 3) = (frame, joint_index, xyz).
+Column convention     : <landmark>_norm_x/y/z (normalized coordinates).
+Unit restriction      : all outputs in torso_length_ratio; absolute units are a bug.
 """
 from __future__ import annotations
 
@@ -22,17 +23,17 @@ from dataclasses import dataclass, field
 
 @dataclass
 class BiomechRecord:
-    """단일 생체역학적 근사 지표 결과.
+    """Single biomechanical proxy metric result.
 
     Parameters
     ----------
-    metric_id     : 고유 식별자 (예: 'biomech.com.trajectory_range_x')
-    exercise_id   : 운동 ID
-    rep_id        : 반복 번호 (None = 시퀀스 단위)
-    value         : 지표값
-    unit          : 단위 (반드시 torso_length_ratio)
-    source_fields : 이 지표를 도출한 운동 정의 필드 (provenance)
-    note          : 선택적 보조 설명
+    metric_id     : unique identifier (e.g. 'biomech.com.trajectory_range_x')
+    exercise_id   : exercise identifier
+    rep_id        : rep number (None = sequence-level)
+    value         : metric value
+    unit          : must be torso_length_ratio or degree
+    source_fields : exercise definition fields that drove this metric (provenance)
+    note          : optional interpretation note
     """
     metric_id: str
     exercise_id: str
@@ -45,13 +46,13 @@ class BiomechRecord:
     def __post_init__(self) -> None:
         if self.unit not in ("torso_length_ratio", "degree", "dimensionless"):
             raise ValueError(
-                f"BiomechRecord '{self.metric_id}': 절대 단위(N, kg, m 등) 사용 금지. "
-                f"unit='{self.unit}'. torso_length_ratio 또는 degree를 사용하세요."
+                f"BiomechRecord '{self.metric_id}': absolute units (N, kg, m) are not allowed. "
+                f"unit='{self.unit}'. Use torso_length_ratio or degree."
             )
         if not self.source_fields:
             raise ValueError(
-                f"BiomechRecord '{self.metric_id}': source_fields가 비어 있음. "
-                "운동 정의의 출처 필드를 반드시 명시해야 합니다."
+                f"BiomechRecord '{self.metric_id}': source_fields is empty. "
+                "Provenance fields from the exercise definition must be specified."
             )
 
 

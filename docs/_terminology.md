@@ -1,148 +1,118 @@
-# 용어 정의 (Unified Terminology)
+# Terminology
 
-본 프레임워크에서 사용하는 핵심 용어를 단일 정의로 고정한다. 코드, 문서, 노트북, 발표 자료 어느 곳에서도 동일한 의미로만 사용한다.
-
-연구계획서(2026-05-04 개정판)와 본 문서가 일치하도록 작성되었으며, 새로운 용어가 필요할 경우 반드시 본 문서에 먼저 추가한 후 사용한다.
-
----
-
-## 1. 연구 개요 용어
-
-| 한글 | 영문 | 정의 |
-|---|---|---|
-| 단일 비전 데이터 | Monocular vision data | 단일 모바일 카메라 기반 영상에서 추출된 3D 포즈 시계열 데이터. 별도의 깊이 센서나 다중 카메라를 사용하지 않는다. |
-| 신체 동작 품질 | Movement quality | 동작의 완수 여부가 아니라, 관절 정렬·신체 중심 안정성·좌우 대칭성·관절 간 협응·보상 움직임 등 생체역학적 속성으로 평가되는 동작의 질적 특성. |
-| 디지털 바이오마커 | Digital biomarker | 디지털 장치(여기서는 단일 카메라)에서 측정 가능한 생리·행동 신호를 임상적·생체역학적 의미를 갖는 지표로 변환한 정량 척도[4]. 본 연구에서는 신체 동작 품질을 정량화한 해석 가능한 지표 집합을 의미한다. |
-| 해석 가능성 | Interpretability | 산출된 지표가 어떤 생체역학적 근거(운동 정의의 어떤 속성, 어떤 관절·평면)에서 도출되었는지를 추적할 수 있는 성질. |
-| 분석 체계 / 분석 프레임워크 | Analysis framework | 연구계획서에서 정의한 단계(검증→annotation→운동 정의→전처리→정규화→귀속→특징 추출→생체역학적 근사 모델→지표화)를 일관된 규칙으로 묶은 처리 절차. 코드 모듈 단위가 아니라 **분석 단계** 단위로 부른다. |
+Canonical term definitions for this project. All code, documentation, and notebooks
+use the same terms with the same meanings. Add new terms here before using them elsewhere.
 
 ---
 
-## 2. 분석 대상 동작 (Validation Exercises)
+## 1. Core Concepts
 
-연구계획서에서 검증용으로 선정한 **4가지 대표 대관절 동작**. 본 연구의 분석 단위는 동작 명칭이 아니라 운동 정의(생체역학적 속성 객체)이며, 아래 4가지는 분석 체계의 일관성을 검증하기 위한 대표 표본이다.
-
-| 표기 | 한글 | exercise_id |
-|---|---|---|
-| Squat | 스쿼트 | `squat` |
-| Lunge | 런지 | `lunge` |
-| Pike push-up | 파이크 푸쉬업 | `pike_pushup` |
-| Plank shoulder tap | 플랭크 숄더탭 | `plank_shoulder_tap` |
-
-이들 동작은 하체 체중 지지, 좌우 비대칭 보상 움직임, 상체 지지, 신체 중심 안정성을 모두 평가할 수 있는 복합 동작 표본으로 선정되었다.
-
----
-
-## 3. 동작 품질 특성의 3대 영역 (Feature Domains)
-
-연구계획서에서 정의한 **공간적·시간적·제어적** 세 영역을 단일 명칭으로 고정한다.
-
-| 한글 | 영문 | 하위 항목 (예시) |
-|---|---|---|
-| 공간적 특성 | Spatial features | 관절 가동범위(ROM), 좌우 대칭성, 관절 궤적 형태 |
-| 시간적 특성 | Temporal features | 수행 속도(tempo), 반복 간 변동성(variability), 단계별 지속 시간 |
-| 제어적 특성 | Control features | 신체 중심 안정성, 보상 움직임, 균형 제어 |
-
-> 비고: 본 문서·코드에서 “control” 영역은 **제어적**으로만 번역한다. “조절”, “안정” 단독 표현은 사용하지 않는다.
-
----
-
-## 4. 생체역학적 핵심 개념
-
-| 한글 | 영문 | 정의 |
-|---|---|---|
-| 관절 정렬 | Joint alignment | 인접 관절·분절이 해부학적으로 일관된 축을 형성하는 정도. 정렬 이탈은 보상 움직임의 1차 신호로 간주한다. |
-| 신체 중심 안정성 | Body center stability | 신체 중심질량(CoM)이 동작 수행 단계 내에서 예측 가능한 궤적을 따르고, 비예측 변동이 작은 정도. |
-| 좌우 대칭성 | Left–right symmetry | 양측 분절·관절 지표가 시간·공간적으로 유사한 정도. `bilateral_symmetric` 운동에 한해 직접 평가한다. |
-| 관절 간 협응 | Inter-joint coordination | 다관절 동작 수행 중 인접 관절의 위상·속도가 생체역학적 기대값과 일치하는 정도. |
-| 보상 움직임 | Compensatory movement | 주된 작용 관절의 가동범위 제한·근력 부족·균형 손실을 다른 분절이 대신 만들어내는 비주된 움직임[3]. |
-| 중심질량 (CoM) | Center of mass | 통계적 인체 계측 모델(분절별 질량 비율)을 사용해 추정한 신체 전체의 무게중심. **기립 자세와 엎드린 자세 모두에서 추정 가능해야 한다.** |
-| 모멘트 암 | Moment arm | 관절 회전축과 작용선 사이의 수직 거리. 본 연구에서는 절대 토크가 아니라 **상대적 부하 분포의 경향성**을 산출하기 위한 단순화된 추정 값으로 사용한다. |
-| 통계적 인체 계측 모델 | Anthropometric model | 분절 길이·질량·관절중심 위치를 통계적 인체 비율로 추정하는 모델. 개인별 절대값이 아니라 **상대적 정규화 지표** 산출에 사용한다. |
-
-> 본 연구는 **절대적인 힘(N·m) 측정이 아니라 관절 간 상대적 부하 분포의 경향성**을 다룬다. “토크”, “부하” 같은 단어는 항상 “상대적” 또는 “proxy”라는 수식어와 함께 쓴다.
-
----
-
-## 5. 운동 정의(Exercise Definition) 관련 용어
-
-| 한글 | 영문 | 정의 |
-|---|---|---|
-| 운동 정의 | Exercise definition | 하나의 운동을 분석할 때 필요한 생체역학적 속성(주요 관절, 지지면, 수행 단계, 보상 움직임 후보, 품질 기준 등)을 구조화한 YAML 객체. 분석의 단위는 **운동 정의 객체**이며, 동작 명칭이 아니다. |
-| 생체역학적 속성 객체 | Biomechanical property object | 운동 정의를 “속성들의 집합”으로 바라본 표현. 동작 명칭은 이 속성 공간 위의 한 점에 해당한다. |
-| 수행 단계 (Phase) | Phase | 한 반복(rep) 내부의 의미 있는 구간. 저항성 운동의 경우 eccentric / isometric / concentric, 과제형 운동의 경우 setup / shift / tap / return 등으로 표현한다. |
-| 보상 움직임 후보 | Compensation candidate | 해당 운동에서 모니터링해야 하는 보상 움직임의 종류. 운동 정의에 명시된 후보만 지표로 산출되어 해석 가능성을 보장한다. |
-| 품질 기준 | Quality rules | 분석 가능 여부를 판정하는 가시도·랜드마크 비율·결측 허용 한계 등의 임계값 집합. |
-
----
-
-## 6. 데이터 처리 단계 용어
-
-| 한글 | 영문 | 정의 |
-|---|---|---|
-| 검증 | Validation (data integrity) | 입력 포즈 데이터의 **구조적·형식적 무결성**을 점검하는 단계. 데이터 자체를 수정하지 않는다. |
-| 강건성 검증 | Robustness evaluation (engineering) | 합성 비정상 데이터를 사용해 분석 체계가 노이즈·가려짐·정렬 변화에 일관되게 반응하는지를 평가하는 단계. 임상적 효과 입증과 구별한다. |
-| Annotation | Annotation | 분석 대상 구간(set, rep)·운동 맥락(`exercise_type`, `pattern`, `starting_side`)을 메타데이터로 표시하는 단계. 프레임을 삭제하지 않고 메타데이터 컬럼만 추가한다. |
-| 전처리 | Preprocessing | 단일 비전 포즈 추정 결과의 **데이터 품질 문제**(낮은 가시도, 분절 길이 비일관성, 비정상 관절각, 속도 이상치, 좌우 라벨 스왑)를 해결하는 단계. **동작의 질적 패턴(보상 움직임 등)은 절대 보정하지 않는다.** |
-| 정규화 | Normalization | 좌표를 신체 기준(엉덩이 중심 + 시퀀스 중간값 몸통 길이)으로 변환해 개인별 신체 크기·카메라 위치 차이를 제거하는 단계. |
-| 귀속 (Motion Attribution) | Motion attribution | 반복 단위에서 실제로 움직인 측이 운동 정의가 기대하는 측과 일치하는지 확인하는 단계. 좌표를 수정하지 않고 메타데이터만 추가한다. |
-| 특징 추출 | Feature extraction | 정규화된 좌표와 운동 정의로부터 공간·시간·제어 영역의 정량 지표를 산출하는 단계. |
-| 생체역학적 근사 모델링 | Biomechanical proxy modeling | 통계적 인체 계측 + CoM + 모멘트 암 기반 단순화된 모델로 관절 간 상대적 부하 분포의 경향성과 보상 움직임을 추정하는 단계. |
-| 지표화 | Biomarker derivation / scoring | 추출된 특징과 생체역학적 근사 결과를 통합해 해석 가능한 디지털 바이오마커 집합으로 표현하는 단계. |
-| 강건성 시뮬레이션 | Robustness simulation | 정상 동작에 ROM 제한·시각 노이즈·가려짐 등을 인위적으로 부여한 합성 데이터로 지표의 일관성과 반응성을 평가하는 절차. |
-
----
-
-## 7. 데이터·좌표 표기 규약
-
-| 항목 | 표기 |
+| Term | Definition |
 |---|---|
-| 포즈 좌표 배열 | `(T, J, 3)` = (frame, joint_index, xyz) |
-| 단일 프레임 좌표 | `(J, 3)` |
-| 각도 단위 | 도(degree). 변수명에 `_deg` 또는 docstring 명시. |
-| 시간 단위 | 초(second). 프레임 인덱스는 별도. |
-| 길이 정규화 단위 | `torso_length_ratio` (시퀀스 중간값 몸통 길이로 나눈 무차원 값) |
-| 좌측·우측 표기 | `left_*`, `right_*` (소문자 + 언더스코어) |
+| Monocular vision data | 3D pose time series extracted from a single mobile camera. No depth sensor or multi-camera rig. |
+| Movement quality | Biomechanical properties of a movement — joint alignment, CoM stability, left/right symmetry, inter-joint coordination, compensatory movements — evaluated independently of task completion. |
+| Digital biomarker | Interpretable quantitative index derived from digitally measured physiological/behavioral signals. In this project: dimensionless movement quality metrics with traceable provenance. |
+| Interpretability | Property that every output metric can be traced back to the specific exercise definition fields that drove its computation (`source_fields` provenance). |
+| Analysis framework | The ordered pipeline steps (①–⑨) that transform a pose CSV into digital biomarkers under consistent rules. Referred to by step name, not by code module. |
 
 ---
 
-## 8. 사용 금지 / 주의 표현
+## 2. Validation Exercises
 
-연구의 범위를 벗어나거나 잘못된 인상을 줄 수 있어 본 프로젝트에서 **사용하지 않는다.**
+Four representative exercises used to verify the pipeline across different exercise property combinations.
+The analysis unit is the **exercise definition object**, not the exercise name.
 
-| 금지 표현 | 이유 / 대체 |
+| Exercise | exercise_id | Property sample |
+|---|---|---|
+| Squat | `squat` | bilateral symmetric, sagittal ROM, closed chain, vertical CoM |
+| Lunge | `lunge` | alternating, sagittal, bilateral asymmetric compensation |
+| Pike push-up | `pike_pushup` | bilateral symmetric, inverted closed chain, upper-body coordination |
+| Plank shoulder tap | `plank_shoulder_tap` | alternating, frontal, static posture + dynamic task, CoM stability |
+
+---
+
+## 3. Feature Domains
+
+Three fixed domains for movement quality characterization:
+
+| Domain | English term | Sub-items (examples) |
+|---|---|---|
+| Spatial | Spatial features | ROM, left/right symmetry, trajectory shape |
+| Temporal | Temporal features | tempo, inter-rep variability, phase duration |
+| Control | Control features | CoM stability, compensatory movements, balance control |
+
+The "control" domain is not abbreviated to "stability" alone.
+
+---
+
+## 4. Biomechanical Key Concepts
+
+| Term | Definition |
 |---|---|
-| “임상적으로 유의하다” | 본 연구는 임상 효과 입증이 아니라 공학적 강건성 검증이다. → "생체역학적 기준과의 편차를 일관되게 식별한다"로 대체 |
-| “질환을 진단한다 / 예측한다” | 본 연구는 진단 도구 개발이 아니다. → "추후 임상 데이터 기반 고도화 연구의 참조 지표로 활용 가능하다"로 한정 |
-| 절대값 토크 / 부하(N·m) | 단일 비전으로는 절대값 추정이 불가능하다. → "관절 간 상대적 부하 분포의 경향성" |
-| “정상/비정상” (이진) | 합성 비정상 데이터는 시뮬레이션 라벨이지 임상 진단이 아니다. → "정상 동작 / 합성 비정상 동작" 또는 "기준 동작 / 시뮬레이션된 변형 동작" |
-| “환자 데이터” | 본 연구의 입력은 합성 + 정상 동작이다. 임상 데이터를 의미할 때만 명시적으로 사용. |
-| “automatic detection”의 무비판 사용 | 분석은 annotation 기반 수동 정의가 1차이며, 자동 분할은 차후 확장이다. |
+| Joint alignment | Degree to which adjacent joints/segments form a biomechanically consistent axis. Misalignment is treated as a primary signal of compensation. |
+| CoM stability (Center of Mass) | Degree to which the estimated whole-body center of mass follows a predictable trajectory with low unpredicted variance during a movement phase. |
+| Left/right symmetry | Similarity of bilateral segment/joint metrics across time and space. Evaluated directly only for `bilateral_symmetric` exercises. |
+| Inter-joint coordination | Degree to which adjacent joints' phase and velocity match biomechanical expectations during multi-joint movement. |
+| Compensatory movement | Non-primary movement produced by segments other than the main working joints, substituting for limited ROM, insufficient strength, or balance loss. |
+| Center of mass (CoM) | Whole-body center of mass estimated using a statistical anthropometric model (segment mass ratios). Must be estimable in both upright and prone postures. |
+| Moment arm | Perpendicular distance between a joint's rotation axis and the line of action. Used as a simplified estimate of relative load distribution tendency, not absolute torque. |
+| Anthropometric model | Statistical body proportion model for estimating segment length, mass, and joint center position. Used for relative normalized metrics, not individual absolute values. |
+
+All outputs are relative load distribution tendencies. Absolute force units (N·m, kg)
+are not used — if an absolute unit appears in an output, it is a bug.
 
 ---
 
-## 9. 인용 표기 (연구계획서 정렬)
+## 5. Exercise Definition Terms
 
-문서 내 인용 번호는 연구계획서의 참고문헌 번호와 동일하게 유지한다.
-
-```
-[1] Jack K, et al., Manual Therapy, 2009.
-[2] Perski O, et al., Translational Behavioral Medicine, 2017.
-[3] Xu J. J, et al., Frontiers in Sports and Active Living, 2025.
-[4] Vasudevan S, et al., NPJ Digital Medicine, 2022.
-[5] Xiang L, et al., Frontiers in Bioengineering and Biotechnology, 2025.
-[6] Guo Y, et al., Sensors, 2025.
-[7] Dindorf C, et al., Frontiers in Bioengineering and Biotechnology, 2024.
-[8] Koleini K, et al., MonoMSK, arXiv, 2025.
-[9] Gilon S, et al., OpenCap Monocular, arXiv, 2026.
-```
-
-새 인용을 추가할 때는 본 목록 다음 번호([10] 이후)로 이어 붙이고, `docs/references.bib`(향후 추가)에 동일하게 기록한다.
-
----
-
-## 10. 변경 이력
-
-| 일자 | 변경 |
+| Term | Definition |
 |---|---|
-| 2026-05-04 | 연구계획서 개정에 맞춰 용어 통일판 작성. 동작 품질 특성을 공간·시간·제어 3대 영역으로 고정. 임상 단정 표현을 모두 금지 목록으로 명시. |
+| Exercise definition | YAML object encoding the biomechanical properties of one exercise: primary joints, base of support, phase model, compensation candidates, quality rules, etc. The analysis unit is the exercise definition object, not the exercise name. |
+| Phase | Meaningful sub-interval within one rep. E.g., eccentric/isometric/concentric for resistance exercises; setup/shift/tap/return for task exercises. |
+| Compensation candidate | Compensation movement type to monitor for a specific exercise. Only candidates listed in the definition are produced as biomarkers. |
+| Quality rules | Thresholds that determine analysis eligibility: visibility ratio, max gap frames, etc. |
+
+---
+
+## 6. Processing Step Terms
+
+| Term | Definition |
+|---|---|
+| Validation | Checks structural and formal integrity of input pose data. Does not modify data. |
+| Robustness evaluation | Evaluates whether the pipeline consistently responds to noise, occlusion, and alignment variation using synthetic abnormal data. Distinct from validation. |
+| Annotation | Marks analysis segments (set, rep) and exercise context metadata. Adds columns only; does not delete frames. |
+| Preprocessing | Corrects data quality issues in monocular pose data: low visibility, segment length inconsistency, abnormal joint angles, velocity outliers, L/R label swaps. Does NOT correct movement quality patterns (compensation movements, etc.). |
+| Normalization | Converts coordinates to a body-relative system (hip center translation + sequence median torso scale). Removes body size and camera position effects. |
+| Motion attribution | Checks whether the observed active limb per rep matches the exercise-expected side. Adds metadata only; does not modify coordinates. |
+| Feature extraction | Computes spatial, temporal, and control domain quantitative metrics from normalized coordinates and exercise definition. |
+| Biomechanical proxy modeling | Estimates relative joint load distribution tendencies using statistical anthropometry, CoM, and moment arm approximations. |
+| Biomarker derivation | Integrates feature and proxy metrics into interpretable digital biomarkers with `source_fields` provenance. |
+| Robustness simulation | Applies ROM restriction, Gaussian noise, occlusion, or velocity spikes to normal movement data to generate synthetic abnormal data for pipeline evaluation. |
+
+---
+
+## 7. Data and Coordinate Conventions
+
+| Item | Convention |
+|---|---|
+| Pose coordinate array | `(T, J, 3)` = (frame, joint_index, xyz) |
+| Single frame coordinates | `(J, 3)` |
+| Angle unit | degree. Variable names use `_deg` suffix or docstring annotation. |
+| Time unit | second. Frame index is separate. |
+| Normalized length unit | `torso_length_ratio` (dimensionless; divided by sequence median torso length) |
+| Left/right prefix | `left_*`, `right_*` (lowercase + underscore) |
+
+---
+
+## 8. Terms Not to Use
+
+Expressions that overstate scope or create misleading impressions.
+
+| Avoid | Reason / Use instead |
+|---|---|
+| "clinically significant" | This project is engineering robustness verification, not clinical efficacy. → "consistently identifies deviation from the biomechanical reference" |
+| "diagnoses / predicts disease" | Not a diagnostic tool. → "may serve as a reference index for future clinical data studies" (explicitly scoped) |
+| Absolute torque / load (N·m) | Not estimable from monocular vision. → "relative load distribution tendency between joints" |
+| "normal / abnormal" (binary) | Synthetic abnormal data is a simulation label, not a clinical diagnosis. → "reference movement / synthetic variant" |
+| "patient data" | Input is synthetic + normal movement data. Use only when explicitly referring to clinical data. |
+| "automatic detection" (unqualified) | Primary analysis is annotation-based. Automatic segmentation is a future extension. |

@@ -1,8 +1,5 @@
 """
-[Deprecated] 합성 스쿼트 포즈 CSV 생성 스크립트.
-
-이 모듈의 기능은 `movement.simulation.synthetic.generate_squat_csv()` 로 이전되었다.
-직접 실행 시에는 하위 호환을 위해 동작하지만, 신규 코드에서는 아래를 사용할 것:
+[Deprecated] Use movement.simulation.synthetic.generate_squat_csv() instead.
 
     from movement.simulation.synthetic import generate_squat_csv
     generate_squat_csv(out_dir="data/sample")

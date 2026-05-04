@@ -1,21 +1,21 @@
 """
-⑩ 시각화 / 보고서 (Visualization)
+⑩ Visualization
 
-포즈 데이터·분석 결과의 인터랙티브 시각화 및 단계별 진단 보고 함수.
-pipeline ①~⑨ 외부에서 독립 호출한다.
+Interactive visualization and diagnostic reporting functions for pose data and analysis results.
+Called independently outside the ①–⑨ pipeline steps.
 
-현재 구현:
-    create_pose_animation()            — Plotly 3D 포즈 애니메이션
-    create_pose_comparison_animation() — Raw vs Normalized 좌표 비교 애니메이션
+Implemented:
+    create_pose_animation()            — Plotly interactive 3D pose animation
+    create_pose_comparison_animation() — Raw vs. normalized coordinate comparison animation
 
-계획된 함수 (구현 예정):
-    plot_reliability_overlay()         — 프레임별 신뢰도 마스크 오버레이
-    plot_joint_angle_timeseries()      — 관절각 시계열 (deg)
-    plot_rep_timeline()                — 반복 단위 타임라인 + 구간 레이블
-    plot_attribution_chart()           — 활성 측 귀속 결과 차트
-    plot_biomarker_radar()             — 바이오마커 레이더 차트
+Planned (raise NotImplementedError):
+    plot_reliability_overlay()         — Per-frame reliability mask overlay
+    plot_joint_angle_timeseries()      — Joint angle time series (deg)
+    plot_rep_timeline()                — Rep boundary timeline with segment labels
+    plot_attribution_chart()           — Active-side attribution result chart
+    plot_biomarker_radar()             — Biomarker radar chart
 
-좌표 모드:
+Coordinate modes:
     coord_mode="raw"  : <landmark>_x/y/z
     coord_mode="norm" : <landmark>_norm_x/y/z
 """
@@ -196,7 +196,7 @@ def create_pose_animation(
     return fig
 
 
-# ── 계획된 시각화 함수 (구현 예정) ───────────────────────────────────────────────
+# ── Planned visualization functions (not yet implemented) ────────────────────────
 
 def plot_reliability_overlay(
     df,
@@ -208,10 +208,9 @@ def plot_reliability_overlay(
     height: int = 750,
     width: int = 1000,
 ) -> "go.Figure":
-    """프레임별 신뢰도 마스크를 3D 포즈 위에 오버레이한다.
+    """Overlay the ④ preprocessing reliability mask on a 3D pose animation.
 
-    신뢰도가 낮은 랜드마크를 다른 색상·크기로 표시하여
-    ④ 전처리 단계의 신뢰도 탐지 결과를 시각적으로 확인한다.
+    Unreliable landmarks are rendered in a distinct color/size.
 
     Parameters
     ----------
@@ -219,9 +218,9 @@ def plot_reliability_overlay(
     landmarks : list[str]
     connections : list[tuple[str, str]]
     reliability_col : str
-        신뢰도 플래그 컬럼명 (예: "reliability_flag").
+        Column name for the per-landmark reliability flag.
     coord_mode : str
-        "raw" 또는 "norm".
+        "raw" or "norm".
     frame_duration : int
     height : int
     width : int
@@ -230,7 +229,7 @@ def plot_reliability_overlay(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_reliability_overlay는 아직 구현되지 않았습니다.")
+    raise NotImplementedError("plot_reliability_overlay is not yet implemented.")
 
 
 def plot_joint_angle_timeseries(
@@ -242,22 +241,21 @@ def plot_joint_angle_timeseries(
     height: int = 400,
     width: int = 900,
 ) -> "go.Figure":
-    """관절각 시계열을 프레임별로 플롯한다 (단위: degree).
+    """Plot joint angle time series per frame (unit: degree).
 
-    반복 단위(rep) 구간을 배경 음영으로 표시하여
-    ROM 특징 추출(⑦) 결과와 연계해 해석할 수 있도록 한다.
+    Rep ranges are shown as background shading for comparison with ⑦ ROM features.
 
     Parameters
     ----------
     df : pd.DataFrame
     joint_triplets : list[tuple[str, str, str]]
-        (proximal, vertex, distal) 랜드마크 3중쌍 목록.
+        (proximal, vertex, distal) landmark triplets.
     joint_labels : list[str], optional
-        각 관절의 표시 레이블. None이면 "joint_0", "joint_1", ... 사용.
+        Display labels for each joint. Defaults to "joint_0", "joint_1", ...
     rep_ranges : list[tuple[int, int]], optional
-        반복 구간 (start_frame, end_frame) 목록.
+        (start_frame, end_frame) pairs to shade as reps.
     coord_mode : str
-        "raw" 또는 "norm".
+        "raw" or "norm".
     height : int
     width : int
 
@@ -265,7 +263,7 @@ def plot_joint_angle_timeseries(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_joint_angle_timeseries는 아직 구현되지 않았습니다.")
+    raise NotImplementedError("plot_joint_angle_timeseries is not yet implemented.")
 
 
 def plot_rep_timeline(
@@ -276,15 +274,14 @@ def plot_rep_timeline(
     height: int = 200,
     width: int = 900,
 ) -> "go.Figure":
-    """반복 단위 타임라인과 구간 레이블을 표시한다.
+    """Plot ② annotation segment labels as a frame-level timeline.
 
-    ② annotation 결과를 한눈에 확인하고,
-    분석 대상 구간(use_for_analysis=True)을 강조 표시한다.
+    Analysis segments (use_for_analysis=True) are highlighted.
 
     Parameters
     ----------
     df : pd.DataFrame
-        annotation 컬럼(segment_type, rep_id, set_id, use_for_analysis)이 포함된 데이터프레임.
+        Dataframe with annotation columns (segment_type, rep_id, set_id, use_for_analysis).
     segment_col : str
     rep_col : str
     set_col : str
@@ -295,7 +292,7 @@ def plot_rep_timeline(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_rep_timeline는 아직 구현되지 않았습니다.")
+    raise NotImplementedError("plot_rep_timeline is not yet implemented.")
 
 
 def plot_attribution_chart(
@@ -306,15 +303,14 @@ def plot_attribution_chart(
     height: int = 300,
     width: int = 900,
 ) -> "go.Figure":
-    """⑥ motion_attribution 결과를 프레임별 차트로 표시한다.
+    """Chart ⑥ motion attribution results per frame.
 
-    감지된 활성 측(detected)과 기대 측(expected)의 일치 여부와
-    귀속 신뢰도(attribution_confidence)를 함께 시각화한다.
+    Shows detected vs. expected active side and attribution confidence.
 
     Parameters
     ----------
     df : pd.DataFrame
-        motion_attribution 출력 컬럼이 포함된 데이터프레임.
+        Dataframe with motion attribution output columns.
     attribution_col : str
     confidence_col : str
     expected_col : str
@@ -325,7 +321,7 @@ def plot_attribution_chart(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_attribution_chart는 아직 구현되지 않았습니다.")
+    raise NotImplementedError("plot_attribution_chart is not yet implemented.")
 
 
 def plot_biomarker_radar(
@@ -334,17 +330,15 @@ def plot_biomarker_radar(
     height: int = 500,
     width: int = 600,
 ) -> "go.Figure":
-    """⑨ 지표화 결과를 레이더 차트로 표시한다.
+    """Radar chart of ⑨ biomarker derivation results.
 
-    각 바이오마커 축을 정규화된 참조 범위 기준으로 표시하며,
-    참조 레코드(reference_records)를 함께 전달하면 비교 오버레이가 추가된다.
+    Each axis is one biomarker. If reference_records is provided,
+    a comparison overlay is added.
 
     Parameters
     ----------
     biomarker_records : list[BiomarkerRecord]
-        피험자 바이오마커 레코드 목록.
     reference_records : list[BiomarkerRecord], optional
-        비교 기준 바이오마커 레코드 목록. None이면 단일 피험자만 표시.
     height : int
     width : int
 
@@ -352,7 +346,7 @@ def plot_biomarker_radar(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_biomarker_radar는 아직 구현되지 않았습니다.")
+    raise NotImplementedError("plot_biomarker_radar is not yet implemented.")
 
 def create_pose_comparison_animation(
     df,

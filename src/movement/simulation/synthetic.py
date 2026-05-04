@@ -1,16 +1,16 @@
 """
-합성 데이터 생성 및 시뮬레이션 조건 부여
+Synthetic data generation and simulation condition injection.
 
-정상 포즈 데이터프레임에 인위적 ROM 제한 / 좌표 잡음 / 가려짐 / 속도 이상을
-주입해 강건성 평가용 변형 데이터셋을 생성한다.
+Injects ROM restriction, Gaussian coordinate noise, occlusion, or velocity spikes into
+a normal pose dataframe to produce synthetic variant datasets for robustness evaluation.
 
-모든 함수는 원본 데이터프레임을 수정하지 않고 복사본을 반환한다.
-simulation_log dict는 어떤 처리가 적용됐는지를 기록한다.
+All functions return a modified copy; the original dataframe is not modified.
+Each function also returns a simulation_log dict recording what was applied.
 
-단위:
-  노이즈 σ : torso_length_ratio
-  속도 스파이크 크기 : torso_length_ratio
-  ROM 제한 : degree
+Units:
+    noise σ             : torso_length_ratio
+    velocity spike size : torso_length_ratio
+    ROM restriction     : degree
 """
 from __future__ import annotations
 
@@ -21,17 +21,17 @@ import numpy as np
 import pandas as pd
 
 
-# ── 내부 헬퍼 ────────────────────────────────────────────────────────────────
+# ── Internal helpers ─────────────────────────────────────────────────────────
 
 def _xyz_cols(lm: str) -> list[str]:
     return [f"{lm}_x", f"{lm}_y", f"{lm}_z"]
 
 
 def _get_torso_scale(df: pd.DataFrame) -> float:
-    """시퀀스 중간값 몸통 길이 (torso_length_ratio 기준 1.0에 해당하는 raw 스케일)."""
+    """Sequence-wise median torso length (raw scale corresponding to torso_length_ratio = 1.0)."""
     if "torso_length" in df.columns:
         return float(df["torso_length"].median())
-    # torso_length 컬럼 없으면 hip-shoulder 거리로 추정
+    # Fallback: estimate from hip–shoulder distance if torso_length column is absent
     try:
         lhs = df[["left_shoulder_x", "left_shoulder_y", "left_shoulder_z"]].values
         rhs = df[["right_shoulder_x", "right_shoulder_y", "right_shoulder_z"]].values
@@ -45,7 +45,7 @@ def _get_torso_scale(df: pd.DataFrame) -> float:
         return 1.0
 
 
-# ── 공개 API ─────────────────────────────────────────────────────────────────
+# ── Public API ───────────────────────────────────────────────────────────────
 
 def add_gaussian_noise(
     df: pd.DataFrame,
@@ -53,19 +53,19 @@ def add_gaussian_noise(
     landmarks: list[str] | None = None,
     seed: int | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """모든(또는 지정) 랜드마크의 x/y/z 좌표에 가우시안 잡음을 추가한다.
+    """Add Gaussian noise to x/y/z coordinates of all (or specified) landmarks.
 
     Parameters
     ----------
     df : pd.DataFrame
-        원본 포즈 데이터프레임 (수정하지 않음).
+        Input pose dataframe (not modified).
     sigma_torso_ratio : float
-        잡음 표준편차 (torso_length_ratio 단위).
-        예: 0.01 = 몸통 길이의 1%.
+        Noise standard deviation in torso_length_ratio units.
+        Example: 0.01 = 1% of torso length.
     landmarks : list[str], optional
-        잡음을 추가할 랜드마크 목록. None이면 x/y/z 컬럼 전체 적용.
+        Landmark names to add noise to. None applies noise to all x/y/z columns.
     seed : int, optional
-        재현성용 난수 시드.
+        Random seed for reproducibility.
 
     Returns
     -------
@@ -101,21 +101,19 @@ def add_occlusion(
     frame_range: tuple[int, int],
     zero_visibility: bool = True,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """지정 랜드마크를 지정 프레임 구간에서 가려진 것으로 처리한다.
+    """Simulate occlusion for specified landmarks over a frame range.
 
-    처리 방식:
-      - 해당 프레임의 좌표를 NaN으로 대체 (모델이 결측으로 처리하도록).
-      - visibility를 0.0으로 설정 (zero_visibility=True 시).
+    Coordinates are replaced with NaN and visibility set to 0.0.
 
     Parameters
     ----------
     df : pd.DataFrame
     target_landmarks : list[str]
-        가려짐을 적용할 랜드마크 이름 목록.
+        Landmark names to occlude.
     frame_range : tuple[int, int]
-        (start_frame, end_frame) 포함 범위.
+        (start_frame, end_frame) inclusive.
     zero_visibility : bool
-        True이면 visibility도 0으로 설정.
+        If True, also set visibility columns to 0.0.
 
     Returns
     -------
@@ -156,18 +154,18 @@ def add_velocity_spike(
     spike_magnitude_torso_ratio: float = 0.5,
     seed: int | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """지정 프레임에서 지정 랜드마크의 좌표에 위치 점프를 삽입한다.
+    """Insert position jumps at specified frames to simulate velocity spikes.
 
-    속도 이상 감지(preprocessing velocity check)의 동작을 검증하기 위한 조건.
+    Used to verify ④ preprocessing velocity outlier detection.
 
     Parameters
     ----------
     df : pd.DataFrame
     target_landmarks : list[str]
     spike_frames : list[int]
-        점프가 삽입될 프레임 번호 목록.
+        Frame numbers to insert a jump at.
     spike_magnitude_torso_ratio : float
-        점프 크기 (torso_length_ratio 단위).
+        Jump size in torso_length_ratio units.
     seed : int, optional
 
     Returns
@@ -211,24 +209,24 @@ def restrict_rom(
     landmarks_triplet: tuple[str, str, str],
     rep_frames: list[tuple[int, int]] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """관절 가동범위를 인위적으로 제한한다.
+    """Artificially restrict joint range of motion.
 
-    관절각이 restriction_deg를 초과하는 프레임에서 원위 랜드마크를
-    관절각이 restriction_deg가 되도록 조정한다.
+    Adjusts the distal landmark position so that the included angle does not
+    exceed restriction_deg in frames where the joint exceeds the limit.
 
     Parameters
     ----------
     df : pd.DataFrame
-        원본 정규화 좌표 또는 raw 좌표 포함 데이터프레임.
+        Pose dataframe with normalized or raw coordinates.
     joint : str
-        제한할 관절 이름 (로그용).
+        Joint name (used in simulation log only).
     restriction_deg : float
-        허용 최대 관절각 (포함각, 도 단위).
-        예: 90.0이면 무릎이 90° 이상 굴곡 불가.
+        Maximum allowed included angle in degrees.
+        Example: 90.0 means knee cannot flex beyond 90°.
     landmarks_triplet : tuple[str, str, str]
-        (proximal_lm, vertex_lm, distal_lm) 랜드마크 이름.
+        (proximal_lm, vertex_lm, distal_lm) landmark names.
     rep_frames : list[tuple[int, int]], optional
-        ROM 제한을 적용할 반복 구간 목록. None이면 전체 시퀀스 적용.
+        Rep intervals to apply restriction. None applies to the full sequence.
 
     Returns
     -------
@@ -236,8 +234,8 @@ def restrict_rom(
 
     Notes
     -----
-    이 함수는 raw 좌표 컬럼(`<lm>_x/y/z`)을 직접 수정한다.
-    정규화 좌표(`<lm>_norm_x/y/z`)는 재계산이 필요하다.
+    Modifies raw coordinate columns (<lm>_x/y/z) directly.
+    Normalized coordinates (<lm>_norm_x/y/z) must be recomputed if needed.
     """
     prox_lm, vert_lm, dist_lm = landmarks_triplet
     df_out = df.copy()
@@ -248,7 +246,7 @@ def restrict_rom(
     def _xyz(row_df: pd.DataFrame, lm: str) -> np.ndarray:
         return row_df[[f"{lm}_x", f"{lm}_y", f"{lm}_z"]].values.astype(float)
 
-    # 적용 프레임 결정
+    # determine frames to apply restriction
     if rep_frames is not None:
         apply_mask = pd.Series(False, index=df_out.index)
         for s, e in rep_frames:
@@ -273,18 +271,18 @@ def restrict_rom(
         cos_a = np.clip(np.dot(vp, vd) / (norm_p * norm_d), -1.0, 1.0)
         angle_rad = np.arccos(cos_a)
 
-        # 관절각이 제한값 초과 → 원위 랜드마크를 제한 각도로 조정
+        # joint angle exceeds limit → adjust distal landmark to limit angle
         if angle_rad > limit_rad:
-            # 원위 방향 벡터를 proximal 방향과 limit_rad 각도를 이루도록 회전
-            # 2D 근사: proximal-vertex 평면에서 회전
+            # rotate distal direction vector to make limit_rad angle with proximal direction
+            # 2D approximation: rotation within the proximal-vertex plane
             vp_unit = vp / norm_p
-            # Gram-Schmidt로 평면 내 수직 방향 산출
+            # Gram-Schmidt: perpendicular direction within the plane
             perp = vd - np.dot(vd, vp_unit) * vp_unit
             perp_norm = np.linalg.norm(perp)
             if perp_norm < 1e-9:
                 continue
             perp_unit = perp / perp_norm
-            # 새 원위 방향 = cos(limit) * vp_unit + sin(limit) * perp_unit (flip: 굴곡 방향)
+            # new distal direction = cos(limit) * vp_unit + sin(limit) * perp_unit (flexion direction)
             new_vd_unit = np.cos(limit_rad) * vp_unit + np.sin(limit_rad) * perp_unit
             new_d = v + norm_d * new_vd_unit
 
@@ -304,18 +302,18 @@ def restrict_rom(
     return df_out, log
 
 
-# ── 합성 squat 데이터 생성 (generate_synthetic_squat.py 통합) ────────────────
+# ── Synthetic squat data generation (merged from generate_synthetic_squat.py) ─
 
 def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
-    """합성 스쿼트 포즈 CSV를 생성한다.
+    """Generate synthetic squat pose CSV files.
 
-    simulation/synthetic.py로 이전된 generate_synthetic_squat.py 의 main() 함수.
-    기존 data/sample/ 디렉터리 경로를 유지하기 위해 out_dir을 인수로 받는다.
+    This is the main() function from generate_synthetic_squat.py, now housed here.
+    Accepts out_dir to preserve the data/sample/ directory path.
 
     Parameters
     ----------
     out_dir : Path-like
-        출력 디렉터리 (예: Path("data/sample")).
+        Output directory (e.g. Path("data/sample")).
     fps : int
     seed : int
     """

@@ -1,13 +1,16 @@
 """
-④ 전처리 (Preprocessing)
+④ Preprocessing
 
-단일 비전 포즈 데이터의 신뢰도 탐지, 좌우 교차(swap) 보정,
-단기 결손 보간, 선택적 평활화를 수행한다.
-입력 데이터프레임을 직접 수정하지 않고 보정된 복사본을 반환한다.
+Reliability detection, left/right swap correction, short-gap interpolation,
+and optional smoothing for monocular pose data.
+Returns a corrected copy; does not modify the input dataframe.
 
-Pipeline position: ③ exercise_definition 로딩 이후, ⑤ normalization 이전.
+Corrects data quality issues only. Does not alter movement quality patterns
+(compensation movements, squat depth, etc.).
 
-좌표 규약: 컬럼명 <landmark>_{x,y,z}. 입력 shape: (T, columns).
+Pipeline position: after ③ exercise definition loading, before ⑤ normalization.
+
+Coordinate convention: columns named <landmark>_{x,y,z}.  Input shape: (T, columns).
 """
 from __future__ import annotations
 

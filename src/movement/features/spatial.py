@@ -1,13 +1,13 @@
 """
-⑦-공간 특징 (Spatial Features)
+⑦ Spatial Features
 
-ROM(관절 가동범위), 좌우 대칭성 지수, 궤적 형태를 산출한다.
+Computes ROM (joint range of motion), left/right symmetry index, and trajectory shape.
 
 Unit convention:
-  각도 기반 특징 : degree
-  거리 기반 특징 : torso_length_ratio
+  angle-based features : degree
+  distance-based features : torso_length_ratio
 
-Input: ⑤ 정규화 후 데이터프레임 (norm 컬럼 포함), ExerciseDefinition.
+Input: normalized pose dataframe (norm columns) and ExerciseDefinition.
 """
 from __future__ import annotations
 
@@ -52,16 +52,16 @@ def compute_rom(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """관절별 ROM(최대 - 최소 included angle, 도 단위)을 산출한다.
+    """Compute per-joint ROM (max − min included angle, degrees).
 
     Parameters
     ----------
     df : pd.DataFrame
-        정규화된 포즈 데이터프레임. 단일 반복 또는 전체 시퀀스.
+        Normalized pose dataframe; single rep or full sequence.
     exercise_definition : ExerciseDefinition
-        angle_definitions 필드에서 관절 triplet을 읽는다.
+        Joint triplets are read from the angle_definitions field.
     rep_id : int | None
-        반복 번호. None이면 시퀀스 단위 집계.
+        Rep number. None aggregates over the full sequence.
 
     Returns
     -------
@@ -105,18 +105,18 @@ def compute_rom(
     return records
 
 
-# ── 좌우 대칭성 ──────────────────────────────────────────────────────────────
+# ── Left/right symmetry ───────────────────────────────────────────────────────
 
 def compute_symmetry(
     df: pd.DataFrame,
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """좌우 paired 관절의 ROM 대칭성 지수를 산출한다.
+    """Compute ROM symmetry index for paired left/right joints.
 
     symmetry_index = |ROM_left - ROM_right| / ((ROM_left + ROM_right) / 2 + ε)
 
-    0에 가까울수록 좌우 대칭. 단위: dimensionless_cv.
+    0 = perfect symmetry. Unit: dimensionless_cv.
     """
     roms = compute_rom(df, exercise_definition, rep_id)
     rom_map: dict[str, float] = {r.feature_id.split(".")[-1]: r.value for r in roms}
@@ -148,16 +148,16 @@ def compute_symmetry(
     return records
 
 
-# ── 궤적 형태 ─────────────────────────────────────────────────────────────────
+# ── Trajectory shape ──────────────────────────────────────────────────────────
 
 def compute_shape(
     df: pd.DataFrame,
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """대표 관절의 궤적 길이(arc length)를 torso_length_ratio로 산출한다.
+    """Compute arc length of primary joint trajectories in torso_length_ratio.
 
-    궤적이 길수록 움직임이 불안정하거나 보상 움직임이 있음을 시사한다.
+    Longer trajectories indicate movement instability or compensatory motion.
     """
     primary_joints: list[str] = exercise_definition.landmarks.primary_joints or []
     if not primary_joints:

@@ -1,14 +1,14 @@
 """
-⑨ 지표화 (Biomarker Derivation)
+⑨ Biomarker Derivation
 
-⑦ 특징 추출과 ⑧ 생체역학적 근사 모델링의 결과를 통합해
-해석 가능한 디지털 바이오마커(BiomarkerRecord)를 산출한다.
+Integrates ⑦ feature extraction and ⑧ biomechanical proxy modeling results
+into interpretable digital biomarkers (BiomarkerRecord).
 
-모든 BiomarkerRecord는 source_fields (provenance) 를 반드시 포함해야 한다.
-source_fields가 비어 있으면 ValueError를 발생시킨다.
+Every BiomarkerRecord must include source_fields (provenance).
+Raises ValueError if source_fields is empty.
 
-Unit convention: torso_length_ratio | degree | dimensionless_cv | second.
-절대 단위(N, kg, m, N·m) 사용 금지.
+Unit convention  : torso_length_ratio | degree | dimensionless_cv | second.
+Absolute units (N, kg, m, N·m) are not used.
 """
 from __future__ import annotations
 
@@ -18,18 +18,18 @@ from typing import Any
 
 @dataclass
 class BiomarkerRecord:
-    """단일 디지털 바이오마커.
+    """Single digital biomarker.
 
     Parameters
     ----------
-    biomarker_id      : 고유 식별자 (예: 'biomarker.rom.left_knee')
-    exercise_id       : 운동 ID
-    definition_version: 참조 운동 정의 버전 (provenance)
-    source_fields     : 이 바이오마커를 도출한 운동 정의 필드 목록 (provenance)
-    rep_id            : 반복 번호 (None = 시퀀스 단위)
-    value             : 바이오마커 값
-    unit              : 단위 (torso_length_ratio | degree | dimensionless_cv | second)
-    note              : 선택적 임상/생체역학적 해석 보조 설명
+    biomarker_id      : unique identifier (e.g. 'biomarker.rom.left_knee')
+    exercise_id       : exercise identifier
+    definition_version: exercise definition version this record references (provenance)
+    source_fields     : exercise definition fields that drove this biomarker (provenance)
+    rep_id            : rep number (None = sequence-level)
+    value             : biomarker value
+    unit              : torso_length_ratio | degree | dimensionless_cv | second
+    note              : optional biomechanical interpretation note
     """
     biomarker_id: str
     exercise_id: str
@@ -43,8 +43,8 @@ class BiomarkerRecord:
     def __post_init__(self) -> None:
         if not self.source_fields:
             raise ValueError(
-                f"BiomarkerRecord '{self.biomarker_id}': source_fields가 비어 있음. "
-                "운동 정의의 출처 필드를 반드시 명시해야 바이오마커가 추적 가능합니다."
+                f"BiomarkerRecord '{self.biomarker_id}': source_fields is empty. "
+                "Provenance fields from the exercise definition must be specified."
             )
 
     def as_dict(self) -> dict[str, Any]:
@@ -66,14 +66,14 @@ def from_feature_record(
     biomarker_id: str | None = None,
     note: str | None = None,
 ) -> BiomarkerRecord:
-    """FeatureRecord를 BiomarkerRecord로 변환한다.
+    """Convert a FeatureRecord to a BiomarkerRecord.
 
     Parameters
     ----------
-    feature          : FeatureRecord
-    definition_version : 운동 정의 버전 문자열
-    biomarker_id     : 재정의할 바이오마커 ID. None이면 feature.feature_id 사용.
-    note             : 선택적 임상/생체역학 해석 메모.
+    feature            : FeatureRecord
+    definition_version : exercise definition version string
+    biomarker_id       : override biomarker id; defaults to feature.feature_id
+    note               : optional biomechanical interpretation note
     """
     return BiomarkerRecord(
         biomarker_id=biomarker_id or feature.feature_id,
@@ -93,7 +93,7 @@ def from_biomech_record(
     biomarker_id: str | None = None,
     note: str | None = None,
 ) -> BiomarkerRecord:
-    """BiomechRecord를 BiomarkerRecord로 변환한다."""
+    """Convert a BiomechRecord to a BiomarkerRecord."""
     return BiomarkerRecord(
         biomarker_id=biomarker_id or biomech.metric_id,
         exercise_id=biomech.exercise_id,
