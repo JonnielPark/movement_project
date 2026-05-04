@@ -154,18 +154,25 @@ See [06_normalization.md](06_normalization.md).
   [done]  Module scaffolding for features / biomech / biomarker / simulation
 
 2026.06 – 2026.09  Feature extraction (⑦)
-  Spatial: ROM, symmetry, shape
-  Temporal: tempo, variability
-  Control: stability, compensation
+  [done]  compute_rom() connected to YAML angle_definitions (points + vertex index format)
+  [done]  compute_symmetry() — left/right ROM symmetry index per rep
+  [done]  compute_shape() — primary joint arc length per rep
+  [done]  extract_rep_features() — per-rep spatial / temporal / control feature extraction
+  [done]  features_to_dataframe() — FeatureRecord list → DataFrame export
+  [done]  pipeline ⑦ connected — extract_rep_features() wired into run_pipeline()
+  Control: compensation rule engine (knee_valgus, lateral_pelvic_shift, …)
   Visualization: reliability overlay, joint angle time series, step result charts
 
 2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑨)
-  CoM and moment arm estimation
-  Relative load distribution / compensation metrics
-  Digital biomarker derivation with provenance
-  Synthetic data generation for robustness simulation
+  [partial]  CoM trajectory metrics — sequence-level (range_x, range_z, path_length)
+  [partial]  Moment arm proxy — knee / hip sagittal plane, sequence-level
+  [partial]  Biomarker record conversion (FeatureRecord / BiomechRecord → BiomarkerRecord)
+  Biomech rep-level iteration + pipeline ⑧ connection
+  Domain score derivation (0–100, anchored to synthetic baseline)
+  Composite movement quality score
 
 2027.02 – 2027.05  Robustness simulation and evaluation
-  Abnormal motion simulation (ROM restriction, noise, occlusion)
+  [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike
+  Robustness experiment runner script
   Monotonicity and consistency analysis of biomarker outputs
 ```

@@ -453,34 +453,14 @@ def run_pipeline(
             report["motion_attribution"] = attr_report.as_dict()
 
     # ── ⑦ Feature Extraction ─────────────────────────────────────────────────
+    feat_records: list[Any] = []
     if config.features.enabled:
-        from movement.features.control import compute_compensation, compute_stability
-        from movement.features.spatial import compute_rom, compute_shape, compute_symmetry
-        from movement.features.temporal import compute_tempo, compute_variability
-
-        feat_records: list[Any] = []
-        cfg_sp = config.features.spatial
-        cfg_te = config.features.temporal
-        cfg_co = config.features.control
+        from movement.features import extract_rep_features
 
         if exercise_def is None:
             print("[Step ⑦] Feature Extraction: exercise_def not available — skipped.")
         else:
-            if cfg_sp.rom:
-                feat_records += compute_rom(df, exercise_def)
-            if cfg_sp.symmetry:
-                feat_records += compute_symmetry(df, exercise_def)
-            if cfg_sp.shape:
-                feat_records += compute_shape(df, exercise_def)
-            if cfg_te.tempo:
-                feat_records += compute_tempo(df, exercise_def)
-            if cfg_te.variability:
-                feat_records += compute_variability(df, exercise_def)
-            if cfg_co.stability:
-                feat_records += compute_stability(df, exercise_def)
-            if cfg_co.compensation:
-                feat_records += compute_compensation(df, exercise_def)
-
+            feat_records = extract_rep_features(df, exercise_def)
             report["features"] = [
                 {
                     "feature_id": r.feature_id,
