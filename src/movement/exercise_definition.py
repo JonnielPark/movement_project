@@ -67,6 +67,15 @@ _VOCAB: dict[str, frozenset[str]] = {
     "view_requirements.occlusion_risk": frozenset({
         "low", "medium", "high", "very_high",
     }),
+    "phase_segmentation.reference_axis": frozenset({
+        "vertical", "anterior_posterior", "medial_lateral",
+    }),
+    "phase_segmentation.split_logic": frozenset({
+        "local_minimum", "local_maximum", "zero_crossing",
+    }),
+    "phase_segmentation.multi_inflection_policy": frozenset({
+        "global_extremum", "first", "reject_rep",
+    }),
 }
 
 _REQUIRED_FIELDS: tuple[str, ...] = (
@@ -89,6 +98,43 @@ _GENERIC_ID = "generic"
 class PhaseModel:
     type: str
     expected_ratio: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class SmoothingSpec:
+    """Smoothing parameters for phase segmentation trajectory preprocessing."""
+    method: str = "savitzky_golay"  # savitzky_golay | butterworth | rolling_median
+    window_frames: int = 7          # must be odd for Savitzky-Golay
+    polyorder: int = 3
+
+
+@dataclass
+class BottomHoldSpec:
+    """Bottom-hold phase specification: frames around the inflection labeled as Bottom_Hold."""
+    enabled: bool = True
+    half_window_frames: int = 3     # ±N frames around the inflection frame
+
+
+@dataclass
+class PhaseSegmentationSpec:
+    """
+    Kinematic phase segmentation specification for semi-automatic intra-rep phase splitting.
+
+    Describes how to detect the turn-around point (inflection frame) within each rep
+    using the smoothed trajectory of a reference landmark along a reference axis.
+    The result partitions each rep into kinematic phases (e.g., Descent / Ascent).
+
+    These labels are kinematic (trajectory-based), not kinetic (muscle-action-based).
+    The biomechanical interpretation of each phase is provided separately by the exercise.
+    """
+    reference_landmark: str = "hip_center"
+    reference_axis: str = "vertical"               # maps to norm_z (vertical), norm_y, norm_x
+    phase_sequence: list[str] = field(default_factory=list)
+    split_logic: str | list[str] = "local_minimum" # local_minimum | local_maximum | zero_crossing
+    smoothing: SmoothingSpec = field(default_factory=SmoothingSpec)
+    bottom_hold: BottomHoldSpec = field(default_factory=BottomHoldSpec)
+    minimum_rep_length_frames: int = 8
+    multi_inflection_policy: str = "global_extremum"  # global_extremum | first | reject_rep
 
 
 @dataclass
@@ -138,6 +184,9 @@ class ExerciseDefinition:
     Downstream modules should emit a warning when this flag is True, because
     compensation biomarkers will not be produced.
 
+    The `phase_segmentation` field is None for the generic fallback or when the
+    YAML does not declare a `phase_segmentation` block. When None, step ⑥ is a no-op.
+
     Coordinate convention inherited from the pipeline: (T, J, 3) = (frame, joint_index, xyz).
 
     Parameters
@@ -158,6 +207,8 @@ class ExerciseDefinition:
     compensation_candidates : list[str]
     feature_domains : FeatureDomains
     quality_rules : QualityRules
+    phase_segmentation : PhaseSegmentationSpec | None
+        Kinematic phase splitter spec. None → ⑥ is skipped.
     """
     exercise_id: str
     display_name: str
@@ -172,6 +223,7 @@ class ExerciseDefinition:
     compensation_candidates: list[str]
     feature_domains: FeatureDomains
     quality_rules: QualityRules
+    phase_segmentation: PhaseSegmentationSpec | None = None
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -189,6 +241,7 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
     bio = raw.get("biomechanical_focus", {})
     vr = raw.get("view_requirements", {})
     pm = raw.get("phase_model", {})
+    ps = raw.get("phase_segmentation") or {}
 
     checks = [
         ("classification.family",                        clf.get("family")),
@@ -200,13 +253,28 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
         ("biomechanical_focus.expected_com_motion",      bio.get("expected_com_motion")),
         ("biomechanical_focus.stability_requirement",    bio.get("stability_requirement")),
         ("view_requirements.occlusion_risk",             vr.get("occlusion_risk")),
+        ("phase_segmentation.reference_axis",            ps.get("reference_axis") if ps else None),
+        ("phase_segmentation.multi_inflection_policy",   ps.get("multi_inflection_policy") if ps else None),
     ]
 
-    return [
+    warns = [
         f"[{exercise_id}] '{key}' value '{val}' is not in controlled vocabulary"
         for key, val in checks
         if val is not None and val not in _VOCAB.get(key, frozenset())
     ]
+
+    # split_logic can be a string or a list — validate each entry
+    sl = ps.get("split_logic") if ps else None
+    if sl is not None:
+        sl_list = sl if isinstance(sl, list) else [sl]
+        for s in sl_list:
+            if s not in _VOCAB["phase_segmentation.split_logic"]:
+                warns.append(
+                    f"[{exercise_id}] 'phase_segmentation.split_logic' value '{s}' "
+                    "is not in controlled vocabulary"
+                )
+
+    return warns
 
 
 def _check_phase_ratio(raw: dict, exercise_id: str) -> list[str]:
@@ -233,6 +301,32 @@ def _validate(raw: dict) -> tuple[list[str], list[str]]:
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
+
+def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
+    """Parse a phase_segmentation YAML block into a PhaseSegmentationSpec, or None."""
+    if not ps:
+        return None
+    sm = ps.get("smoothing") or {}
+    bh = ps.get("bottom_hold") or {}
+    sl = ps.get("split_logic", "local_minimum")
+    return PhaseSegmentationSpec(
+        reference_landmark=ps.get("reference_landmark", "hip_center"),
+        reference_axis=ps.get("reference_axis", "vertical"),
+        phase_sequence=list(ps.get("phase_sequence") or []),
+        split_logic=sl if isinstance(sl, list) else str(sl),
+        smoothing=SmoothingSpec(
+            method=sm.get("method", "savitzky_golay"),
+            window_frames=int(sm.get("window_frames", 7)),
+            polyorder=int(sm.get("polyorder", 3)),
+        ),
+        bottom_hold=BottomHoldSpec(
+            enabled=bool(bh.get("enabled", True)),
+            half_window_frames=int(bh.get("half_window_frames", 3)),
+        ),
+        minimum_rep_length_frames=int(ps.get("minimum_rep_length_frames", 8)),
+        multi_inflection_policy=ps.get("multi_inflection_policy", "global_extremum"),
+    )
+
 
 def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
     pm = raw.get("phase_model", {})
@@ -288,6 +382,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             exclude_rep_if_phase_missing=bool(qr.get("exclude_rep_if_phase_missing", False)),
             allow_partial_feature_output=bool(qr.get("allow_partial_feature_output", True)),
         ),
+        phase_segmentation=_parse_phase_segmentation(raw.get("phase_segmentation")),
     )
 
 

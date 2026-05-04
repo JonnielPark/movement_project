@@ -1,7 +1,7 @@
 exercise_id: plank_shoulder_tap
 display_name: Plank Shoulder Tap
 description: Plank-position anti-rotation task; one hand alternately taps the opposite shoulder while the trunk and pelvis must remain stable.
-version: 0.1.0
+version: 0.2.0
 tags:
   - bodyweight
   - core
@@ -41,11 +41,29 @@ support:
 
 phase_model:
   type: task_phase
+  # kinetic abstraction; for kinematic phase boundaries see phase_segmentation
   expected_ratio:
     support_stable: 0.25
     weight_shift: 0.25
     tap: 0.25
     return: 0.25
+
+phase_segmentation:
+  # Active wrist lifts (local_maximum) then taps the opposite shoulder (local_minimum)
+  # starting_side determines which wrist to track; default right_wrist
+  reference_landmark: right_wrist    # resolved at runtime by starting_side
+  reference_axis: vertical           # norm_z — wrist rises in Lift, contacts in Tap
+  phase_sequence: [Lift, Tap, Return]
+  split_logic: [local_maximum, local_minimum]   # two inflections → three phases
+  smoothing:
+    method: savitzky_golay
+    window_frames: 5                 # shorter window for the faster wrist trajectory
+    polyorder: 3
+  bottom_hold:
+    enabled: false                   # multi-phase exercises do not use bottom_hold
+    half_window_frames: 2
+  minimum_rep_length_frames: 6
+  multi_inflection_policy: global_extremum
 
 landmarks:
   model: mediapipe_pose_33

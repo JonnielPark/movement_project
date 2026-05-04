@@ -14,7 +14,8 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Motion Attribution
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution
 → downstream steps
 ```
 
@@ -34,7 +35,7 @@ starting_side       str       left | right (alternating exercises only)
 ```
 
 `exercise_type` drives ③ exercise definition loading.
-`pattern` and `starting_side` drive ④ preprocessing L/R swap detection and ⑥ motion attribution.
+`pattern` and `starting_side` drive ④ preprocessing L/R swap detection and ⑦ motion attribution.
 
 ## 3. Annotation Hierarchy
 

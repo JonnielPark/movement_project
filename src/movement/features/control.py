@@ -1,5 +1,5 @@
 """
-⑦ Control Features
+⑧ Control Features
 
 Computes CoM (Center of Mass) horizontal displacement stability and
 compensation movement candidate metrics.
@@ -38,7 +38,7 @@ def compute_stability(
     """Compute CoM horizontal displacement stability.
 
     CoM approximation: standard deviation of hip_center(norm) horizontal coordinates.
-    (To be replaced by com.py estimate once ⑧ biomech proxy is implemented.)
+    (To be replaced by com.py estimate once ⑨ biomech proxy is implemented.)
 
     Unit: torso_length_ratio. Smaller values indicate greater stability.
     """

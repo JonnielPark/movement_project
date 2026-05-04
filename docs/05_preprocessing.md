@@ -17,8 +17,9 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing          ← this step
 → ⑤ Normalization
-→ ⑥ Motion Attribution
-→ ⑦ Feature Extraction
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution
+→ ⑧ Feature Extraction
 ```
 
 Runs after ③ so that `exercise_type`, `pattern`, and exercise definition fields
@@ -129,7 +130,7 @@ Checked joints: `left_knee`, `right_knee`, `left_elbow`, `right_elbow`,
 `left_hip`, `right_hip`.
 
 This check flags anatomically impossible configurations only (conservative threshold).
-Exercise-specific ROM checks are the responsibility of ⑦ feature extraction.
+Exercise-specific ROM checks are the responsibility of ⑧ feature extraction.
 
 ### 5-4. Velocity Outliers
 
@@ -185,7 +186,7 @@ Labels are swapped; coordinate values are unchanged.
 `swap_corrected = True`, reason recorded in `preprocessing_note`.
 
 Low-confidence → flag only; no modification.
-Rep-level consistency is checked by ⑥ motion attribution.
+Rep-level consistency is checked by ⑦ motion attribution.
 
 ## 7. Short-Gap Interpolation
 

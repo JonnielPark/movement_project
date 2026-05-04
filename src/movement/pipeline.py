@@ -7,10 +7,11 @@ Runs the analysis steps in order:
     ③ exercise_definition    biomechanical property object loading
     ④ preprocessing          monocular data quality correction
     ⑤ normalization          body-relative coordinate normalization
-    ⑥ motion_attribution     per-rep active-side consistency
-    ⑦ features               spatial / temporal / control feature extraction
-    ⑧ biomech                biomechanical proxy modeling (CoM, moment arm)
-    ⑨ biomarker              interpretable digital biomarkers with provenance
+    ⑥ phase_segmentation    semi-automatic intra-rep kinematic phase splitting
+    ⑦ motion_attribution     per-rep active-side consistency
+    ⑧ features               spatial / temporal / control feature extraction
+    ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
+    ⑩ biomarker              interpretable digital biomarkers with provenance
 
 Each step is toggled via the enabled flag in configs/pipeline_default.yaml.
 """
@@ -164,6 +165,14 @@ class BiomechConfig:
 
 
 @dataclass
+class PhaseSegmentationConfig:
+    enabled: bool = False
+    fps_default: float = 30.0
+    multi_inflection_policy: str = "global_extremum"
+    minimum_rep_length_frames: int = 8
+
+
+@dataclass
 class BiomarkerConfig:
     enabled: bool = False
     emit_provenance: bool = True
@@ -195,6 +204,7 @@ class PipelineConfig:
     exercise_definition: ExerciseDefinitionConfig = field(default_factory=ExerciseDefinitionConfig)
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
+    phase_segmentation: PhaseSegmentationConfig = field(default_factory=PhaseSegmentationConfig)
     motion_attribution: MotionAttributionConfig = field(default_factory=MotionAttributionConfig)
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
@@ -220,6 +230,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sm   = pre.get("smoothing", {})
     kal  = pre.get("kalman_filter", {})
     nor  = raw.get("normalization", {})
+    psg  = raw.get("phase_segmentation", {})
     ma   = raw.get("motion_attribution", {})
     feat = raw.get("features", {})
     sp   = feat.get("spatial", {})
@@ -282,6 +293,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=nor.get("enabled", True),
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
+        ),
+        phase_segmentation=PhaseSegmentationConfig(
+            enabled=psg.get("enabled", False),
+            fps_default=float(psg.get("fps_default", 30.0)),
+            multi_inflection_policy=psg.get("multi_inflection_policy", "global_extremum"),
+            minimum_rep_length_frames=int(psg.get("minimum_rep_length_frames", 8)),
         ),
         motion_attribution=MotionAttributionConfig(
             enabled=ma.get("enabled", False),
@@ -433,7 +450,34 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
-    # ── ⑥ Motion Attribution ─────────────────────────────────────────────────
+    # ── ⑥ Phase Segmentation ─────────────────────────────────────────────────
+    if config.phase_segmentation.enabled:
+        if exercise_def is None:
+            print("[Step ⑥] Phase Segmentation: exercise_def not available — skipped.")
+        elif getattr(exercise_def, "phase_segmentation", None) is None:
+            print(
+                f"[Step ⑥] Phase Segmentation: exercise '{exercise_def.exercise_id}' "
+                "has no phase_segmentation block — skipped."
+            )
+        else:
+            _has_reps = (
+                "segment_type" in df.columns
+                and (df["segment_type"] == "rep").any()
+            )
+            if not _has_reps:
+                print("[Step ⑥] Phase Segmentation: no rep frames found — skipped.")
+            else:
+                from movement.segmentation import segment_phases
+                df, phase_reports = segment_phases(
+                    df,
+                    exercise_def,
+                    fps_default=config.phase_segmentation.fps_default,
+                )
+                report["phase_segmentation"] = [r.as_dict() for r in phase_reports]
+    else:
+        pass  # ⑥ disabled — phase column stays NA (set by ② Annotation)
+
+    # ── ⑦ Motion Attribution ─────────────────────────────────────────────────
     if config.motion_attribution.enabled:
         from movement.motion_attribution import AttributionThresholds, attribute_motion
         thresholds = AttributionThresholds(
@@ -442,7 +486,7 @@ def run_pipeline(
             swap=config.motion_attribution.tau_swap,
         )
         if exercise_def is None:
-            print("[Step ⑥] Motion Attribution: exercise_def not available — skipped.")
+            print("[Step ⑦] Motion Attribution: exercise_def not available — skipped.")
         else:
             df, attr_report = attribute_motion(
                 df=df,
@@ -452,13 +496,13 @@ def run_pipeline(
             )
             report["motion_attribution"] = attr_report.as_dict()
 
-    # ── ⑦ Feature Extraction ─────────────────────────────────────────────────
+    # ── ⑧ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
         from movement.features import extract_rep_features
 
         if exercise_def is None:
-            print("[Step ⑦] Feature Extraction: exercise_def not available — skipped.")
+            print("[Step ⑧] Feature Extraction: exercise_def not available — skipped.")
         else:
             feat_records = extract_rep_features(df, exercise_def)
             report["features"] = [
@@ -472,11 +516,11 @@ def run_pipeline(
                 for r in feat_records
             ]
 
-    # ── ⑧ Biomechanical Proxy Modeling ───────────────────────────────────────
+    # ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────
     biomech_records: list[Any] = []
     if config.biomech.enabled:
         if exercise_def is None:
-            print("[Step ⑧] Biomech Proxy: exercise_def not available — skipped.")
+            print("[Step ⑨] Biomech Proxy: exercise_def not available — skipped.")
         else:
             from movement.biomech import extract_rep_biomech
             biomech_records = extract_rep_biomech(df, exercise_def, use_visibility_weight=True)
@@ -495,10 +539,10 @@ def run_pipeline(
                 for r in biomech_records
             ]
 
-    # ── ⑨ Biomarker Derivation ────────────────────────────────────────────────
+    # ── ⑩ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
         if exercise_def is None:
-            print("[Step ⑨] Biomarker Derivation: exercise_def not available — skipped.")
+            print("[Step ⑩] Biomarker Derivation: exercise_def not available — skipped.")
         else:
             from movement.biomarker.scoring import derive_biomarkers
 

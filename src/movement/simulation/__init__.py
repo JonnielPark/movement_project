@@ -4,7 +4,7 @@ Robustness Simulation
 Injects artificial conditions into normal synthetic pose data to evaluate the
 engineering robustness of the analysis framework.
 
-Called outside the ①–⑨ pipeline steps; not included in run_pipeline().
+Called outside the ①–⑩ pipeline steps; not included in run_pipeline().
 
 Submodule:
   simulation.synthetic → synthetic data generation and condition injection functions

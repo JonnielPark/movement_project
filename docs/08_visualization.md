@@ -1,6 +1,6 @@
 # 08. Visualization
 
-Pipeline step ⑩. Called independently outside the ①–⑨ runner.
+Pipeline step ⑪. Called independently outside the ①–⑩ runner.
 A collection of functions that render analysis results for diagnostic or reporting purposes.
 
 All functions accept a dataframe and return a figure object. They do not modify input data.
@@ -25,10 +25,10 @@ After ② Annotation           → rep boundary and segment label timeline
 After ③ Exercise Definition  → (no coordinate output; no visualization)
 After ④ Preprocessing        → reliability mask overlay, before/after comparison
 After ⑤ Normalization        → raw vs. normalized skeleton comparison
-After ⑥ Motion Attribution   → per-rep active side assignment chart
-After ⑦ Feature Extraction   → joint angle time series, ROM bar, symmetry chart
-After ⑧ Biomech Proxy        → CoM trajectory, segment load distribution
-After ⑨ Biomarker Derivation → biomarker radar chart / summary chart
+After ⑦ Motion Attribution   → per-rep active side assignment chart
+After ⑧ Feature Extraction   → joint angle time series, ROM bar, symmetry chart
+After ⑨ Biomech Proxy        → CoM trajectory, segment load distribution
+After ⑩ Biomarker Derivation → biomarker radar chart / summary chart
 ```
 
 ## 3. Implemented Functions
@@ -111,7 +111,7 @@ plot_rep_timeline(df, segment_col, rep_col, set_col)
 
 ### plot_attribution_chart
 
-⑥ motion attribution results per frame.
+⑦ motion attribution results per frame.
 Shows detected vs. expected active side and confidence.
 
 ```python
@@ -120,7 +120,7 @@ plot_attribution_chart(df, attribution_col, confidence_col, expected_col)
 
 ### plot_biomarker_radar
 
-⑨ biomarker derivation results as a radar chart.
+⑩ biomarker derivation results as a radar chart.
 Optional reference overlay for comparison.
 
 ```python
