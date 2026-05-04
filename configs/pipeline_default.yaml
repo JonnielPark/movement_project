@@ -70,17 +70,7 @@ motion_attribution:
 
 # ── ⑦ Feature Extraction ─────────────────────────────────────────────────────
 features:
-  enabled: false
-  spatial:
-    rom: false
-    symmetry: false
-    shape: false
-  temporal:
-    tempo: false
-    variability: false
-  control:
-    stability: false
-    compensation: false
+  enabled: false    # extract_rep_features() runs all spatial / temporal / control features
 
 # ── ⑧ Biomechanical Proxy Modeling ───────────────────────────────────────────
 biomech:

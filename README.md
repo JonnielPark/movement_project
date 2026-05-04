@@ -41,21 +41,25 @@ Step activation is controlled by `enabled` flags in `configs/pipeline_default.ya
 - Preprocessing — visibility gating, segment length consistency, joint angle bounds,
   velocity outlier detection, L/R swap detection and correction, short-gap interpolation,
   optional smoothing (`preprocessing.py`)
-- Pipeline runner — steps ①–⑤ (`pipeline.py`)
 - Motion attribution — per-rep active-side consistency, conservative / auto-correct modes
   (`motion_attribution.py`)
-- Module scaffolding for steps ⑦–⑨ and simulation (`features/`, `biomech/`, `biomarker/`,
-  `simulation/`)
+- Feature extraction — per-rep ROM, left/right symmetry, trajectory shape, tempo,
+  inter-rep variability, CoM stability (`features/`)
+- Pipeline runner — steps ①–⑦ connected (`pipeline.py`)
+
+**Partial**
+
+- Biomechanical proxy — CoM trajectory metrics, knee/hip moment arm proxies implemented
+  at sequence level; rep-level iteration and pipeline ⑧ connection pending (`biomech/`)
+- Biomarker derivation — FeatureRecord → BiomarkerRecord conversion done;
+  domain scoring and composite movement quality score pending (`biomarker/`)
 
 **Planned**
 
-- Feature extraction: spatial (ROM, symmetry, shape), temporal (tempo, variability),
-  control (stability, compensation)
-- Biomechanical proxy modeling: CoM estimation, moment arms, Winter (1990) anthropometry
-- Biomarker derivation with full `source_fields` provenance
-- Visualization: reliability overlay, joint angle time series, rep timeline, attribution
-  chart, biomarker radar
-- Robustness simulation: ROM restriction, Gaussian noise, occlusion, velocity spikes
+- Compensation rule engine: `knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, …
+- Domain score (0–100) and composite movement quality score
+- Robustness simulation runner: ROM restriction, Gaussian noise, occlusion, velocity spikes
+- Visualization: reliability overlay, joint angle time series, rep timeline, biomarker radar
 
 ---
 
@@ -131,9 +135,14 @@ Run the full pipeline:
 
 ```python
 from movement.pipeline import load_pipeline_config, run_pipeline
+from movement.io import load_pose_csv
+import pandas as pd
 
 config = load_pipeline_config("configs/pipeline_default.yaml")
-result = run_pipeline(config)
+df = load_pose_csv("data/sample/mediapipe_squat_synthetic.csv")
+ann_df = pd.read_csv("data/sample/mediapipe_squat_synthetic_annotation.csv")
+
+df, report = run_pipeline(df, config, ann_df=ann_df)
 ```
 
 ---
@@ -167,6 +176,7 @@ See [docs/01_data_format.md](docs/01_data_format.md) for the full column spec.
 - [06. Normalization](docs/06_normalization.md)
 - [07. Motion Attribution](docs/07_motion_attribution.md)
 - [08. Visualization](docs/08_visualization.md)
+- [Code Revision Plan](docs/code_revision_plan.md)
 
 ---
 

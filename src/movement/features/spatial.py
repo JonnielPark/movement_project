@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
+from movement.config import LANDMARKS
 from movement.features import FeatureRecord
 
 if TYPE_CHECKING:
@@ -78,6 +79,19 @@ def compute_rom(
         prox = triplet.get("proximal") or triplet.get("prox")
         vert = triplet.get("vertex") or triplet.get("vert")
         dist = triplet.get("distal") or triplet.get("dist")
+
+        # Resolve MediaPipe index format: {points: [i, j, k], vertex: j}
+        if not (prox and vert and dist) and "points" in triplet:
+            pts = triplet["points"]
+            if len(pts) != 3:
+                continue
+            try:
+                prox = LANDMARKS[pts[0]]
+                vert = LANDMARKS[pts[1]]
+                dist = LANDMARKS[pts[2]]
+            except IndexError:
+                continue
+
         if not (prox and vert and dist):
             continue
 
@@ -125,19 +139,23 @@ def compute_symmetry(
     ex_id = exercise_definition.exercise_id
     eps = 1e-9
 
-    paired_joints = [
-        ("left_knee", "right_knee"),
-        ("left_hip", "right_hip"),
-        ("left_elbow", "right_elbow"),
-        ("left_shoulder", "right_shoulder"),
-    ]
+    # Derive left/right pairs from angle_definitions (e.g. left_knee_angle ↔ right_knee_angle)
+    angle_defs: dict = exercise_definition.angle_definitions or {}
+    paired: list[tuple[str, str]] = []
+    for key in angle_defs:
+        if key.startswith("left_"):
+            right_key = "right_" + key[5:]
+            if right_key in angle_defs:
+                paired.append((key, right_key))
 
-    for lj, rj in paired_joints:
+    for lj, rj in paired:
         if lj in rom_map and rj in rom_map:
             rl, rr = rom_map[lj], rom_map[rj]
             si = abs(rl - rr) / ((rl + rr) / 2.0 + eps)
+            # label: strip left_ prefix and _angle suffix (e.g. left_knee_angle → knee)
+            label = lj.removeprefix("left_").removesuffix("_angle")
             records.append(FeatureRecord(
-                feature_id=f"spatial.symmetry.{lj.replace('left_', '')}",
+                feature_id=f"spatial.symmetry.{label}",
                 exercise_id=ex_id,
                 rep_id=rep_id,
                 value=round(si, 4),

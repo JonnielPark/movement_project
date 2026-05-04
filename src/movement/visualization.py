@@ -20,6 +20,8 @@ Coordinate modes:
     coord_mode="norm" : <landmark>_norm_x/y/z
 """
 
+from __future__ import annotations
+
 import plotly.graph_objects as go
 
 from .utils import get_frame_data, compute_plot_ranges, validate_landmark_columns
