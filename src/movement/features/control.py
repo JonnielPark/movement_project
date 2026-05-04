@@ -81,13 +81,17 @@ def compute_compensation(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """Compute arc length of compensation candidate joints.
+    """Dispatch compensation candidates to the rule registry.
 
-    Joints are taken from compensation_candidates in the exercise definition.
-    Larger arc length suggests greater likelihood of compensatory movement at that joint.
+    Each candidate name in exercise_definition.compensation_candidates is
+    looked up in COMPENSATION_RULES (features/compensation.py). Registered
+    candidates are computed and returned as FeatureRecord list. Unregistered
+    candidates emit a UserWarning and are skipped.
 
-    Unit: torso_length_ratio.
+    See features/compensation.py for implemented rules and axis conventions.
     """
+    from movement.features.compensation import dispatch_compensation
+
     candidates: list[str] = exercise_definition.compensation_candidates or []
     if not candidates:
         return []
@@ -95,19 +99,7 @@ def compute_compensation(
     ex_id = exercise_definition.exercise_id
     records: list[FeatureRecord] = []
 
-    for jname in candidates:
-        try:
-            coords = _norm_xyz(df, jname)
-        except KeyError:
-            continue
-        arc = float(np.nansum(np.linalg.norm(np.diff(coords, axis=0), axis=1)))
-        records.append(FeatureRecord(
-            feature_id=f"control.compensation.arc_length.{jname}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(arc, 4),
-            unit="torso_length_ratio",
-            source_fields=["compensation_candidates", "feature_domains.control"],
-        ))
+    for candidate in candidates:
+        records.extend(dispatch_compensation(candidate, df, ex_id, rep_id))
 
     return records

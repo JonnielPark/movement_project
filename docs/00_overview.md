@@ -160,7 +160,7 @@ See [06_normalization.md](06_normalization.md).
   [done]  extract_rep_features() — per-rep spatial / temporal / control feature extraction
   [done]  features_to_dataframe() — FeatureRecord list → DataFrame export
   [done]  pipeline ⑦ connected — extract_rep_features() wired into run_pipeline()
-  Control: compensation rule engine (knee_valgus, lateral_pelvic_shift, …)
+  [done]  Compensation rule engine — COMPENSATION_RULES registry (knee_valgus, knee_varus, lateral_pelvic_shift, excessive_trunk_flexion, heel_lift, pelvis_rotation)
   Visualization: reliability overlay, joint angle time series, step result charts
 
 2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑨)
