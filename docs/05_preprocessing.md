@@ -1,68 +1,72 @@
-# 05. Preprocessing
+# 05. 전처리 (Preprocessing)
 
-Pipeline step ④. Corrects data quality issues in monocular pose data before normalization.
-Returns a corrected copy of the dataframe; does not modify the input.
+**문서 버전:** 1.0.0  
+**최종 갱신:** 2026-05-06  
+**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
+**영문 동기화:** `docs_eng/05_preprocessing.md`는 동일 버전의 영문 번역본이다.
 
-Corrects data quality issues only — does not alter movement quality patterns
-(compensation movements, squat depth, etc.).
+파이프라인 단계 ④. 정규화 이전에 단안 포즈 데이터의 품질 이슈를 보정한다.
+보정된 데이터프레임 사본을 반환하며, 입력은 수정하지 않는다.
+
+데이터 품질 이슈만 보정하며, 동작 품질 패턴(보상 움직임, 스쿼트 깊이 등)은 변경하지 않는다.
 
 ---
 
-## 1. Pipeline Position
+## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
 Pose CSV
 → ① Validation
 → ② Annotation
 → ③ Exercise Definition
-→ ④ Preprocessing          ← this step
+→ ④ Preprocessing          ← 본 단계
 → ⑤ Normalization
 → ⑥ Phase Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 ```
 
-Runs after ③ so that `exercise_type`, `pattern`, and exercise definition fields
-(`laterality`, `quality_rules`) are available to activate exercise-specific checks.
+③ 이후에 실행되어, 운동별 점검 활성화에 필요한 `exercise_type`, `pattern`, 운동 정의 필드
+(`laterality`, `quality_rules`)를 사용할 수 있도록 한다.
 
-Runs before ⑤ normalization because the scale reference (median torso length) is more
-stable after hip/shoulder landmarks have passed reliability gating.
+⑤ 정규화 이전에 실행된다. 척도 기준(몸통 길이 중앙값)은 엉덩이/어깨 랜드마크가
+신뢰도 게이팅을 통과한 후 더 안정적이기 때문이다.
 
-## 2. Design Principle
+## 2. 설계 원칙 (Design Principle)
 
 ```text
-Allowed:
-    Visibility-based reliability marking
-    Anatomical constraint checks
-    L/R label swap correction (label swap only; coordinates unchanged)
-    Short-gap interpolation on reliability-masked segments
-    Optional smoothing of small frame-level jitter
-    Preprocessing report output
+허용:
+    가시성(visibility) 기반 신뢰도 표시
+    해부학적 제약 점검
+    좌·우 라벨 스왑(swap) 보정 (라벨 교환만; 좌표는 변경하지 않음)
+    신뢰도 마스크가 표시된 짧은 갭의 보간(interpolation)
+    프레임 단위 작은 떨림에 대한 선택적 평활화(smoothing)
+    전처리 리포트 출력
 
-Not allowed:
-    Modifying abnormal movement patterns to appear normal
-    Correcting insufficient squat depth
-    Correcting knee valgus patterns
-    Silently deleting frames
-    Changing original frame numbers
-    Adjusting coordinates to fit a specific kinematic model
+불허:
+    비정상 동작 패턴을 정상처럼 보이도록 수정
+    부족한 스쿼트 깊이 보정
+    무릎 외반(knee valgus) 패턴 보정
+    프레임을 조용히 삭제
+    원본 프레임 번호 변경
+    특정 기구학(kinematic) 모델에 맞추기 위한 좌표 조정
 ```
 
-## 3. Inputs
+## 3. 입력 (Inputs)
 
-Required:
+필수:
 ```text
-<landmark>_x / _y / _z     coordinate columns
+<landmark>_x / _y / _z     좌표 칼럼
 ```
 
-Optional (used if present):
+선택 (있을 경우 사용):
 ```text
-<landmark>_visibility      reliability gating
-exercise_type              exercise-specific logic activation
-pattern                    L/R swap detection scope
+<landmark>_visibility      신뢰도 게이팅
+exercise_type              운동별 로직 활성화
+pattern                    좌·우 스왑 검출 범위
 ```
 
-Exercise definition fields read:
+운동 정의에서 참조하는 필드:
 ```text
 landmarks.primary_joints
 landmarks.critical_landmarks
@@ -71,151 +75,150 @@ quality_rules.minimum_visible_landmark_ratio
 quality_rules.max_interpolation_gap_frames
 ```
 
-## 4. Outputs
+## 4. 출력 (Outputs)
 
 ```python
 pre_df, pre_report = preprocess_pose_dataframe(df, landmarks, exercise_definition)
 ```
 
-Output columns (added, not replacing originals):
+추가되는 출력 칼럼 (원본을 대체하지 않음):
 
 ```text
-<landmark>_reliable    bool    per-landmark per-frame reliability mask
-preprocessing_valid    bool    frame-level overall reliability
-preprocessing_note     str     reason if unreliable
-swap_corrected         bool    whether L/R label swap was applied
+<landmark>_reliable    bool    랜드마크별·프레임별 신뢰도 마스크
+preprocessing_valid    bool    프레임 단위 종합 신뢰도
+preprocessing_note     str     비신뢰 사유
+swap_corrected         bool    좌·우 라벨 스왑 보정 여부
 ```
 
-## 5. Reliability Detection
+## 5. 신뢰도 검출 (Reliability Detection)
 
-A landmark in a given frame is marked `unreliable` if any of the following holds:
+특정 프레임의 랜드마크가 다음 중 하나에 해당하면 `unreliable`로 표시된다:
 
-### 5-1. Visibility Gating
+### 5-1. 가시성 게이팅 (Visibility Gating)
 
 ```text
-landmark.visibility < visibility_threshold (default: 0.5)
+landmark.visibility < visibility_threshold (기본값: 0.5)
 ```
 
-Low-visibility landmarks are marked, not deleted.
+낮은 가시성 랜드마크는 표시만 되며 삭제되지 않는다.
 
-### 5-2. Segment Length Consistency
+### 5-2. 분절 길이 일관성 (Segment Length Consistency)
 
-Per-frame segment length is compared to the sequence median.
+프레임별 분절 길이를 시퀀스 중앙값과 비교한다.
 
 ```text
 deviation = |segment_length(t) - median_segment_length| / median_segment_length
 
-if deviation > segment_length_tolerance (default: 0.25):
-    mark both endpoint landmarks as unreliable at frame t
+if deviation > segment_length_tolerance (기본값: 0.25):
+    프레임 t에서 분절 양 끝점 랜드마크를 unreliable로 표시
 ```
 
-**Exception**: hip-to-knee (thigh) segments are excluded from this check.
-In monocular data, the thigh appears to shorten/lengthen by >40% during squats due to
-depth perspective, triggering false positives on normal movement.
+**예외**: 엉덩이-무릎(허벅지) 분절은 본 점검에서 제외된다.
+단안 데이터에서는 깊이 원근(depth perspective)의 영향으로 스쿼트 시 허벅지가 40 % 이상
+짧아지거나 길어 보일 수 있어, 정상 동작에서 거짓 양성(false positive)을 유발한다.
 
-### 5-3. Joint Angle Physiological Bounds
+### 5-3. 관절각 생리학적 한계 (Joint Angle Physiological Bounds)
 
-Included angle computed from (proximal, vertex, distal) landmark triplets,
-compared against conservative anatomical limits:
+(근위, 정점, 원위) 랜드마크 트리플렛에서 계산된 끼인각(included angle)을 보수적인
+해부학적 한계와 비교한다:
 
 ```text
-Joint          Allowed included angle (degrees)
+관절          허용 끼인각 (도)
 ─────────────────────────────────────────────
 knee           10 – 180
 elbow          10 – 180
 hip            20 – 180
 ```
 
-Checked joints: `left_knee`, `right_knee`, `left_elbow`, `right_elbow`,
+점검 대상 관절: `left_knee`, `right_knee`, `left_elbow`, `right_elbow`,
 `left_hip`, `right_hip`.
 
-This check flags anatomically impossible configurations only (conservative threshold).
-Exercise-specific ROM checks are the responsibility of ⑧ feature extraction.
+이 점검은 해부학적으로 불가능한 구성만 표시한다(보수적 임계값).
+운동별 ROM 점검은 ⑧ 피처 추출의 책임이다.
 
-### 5-4. Velocity Outliers
+### 5-4. 속도 이상값 (Velocity Outliers)
 
 ```text
 v(t) = |p(t) - p(t-1)| / Δt
 
 if v(t) > velocity_threshold:
-    mark landmark as unreliable at frame t
+    프레임 t에서 랜드마크를 unreliable로 표시
 ```
 
-Threshold defined in torso-length-per-second units (body-size invariant).
-Configured in `configs/pipeline_default.yaml`:
+임계값은 torso-length-per-second 단위로 정의된다(신체 크기 불변).
+`configs/pipeline_default.yaml`에서 설정:
 ```yaml
 preprocessing:
   reliability:
     velocity_threshold_torso_per_sec: 5.0
 ```
 
-## 6. L/R Swap Detection
+## 6. 좌·우 스왑 검출 (L/R Swap Detection)
 
-Pose estimators occasionally flip left/right landmark labels (especially during occlusion,
-rotation, or prone postures). Activation depends on `classification.laterality`:
+포즈 추정기는 가끔 좌·우 랜드마크 라벨을 뒤집는다(특히 가려짐, 회전, 엎드린 자세에서).
+활성화는 `classification.laterality`에 따른다:
 
 ```text
-bilateral_symmetric  → skip swap detection
-alternating          → per-frame swap detection enabled
-unilateral_*         → enabled, unilateral priority
-generic fallback     → skip (safe default)
+bilateral_symmetric  → 스왑 검출 건너뜀
+alternating          → 프레임별 스왑 검출 활성
+unilateral_*         → 활성, 단측 우선
+generic 폴백          → 건너뜀(안전 기본값)
 ```
 
-### Detection Heuristics (both used together)
+### 검출 휴리스틱 (둘 모두 함께 사용)
 
-Temporal consistency:
+시간 일관성:
 ```text
-flag swap at frame t if:
+프레임 t에서 스왑 표시 조건:
     |p_L(t) - p_R(t-1)| < |p_L(t) - p_L(t-1)|
     AND
     |p_R(t) - p_L(t-1)| < |p_R(t) - p_R(t-1)|
 ```
 
-Exercise orientation prior (where applicable):
+운동 방향 사전(prior) (해당되는 경우):
 ```text
-For frontal-facing exercises:
-    expected sign of (left_hip.x - right_hip.x) is fixed by camera convention.
-    If the observed sign disagrees for > orientation_disagree_ratio of rep frames,
-    flag the rep as a sequence-level swap candidate.
+정면 운동에서:
+    (left_hip.x - right_hip.x)의 기대 부호는 카메라 규약에 의해 고정.
+    관찰 부호가 반복 프레임의 > orientation_disagree_ratio 비율에서 불일치하면,
+    해당 반복을 시퀀스 단위 스왑 후보로 표시.
 ```
 
-### Correction Policy
+### 보정 정책 (Correction Policy)
 
-High-confidence swap → exchange paired landmark labels for that frame.
-Labels are swapped; coordinate values are unchanged.
-`swap_corrected = True`, reason recorded in `preprocessing_note`.
+높은 신뢰도 스왑 → 해당 프레임의 짝 랜드마크 라벨을 교환.
+라벨만 교환되며, 좌표 값은 변경되지 않는다.
+`swap_corrected = True`, 사유는 `preprocessing_note`에 기록.
 
-Low-confidence → flag only; no modification.
-Rep-level consistency is checked by ⑦ motion attribution.
+낮은 신뢰도 → 표시만 하며 수정하지 않는다.
+반복 단위 일관성은 ⑦ 모션 어트리뷰션에서 점검한다.
 
-## 7. Short-Gap Interpolation
+## 7. 짧은 갭 보간 (Short-Gap Interpolation)
 
-Applied only to reliability-masked gaps (not raw missing values).
+신뢰도 마스크가 표시된 갭에만 적용된다(원시 결측값에는 적용되지 않음).
 
 ```text
-max_interpolation_gap_frames  : read from quality_rules (default: 3)
-method                        : linear
+max_interpolation_gap_frames  : quality_rules에서 참조 (기본값: 3)
+방법                          : 선형 보간(linear)
 ```
 
 ```text
-Short masked gap  → linear interpolation
-Long masked gap   → remains unreliable; recorded in report as unresolved
+짧은 마스크 갭  → 선형 보간
+긴 마스크 갭    → unreliable로 유지; 리포트에 미해결로 기록
 ```
 
-## 8. Smoothing (optional)
+## 8. 평활화 (Smoothing, 선택)
 
-Reduces small frame-level jitter in reliable landmarks.
+신뢰 가능한 랜드마크의 작은 프레임 단위 떨림을 줄인다.
 
 ```text
-Methods: rolling_median (recommended), moving_average, none
-Default: smoothing.enabled = false
+방법: rolling_median (권장), moving_average, none
+기본값: smoothing.enabled = false
 ```
 
-`rolling_median` is preferred over `moving_average` for robustness to residual outliers.
-Window size should be small enough to preserve meaningful movement dynamics
-(compensation movements, etc.).
+`rolling_median`이 잔여 이상값에 강건하므로 `moving_average`보다 권장된다.
+윈도우 크기는 의미 있는 동작 동역학(보상 움직임 등)을 보존할 수 있을 만큼 작아야 한다.
 
-Configuration:
+설정:
 ```yaml
 preprocessing:
   smoothing:
@@ -224,11 +227,10 @@ preprocessing:
     window_size: 3
 ```
 
-## 9. Kalman Filter (future)
+## 9. 칼만 필터 (Kalman Filter, 향후)
 
-Kalman filtering is available as a YAML option but disabled by default.
-Enable only after the baseline (visibility gating + anatomical checks + interpolation +
-rolling median) is sufficiently characterized.
+칼만 필터는 YAML 옵션으로 제공되지만 기본적으로 비활성화되어 있다.
+베이스라인(가시성 게이팅 + 해부학적 점검 + 보간 + rolling median)이 충분히 특성화된 후에만 활성화한다.
 
 ```yaml
 preprocessing:
@@ -238,7 +240,7 @@ preprocessing:
     measurement_noise: 0.1
 ```
 
-## 10. Laterality Branch Summary
+## 10. Laterality 분기 요약 (Laterality Branch Summary)
 
 ```text
 laterality               visibility  segment  ROM  velocity  L/R swap  smoothing
@@ -246,23 +248,22 @@ laterality               visibility  segment  ROM  velocity  L/R swap  smoothing
 bilateral_symmetric      enabled     enabled  on   enabled   skip      optional
 alternating              enabled     enabled  on   enabled   enabled   optional
 unilateral_*             enabled     enabled  on   enabled   enabled   optional
-generic fallback         enabled     enabled  on   enabled   skip      optional
+generic 폴백              enabled     enabled  on   enabled   skip      optional
 ```
 
-## 11. Invalid Frame Marking
+## 11. 무효 프레임 표시 (Invalid Frame Marking)
 
-Frames are never silently deleted. Quality metadata columns are added:
+프레임은 절대 조용히 삭제되지 않는다. 품질 메타데이터 칼럼이 추가된다:
 
 ```text
-preprocessing_valid = True    usable frame after this step
-preprocessing_valid = False   unresolved quality issues remain
-swap_corrected = True         L/R labels were exchanged
+preprocessing_valid = True    본 단계 이후 사용 가능한 프레임
+preprocessing_valid = False   미해결 품질 이슈가 남아 있음
+swap_corrected = True         좌·우 라벨이 교환됨
 ```
 
-Exact frame exclusion at feature extraction time is determined by annotation rules
-and feature step logic.
+피처 추출 단계에서의 정확한 프레임 제외는 어노테이션 규칙과 피처 단계 로직이 결정한다.
 
-## 12. Preprocessing Report
+## 12. 전처리 리포트 (Preprocessing Report)
 
 ```python
 {
@@ -302,12 +303,12 @@ and feature step logic.
 }
 ```
 
-## 13. Planned Extensions
+## 13. 향후 확장 (Planned Extensions)
 
-- Visibility-weighted interpolation
-- Reliability-weighted smoothing
-- Hampel filter (outlier-robust smoothing)
-- One-Euro filter (low-latency jitter-aware smoothing)
-- Per-exercise velocity threshold tuning
-- Per-landmark reliability rules (e.g., foot landmarks in occluded reps)
-- Before/after correction visualization
+- 가시성 가중 보간(visibility-weighted interpolation)
+- 신뢰도 가중 평활화
+- Hampel 필터 (이상값 강건 평활화)
+- One-Euro 필터 (저지연 jitter 인지 평활화)
+- 운동별 속도 임계값 튜닝
+- 랜드마크별 신뢰도 규칙 (예: 가려진 반복에서의 발 랜드마크)
+- 보정 전·후 시각화

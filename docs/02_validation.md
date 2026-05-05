@@ -1,18 +1,23 @@
-# 02. Validation
+# 02. 검증 (Validation)
 
-Pipeline step ①. Checks structural and formal integrity of input pose data.
-Does not modify the data. Returns a diagnostic report dict.
+**문서 버전:** 1.0.0  
+**최종 갱신:** 2026-05-06  
+**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
+**영문 동기화:** `docs_eng/02_validation.md`는 동일 버전의 영문 번역본이다.
 
-Note: "validation" here means data integrity checking only.
-      Robustness evaluation (simulation-based testing with synthetic data) is a separate concept.
+파이프라인 단계 ①. 입력 포즈 데이터의 구조적·형식적 무결성을 점검한다.
+데이터를 수정하지 않으며 진단 리포트(report) 딕셔너리를 반환한다.
+
+참고: 여기서의 "검증(validation)"은 데이터 무결성 점검만을 의미한다.
+강건성 평가(robustness evaluation, 합성 데이터를 활용한 시뮬레이션 기반 시험)는 별개의 개념이다.
 
 ---
 
-## 1. Pipeline Position
+## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
 Pose CSV
-→ ① Validation             ← this step
+→ ① Validation             ← 본 단계
 → ② Annotation
 → ③ Exercise Definition
 → ④ Preprocessing
@@ -21,22 +26,21 @@ Pose CSV
 → ⑦ Feature Extraction
 ```
 
-Runs before all other steps. Downstream steps can rely on the integrity assumptions
-confirmed by the validation report.
+다른 모든 단계 이전에 실행된다. 후속 단계는 검증 리포트가 확인한 무결성 가정에 의존할 수 있다.
 
-## 2. Checks
+## 2. 점검 항목 (Checks)
 
-| Check | Description |
+| 점검 | 설명 |
 |---|---|
-| Required columns | `frame`, `timestamp`, landmark coordinate columns |
-| Frame continuity | gaps in frame index |
-| Frame duplicates | repeated frame values |
-| Timestamp monotonicity | non-positive time diffs |
-| Estimated FPS | derived from median timestamp delta |
-| Missing value ratio | per coordinate column |
-| Visibility quality | distribution / ratio below threshold (if visibility columns present) |
+| 필수 칼럼 | `frame`, `timestamp`, 랜드마크 좌표 칼럼 |
+| 프레임 연속성 | frame 인덱스의 갭 |
+| 프레임 중복 | 반복된 frame 값 |
+| 타임스탬프 단조성 | 양수가 아닌 시간 차분 |
+| 추정 FPS | timestamp 차분의 중앙값에서 도출 |
+| 결측값 비율 | 좌표 칼럼별 |
+| 가시성 품질 | 분포 / 임계값 미만 비율 (가시성 칼럼이 있을 때) |
 
-## 3. Output
+## 3. 출력 (Output)
 
 ```python
 report = run_basic_validation(
@@ -48,7 +52,7 @@ report = run_basic_validation(
 print(report["passed"])   # bool
 ```
 
-Report structure:
+리포트 구조:
 
 ```python
 {
@@ -83,32 +87,32 @@ Report structure:
         "total_missing_values": int,
         "missing_ratio_by_column": dict[str, float],
     },
-    "visibility": { ... },   # only if visibility_columns provided
+    "visibility": { ... },   # visibility_columns가 제공된 경우에만
 }
 ```
 
-## 4. Design Principle
+## 4. 설계 원칙 (Design Principle)
 
-This step only reports potential issues. It does not correct them.
+본 단계는 잠재 이슈를 보고할 뿐이며, 보정하지 않는다.
 
-- Short gaps → handled by ④ preprocessing interpolation.
-- Noisy trajectories → handled by ④ preprocessing smoothing.
-- Low visibility → handled by ④ preprocessing reliability gating.
+- 짧은 갭 → ④ 전처리의 보간(interpolation)에서 처리.
+- 노이즈가 있는 궤적 → ④ 전처리의 평활화(smoothing)에서 처리.
+- 낮은 가시성 → ④ 전처리의 신뢰도 게이팅에서 처리.
 
-A failed validation is a signal for manual review, not automatic discard.
+검증 실패는 자동 폐기 신호가 아니라 수동 검토 신호이다.
 
-## 5. Thresholds
+## 5. 임계값 (Thresholds)
 
-Configured in `configs/pipeline_default.yaml`:
+`configs/pipeline_default.yaml`에서 설정:
 
 ```yaml
 validation:
-  missing_value_threshold: 0.05   # column missing ratio > 5% → warn
-  visibility_threshold: 0.5       # landmark visibility quality threshold
+  missing_value_threshold: 0.05   # 칼럼 결측 비율 > 5% → 경고
+  visibility_threshold: 0.5       # 랜드마크 가시성 품질 임계값
 ```
 
-## 6. Planned Extensions
+## 6. 향후 확장 (Planned Extensions)
 
-- Missing value heatmap visualization (⑩ step)
-- Coordinate unit auto-detection (pixel vs. normalized)
-- Enhanced temporal gap distribution statistics
+- 결측값 히트맵(heatmap) 시각화 (⑩ 단계)
+- 좌표 단위 자동 판별 (픽셀 vs. 정규화)
+- 시간 갭 분포 통계 강화

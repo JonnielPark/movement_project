@@ -1,184 +1,188 @@
-# Per-Exercise Feature × Clinical Meaning Mapping
+# 운동별 피처 × 임상적 의미 매핑 (Per-Exercise Feature × Clinical Meaning Mapping)
 
-**Dissertation §5.5 / §5.6.** Active features for all four validation exercises, with unit and
-biomechanical interpretation.
+**문서 버전:** 1.0.0  
+**최종 갱신:** 2026-05-06  
+**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
+**영문 동기화:** `docs_eng/clinical/per_exercise_mapping.md`는 동일 버전의 영문 번역본이다.
 
-- Terminology: [`docs/_terminology.md`](../_terminology.md)
-- Feature extraction code: [`src/movement/features/`](../../src/movement/features/)
-- YAML mirror (dashboard tooltips): [`data/clinical/feature_meanings.yaml`](../../data/clinical/feature_meanings.yaml)
-- Forbidden-vocabulary rules: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) Principle 4
+**학위논문 §5.5 / §5.6.** 4개 검증 운동 전체의 활성 피처와 단위, 생체역학적 해석.
+
+- 용어집: [`docs/_terminology.md`](../_terminology.md)
+- 피처 추출 코드: [`src/movement/features/`](../../src/movement/features/)
+- YAML 미러 (대시보드 툴팁): [`data/clinical/feature_meanings.yaml`](../../data/clinical/feature_meanings.yaml)
+- 금지 어휘 규칙: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) 원칙 4
 
 ---
 
-## Notes
+## 표기 안내 (Notes)
 
-| Term | Definition |
+| 용어 | 정의 |
 |---|---|
-| **rep** | One record emitted per repetition (phase = None) |
-| **rep / phase** | Also emitted per (rep × phase) with a lowercased phase suffix, e.g. `spatial.rom.left_knee_angle.descent` |
-| **set** | One record spanning all reps in the set |
-| **rep \*** | Template: one record per rep; N = rep number (e.g. `temporal.tempo.rep_1`) |
+| **rep** | 반복(repetition)당 1개 레코드 방출 (phase = None) |
+| **rep / phase** | 추가로 (rep × phase)당 소문자 phase 접미사로 방출, 예: `spatial.rom.left_knee_angle.descent` |
+| **set** | 세트 내 모든 반복을 포괄하는 1개 레코드 |
+| **rep \*** | 템플릿: 반복당 1개 레코드; N = 반복 번호 (예: `temporal.tempo.rep_1`) |
 
-Phase-level variants are only emitted for features in `PHASE_AWARE_FEATURE_FAMILIES`
-(`spatial.rom`, `spatial.shape`, `control.stability`).
-Compensation features are rep-level only because candidate rules operate on the full rep trajectory.
+구간(phase) 단위 변형은 `PHASE_AWARE_FEATURE_FAMILIES` (`spatial.rom`, `spatial.shape`,
+`control.stability`)에 속한 피처에서만 방출된다. 보상(compensation) 피처는 후보 규칙이
+전체 반복 궤적 위에서 동작하므로 반복 단위 전용이다.
 
-Only **implemented** compensation rules are listed. Exercise-YAML candidates without a
-matching entry in `COMPENSATION_RULES` produce a `UserWarning` at runtime and are omitted here.
-
----
-
-## Squat
-
-| feature_id | domain | unit | level | clinical_meaning |
-|---|---|---|---|---|
-| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | Left hip sagittal ROM (max − min included angle). Restricted ROM may reflect limited hip-flexor extensibility or pain-avoidance guarding. |
-| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | Right hip sagittal ROM; compared with the left side to detect unilateral hip-mobility restriction. |
-| `spatial.rom.left_knee_angle` | spatial | degree | rep / phase | Left knee sagittal ROM. Reduced ROM is a common indicator of quadriceps or hamstring stiffness limiting descent depth. |
-| `spatial.rom.right_knee_angle` | spatial | degree | rep / phase | Right knee sagittal ROM; bilateral comparison reveals load-avoidance asymmetry. |
-| `spatial.rom.left_ankle_angle` | spatial | degree | rep / phase | Left ankle dorsiflexion ROM. Ankle dorsiflexion is a primary structural constraint on squat depth and heel-ground contact. |
-| `spatial.rom.right_ankle_angle` | spatial | degree | rep / phase | Right ankle dorsiflexion ROM; asymmetry with the left often drives compensatory trunk lean or heel lift. |
-| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | L/R hip ROM symmetry index (0 = perfect symmetry; larger = more asymmetric). Persistent asymmetry indicates compensatory loading toward the more mobile side. |
-| `spatial.symmetry.knee` | spatial | dimensionless_cv | rep | L/R knee ROM symmetry index. Bilateral knee-mobility imbalance is a recognized pattern in altered squat mechanics. |
-| `spatial.symmetry.ankle` | spatial | dimensionless_cv | rep | L/R ankle ROM symmetry index. Ankle-mobility asymmetry often underlies compensatory heel lift or lateral pelvic shift. |
-| `spatial.shape.arc_length.left_hip` | spatial | torso_length_ratio | rep / phase | Arc length of the left hip joint trajectory. Longer arcs indicate lateral or anterior sway, suggesting non-vertical CoM descent. |
-| `spatial.shape.arc_length.right_hip` | spatial | torso_length_ratio | rep / phase | Arc length of the right hip trajectory; compared with the left to detect asymmetric hip sway. |
-| `spatial.shape.arc_length.left_knee` | spatial | torso_length_ratio | rep / phase | Arc length of the left knee trajectory. Elevated values indicate compensatory anterior or lateral knee tracking deviation. |
-| `spatial.shape.arc_length.right_knee` | spatial | torso_length_ratio | rep / phase | Arc length of the right knee trajectory; bilateral comparison detects unilateral tracking deviation. |
-| `spatial.shape.arc_length.left_ankle` | spatial | torso_length_ratio | rep / phase | Arc length of the left ankle trajectory. Non-minimal values indicate foot roll or transient heel-lift episodes. |
-| `spatial.shape.arc_length.right_ankle` | spatial | torso_length_ratio | rep / phase | Arc length of the right ankle trajectory; compared with the left to detect unilateral foot instability. |
-| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | Ratio of mean Descent ROM to mean Ascent ROM. Values > 1 indicate greater range during load acceptance (descent) than during the return phase. |
-| `temporal.tempo.rep_*` | temporal | second | rep | Duration of each individual rep. Abrupt changes across reps indicate pacing instability or fatigue-driven tempo drift. |
-| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | Coefficient of variation of rep durations within the set. Higher values indicate inconsistent movement tempo, reducing within-set comparability of other metrics. |
-| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center lateral displacement. Elevated values indicate lateral CoM instability during a nominally vertical loading task. |
-| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center vertical displacement. Reflects descent/ascent trajectory smoothness; high variability suggests motor-control inconsistency. |
-| `control.compensation.knee_valgus.left` | control | torso_length_ratio | rep | Peak medial knee deviation (left) from the frontal-plane hip-ankle line. Valgus collapse indicates insufficient hip-abductor activation under load. |
-| `control.compensation.knee_valgus.right` | control | torso_length_ratio | rep | Peak medial knee deviation (right). Asymmetric valgus between sides points to unilateral hip-abductor demand or structural difference. |
-| `control.compensation.knee_varus.left` | control | torso_length_ratio | rep | Peak lateral knee deviation (left). Varus tendency may reflect IT-band stiffness, wide-stance mechanics, or compensatory bracing. |
-| `control.compensation.knee_varus.right` | control | torso_length_ratio | rep | Peak lateral knee deviation (right); bilateral comparison distinguishes structural varus from unilateral compensation. |
-| `control.compensation.excessive_trunk_flexion` | control | degree | rep | Peak trunk lean from the vertical axis. Excessive forward lean redistributes load from the knee-extensor mechanism toward the hip and lumbar spine. |
-| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | Peak lateral pelvis displacement from the rep-mean baseline. Indicates weight-shifting compensation, often secondary to unilateral hip or ankle mobility restriction. |
-| `control.compensation.heel_lift.left` | control | torso_length_ratio | rep | Peak left heel elevation above the rep-minimum heel height. Compensates for restricted ankle dorsiflexion and increases forefoot loading, altering knee-tracking mechanics. |
-| `control.compensation.heel_lift.right` | control | torso_length_ratio | rep | Peak right heel elevation; compared with the left to detect unilateral ankle dorsiflexion restriction. |
-| `control.compensation.pelvic_rotation` | control | torso_length_ratio | rep | Peak left-right hip depth asymmetry (transverse-plane proxy). Non-zero values indicate pelvis rotation, which may reflect core-stability limitation or unilateral limb compensation. |
+**구현된** 보상 규칙만 나열한다. 운동 YAML의 후보 중 `COMPENSATION_RULES`에 매칭 항목이
+없는 것은 런타임에 `UserWarning`을 발생시키며 본 표에서 생략된다.
 
 ---
 
-## Lunge
+## Squat (스쿼트)
 
 | feature_id | domain | unit | level | clinical_meaning |
 |---|---|---|---|---|
-| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | Left hip sagittal ROM in the split-stance position. Reduced ROM in the forward leg may limit descent depth; in the rear leg it reflects hip-flexor extensibility. |
-| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | Right hip sagittal ROM; the loaded leg and trailing leg alternate per rep, so side × rep interaction is important. |
-| `spatial.rom.left_knee_angle` | spatial | degree | rep / phase | Left knee sagittal ROM. In lunge, reduced forward-leg knee ROM often co-occurs with excessive trunk lean or heel lift. |
-| `spatial.rom.right_knee_angle` | spatial | degree | rep / phase | Right knee sagittal ROM; asymmetry between the forward and trailing legs reflects inter-limb loading strategy. |
-| `spatial.rom.left_ankle_angle` | spatial | degree | rep / phase | Left ankle dorsiflexion ROM. In lunge, forward-leg ankle restriction is a primary driver of compensatory trunk lean. |
-| `spatial.rom.right_ankle_angle` | spatial | degree | rep / phase | Right ankle dorsiflexion ROM; trailing-leg ankle ROM governs rear-foot positioning and hip-extension capacity. |
-| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | L/R hip ROM symmetry index across all reps of the set. Persistent asymmetry indicates unilateral loading preference between the dominant and non-dominant limb. |
-| `spatial.symmetry.knee` | spatial | dimensionless_cv | rep | L/R knee ROM symmetry index. Bilateral knee-mobility imbalance in lunge is amplified by the alternating loading pattern. |
-| `spatial.symmetry.ankle` | spatial | dimensionless_cv | rep | L/R ankle ROM symmetry index. Ankle asymmetry in split-stance exercises tends to produce visible pelvic compensations. |
-| `spatial.shape.arc_length.left_hip` | spatial | torso_length_ratio | rep / phase | Arc length of the left hip trajectory. In lunge, elevated values indicate excessive anterior-posterior sway or lateral trunk lean. |
-| `spatial.shape.arc_length.right_hip` | spatial | torso_length_ratio | rep / phase | Arc length of the right hip trajectory; asymmetry with the left reflects loading imbalance across alternating reps. |
-| `spatial.shape.arc_length.left_knee` | spatial | torso_length_ratio | rep / phase | Arc length of the left knee trajectory. Elevated arcs indicate medial-lateral knee instability during the split-stance loading phase. |
-| `spatial.shape.arc_length.right_knee` | spatial | torso_length_ratio | rep / phase | Arc length of the right knee trajectory; compared with the left to detect unilateral knee tracking deviation. |
-| `spatial.shape.arc_length.left_ankle` | spatial | torso_length_ratio | rep / phase | Arc length of the left ankle trajectory. Non-minimal values indicate foot roll or contact instability during the descent. |
-| `spatial.shape.arc_length.right_ankle` | spatial | torso_length_ratio | rep / phase | Arc length of the right ankle trajectory; bilateral comparison detects unilateral foot positioning instability. |
-| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | Ratio of mean Descent ROM to mean Ascent ROM. Values > 1 indicate load-acceptance ROM is larger than recovery ROM, suggesting braking-dominant mechanics. |
-| `temporal.tempo.rep_*` | temporal | second | rep | Duration of each individual rep. Inter-rep variability is particularly relevant in alternating exercises where left and right rep durations should be compared. |
-| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | Coefficient of variation of rep durations within the set. High values may indicate alternating-limb timing asymmetry or fatigue effects. |
-| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center lateral displacement. In lunge, elevated values reflect poor medial-lateral CoM control during the split-stance transition. |
-| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center vertical displacement. Reflects smoothness of the descent/ascent trajectory in the sagittal plane. |
-| `control.compensation.knee_valgus.left` | control | torso_length_ratio | rep | Peak medial knee deviation (left) from the frontal-plane hip-ankle line. In lunge, valgus is more likely during the high-load descent phase of the forward leg. |
-| `control.compensation.knee_valgus.right` | control | torso_length_ratio | rep | Peak medial knee deviation (right). Comparing left and right across alternating reps quantifies inter-limb valgus asymmetry. |
-| `control.compensation.excessive_trunk_flexion` | control | degree | rep | Peak trunk lean from the vertical axis. Excessive lean in lunge is frequently a secondary compensation for restricted forward-leg ankle dorsiflexion. |
-| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | Peak lateral pelvis displacement from the rep-mean baseline. In split-stance, lateral shift indicates difficulty maintaining pelvic alignment over the base of support. |
-| `control.compensation.heel_lift.left` | control | torso_length_ratio | rep | Peak left heel elevation above rep-minimum. In lunge, forward-leg heel lift indicates ankle dorsiflexion restriction; trailing-leg heel lift is typically expected during descent. |
-| `control.compensation.heel_lift.right` | control | torso_length_ratio | rep | Peak right heel elevation; context (forward vs. trailing leg) must be inferred from the alternating annotation. |
+| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | 좌측 엉덩이 시상면 ROM (끼인각 max − min). 제한된 ROM은 엉덩이 굴근(hip-flexor) 신장성 제한 또는 통증 회피 가드를 반영할 수 있다. |
+| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | 우측 엉덩이 시상면 ROM; 단측 엉덩이 가동성 제한 검출을 위해 좌측과 비교한다. |
+| `spatial.rom.left_knee_angle` | spatial | degree | rep / phase | 좌측 무릎 시상면 ROM. 감소된 ROM은 하강 깊이를 제한하는 대퇴사두근(quadriceps) 또는 햄스트링 강직(stiffness)의 흔한 지표이다. |
+| `spatial.rom.right_knee_angle` | spatial | degree | rep / phase | 우측 무릎 시상면 ROM; 양측 비교는 부하 회피 비대칭을 드러낸다. |
+| `spatial.rom.left_ankle_angle` | spatial | degree | rep / phase | 좌측 발목 발등굽힘(dorsiflexion) ROM. 발등굽힘은 스쿼트 깊이와 발뒤꿈치 접지에 대한 일차 구조적 제약이다. |
+| `spatial.rom.right_ankle_angle` | spatial | degree | rep / phase | 우측 발목 발등굽힘 ROM; 좌측과의 비대칭은 보상적 체간(trunk) 기울기 또는 발뒤꿈치 들림(heel lift)을 유발하는 경우가 많다. |
+| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | 좌·우 엉덩이 ROM 대칭 지수 (0 = 완전 대칭; 클수록 비대칭). 지속적 비대칭은 더 가동성이 큰 측으로의 보상 부하를 시사한다. |
+| `spatial.symmetry.knee` | spatial | dimensionless_cv | rep | 좌·우 무릎 ROM 대칭 지수. 양측 무릎 가동성 불균형은 변경된 스쿼트 역학에서 인지된 패턴이다. |
+| `spatial.symmetry.ankle` | spatial | dimensionless_cv | rep | 좌·우 발목 ROM 대칭 지수. 발목 가동성 비대칭은 보상적 발뒤꿈치 들림 또는 측방 골반 이동의 기저인 경우가 많다. |
+| `spatial.shape.arc_length.left_hip` | spatial | torso_length_ratio | rep / phase | 좌측 엉덩이 관절 궤적의 호 길이. 긴 호는 측방 또는 전방 흔들림을 시사하여 비수직 CoM 하강을 의미한다. |
+| `spatial.shape.arc_length.right_hip` | spatial | torso_length_ratio | rep / phase | 우측 엉덩이 궤적 호 길이; 비대칭 엉덩이 흔들림 검출을 위해 좌측과 비교한다. |
+| `spatial.shape.arc_length.left_knee` | spatial | torso_length_ratio | rep / phase | 좌측 무릎 궤적 호 길이. 높은 값은 보상적 전방 또는 측방 무릎 트래킹 편차를 시사한다. |
+| `spatial.shape.arc_length.right_knee` | spatial | torso_length_ratio | rep / phase | 우측 무릎 궤적 호 길이; 단측 트래킹 편차 검출을 위해 양측 비교. |
+| `spatial.shape.arc_length.left_ankle` | spatial | torso_length_ratio | rep / phase | 좌측 발목 궤적 호 길이. 최소가 아닌 값은 발 굴림(foot roll) 또는 일시적 발뒤꿈치 들림 에피소드를 시사한다. |
+| `spatial.shape.arc_length.right_ankle` | spatial | torso_length_ratio | rep / phase | 우측 발목 궤적 호 길이; 단측 발 불안정성 검출을 위해 좌측과 비교. |
+| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | 평균 Descent ROM 대 평균 Ascent ROM의 비율. 1을 초과하는 값은 복귀 phase보다 부하 수용(하강) 동안 더 큰 가동범위를 시사한다. |
+| `temporal.tempo.rep_*` | temporal | second | rep | 각 개별 반복의 지속 시간. 반복 간 급격한 변화는 페이싱 불안정 또는 피로 주도 템포 drift를 시사한다. |
+| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | 세트 내 반복 지속 시간의 변동 계수(CV). 높은 값은 일관성 없는 동작 템포를 시사하여, 다른 지표의 세트 내 비교 가능성을 떨어뜨린다. |
+| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | 골반 중심 측방 변위의 표준편차. 명목상 수직 부하 과제에서 높은 값은 측방 CoM 불안정성을 시사한다. |
+| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | 골반 중심 수직 변위의 표준편차. 하강/상승 궤적의 평활도를 반영하며, 높은 변동성은 운동 제어 비일관성을 시사한다. |
+| `control.compensation.knee_valgus.left` | control | torso_length_ratio | rep | 관상면 hip-ankle 라인 대비 좌측 무릎 내측 편차 피크. 외반(valgus) 붕괴는 부하 시 엉덩이 외전근(hip-abductor) 활성 부족을 시사한다. |
+| `control.compensation.knee_valgus.right` | control | torso_length_ratio | rep | 우측 무릎 내측 편차 피크. 좌·우 비대칭 외반은 단측 엉덩이 외전근 요구 또는 구조적 차이를 가리킨다. |
+| `control.compensation.knee_varus.left` | control | torso_length_ratio | rep | 좌측 무릎 외측 편차 피크. 내반(varus) 경향은 IT-band 강직, 넓은 스탠스 역학, 또는 보상적 buttressing을 반영할 수 있다. |
+| `control.compensation.knee_varus.right` | control | torso_length_ratio | rep | 우측 무릎 외측 편차 피크; 양측 비교는 구조적 내반과 단측 보상을 구분한다. |
+| `control.compensation.excessive_trunk_flexion` | control | degree | rep | 수직축 대비 체간 기울기 피크. 과도한 전방 기울기는 무릎 신근 메커니즘에서 엉덩이와 요추로 부하를 재분배한다. |
+| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | 반복 평균 베이스라인 대비 측방 골반 변위 피크. 흔히 단측 엉덩이 또는 발목 가동성 제한에 후속하는 체중 이동 보상을 시사한다. |
+| `control.compensation.heel_lift.left` | control | torso_length_ratio | rep | 반복 최저 발뒤꿈치 높이 위로의 좌측 발뒤꿈치 들림 피크. 제한된 발목 발등굽힘을 보상하고 forefoot 부하를 증가시켜 무릎 트래킹 역학을 변경한다. |
+| `control.compensation.heel_lift.right` | control | torso_length_ratio | rep | 우측 발뒤꿈치 들림 피크; 단측 발목 발등굽힘 제한 검출을 위해 좌측과 비교. |
+| `control.compensation.pelvic_rotation` | control | torso_length_ratio | rep | 좌·우 엉덩이 깊이 비대칭 피크 (횡단면 프록시). 0이 아닌 값은 코어 안정성 제한 또는 단측 사지 보상을 반영할 수 있는 골반 회전을 시사한다. |
 
 ---
 
-## Pike Push-up
+## Lunge (런지)
 
 | feature_id | domain | unit | level | clinical_meaning |
 |---|---|---|---|---|
-| `spatial.rom.left_shoulder_angle` | spatial | degree | rep / phase | Left shoulder sagittal ROM (hip–shoulder–elbow angle, vertex at shoulder). Restricted ROM reflects limited shoulder-flexion range under load. |
-| `spatial.rom.right_shoulder_angle` | spatial | degree | rep / phase | Right shoulder sagittal ROM; compared with the left to detect bilateral shoulder-mobility asymmetry. |
-| `spatial.rom.left_elbow_angle` | spatial | degree | rep / phase | Left elbow sagittal ROM. Restricted elbow ROM limits head descent and may indicate elbow-flexor strength or mobility limitation. |
-| `spatial.rom.right_elbow_angle` | spatial | degree | rep / phase | Right elbow sagittal ROM; bilateral comparison reveals lateral loading asymmetry at the elbow. |
-| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | Left hip angle in the piked position. Variation reflects pelvic-tilt strategy and trunk stiffness during the push movement. |
-| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | Right hip angle; bilateral comparison detects pelvic asymmetry during the inverted support. |
-| `spatial.symmetry.shoulder` | spatial | dimensionless_cv | rep | L/R shoulder ROM symmetry index. Asymmetry indicates unequal load distribution between the two arms, a risk factor for shoulder overuse. |
-| `spatial.symmetry.elbow` | spatial | dimensionless_cv | rep | L/R elbow ROM symmetry index. Elbow asymmetry often co-occurs with shoulder asymmetry and reflects hand-position compensation. |
-| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | L/R hip angle symmetry index in the piked position. Non-zero values indicate pelvic lateral tilt during the inverted support phase. |
-| `spatial.shape.arc_length.left_shoulder` | spatial | torso_length_ratio | rep / phase | Arc length of the left shoulder trajectory. Elevated arcs suggest scapular winging or shoulder collapse rather than pure sagittal descent. |
-| `spatial.shape.arc_length.right_shoulder` | spatial | torso_length_ratio | rep / phase | Arc length of the right shoulder trajectory; asymmetry with the left reveals unilateral scapular instability. |
-| `spatial.shape.arc_length.left_elbow` | spatial | torso_length_ratio | rep / phase | Arc length of the left elbow trajectory. Non-linear paths indicate elbow-flare or inward-drift compensation during the push phase. |
-| `spatial.shape.arc_length.right_elbow` | spatial | torso_length_ratio | rep / phase | Arc length of the right elbow trajectory; bilateral comparison detects asymmetric elbow tracking. |
-| `spatial.shape.arc_length.left_wrist` | spatial | torso_length_ratio | rep / phase | Arc length of the left wrist trajectory. Wrist arcs reflect hand-position stability; elevated values indicate contact-point drift. |
-| `spatial.shape.arc_length.right_wrist` | spatial | torso_length_ratio | rep / phase | Arc length of the right wrist trajectory; compared with the left to detect asymmetric hand-contact instability. |
-| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | Ratio of mean Descent ROM to mean Ascent ROM. Values > 1 suggest greater range during the eccentric (lowering) phase, reflecting a controlled descent strategy. |
-| `temporal.tempo.rep_*` | temporal | second | rep | Duration of each individual rep. In pike push-up, slower reps increase time under tension; abrupt shortening may indicate fatigue-related form breakdown. |
-| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | Coefficient of variation of rep durations within the set. Temporal inconsistency in upper-body push tasks often precedes form deterioration. |
-| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center lateral displacement. In the piked posture, lateral hip sway indicates trunk or core instability during the upper-body push. |
-| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center vertical displacement in the piked posture. Reflects how well the hip position is maintained during the push cycle. |
+| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | split-stance 자세에서의 좌측 엉덩이 시상면 ROM. 앞다리(forward leg)의 감소된 ROM은 하강 깊이를 제한할 수 있고, 뒷다리(rear leg)에서는 엉덩이 굴근 신장성을 반영한다. |
+| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | 우측 엉덩이 시상면 ROM; 부하 다리와 trailing 다리는 반복마다 교대되므로 측 × 반복 상호작용이 중요하다. |
+| `spatial.rom.left_knee_angle` | spatial | degree | rep / phase | 좌측 무릎 시상면 ROM. 런지에서 앞다리 무릎 ROM 감소는 종종 과도한 체간 기울기 또는 발뒤꿈치 들림과 함께 나타난다. |
+| `spatial.rom.right_knee_angle` | spatial | degree | rep / phase | 우측 무릎 시상면 ROM; 앞다리와 trailing 다리 사이의 비대칭은 사지 간 부하 전략을 반영한다. |
+| `spatial.rom.left_ankle_angle` | spatial | degree | rep / phase | 좌측 발목 발등굽힘 ROM. 런지에서 앞다리 발목 제한은 보상적 체간 기울기의 일차 동인이다. |
+| `spatial.rom.right_ankle_angle` | spatial | degree | rep / phase | 우측 발목 발등굽힘 ROM; trailing 다리 발목 ROM은 후족부 위치와 엉덩이 신전 역량을 결정한다. |
+| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | 세트 전 반복에 걸친 좌·우 엉덩이 ROM 대칭 지수. 지속적 비대칭은 우세 사지와 비우세 사지 간의 단측 부하 선호를 시사한다. |
+| `spatial.symmetry.knee` | spatial | dimensionless_cv | rep | 좌·우 무릎 ROM 대칭 지수. 런지의 양측 무릎 가동성 불균형은 교대 부하 패턴에 의해 증폭된다. |
+| `spatial.symmetry.ankle` | spatial | dimensionless_cv | rep | 좌·우 발목 ROM 대칭 지수. split-stance 운동에서 발목 비대칭은 가시적인 골반 보상을 만드는 경향이 있다. |
+| `spatial.shape.arc_length.left_hip` | spatial | torso_length_ratio | rep / phase | 좌측 엉덩이 궤적의 호 길이. 런지에서 높은 값은 과도한 전후방 흔들림 또는 측방 체간 기울기를 시사한다. |
+| `spatial.shape.arc_length.right_hip` | spatial | torso_length_ratio | rep / phase | 우측 엉덩이 궤적의 호 길이; 좌측과의 비대칭은 교대 반복에 걸친 부하 불균형을 반영한다. |
+| `spatial.shape.arc_length.left_knee` | spatial | torso_length_ratio | rep / phase | 좌측 무릎 궤적의 호 길이. 높은 호는 split-stance 부하 phase 동안의 내·외측 무릎 불안정성을 시사한다. |
+| `spatial.shape.arc_length.right_knee` | spatial | torso_length_ratio | rep / phase | 우측 무릎 궤적의 호 길이; 단측 무릎 트래킹 편차 검출을 위해 좌측과 비교. |
+| `spatial.shape.arc_length.left_ankle` | spatial | torso_length_ratio | rep / phase | 좌측 발목 궤적의 호 길이. 최소가 아닌 값은 하강 동안의 발 굴림 또는 접촉 불안정성을 시사한다. |
+| `spatial.shape.arc_length.right_ankle` | spatial | torso_length_ratio | rep / phase | 우측 발목 궤적의 호 길이; 단측 발 위치 불안정성 검출을 위해 양측 비교. |
+| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | 평균 Descent ROM 대 평균 Ascent ROM 비율. 1 초과 값은 부하 수용 ROM이 회복 ROM보다 큼을 시사하여 braking 우위 역학을 가리킨다. |
+| `temporal.tempo.rep_*` | temporal | second | rep | 각 개별 반복의 지속 시간. 좌·우 반복 지속 시간이 비교되어야 하는 교대 운동에서 반복 간 변동성이 특히 의미 있다. |
+| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | 세트 내 반복 지속 시간의 변동 계수. 높은 값은 교대 사지 타이밍 비대칭 또는 피로 효과를 시사할 수 있다. |
+| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | 골반 중심 측방 변위의 표준편차. 런지에서 높은 값은 split-stance 전환 중 빈약한 내·외측 CoM 제어를 반영한다. |
+| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | 골반 중심 수직 변위의 표준편차. 시상면에서 하강/상승 궤적의 평활도를 반영. |
+| `control.compensation.knee_valgus.left` | control | torso_length_ratio | rep | 관상면 hip-ankle 라인 대비 좌측 무릎 내측 편차 피크. 런지에서 외반은 앞다리의 고부하 하강 phase에서 더 발생하기 쉽다. |
+| `control.compensation.knee_valgus.right` | control | torso_length_ratio | rep | 우측 무릎 내측 편차 피크. 교대 반복에서 좌·우 비교는 사지 간 외반 비대칭을 정량화한다. |
+| `control.compensation.excessive_trunk_flexion` | control | degree | rep | 수직축 대비 체간 기울기 피크. 런지에서 과도한 기울기는 종종 앞다리 발목 발등굽힘 제한에 대한 2차 보상이다. |
+| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | 반복 평균 베이스라인 대비 측방 골반 변위 피크. split-stance에서 측방 이동은 지지 기저면 위에서 골반 정렬을 유지하기 어려움을 시사한다. |
+| `control.compensation.heel_lift.left` | control | torso_length_ratio | rep | 반복 최저점 위로의 좌측 발뒤꿈치 들림 피크. 런지에서 앞다리 발뒤꿈치 들림은 발목 발등굽힘 제한을 시사하고; trailing 다리 발뒤꿈치 들림은 하강 동안 통상 기대된다. |
+| `control.compensation.heel_lift.right` | control | torso_length_ratio | rep | 우측 발뒤꿈치 들림 피크; 컨텍스트(앞다리 vs trailing 다리)는 교대 어노테이션으로부터 추론되어야 한다. |
 
-> **Note — pending compensation features.** The following pike push-up candidates are registered
-> in the exercise YAML but do not yet have an implemented rule in `COMPENSATION_RULES`:
+---
+
+## Pike Push-up (파이크 푸쉬업)
+
+| feature_id | domain | unit | level | clinical_meaning |
+|---|---|---|---|---|
+| `spatial.rom.left_shoulder_angle` | spatial | degree | rep / phase | 좌측 어깨 시상면 ROM (hip–shoulder–elbow 각, 정점은 어깨). 제한된 ROM은 부하 시 어깨 굴곡(shoulder-flexion) 범위 제한을 반영한다. |
+| `spatial.rom.right_shoulder_angle` | spatial | degree | rep / phase | 우측 어깨 시상면 ROM; 양측 어깨 가동성 비대칭 검출을 위해 좌측과 비교. |
+| `spatial.rom.left_elbow_angle` | spatial | degree | rep / phase | 좌측 팔꿈치 시상면 ROM. 제한된 팔꿈치 ROM은 머리 하강을 제한하며 팔꿈치 굴근 근력 또는 가동성 제한을 시사할 수 있다. |
+| `spatial.rom.right_elbow_angle` | spatial | degree | rep / phase | 우측 팔꿈치 시상면 ROM; 양측 비교는 팔꿈치에서의 측방 부하 비대칭을 드러낸다. |
+| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | piked 자세에서의 좌측 엉덩이 각. 변동은 push 동작 동안 골반 기울기 전략과 체간 강성을 반영한다. |
+| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | 우측 엉덩이 각; 양측 비교는 역방향 지지 동안의 골반 비대칭을 검출한다. |
+| `spatial.symmetry.shoulder` | spatial | dimensionless_cv | rep | 좌·우 어깨 ROM 대칭 지수. 비대칭은 양팔 사이의 불균등한 부하 분포를 시사하며, 어깨 과사용 위험 인자이다. |
+| `spatial.symmetry.elbow` | spatial | dimensionless_cv | rep | 좌·우 팔꿈치 ROM 대칭 지수. 팔꿈치 비대칭은 종종 어깨 비대칭과 함께 나타나며 손 위치 보상을 반영한다. |
+| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | piked 자세에서 좌·우 엉덩이 각 대칭 지수. 0이 아닌 값은 역방향 지지 phase 동안의 골반 측방 기울기를 시사. |
+| `spatial.shape.arc_length.left_shoulder` | spatial | torso_length_ratio | rep / phase | 좌측 어깨 궤적의 호 길이. 높은 호는 순수 시상면 하강이 아닌 견갑(scapular) winging 또는 어깨 붕괴를 시사. |
+| `spatial.shape.arc_length.right_shoulder` | spatial | torso_length_ratio | rep / phase | 우측 어깨 궤적의 호 길이; 좌측과의 비대칭은 단측 견갑 불안정성을 드러낸다. |
+| `spatial.shape.arc_length.left_elbow` | spatial | torso_length_ratio | rep / phase | 좌측 팔꿈치 궤적의 호 길이. 비선형 경로는 push phase 동안의 elbow-flare 또는 inward-drift 보상을 시사. |
+| `spatial.shape.arc_length.right_elbow` | spatial | torso_length_ratio | rep / phase | 우측 팔꿈치 궤적의 호 길이; 양측 비교는 비대칭 팔꿈치 트래킹을 검출. |
+| `spatial.shape.arc_length.left_wrist` | spatial | torso_length_ratio | rep / phase | 좌측 손목 궤적의 호 길이. 손목 호는 손 위치 안정성을 반영; 높은 값은 접촉점 drift를 시사. |
+| `spatial.shape.arc_length.right_wrist` | spatial | torso_length_ratio | rep / phase | 우측 손목 궤적의 호 길이; 비대칭 손 접촉 불안정성 검출을 위해 좌측과 비교. |
+| `spatial.phase_rom_ratio.descent_ascent` | spatial | dimensionless | rep | 평균 Descent ROM 대 평균 Ascent ROM 비율. 1 초과 값은 원심성(eccentric, lowering) phase 동안 더 큰 범위를 시사하여 통제된 하강 전략을 반영. |
+| `temporal.tempo.rep_*` | temporal | second | rep | 각 개별 반복의 지속 시간. 파이크 푸쉬업에서 느린 반복은 긴장 시간을 늘리고; 급격한 단축은 피로 관련 폼 붕괴를 시사. |
+| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | 세트 내 반복 지속 시간의 변동 계수. 상체 push 과제의 시간적 비일관성은 종종 폼 악화에 선행. |
+| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | 골반 중심 측방 변위의 표준편차. piked 자세에서 측방 엉덩이 흔들림은 상체 push 동안의 체간 또는 코어 불안정성을 시사. |
+| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | piked 자세에서 골반 중심 수직 변위의 표준편차. push 사이클 동안 엉덩이 위치가 얼마나 잘 유지되는지 반영. |
+
+> **참고 — 보류 중인 보상 피처.** 다음 파이크 푸쉬업 후보들은 운동 YAML에 등록되어 있으나
+> 아직 `COMPENSATION_RULES`에 구현된 규칙이 없다:
 > `elbow_flare`, `elbow_asymmetry`, `shoulder_asymmetry`, `shoulder_collapse`,
 > `shoulder_elevation_compensation`, `scapular_instability_proxy`, `insufficient_head_descent`,
 > `head_forward_shift`, `hip_drop`, `hip_pike`, `lateral_trunk_lean`.
-> They will be added to this table once rules are implemented.
+> 규칙 구현 시 본 표에 추가될 예정.
 
 ---
 
-## Plank Shoulder Tap
+## Plank Shoulder Tap (플랭크 숄더탭)
 
 | feature_id | domain | unit | level | clinical_meaning |
 |---|---|---|---|---|
-| `spatial.rom.left_shoulder_angle` | spatial | degree | rep / phase | Left shoulder angle in the plank position (hip–shoulder–elbow). Variation across reps indicates trunk-position drift during the anti-rotation task. |
-| `spatial.rom.right_shoulder_angle` | spatial | degree | rep / phase | Right shoulder angle; bilateral comparison detects asymmetric scapular loading during the alternating tap. |
-| `spatial.rom.left_elbow_angle` | spatial | degree | rep / phase | Left elbow angle in the plank-support position. Elbow-angle variation reflects support-arm stability during the contralateral tap phase. |
-| `spatial.rom.right_elbow_angle` | spatial | degree | rep / phase | Right elbow angle; compared with the left to detect asymmetric support-arm mechanics. |
-| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | Left hip angle in the plank position. Changes across phases indicate hip-flexion compensation when core stability is compromised. |
-| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | Right hip angle; bilateral comparison detects pelvic lateral tilt during the one-hand-off support. |
-| `spatial.symmetry.shoulder` | spatial | dimensionless_cv | rep | L/R shoulder angle symmetry index across all reps. Asymmetry indicates unequal scapular loading between the support arm and the tapping arm. |
-| `spatial.symmetry.elbow` | spatial | dimensionless_cv | rep | L/R elbow angle symmetry index. Elbow asymmetry in plank often reflects compensatory elbow repositioning under lateral CoM shift. |
-| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | L/R hip angle symmetry index. Non-zero values indicate persistent pelvic tilt, a common trunk-instability compensation in this exercise. |
-| `spatial.shape.arc_length.left_wrist` | spatial | torso_length_ratio | rep / phase | Arc length of the left wrist trajectory. During a left-tap rep the active wrist should have the larger arc; elevated values on the support wrist indicate contact instability. |
-| `spatial.shape.arc_length.right_wrist` | spatial | torso_length_ratio | rep / phase | Arc length of the right wrist trajectory; compared with the left to confirm which side is the tapping hand per rep. |
-| `spatial.shape.arc_length.left_shoulder` | spatial | torso_length_ratio | rep / phase | Arc length of the left shoulder trajectory. Large arcs in the frontal plane indicate lateral trunk lean compensation during the tap. |
-| `spatial.shape.arc_length.right_shoulder` | spatial | torso_length_ratio | rep / phase | Arc length of the right shoulder trajectory; bilateral comparison detects asymmetric trunk sway driven by alternating limb loading. |
-| `temporal.tempo.rep_*` | temporal | second | rep | Duration of each individual tap cycle. Rhythm consistency is a key quality indicator for this anti-rotation stability task. |
-| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | Coefficient of variation of tap-cycle durations. High variability suggests difficulty maintaining a stable movement rhythm under the anti-rotation demand. |
-| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center lateral displacement. This is the primary stability metric for plank shoulder tap; elevated values directly reflect failure to control medial-lateral CoM shift during the tap. |
-| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | Standard deviation of hip-center vertical displacement in the plank posture. Non-zero variation indicates vertical trunk oscillation, often secondary to hip-drop or hip-lift compensation. |
-| `control.compensation.pelvic_rotation` | control | torso_length_ratio | rep | Peak left-right hip depth asymmetry (transverse-plane proxy). In plank shoulder tap, pelvic rotation is the most direct compensation for insufficient anti-rotation core control. |
-| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | Peak lateral pelvis displacement from the rep-mean baseline. Reflects the degree to which body weight shifts laterally toward the support arm during the one-hand-off phase. |
+| `spatial.rom.left_shoulder_angle` | spatial | degree | rep / phase | plank 자세에서의 좌측 어깨 각 (hip–shoulder–elbow). 반복 간 변동은 anti-rotation 과제 동안의 체간 위치 drift를 시사. |
+| `spatial.rom.right_shoulder_angle` | spatial | degree | rep / phase | 우측 어깨 각; 양측 비교는 교대 탭 동안의 비대칭 견갑 부하를 검출. |
+| `spatial.rom.left_elbow_angle` | spatial | degree | rep / phase | plank-support 자세에서의 좌측 팔꿈치 각. 팔꿈치 각 변동은 반대측 탭 phase 동안 지지 팔의 안정성을 반영. |
+| `spatial.rom.right_elbow_angle` | spatial | degree | rep / phase | 우측 팔꿈치 각; 비대칭 지지 팔 역학 검출을 위해 좌측과 비교. |
+| `spatial.rom.left_hip_angle` | spatial | degree | rep / phase | plank 자세에서의 좌측 엉덩이 각. phase에 걸친 변화는 코어 안정성이 손상될 때 엉덩이 굴곡 보상을 시사. |
+| `spatial.rom.right_hip_angle` | spatial | degree | rep / phase | 우측 엉덩이 각; 양측 비교는 한 손이 떨어진 지지 동안의 골반 측방 기울기를 검출. |
+| `spatial.symmetry.shoulder` | spatial | dimensionless_cv | rep | 모든 반복에 걸친 좌·우 어깨 각 대칭 지수. 비대칭은 지지 팔과 탭 팔 사이의 불균등한 견갑 부하를 시사. |
+| `spatial.symmetry.elbow` | spatial | dimensionless_cv | rep | 좌·우 팔꿈치 각 대칭 지수. plank에서 팔꿈치 비대칭은 종종 측방 CoM 이동에서의 보상적 팔꿈치 재배치를 반영. |
+| `spatial.symmetry.hip` | spatial | dimensionless_cv | rep | 좌·우 엉덩이 각 대칭 지수. 0이 아닌 값은 본 운동에서 흔한 체간 불안정성 보상인 지속적 골반 기울기를 시사. |
+| `spatial.shape.arc_length.left_wrist` | spatial | torso_length_ratio | rep / phase | 좌측 손목 궤적의 호 길이. 좌측 탭 반복 동안 활성 손목이 더 큰 호를 가져야 하며; 지지 손목에서 높은 값은 접촉 불안정성을 시사. |
+| `spatial.shape.arc_length.right_wrist` | spatial | torso_length_ratio | rep / phase | 우측 손목 궤적의 호 길이; 반복마다 어느 측이 탭 손인지 확인하기 위해 좌측과 비교. |
+| `spatial.shape.arc_length.left_shoulder` | spatial | torso_length_ratio | rep / phase | 좌측 어깨 궤적의 호 길이. 관상면에서 큰 호는 탭 동안의 측방 체간 기울기 보상을 시사. |
+| `spatial.shape.arc_length.right_shoulder` | spatial | torso_length_ratio | rep / phase | 우측 어깨 궤적의 호 길이; 양측 비교는 교대 사지 부하로 유발된 비대칭 체간 흔들림을 검출. |
+| `temporal.tempo.rep_*` | temporal | second | rep | 각 개별 탭 사이클의 지속 시간. 리듬 일관성은 본 anti-rotation 안정성 과제의 핵심 품질 지표. |
+| `temporal.variability.tempo_cv` | temporal | dimensionless_cv | set | 탭 사이클 지속 시간의 변동 계수. 높은 변동성은 anti-rotation 요구 하에 안정된 동작 리듬을 유지하는 데 어려움을 시사. |
+| `control.stability.hip_center_x_std` | control | torso_length_ratio | rep / phase | 골반 중심 측방 변위의 표준편차. 본 운동의 일차 안정성 지표; 높은 값은 탭 동안 내·외측 CoM 이동을 통제하지 못함을 직접 반영. |
+| `control.stability.hip_center_z_std` | control | torso_length_ratio | rep / phase | plank 자세에서 골반 중심 수직 변위의 표준편차. 0이 아닌 변동은 종종 hip-drop 또는 hip-lift 보상에 후속하는 수직 체간 진동을 시사. |
+| `control.compensation.pelvic_rotation` | control | torso_length_ratio | rep | 좌·우 엉덩이 깊이 비대칭 피크 (횡단면 프록시). 본 운동에서 골반 회전은 anti-rotation 코어 제어 부족에 대한 가장 직접적인 보상. |
+| `control.compensation.lateral_pelvic_shift` | control | torso_length_ratio | rep | 반복 평균 베이스라인 대비 측방 골반 변위 피크. 한 손 떨어진 phase 동안 체중이 지지 팔 쪽으로 측방 이동하는 정도를 반영. |
 
-> **Note — pending compensation features.** The following plank shoulder tap candidates are
-> registered in the exercise YAML but do not yet have an implemented rule in `COMPENSATION_RULES`:
+> **참고 — 보류 중인 보상 피처.** 다음 플랭크 숄더탭 후보들은 운동 YAML에 등록되어 있으나
+> 아직 `COMPENSATION_RULES`에 구현된 규칙이 없다:
 > `trunk_rotation`, `lateral_trunk_lean`, `hip_drop`, `shoulder_collapse`, `shoulder_asymmetry`,
 > `excessive_com_lateral_shift`, `excessive_com_variability`, `left_right_timing_variability`,
 > `phase_timing_asymmetry`, `movement_discontinuity`.
-> They will be added to this table once rules are implemented.
+> 규칙 구현 시 본 표에 추가될 예정.
 
 ---
 
-## Cross-Exercise Summary
+## 운동 간 요약 (Cross-Exercise Summary)
 
-| feature_id prefix | exercises active | domain | notes |
+| feature_id 접두어 | 활성 운동 | 도메인 | 비고 |
 |---|---|---|---|
-| `spatial.rom.*` | all 4 | spatial | Joints differ by exercise (lower-body for squat/lunge; upper-body + hip for pike_pushup / plank_shoulder_tap) |
-| `spatial.symmetry.*` | all 4 | spatial | Pairs derived from `left_` / `right_` entries in `angle_definitions` |
-| `spatial.shape.arc_length.*` | all 4 | spatial | Joints from `landmarks.primary_joints`; differ by exercise |
-| `spatial.phase_rom_ratio.descent_ascent` | squat, lunge, pike_pushup | spatial | Not emitted for plank_shoulder_tap (phases: Lift / Tap / Return) |
-| `temporal.tempo.rep_*` | all 4 | temporal | |
-| `temporal.variability.tempo_cv` | all 4 | temporal | Requires ≥ 2 reps |
-| `control.stability.hip_center_x_std` | all 4 | control | CoM lateral stability proxy |
-| `control.stability.hip_center_z_std` | all 4 | control | CoM vertical stability proxy |
-| `control.compensation.knee_valgus.*` | squat, lunge | control | Lower-body frontal-plane compensation |
-| `control.compensation.knee_varus.*` | squat | control | Lower-body lateral knee deviation |
-| `control.compensation.excessive_trunk_flexion` | squat, lunge | control | Trunk-lean compensation (standing exercises) |
+| `spatial.rom.*` | 4종 전체 | spatial | 관절은 운동에 따라 다름 (squat/lunge는 하체; pike_pushup / plank_shoulder_tap은 상체 + 엉덩이) |
+| `spatial.symmetry.*` | 4종 전체 | spatial | 짝은 `angle_definitions`의 `left_` / `right_` 항목에서 도출 |
+| `spatial.shape.arc_length.*` | 4종 전체 | spatial | 관절은 `landmarks.primary_joints`에서; 운동에 따라 다름 |
+| `spatial.phase_rom_ratio.descent_ascent` | squat, lunge, pike_pushup | spatial | plank_shoulder_tap에서는 방출되지 않음 (phases: Lift / Tap / Return) |
+| `temporal.tempo.rep_*` | 4종 전체 | temporal | |
+| `temporal.variability.tempo_cv` | 4종 전체 | temporal | ≥ 2 반복 필요 |
+| `control.stability.hip_center_x_std` | 4종 전체 | control | CoM 측방 안정성 프록시 |
+| `control.stability.hip_center_z_std` | 4종 전체 | control | CoM 수직 안정성 프록시 |
+| `control.compensation.knee_valgus.*` | squat, lunge | control | 하체 관상면 보상 |
+| `control.compensation.knee_varus.*` | squat | control | 하체 외측 무릎 편차 |
+| `control.compensation.excessive_trunk_flexion` | squat, lunge | control | 체간 기울기 보상 (직립 운동) |
 | `control.compensation.lateral_pelvic_shift` | squat, lunge, plank_shoulder_tap | control | |
-| `control.compensation.heel_lift.*` | squat, lunge | control | Ankle dorsiflexion restriction proxy |
-| `control.compensation.pelvic_rotation` | squat, plank_shoulder_tap | control | Transverse-plane pelvic asymmetry proxy |
+| `control.compensation.heel_lift.*` | squat, lunge | control | 발목 발등굽힘 제한 프록시 |
+| `control.compensation.pelvic_rotation` | squat, plank_shoulder_tap | control | 횡단면 골반 비대칭 프록시 |

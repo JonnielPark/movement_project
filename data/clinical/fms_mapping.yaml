@@ -1,0 +1,138 @@
+# data/clinical/fms_mapping.yaml
+#
+# Crosswalk between movement-project feature domains and FMS-like observation
+# categories. This file does not reproduce FMS scoring text and does not make
+# medical conclusions. It provides citation-only references and dashboard-ready
+# traffic-light labels for movement quality review.
+
+squat:
+  reference_screen: deep_squat_like_pattern
+  fms_test: deep_squat
+  traffic_light_mapping:
+    green:
+      meaning: no_detected_compensation
+      score_range: [85, 100]
+    yellow:
+      meaning: mild_alignment_or_control_issue
+      score_range: [70, 84.999]
+    red:
+      meaning: clear_compensation_or_large_deduction
+      score_range: [0, 69.999]
+  linked_criteria:
+    - id: knee_alignment_with_foot
+      domain: control
+      feature_id_prefix: control.compensation.knee_valgus
+      rationale: Frontal-plane knee tracking is reflected by medial knee deviation relative to the hip-ankle line.
+    - id: torso_alignment_to_lower_limb
+      domain: control
+      feature_id_prefix: control.compensation.excessive_trunk_flexion
+      rationale: Forward trunk lean changes the relative hip and knee loading strategy during descent.
+    - id: heel_contact_control
+      domain: control
+      feature_id_prefix: control.compensation.heel_lift
+      rationale: Heel lift is a body-relative proxy for ankle dorsiflexion limitation during squat depth.
+    - id: bilateral_depth_symmetry
+      domain: spatial
+      feature_id_prefix: spatial.symmetry.knee
+      rationale: Left-right knee ROM symmetry supports interpretation of bilateral depth consistency.
+  references:
+    - "Cook G., Burton L., Hoogenboom B., Voight M. Functional Movement Screen publications; citation only."
+
+lunge:
+  reference_screen: inline_lunge_like_pattern
+  fms_test: inline_lunge
+  traffic_light_mapping:
+    green:
+      meaning: no_detected_compensation
+      score_range: [85, 100]
+    yellow:
+      meaning: mild_alignment_or_control_issue
+      score_range: [70, 84.999]
+    red:
+      meaning: clear_compensation_or_large_deduction
+      score_range: [0, 69.999]
+  linked_criteria:
+    - id: split_stance_balance_control
+      domain: control
+      feature_id_prefix: control.stability.hip_center_x_std
+      rationale: Medial-lateral hip-center variability captures split-stance balance control.
+    - id: forward_knee_tracking
+      domain: control
+      feature_id_prefix: control.compensation.knee_valgus
+      rationale: Valgus deviation describes frontal-plane knee tracking under single-leg-biased load.
+    - id: trunk_position_control
+      domain: control
+      feature_id_prefix: control.compensation.excessive_trunk_flexion
+      rationale: Trunk lean is a compensatory strategy when ankle or hip range limits lunge depth.
+    - id: heel_contact_strategy
+      domain: control
+      feature_id_prefix: control.compensation.heel_lift
+      rationale: Heel elevation helps distinguish ankle restriction from normal trailing-foot motion context.
+  references:
+    - "Cook G., Burton L., Hoogenboom B., Voight M. Functional Movement Screen publications; citation only."
+
+pike_pushup:
+  reference_screen: trunk_stability_pushup_like_pattern
+  fms_test: trunk_stability_pushup
+  traffic_light_mapping:
+    green:
+      meaning: no_detected_compensation
+      score_range: [85, 100]
+    yellow:
+      meaning: mild_alignment_or_control_issue
+      score_range: [70, 84.999]
+    red:
+      meaning: clear_compensation_or_large_deduction
+      score_range: [0, 69.999]
+  linked_criteria:
+    - id: shoulder_rom_symmetry
+      domain: spatial
+      feature_id_prefix: spatial.symmetry.shoulder
+      rationale: Left-right shoulder ROM symmetry reflects balanced upper-limb loading in the inverted push task.
+    - id: elbow_control_symmetry
+      domain: spatial
+      feature_id_prefix: spatial.symmetry.elbow
+      rationale: Elbow ROM symmetry helps identify unequal support or hand-position compensation.
+    - id: hip_position_stability
+      domain: control
+      feature_id_prefix: control.stability.hip_center_z_std
+      rationale: Vertical hip-center variability indicates whether the piked posture is maintained through the push cycle.
+    - id: shoulder_descent_range
+      domain: spatial
+      feature_id_prefix: spatial.rom.left_shoulder_angle
+      rationale: Shoulder ROM provides a body-relative proxy for descent depth under upper-body load.
+  references:
+    - "Cook G., Burton L., Hoogenboom B., Voight M. Functional Movement Screen publications; citation only."
+
+plank_shoulder_tap:
+  reference_screen: rotary_stability_like_pattern
+  fms_test: rotary_stability
+  traffic_light_mapping:
+    green:
+      meaning: no_detected_compensation
+      score_range: [85, 100]
+    yellow:
+      meaning: mild_alignment_or_control_issue
+      score_range: [70, 84.999]
+    red:
+      meaning: clear_compensation_or_large_deduction
+      score_range: [0, 69.999]
+  linked_criteria:
+    - id: anti_rotation_control
+      domain: control
+      feature_id_prefix: control.compensation.pelvic_rotation
+      rationale: Hip-depth asymmetry is the primary transverse-plane proxy for anti-rotation control.
+    - id: lateral_weight_shift_control
+      domain: control
+      feature_id_prefix: control.compensation.lateral_pelvic_shift
+      rationale: Lateral pelvis displacement reflects body-weight shift toward the support arm.
+    - id: support_shoulder_symmetry
+      domain: spatial
+      feature_id_prefix: spatial.symmetry.shoulder
+      rationale: Shoulder symmetry helps interpret alternating support-arm loading during taps.
+    - id: rhythm_control
+      domain: temporal
+      feature_id_prefix: temporal.variability.tempo_cv
+      rationale: Tap-cycle tempo variability reflects consistency of the anti-rotation task.
+  references:
+    - "Cook G., Burton L., Hoogenboom B., Voight M. Functional Movement Screen publications; citation only."

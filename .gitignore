@@ -35,6 +35,8 @@ config.local.py
 data/raw/
 data/private/
 data/clinical/
+!data/clinical/
+!data/clinical/*.yaml
 data/videos/
 data/mediapipe/
 
@@ -50,3 +52,7 @@ results/
 logs/
 
 CLAUDE.md
+
+# Local planning docs (not uploaded)
+docs/code_revision_plan.md
+docs_eng/code_revision_plan.md

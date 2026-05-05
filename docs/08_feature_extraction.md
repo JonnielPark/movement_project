@@ -1,16 +1,21 @@
-# 08. Feature Extraction
+# 08. 피처 추출 (Feature Extraction)
 
-Pipeline step ⑧. Computes movement-quality features from normalized pose data.
-Each feature is returned as a `FeatureRecord` with `(value, unit, source_fields)`
-so that downstream biomarker derivation (⑩) can trace provenance.
+**문서 버전:** 1.0.0  
+**최종 갱신:** 2026-05-06  
+**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
+**영문 동기화:** `docs_eng/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
-Beyond raw joint angles, the design enforces a strict three-domain decomposition
-(**spatial / temporal / control**) so that every metric maps cleanly to a clinical
-reasoning category. Corresponds to dissertation §5.
+파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
+각 피처는 `(value, unit, source_fields)`를 가진 `FeatureRecord`로 반환되어,
+후속 바이오마커 도출(⑩)이 산출 근거(provenance)를 추적할 수 있게 한다.
+
+원시 관절각을 넘어, 본 설계는 모든 지표가 임상적 추론 범주에 명확히 매핑되도록
+**공간(spatial) / 시간(temporal) / 제어(control)** 의 3 도메인 분해를 엄격하게 강제한다.
+학위논문 §5에 해당.
 
 ---
 
-## 1. Pipeline Position
+## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
 Pose CSV
@@ -21,103 +26,99 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Phase Segmentation
 → ⑦ Motion Attribution
-→ ⑧ Feature Extraction         ← this step
+→ ⑧ Feature Extraction         ← 본 단계
 → ⑨ Biomech Proxy
 → ⑩ Biomarker Derivation
 ```
 
-Required inputs:
+필수 입력:
 ```text
-normalized coordinates    <landmark>_norm_x/y/z columns from ⑤
-rep boundaries            segment_type == 'rep' + rep_id from ②
-phase column (optional)   from ⑥; enables phase-level feature emission
-exercise definition       angle_definitions, feature_domains, compensation_candidates
+정규화 좌표                ⑤에서 온 <landmark>_norm_x/y/z 칼럼
+반복 경계                  ②에서 온 segment_type == 'rep' + rep_id
+phase 칼럼 (선택)          ⑥에서 온 값; 구간 단위 피처 방출 활성화
+운동 정의                  angle_definitions, feature_domains, compensation_candidates
 ```
 
-Does not modify coordinates. Adds `FeatureRecord` rows only; the pose dataframe
-is untouched.
+좌표를 수정하지 않는다. `FeatureRecord` 행만 추가한다; 포즈 데이터프레임은 그대로 보존된다.
 
-## 2. Design Principle
+## 2. 설계 원칙 (Design Principle)
 
 ```text
-Allowed:
-    Per-joint included angles from angle_definitions triplets
-    Per-rep aggregation (min, max, range, std, arc length)
-    Per-(rep × phase) aggregation when ⑥ phase column is populated
-    Compensation candidate computation from COMPENSATION_RULES registry
-    Provenance recording in source_fields
+허용:
+    angle_definitions 트리플렛에서의 관절별 끼인각
+    반복별 집계 (min, max, range, std, arc length)
+    ⑥의 phase 칼럼이 채워진 경우 (rep × phase) 단위 집계
+    COMPENSATION_RULES 레지스트리로부터의 보상 후보 계산
+    source_fields에 산출 근거 기록
 
-Not allowed:
-    Branching on exercise_id in feature code  (drive everything from YAML)
-    Producing a feature whose source_fields is empty (raises ValueError)
-    Mixing kinetic and kinematic phase labels in feature_id suffixes
-    Outputs in absolute units (N, kg, m)  — torso_length_ratio / degree only
+불허:
+    피처 코드 내 exercise_id에 따른 분기 (모든 동작은 YAML에서 구동)
+    source_fields가 비어 있는 피처 산출 (ValueError 발생)
+    feature_id 접미사에서 운동학적·기구학적 phase 라벨 혼용
+    절대 단위 출력 (N, kg, m) — torso_length_ratio / degree만 허용
 ```
 
-## 3. Three Feature Domains
+## 3. 3 피처 도메인 (Three Feature Domains)
 
-Three fixed domains are activated per exercise via `feature_domains` in the
-exercise YAML. Domain membership is encoded in the `feature_id` prefix
-(`spatial.*`, `temporal.*`, `control.*`).
+운동 YAML의 `feature_domains`를 통해 운동별로 활성화되는 3 고정 도메인.
+도메인 소속은 `feature_id` 접두어로 인코딩된다(`spatial.*`, `temporal.*`, `control.*`).
 
-### 3-1. Spatial Features
+### 3-1. 공간(Spatial) 피처
 
-Reflect mobility limitation and musculoskeletal asymmetry.
+가동성 제한과 근골격계 비대칭을 반영.
 
 ```text
-spatial.rom.<joint>             max − min included angle per rep        (degree)
+spatial.rom.<joint>             반복별 끼인각 max − min                  (degree)
 spatial.symmetry.<joint>        | ROM_left − ROM_right | / mean         (dimensionless_cv)
-spatial.shape.arc_length.<lm>   primary-joint trajectory length         (torso_length_ratio)
+spatial.shape.arc_length.<lm>   주요 관절 궤적 길이                       (torso_length_ratio)
 ```
 
-### 3-2. Temporal Features
+### 3-2. 시간(Temporal) 피처
 
-Capture pain-avoidance hesitation and timing-control deficits.
+통증 회피로 인한 주저함과 타이밍 제어 결손을 포착.
 
 ```text
-temporal.tempo.rep_<n>          rep duration                            (second)
-temporal.variability.tempo_cv   inter-rep tempo CV                      (dimensionless_cv)
+temporal.tempo.rep_<n>          반복 지속 시간                          (second)
+temporal.variability.tempo_cv   반복 간 템포 CV                          (dimensionless_cv)
 ```
 
-### 3-3. Control Features
+### 3-3. 제어(Control) 피처
 
-Quantify postural stability and substitution by adjacent joints.
+자세 안정성과 인접 관절에 의한 대체(substitution)를 정량화.
 
 ```text
-control.stability.hip_center_x_std   pelvis lateral sway                 (torso_length_ratio)
-control.stability.hip_center_z_std   pelvis vertical sway                (torso_length_ratio)
-control.compensation.<candidate>     rule-registry compensation metric  (torso_length_ratio | degree)
+control.stability.hip_center_x_std   골반 측방 동요                     (torso_length_ratio)
+control.stability.hip_center_z_std   골반 수직 동요                     (torso_length_ratio)
+control.compensation.<candidate>     규칙 레지스트리 기반 보상 지표      (torso_length_ratio | degree)
 ```
 
-The `control` domain is intentionally not abbreviated to "stability"
-(see [`_terminology.md`](_terminology.md) §3).
+`control` 도메인은 의도적으로 "stability"로 줄이지 않는다
+([`_terminology.md`](_terminology.md) §3 참조).
 
-## 4. Compensation Rule Registry
+## 4. 보상 규칙 레지스트리 (Compensation Rule Registry)
 
-`compensation_candidates` from the exercise YAML are dispatched to the
-`COMPENSATION_RULES` registry in `features/compensation.py`. Unregistered
-candidates emit a `UserWarning` and are skipped so that the YAML can list
-aspirational candidates without crashing the pipeline.
+운동 YAML의 `compensation_candidates`는 `features/compensation.py`의
+`COMPENSATION_RULES` 레지스트리로 디스패치된다. 등록되지 않은 후보는 `UserWarning`을 발생시키고
+건너뛴다(YAML이 미래 후보를 미리 나열해도 파이프라인이 중단되지 않도록 함).
 
-Registered rules:
+등록된 규칙:
 
-| Candidate | Plane / Axis | Output |
+| 후보 | 평면 / 축 | 출력 |
 |---|---|---|
-| `knee_valgus`            | frontal (x-z), per side  | peak medial knee deviation from hip-ankle line |
-| `knee_varus`             | frontal (x-z), per side  | peak lateral knee deviation |
-| `lateral_pelvic_shift`   | x-axis                   | peak pelvis-center lateral displacement from rep mean |
-| `excessive_trunk_flexion`| z-axis                   | peak trunk lean from vertical (degree) |
-| `heel_lift`              | z-axis, per side         | peak heel elevation above rep minimum |
-| `pelvis_rotation`        | y-axis (depth)           | peak left-right hip depth asymmetry (transverse proxy) |
+| `knee_valgus`            | 관상면(x-z), 측별  | hip-ankle 라인 대비 무릎 내측 편차 피크 |
+| `knee_varus`             | 관상면(x-z), 측별  | 무릎 외측 편차 피크 |
+| `lateral_pelvic_shift`   | x축               | 반복 평균 대비 골반 중심 측방 변위 피크 |
+| `excessive_trunk_flexion`| z축               | 수직 대비 체간 기울기 피크 (degree) |
+| `heel_lift`              | z축, 측별          | 반복 최저점 대비 발뒤꿈치 들림 피크 |
+| `pelvis_rotation`        | y축 (깊이)        | 좌·우 엉덩이 깊이 비대칭 피크 (transverse 프록시) |
 
-Each rule returns one or more `FeatureRecord` with `feature_id` pattern
-`control.compensation.<candidate>[.<side>]`.
+각 규칙은 `feature_id` 패턴 `control.compensation.<candidate>[.<side>]`을 가진
+하나 이상의 `FeatureRecord`를 반환한다.
 
-## 5. Phase-Aware Feature Families
+## 5. Phase-Aware 피처 패밀리 (Phase-Aware Feature Families)
 
-When ⑥ Phase Segmentation populates the `phase` column, features in
-`PHASE_AWARE_FEATURE_FAMILIES` are emitted at both rep-level (`phase=None`)
-and phase-level (`phase='Descent'`, etc.).
+⑥ Phase Segmentation이 `phase` 칼럼을 채우면, `PHASE_AWARE_FEATURE_FAMILIES`에 속한
+피처는 반복 단위(`phase=None`)와 구간 단위(`phase='Descent'` 등) 모두에서 방출된다.
 
 ```text
 PHASE_AWARE_FEATURE_FAMILIES = {
@@ -128,61 +129,60 @@ PHASE_AWARE_FEATURE_FAMILIES = {
 }
 ```
 
-Rules:
+규칙:
 ```text
-- Phase-level feature_id appends a lowercased phase suffix
-  e.g. spatial.rom.left_knee  →  spatial.rom.left_knee.descent
+- 구간 단위 feature_id에는 소문자 phase 접미사가 붙는다
+  예: spatial.rom.left_knee  →  spatial.rom.left_knee.descent
 
-- Phase-level FeatureRecord.source_fields includes 'phase_segmentation.*' entries
+- 구간 단위 FeatureRecord.source_fields에 'phase_segmentation.*' 항목이 포함된다
   (reference_landmark, reference_axis, split_logic)
 
-- control.compensation is rep-level only — candidates span phase boundaries
-  and would lose meaning if split
+- control.compensation은 반복 단위 전용 — 후보가 구간 경계를 가로지르므로
+  분할하면 의미를 잃는다
 
-- Kinematic phase labels (Descent / Ascent / Bottom_Hold / Lift / Tap / Return)
-  must not be mixed with kinetic labels (eccentric / isometric / concentric)
+- 기구학적(kinematic) phase 라벨 (Descent / Ascent / Bottom_Hold / Lift / Tap / Return)은
+  운동학적(kinetic) 라벨 (eccentric / isometric / concentric)과 혼용해서는 안 된다
 ```
 
-## 6. Hierarchical Summary
+## 6. 계층 요약 (Hierarchical Summary)
 
-`summarize_phase_to_rep()` derives rep-level summary metrics from the
-phase-level records (dissertation §5.5).
+`summarize_phase_to_rep()`은 구간 단위 레코드로부터 반복 단위 요약 지표를 도출한다(학위논문 §5.5).
 
 ```text
 spatial.phase_rom_ratio.descent_ascent
-    Ratio of mean Descent ROM to mean Ascent ROM per rep.
-    Values > 1 → descent excursion exceeds ascent (e.g. uncontrolled lowering).
+    반복별 평균 Descent ROM 대 평균 Ascent ROM 비율.
+    값 > 1 → 하강 가동범위가 상승보다 큼 (예: 통제되지 않은 하강).
 ```
 
-The summarizer is purely additive: input records are not modified, and the
-returned list contains only the new summary `FeatureRecord` entries.
+요약기는 순수 가산적이다: 입력 레코드는 수정되지 않으며, 반환 목록에는 새 요약
+`FeatureRecord` 항목만 포함된다.
 
-## 7. Output: FeatureRecord
+## 7. 출력: FeatureRecord (Output)
 
 ```python
 @dataclass
 class FeatureRecord:
-    feature_id:    str            # e.g. 'spatial.rom.left_knee.descent'
+    feature_id:    str            # 예: 'spatial.rom.left_knee.descent'
     exercise_id:   str
-    rep_id:        int | None     # None = sequence-level
+    rep_id:        int | None     # None = 시퀀스 단위
     value:         float
     unit:          str            # 'degree' | 'torso_length_ratio'
                                   # | 'second' | 'dimensionless_cv' | 'dimensionless'
-    source_fields: list[str]      # required; raises ValueError if empty
+    source_fields: list[str]      # 필수; 비어 있으면 ValueError
     note:          str | None
-    phase:         str | None     # None = rep-level; 'Descent' etc. = phase-level
+    phase:         str | None     # None = 반복 단위; 'Descent' 등 = 구간 단위
 ```
 
-Per-exercise mapping of which features are produced:
+운동별로 산출되는 피처 매핑:
 
 ```text
-feature_domains.spatial   = [rom, symmetry, shape, ...]   → spatial.* features
-feature_domains.temporal  = [tempo, variability, ...]     → temporal.* features
-feature_domains.control   = [stability, compensation, ...] → control.* features
-compensation_candidates   = [knee_valgus, ...]            → control.compensation.* features
+feature_domains.spatial   = [rom, symmetry, shape, ...]   → spatial.* 피처
+feature_domains.temporal  = [tempo, variability, ...]     → temporal.* 피처
+feature_domains.control   = [stability, compensation, ...] → control.* 피처
+compensation_candidates   = [knee_valgus, ...]            → control.compensation.* 피처
 ```
 
-## 8. Entry Point
+## 8. 진입점 (Entry Point)
 
 ```python
 from movement.features import (
@@ -196,12 +196,12 @@ records += summarize_phase_to_rep(records)
 feat_df = features_to_dataframe(records)
 ```
 
-`features_to_dataframe()` flattens `source_fields` into a pipe-joined string for
-tabular interchange and preserves the `phase` column.
+`features_to_dataframe()`는 표 교환을 위해 `source_fields`를 파이프(|)로 결합한 문자열로
+펼치고 `phase` 칼럼을 보존한다.
 
-## 9. Configuration
+## 9. 설정 (Configuration)
 
-Activation is YAML-driven only; no Python code branching per exercise:
+활성화는 YAML로만 구동된다; 운동별 Python 코드 분기 없음:
 
 ```yaml
 feature_domains:
@@ -216,23 +216,20 @@ compensation_candidates:
   - lateral_pelvic_shift
 ```
 
-`biomechanical_proxy` items are consumed by ⑨ Biomech Proxy, not ⑧.
+`biomechanical_proxy` 항목은 ⑧이 아닌 ⑨ Biomech Proxy에서 소비된다.
 
-## 10. Relationship to Other Steps
+## 10. 다른 단계와의 관계 (Relationship to Other Steps)
 
-- **⑥ Phase Segmentation** — populates the `phase` column, enabling phase-level
-  feature emission. When the column is absent or empty, only rep-level records
-  are produced (graceful no-op).
-- **⑦ Motion Attribution** — supplies per-rep `attribution_consistent` and
-  `attribution_action`. Down-weighting / exclusion of inconsistent reps is
-  handled at the biomarker layer rather than by mutating features here.
-- **⑨ Biomech Proxy** — consumes the same normalized coordinates and YAML
-  fields, but produces `BiomechRecord` (CoM, moment arm). It does **not**
-  read FeatureRecord output.
-- **⑩ Biomarker Derivation** — converts FeatureRecord into BiomarkerRecord
-  pass-through and feeds them into the per-rep composite score.
+- **⑥ Phase Segmentation** — `phase` 칼럼을 채워 구간 단위 피처 방출을 활성화한다.
+  칼럼이 없거나 비어 있으면 반복 단위 레코드만 산출된다(graceful no-op).
+- **⑦ Motion Attribution** — 반복별 `attribution_consistent`와 `attribution_action`을 공급.
+  비일관 반복의 가중치 하향/제외는 본 단계에서 피처를 변형하지 않고 바이오마커 계층에서 처리한다.
+- **⑨ Biomech Proxy** — 동일한 정규화 좌표와 YAML 필드를 소비하지만 `BiomechRecord`
+  (CoM, 모멘트 암)을 산출한다. FeatureRecord 출력을 **참조하지 않는다**.
+- **⑩ Biomarker Derivation** — FeatureRecord를 BiomarkerRecord 패스스루로 변환하고,
+  반복별 종합 점수(composite score)에 공급한다.
 
-## 11. Code Mapping
+## 11. 코드 매핑 (Code Mapping)
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
@@ -242,29 +239,29 @@ src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
 src/movement/features/spatial.py         compute_rom, compute_symmetry, compute_shape
 src/movement/features/temporal.py        compute_tempo, compute_variability
 src/movement/features/control.py         compute_stability, compute_compensation
-src/movement/features/compensation.py    COMPENSATION_RULES registry, dispatch
+src/movement/features/compensation.py    COMPENSATION_RULES 레지스트리, 디스패치
 ```
 
-## 12. Clinical Meaning Reference
+## 12. 임상적 의미 참조 (Clinical Meaning Reference)
 
-Per-exercise feature × clinical meaning mapping:
+운동별 피처 × 임상적 의미 매핑:
 
 ```text
-docs/clinical/per_exercise_mapping.md   markdown table (§5.5/§5.6)
-data/clinical/feature_meanings.yaml     YAML mirror for dashboard tooltips
+docs/clinical/per_exercise_mapping.md   마크다운 표 (§5.5/§5.6)
+data/clinical/feature_meanings.yaml     대시보드 툴팁용 YAML 미러
 ```
 
-The YAML is keyed `exercise_id → feature_id → {domain, unit, level, phase_suffix, clinical_meaning}`.
-Consumed by the planned CDSS dashboard (Task F) for hover-tooltip provenance disclosure.
+YAML은 `exercise_id → feature_id → {domain, unit, level, phase_suffix, clinical_meaning}` 키 구조다.
+계획된 CDSS 대시보드(Task F)에서 호버 툴팁 provenance 공개를 위해 소비된다.
 
-## 13. Planned Extensions
+## 13. 향후 확장 (Planned Extensions)
 
-- Visibility-weighted ROM / symmetry (drop low-visibility frames before max/min)
-- Compensation rules: `asymmetric_depth`, `foot_external_rotation_proxy`,
-  `tempo_instability` (currently in `_UNIMPLEMENTED`)
-- Per-side temporal variability (left/right tempo asymmetry for alternating exercises)
-- Velocity-profile features (peak velocity, velocity smoothness via jerk / SPARC)
-- Phase-level variability (intra-phase tempo CV across reps)
-- Joint-coordination features (e.g. hip-knee phase coupling via cross-correlation)
-- ROM-by-phase aggregation directly into `summarize_phase_to_rep`
-- Unit-test scaffolding: `tests/test_features_phase_grouping.py`, `tests/test_compensation.py`
+- 가시성 가중 ROM / 대칭성 (max/min 이전 저-가시성 프레임 제거)
+- 보상 규칙: `asymmetric_depth`, `foot_external_rotation_proxy`,
+  `tempo_instability` (현재 `_UNIMPLEMENTED`)
+- 측별 시간 변동성 (좌·우 교대 운동을 위한 좌·우 템포 비대칭)
+- 속도 프로파일 피처 (peak velocity, jerk / SPARC을 통한 속도 평활도)
+- 구간 단위 변동성 (반복 간 phase 내 템포 CV)
+- 관절 협응 피처 (예: hip-knee 위상 결합의 교차 상관(cross-correlation))
+- ROM-by-phase 집계를 `summarize_phase_to_rep`에 직접 통합
+- 단위 테스트 스캐폴딩: `tests/test_features_phase_grouping.py`, `tests/test_compensation.py`

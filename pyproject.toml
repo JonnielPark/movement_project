@@ -8,8 +8,6 @@ dependencies = [
     "pandas",
     "plotly",
     "scipy",
-    "matplotlib",
-    "jupyter",
     "pyyaml",
 ]
 
@@ -22,3 +20,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -48,6 +48,7 @@ from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
 from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
 from movement.biomech import BiomechRecord  # noqa
 from movement.biomarker import BiomarkerRecord, from_feature_record, from_biomech_record  # noqa
+from movement.clinical import load_fms_mapping, traffic_light_for_score  # noqa
 
 __all__ = [
     # I/O
@@ -78,6 +79,8 @@ __all__ = [
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
+    "load_fms_mapping",
+    "traffic_light_for_score",
     # ⑪ visualization
     "create_pose_animation",
     "create_pose_comparison_animation",
