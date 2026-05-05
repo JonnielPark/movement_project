@@ -245,7 +245,19 @@ src/movement/features/control.py         compute_stability, compute_compensation
 src/movement/features/compensation.py    COMPENSATION_RULES registry, dispatch
 ```
 
-## 12. Planned Extensions
+## 12. Clinical Meaning Reference
+
+Per-exercise feature × clinical meaning mapping:
+
+```text
+docs/clinical/per_exercise_mapping.md   markdown table (§5.5/§5.6)
+data/clinical/feature_meanings.yaml     YAML mirror for dashboard tooltips
+```
+
+The YAML is keyed `exercise_id → feature_id → {domain, unit, level, phase_suffix, clinical_meaning}`.
+Consumed by the planned CDSS dashboard (Task F) for hover-tooltip provenance disclosure.
+
+## 13. Planned Extensions
 
 - Visibility-weighted ROM / symmetry (drop low-visibility frames before max/min)
 - Compensation rules: `asymmetric_depth`, `foot_external_rotation_proxy`,
@@ -255,4 +267,4 @@ src/movement/features/compensation.py    COMPENSATION_RULES registry, dispatch
 - Phase-level variability (intra-phase tempo CV across reps)
 - Joint-coordination features (e.g. hip-knee phase coupling via cross-correlation)
 - ROM-by-phase aggregation directly into `summarize_phase_to_rep`
-- Per-feature unit-test scaffolding (`tests/test_features_phase_grouping.py`)
+- Unit-test scaffolding: `tests/test_features_phase_grouping.py`, `tests/test_compensation.py`

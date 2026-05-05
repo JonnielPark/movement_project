@@ -1,0 +1,65 @@
+# data/interpretation_rules/squat.yaml
+#
+# Interpretation rules for the Bodyweight Squat exercise.
+# Consumed by biomarker.interpretation.derive_interpretations().
+#
+# Condition keys (all evaluated against BiomarkerScoreRecord):
+#   floor_applied.<domain>       bool   — dynamic floor was applied to that domain
+#   dominant_deduction_domain    str    — domain with highest total deduction
+#   domain_score.<domain>        { lt | gt | lte | gte: float }
+#   final_score                  { lt | gt | lte | gte: float }
+#   load_shift_slope.<joint>     { lt | gt | lte | gte: float }
+#     (any side of that joint satisfying the threshold counts as True)
+#
+# Forbidden vocabulary: diagnose / diagnostic / patient / abnormal /
+#   clinically significant / clinically meaningful
+# ---
+
+exercise_id: squat
+
+rules:
+
+  - id: floor_hit_spatial
+    when:
+      floor_applied.spatial: true
+    label: >
+      Descent depth not achieved — ROM floor correction applied to the spatial
+      domain score. Review ankle dorsiflexion range and hip-flexion mobility.
+
+  - id: dominant_control_floor_free
+    when:
+      dominant_deduction_domain: control
+      floor_applied.spatial: false
+    label: >
+      Compensation-driven deduction with adequate ROM. Trunk or knee control
+      is the primary quality concern — review knee-valgus and trunk-lean indicators.
+
+  - id: knee_to_hip_load_shift
+    when:
+      load_shift_slope.knee: { lt: -0.01 }
+      load_shift_slope.hip:  { gt:  0.01 }
+    label: >
+      Within-set knee-to-hip load shift detected. Consistent with progressive
+      quadriceps fatigue across the set — consider set volume or rest interval.
+
+  - id: floor_hit_control
+    when:
+      floor_applied.control: true
+    label: >
+      Control deductions exceeded the dynamic floor threshold. Compensation
+      level was high relative to the ROM achieved.
+
+  - id: high_control_deduction
+    when:
+      domain_score.control: { lt: 80 }
+    label: >
+      Elevated compensation activity detected — review knee-valgus, lateral
+      pelvic shift, and trunk-lean metrics for the flagged reps.
+
+  - id: low_overall_score
+    when:
+      final_score: { lt: 75 }
+    label: >
+      Overall movement quality score below 75. Multiple domains are contributing
+      to deductions — review spatial ROM, control compensation, and temporal
+      consistency together.

@@ -65,6 +65,7 @@ Output
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
+    Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
     Phase segmentation report — PhaseSegmentationReport list, one per rep
     Visualization figures
 ```
@@ -187,6 +188,9 @@ See [06_normalization.md](06_normalization.md).
   [done]  Exercise YAMLs updated with phase_segmentation blocks (v0.2.0); PhaseSegmentationSpec parsed
   [done]  FeatureRecord.phase field; extract_rep_features() emits rep-level + phase-level records
   [done]  summarize_phase_to_rep() hierarchical aggregator (Descent/Ascent ROM ratio)
+  [done]  Load-shift OLS — compute_load_shift() in biomech/load_shift.py; metric biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); requires ≥ 3 reps; test_biomech_load_shift.py (17 tests)
+  [done]  YAML-driven interpretation rules — derive_interpretations() in biomarker/interpretation.py; 4 exercise rule files (data/interpretation_rules/); InterpretationRecord; test_interpretation.py (20 tests)
+  [done]  Clinical feature mapping — docs/clinical/per_exercise_mapping.md (§5.5/§5.6) + data/clinical/feature_meanings.yaml (YAML mirror for dashboard tooltips)
 
 2027.02 – 2027.05  Robustness simulation and evaluation
   [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike

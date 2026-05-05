@@ -55,10 +55,15 @@ class BiomechRecord:
     n_frames_excluded_low_visibility: int = 0
 
     def __post_init__(self) -> None:
-        if self.unit not in ("torso_length_ratio", "degree", "dimensionless"):
+        if self.unit not in (
+            "torso_length_ratio",
+            "torso_length_ratio_per_rep",
+            "degree",
+            "dimensionless",
+        ):
             raise ValueError(
                 f"BiomechRecord '{self.metric_id}': absolute units (N, kg, m) are not allowed. "
-                f"unit='{self.unit}'. Use torso_length_ratio or degree."
+                f"unit='{self.unit}'. Use torso_length_ratio, torso_length_ratio_per_rep, or degree."
             )
         if not self.source_fields:
             raise ValueError(
@@ -115,6 +120,8 @@ def extract_rep_biomech(
             return None
         return compute_visibility_weights(df_slice, primary_joints, min_vis_ratio)
 
+    moment_arm_records: list[BiomechRecord] = []
+
     if rep_ids:
         for rep_id in rep_ids:
             mask = (df["segment_type"] == "rep") & (df["rep_id"] == rep_id)
@@ -122,7 +129,14 @@ def extract_rep_biomech(
             rid = int(rep_id)
             w = _weights_for(df_rep)
             records += compute_com_metrics(df_rep, exercise_definition, rep_id=rid, weights=w)
-            records += compute_moment_arms(df_rep, exercise_definition, rep_id=rid, weights=w)
+            ma = compute_moment_arms(df_rep, exercise_definition, rep_id=rid, weights=w)
+            records += ma
+            moment_arm_records += ma
+
+        # Load-shift trend: requires ≥ 3 reps (slope is unreliable on fewer)
+        if len(rep_ids) >= 3:
+            from movement.biomech.load_shift import compute_load_shift
+            records += compute_load_shift(moment_arm_records)
     else:
         w = _weights_for(df)
         records += compute_com_metrics(df, exercise_definition, weights=w)
@@ -131,4 +145,4 @@ def extract_rep_biomech(
     return records
 
 
-__all__ = ["BiomechRecord", "extract_rep_biomech"]
+__all__ = ["BiomechRecord", "extract_rep_biomech", "compute_load_shift"]

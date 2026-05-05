@@ -276,13 +276,23 @@ underlying records would have raised `ValueError` already).
 
 ```text
 src/movement/biomarker/__init__.py     BiomarkerRecord, from_feature_record,
-                                       from_biomech_record, derive_biomarkers
+                                       from_biomech_record, derive_biomarkers,
+                                       derive_interpretations
 src/movement/biomarker/scoring.py      BiomarkerScoreRecord, DOMAIN_WEIGHTS,
                                        load_baseline, save_baseline,
                                        build_baseline_from_records,
                                        derive_biomarkers
+src/movement/biomarker/interpretation.py  load_rules, derive_interpretations,
+                                          InterpretationRecord; YAML-driven
+                                          rule engine; never raises
+data/interpretation_rules/squat.yaml   6 rules (floor_hit, dominant_domain,
+data/interpretation_rules/lunge.yaml      load_shift, score thresholds)
+data/interpretation_rules/pike_pushup.yaml
+data/interpretation_rules/plank_shoulder_tap.yaml
 scripts/compute_baseline.py            generates data/reference/baseline_zscore.json
 data/reference/baseline_zscore.json    synthetic-normal μ, σ per feature_id
+tests/test_interpretation.py           20 tests: rule loader, 3 scenarios,
+                                        edge cases
 ```
 
 ## 13. Planned Extensions
@@ -291,8 +301,6 @@ data/reference/baseline_zscore.json    synthetic-normal μ, σ per feature_id
   the phase-aware FeatureRecord families
 - Population-level baseline replacement (real cohort data), preserving the
   synthetic baseline as a fallback
-- Score interpretation rule layer: turn `floor_applied` + dominant-deduction
-  patterns into short clinical narrative labels
 - Confidence interval per `final_score` from per-feature z variance
 - Configurable domain weights per exercise (e.g., raise control to 30 %
   for `plank_shoulder_tap`); current implementation is project-wide constants

@@ -144,20 +144,30 @@ n_frames_excluded_low_visibility frames dropped
 A/B comparison is supported by passing `use_visibility_weight=False` to
 `extract_rep_biomech()`; useful for ablation experiments in ⑫ simulation.
 
-## 7. Load Shift Tendency (Planned)
+## 7. Within-Set Load-Shift Tendency
 
-A short-term roadmap item: regress per-rep moment-arm medians against `rep_id`
-within a set to expose how load redistributes as the user fatigues.
+`biomech/load_shift.py — compute_load_shift()` regresses per-rep moment-arm
+medians against `rep_id` within a set to expose how load redistributes as the
+user fatigues. Requires at least **3 reps**; returns an empty list otherwise.
 
 ```text
-slope_knee_load_shift = OLS( biomech.moment_arm.knee.median   ~ rep_id )
-slope_hip_load_shift  = OLS( biomech.moment_arm.hip.median    ~ rep_id )
+slope = np.polyfit( rep_ids,  moment_arm_medians,  1 )[0]
 
-negative slope_knee  ∧ positive slope_hip  → knee → hip load migration
-                                             (typical fatigue signature)
+metric_id:  biomech.load_shift.<joint>.<side>.slope
+unit:       torso_length_ratio_per_rep
+rep_id:     None  (set-level — not per-rep)
 ```
 
-Not yet implemented; planned as `biomech.load_shift.<joint>.<side>.slope`.
+Interpretation:
+```text
+negative slope_knee  ∧ positive slope_hip  → knee → hip load migration
+                                             (fatigue-related hip-dominant
+                                             compensation signature)
+```
+
+`extract_rep_biomech()` calls `compute_load_shift()` automatically when
+`len(rep_ids) ≥ 3`. Results are appended to the returned `BiomechRecord` list
+and flow into ⑩ biomarker scoring via the `biomech.*` domain.
 
 ## 8. Output: BiomechRecord
 
@@ -168,7 +178,8 @@ class BiomechRecord:
     exercise_id:                          str
     rep_id:                               int | None
     value:                                float
-    unit:                                 str   # torso_length_ratio | degree | dimensionless
+    unit:                                 str   # torso_length_ratio | torso_length_ratio_per_rep
+                                              # | degree | dimensionless
     source_fields:                        list[str]   # required (ValueError if empty)
     note:                                 str | None
     visibility_weight_applied:            bool
@@ -217,16 +228,20 @@ modification, preserving the full provenance chain to the visualization layer.
 ## 11. Code Mapping
 
 ```text
-src/movement/biomech/__init__.py         BiomechRecord, extract_rep_biomech
+src/movement/biomech/__init__.py         BiomechRecord, extract_rep_biomech,
+                                         compute_load_shift
 src/movement/biomech/anthropometry.py    Winter (1990) ratios, segment endpoints
 src/movement/biomech/com.py              estimate_com, compute_com_metrics,
                                          compute_visibility_weights
 src/movement/biomech/moment_arm.py       compute_moment_arms, _point_to_line_dist_2d
+src/movement/biomech/load_shift.py       compute_load_shift; OLS slope per
+                                         (joint × side); §7 within-set trend
+tests/test_biomech_load_shift.py         17 tests: slope sign, min-rep guard,
+                                         metadata format, multi-joint
 ```
 
 ## 12. Planned Extensions
 
-- `biomech.load_shift.<joint>.<side>.slope` — within-set load-shift trend
 - Ankle moment-arm proxy (foot ↔ ankle line, sagittal plane)
 - Frontal-plane moment arms for unilateral / asymmetric exercises (e.g. lunge)
 - Phase-level CoM metrics (Descent vs. Ascent path length asymmetry)
