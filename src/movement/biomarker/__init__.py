@@ -129,9 +129,22 @@ def derive_biomarkers(
     )
 
 
+def derive_interpretations(score, biomech_records=None, rules_dir=None):
+    """Convenience re-export of biomarker.interpretation.derive_interpretations.
+
+    See biomarker/interpretation.py for full documentation.
+    Returns list[InterpretationRecord].
+    """
+    from movement.biomarker.interpretation import (
+        derive_interpretations as _derive,
+    )
+    return _derive(score, biomech_records=biomech_records, rules_dir=rules_dir)
+
+
 __all__ = [
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
     "derive_biomarkers",
+    "derive_interpretations",
 ]

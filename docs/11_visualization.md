@@ -199,7 +199,7 @@ domain.
 ### 5-8. plot_biomech_load_shift
 
 Within-set load-shift trend: rep number on the X axis, relative moment-arm
-proxy on the Y axis. Visualizes the planned `biomech.load_shift.*.slope`
+proxy on the Y axis. Visualizes the `biomech.load_shift.*.slope`
 metric (see [09_biomechanical_proxy.md](09_biomechanical_proxy.md) §7).
 
 ```python
