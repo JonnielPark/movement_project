@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(cd \"c:\\\\Users\\\\andi9\\\\Desktop\\\\DEV\\\\source\\\\movement_project\"; $pythons = @\\(\"python\", \"py\", \"C:\\\\Users\\\\andi9\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\"\\); foreach \\($p in $pythons\\) { try { $out = & $p -m pip show pytest 2>&1 | Select-String \"Location\"; if \\($out\\) { Write-Host \"$p -> $out\" } } catch {} })"
-    ]
-  }
-}

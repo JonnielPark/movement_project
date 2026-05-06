@@ -234,9 +234,13 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 
 ## 연구 범위 (Scope)
 
-본 프로젝트는 임상 효능(clinical efficacy)이 아닌 **공학적 실현 가능성과 강건성 검증**을 목표로 한다.
-모든 지표는 상대값(torso\_length\_ratio, degree, dimensionless\_cv)이다.
-절대 힘 단위(N, N·m, kg)는 계산되지 않으며 소스 코드에 등장해서는 안 된다.
+본 프로젝트는 고가의 생체역학 장비가 요구되는 **'관절 부하의 절대적 정량화(absolute quantification, 예: N, N·m, kg)'를 목적으로 하지 않는다**.
+
+대신, 단일 비전(monocular vision) 기반 원격 모니터링 환경에서도 범용적으로 추적 가능한 **'신체 분절 간의 상대적 부하 전이(relative load shift)'** 및 **'운동 사슬(kinetic chain)의 붕괴 패턴'**을 정량화하여, 시스템의 **공학적 실현 가능성과 강건성(robustness)을 검증**하는 데 집중한다.
+
+따라서 본 파이프라인의 모든 생체역학적 프록시 지표는 절대적 힘·질량·길이 단위가 아니라, 사용자 신체 척도로 정규화한 상대값 또는 각도 기반 지표로 설계 및 산출된다 (예: `torso_length_ratio`, `degree`, `dimensionless_cv`, `dimensionless` 등).
+
+이는 임상적 효능(clinical efficacy)의 직접 증명 이전에, 단안 카메라 환경의 물리적 한계를 우회하여 의료진의 임상적 추론을 일관되게 지원할 수 있는 신뢰성 있는 XAI 구조를 우선적으로 확보하기 위함이다.
 
 ---
 
