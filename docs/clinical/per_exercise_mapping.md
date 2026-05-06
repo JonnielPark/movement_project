@@ -7,9 +7,9 @@
 
 **학위논문 §5.5 / §5.6.** 4개 검증 운동 전체의 활성 피처와 단위, 생체역학적 해석.
 
-- 용어집: [`docs/_terminology.md`](../_terminology.md)
+- 용어집: [`docs/terminology.md`](../terminology.md)
 - 피처 추출 코드: [`src/movement/features/`](../../src/movement/features/)
-- YAML 미러 (대시보드 툴팁): [`data/clinical/feature_meanings.yaml`](../../data/clinical/feature_meanings.yaml)
+- YAML 미러 (대시보드 툴팁): [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml)
 - 금지 어휘 규칙: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) 원칙 4
 
 ---

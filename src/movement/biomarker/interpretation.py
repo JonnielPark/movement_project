@@ -4,7 +4,7 @@
 Dissertation §7.3: rule-table-driven layer that consumes BiomarkerScoreRecord
 and emits InterpretationRecord strings.
 
-Rules are stored in data/interpretation_rules/<exercise_id>.yaml.
+Rules are stored in data/definitions/interpretation_rules/<exercise_id>.yaml.
 No clinical assertions are made; labels describe observed movement patterns
 and suggest possible biomechanical causes.
 
@@ -31,7 +31,7 @@ import yaml
 
 # Project root derived from this file's location
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-_DEFAULT_RULES_DIR = _PROJECT_ROOT / "data" / "interpretation_rules"
+_DEFAULT_RULES_DIR = _PROJECT_ROOT / "data" / "definitions" / "interpretation_rules"
 
 _LOAD_SHIFT_RE = re.compile(
     r"^biomech\.load_shift\.(?P<joint>\w+)\.(?P<side>\w+)\.slope$"
@@ -184,7 +184,7 @@ def derive_interpretations(
 ) -> list[InterpretationRecord]:
     """Apply YAML interpretation rules to a BiomarkerScoreRecord.
 
-    Rules are loaded from data/interpretation_rules/<exercise_id>.yaml.
+    Rules are loaded from data/definitions/interpretation_rules/<exercise_id>.yaml.
     Each rule whose `when` conditions all evaluate to True produces one
     InterpretationRecord. Unmatched rules produce no output and no exception.
 
@@ -196,7 +196,7 @@ def derive_interpretations(
         Optional — needed to evaluate load_shift_slope conditions.
         Set-level records (rep_id=None) are used regardless of score.rep_id.
     rules_dir : Path | str | None
-        Override the default data/interpretation_rules/ directory (e.g. for tests).
+        Override the default data/definitions/interpretation_rules/ directory (e.g. for tests).
 
     Returns
     -------

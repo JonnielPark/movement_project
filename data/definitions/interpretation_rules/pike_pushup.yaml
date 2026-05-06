@@ -1,0 +1,52 @@
+# data/definitions/interpretation_rules/pike_pushup.yaml
+#
+# Interpretation rules for the Pike Push-up exercise.
+# Consumed by biomarker.interpretation.derive_interpretations().
+# ---
+
+exercise_id: pike_pushup
+
+rules:
+
+  - id: floor_hit_spatial
+    when:
+      floor_applied.spatial: true
+    label: >
+      Head or elbow descent depth not achieved — ROM floor correction applied
+      to the spatial domain score. Review shoulder-flexion range and elbow
+      mobility under inverted load.
+
+  - id: dominant_control_pike
+    when:
+      dominant_deduction_domain: control
+    label: >
+      Support-arm CoM stability is the primary quality concern. Review
+      hip-center sway and shoulder symmetry during the push cycle.
+
+  - id: low_spatial_score
+    when:
+      domain_score.spatial: { lt: 80 }
+    label: >
+      Shoulder or elbow ROM restriction detected — review bilateral joint
+      mobility in the inverted posture across Descent and Ascent phases.
+
+  - id: high_instability_pike
+    when:
+      domain_score.control: { lt: 80 }
+    label: >
+      Elevated CoM instability detected during the inverted push task —
+      review lateral hip-center sway and wrist contact stability across reps.
+
+  - id: floor_hit_control
+    when:
+      floor_applied.control: true
+    label: >
+      Control deductions exceeded the dynamic floor threshold. Support-arm
+      stability may be a limiting factor relative to the descent depth achieved.
+
+  - id: low_temporal_score
+    when:
+      domain_score.temporal: { lt: 80 }
+    label: >
+      Temporal inconsistency detected in the push cycle — abrupt rep-duration
+      changes may indicate fatigue-related form breakdown.

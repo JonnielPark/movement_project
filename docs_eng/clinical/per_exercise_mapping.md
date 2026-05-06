@@ -8,9 +8,9 @@
 **Dissertation §5.5 / §5.6.** Active features for all four validation exercises, with unit and
 biomechanical interpretation.
 
-- Terminology: [`docs/_terminology.md`](../_terminology.md)
+- Terminology: [`docs/terminology.md`](../terminology.md)
 - Feature extraction code: [`src/movement/features/`](../../src/movement/features/)
-- YAML mirror (dashboard tooltips): [`data/clinical/feature_meanings.yaml`](../../data/clinical/feature_meanings.yaml)
+- YAML mirror (dashboard tooltips): [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml)
 - Forbidden-vocabulary rules: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) Principle 4
 
 ---

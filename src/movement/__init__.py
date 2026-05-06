@@ -20,7 +20,7 @@ Pipeline steps:
     ⑫  simulation             robustness simulation (outside run_pipeline)
 
 Step activation: enabled flags in configs/pipeline_default.yaml.
-Terminology: docs/_terminology.md.
+Terminology: docs/terminology.md.
 """
 from __future__ import annotations
 

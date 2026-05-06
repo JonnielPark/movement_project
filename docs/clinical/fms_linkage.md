@@ -14,7 +14,7 @@ traffic-light 보조 라벨을 정의한다.
 - Green / Yellow / Red는 FMS 점수가 아니라 `BiomarkerScoreRecord.final_score`의 보조 해석 라벨이다.
 - 원문 채점 문구를 복사하지 않고, 인용 정보와 feature 연결만 남긴다.
 - “진단”, “환자 분류”, “임상적으로 유의” 같은 표현은 사용하지 않는다.
-- 모든 매핑은 `data/clinical/fms_mapping.yaml`을 단일 소스로 사용한다.
+- 모든 매핑은 `data/definitions/clinical/fms_mapping.yaml`을 단일 소스로 사용한다.
 
 ## 운동별 연결
 
@@ -28,7 +28,7 @@ traffic-light 보조 라벨을 정의한다.
 ## 구현 표면
 
 ```text
-data/clinical/fms_mapping.yaml
+data/definitions/clinical/fms_mapping.yaml
 src/movement/clinical.py
 tests/test_fms_mapping.py
 ```

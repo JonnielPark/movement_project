@@ -1,7 +1,7 @@
 """
 Clinical Cross-Mapping Utilities
 
-Loads movement-quality crosswalk metadata from data/clinical/fms_mapping.yaml
+Loads movement-quality crosswalk metadata from data/definitions/clinical/fms_mapping.yaml
 and converts biomarker composite scores into dashboard-ready traffic-light
 labels. The mapping is interpretive support only: it does not reproduce FMS
 scoring text and does not make medical conclusions.
@@ -16,7 +16,9 @@ import yaml
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_DEFAULT_FMS_MAPPING_PATH = _PROJECT_ROOT / "data" / "clinical" / "fms_mapping.yaml"
+_DEFAULT_FMS_MAPPING_PATH = (
+    _PROJECT_ROOT / "data" / "definitions" / "clinical" / "fms_mapping.yaml"
+)
 
 
 @dataclass(frozen=True)
@@ -193,7 +195,7 @@ def traffic_light_for_score(
                 score=clipped,
                 score_range=band.score_range,
                 source_fields=mapping.source_fields + [
-                    f"data/clinical/fms_mapping.yaml#{exercise}.traffic_light_mapping.{label}"
+                    f"data/definitions/clinical/fms_mapping.yaml#{exercise}.traffic_light_mapping.{label}"
                 ],
             )
 

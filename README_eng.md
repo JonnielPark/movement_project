@@ -1,34 +1,10 @@
 # Movement Project
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `README.md` is the same-version Korean source.
-
-PhD dissertation research: an analysis framework that quantifies movement
-quality from monocular mobile-camera 3D pose data in biomechanical terms and
-expresses the result as interpretable digital biomarkers.
+PhD dissertation research: an analysis framework that quantifies movement quality
+from monocular mobile-camera 3D pose data in biomechanical terms and expresses
+the result as interpretable digital biomarkers.
 
 Repository: <https://github.com/JonnielPark/movement_project>
-
----
-
-## Document Versioning
-
-All documents start version notation at `1.0.0` as of 2026-05-06. The versioning
-rule follows the Semantic Versioning 2.0.0 `MAJOR.MINOR.PATCH` format.
-
-```text
-MAJOR  incompatible changes to document structure, pipeline step definitions, or public API meaning
-MINOR  new features, sections, or deliverables added while preserving existing meaning
-PATCH  typos, translation, links, or wording clarifications with no meaning change
-```
-
-`docs/` is the Korean source documentation, and `docs_eng/` is the same-version
-English translation with the same content. `README_eng.md` is only the English
-translation of `README.md`; it must not diverge. `docs/code_revision_plan.md`
-and `docs_eng/code_revision_plan.md` remain local execution-plan documents and
-are excluded from git upload.
 
 ---
 
@@ -38,7 +14,7 @@ are excluded from git upload.
 Pose CSV  +  annotation CSV  +  exercise definition YAML
             ↓
 ①  Validation           structural integrity check
-②  Annotation           frame-level segment metadata
+②  Annotation           frame-level segment metadata (`phase` column reserved)
 ③  Exercise Definition  biomechanical property object loading
 ④  Preprocessing        monocular data quality correction
 ⑤  Normalization        body-relative coordinate normalization
@@ -51,37 +27,48 @@ Pose CSV  +  annotation CSV  +  exercise definition YAML
 ⑫  Simulation           robustness condition injection            [partial]
 ```
 
-Stage activation is controlled by `enabled` flags in `configs/pipeline_default.yaml`.
+Stage activation is controlled by the `enabled` flags in
+`configs/pipeline_default.yaml`.
 
 ---
 
-## Implementation Status
+## Implementation Status (2026-05-05)
 
-Baseline date: 2026-05-06
+### Complete
 
-| Area | Module / File | Status |
+| Area | Module / File | Notes |
 |---|---|---|
-| Pose I/O and config | `io.py`, `config.py` | CSV loading, landmark/connection definitions |
+| Pose I/O and config | `io.py`, `config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `validation.py` | Structural integrity report |
-| ② Annotation | `annotation.py` | Frame-level metadata merge, `phase` column reserved |
-| ③ Exercise Definition | `exercise_definition.py` | YAML loader, validator, generic fallback, `PhaseSegmentationSpec` |
-| ④ Preprocessing | `preprocessing.py` | Visibility, segment consistency, angle bounds, velocity outliers, L/R swap, interpolation, smoothing |
-| ⑤ Normalization | `normalization.py` | Hip-center translation and median torso-length scale |
-| ⑥ Phase Segmentation | `segmentation.py` | SG-smoothed inflection detection, Descent / Ascent / Bottom_Hold |
-| ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency, conservative / auto-correct modes |
-| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules |
-| ⑨ Biomech Proxy | `biomech/` | CoM range/path, moment arms, load-shift OLS slope |
-| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, composite domain score, YAML interpretation rules |
-| Clinical mapping | `src/movement/clinical.py`, `data/clinical/` | Feature-meaning mapping, FMS-like traffic-light support labels |
+| ② Annotation | `annotation.py` | Frame-level metadata merge; `phase` column reserved |
+| ③ Exercise Definition | `exercise_definition.py` | YAML loader + validator + generic fallback; `PhaseSegmentationSpec` |
+| ④ Preprocessing | `preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
+| ⑤ Normalization | `normalization.py` | Hip-center translation + median torso-length scale |
+| ⑥ Phase Segmentation | `segmentation.py` | SG-smoothed inflection detection; Descent / Ascent / Bottom_Hold; multi-inflection policy; all four exercise YAMLs v0.2.0 |
+| ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; conservative / auto-correct modes |
+| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; `summarize_phase_to_rep()` |
+| ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, composite domain score, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
+| Clinical mapping | clinical mapping docs, `data/definitions/clinical/` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + YAML mirror for dashboard tooltips |
+| Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
 | Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
-| Unit tests | `tests/` | 46 tests passing |
+| Unit tests | `tests/` | `test_biomech_load_shift.py` (17 cases), `test_interpretation.py` (20 cases) |
 
-Partial:
+### Partial
 
 | Area | Module | Remaining Work |
 |---|---|---|
-| ⑪ Visualization | `visualization.py` | provenance-centric reporting charts, robustness sensitivity chart |
-| ⑫ Simulation | `simulation/` | robustness experiment runner, viewpoint variation evaluation |
+| ⑪ Visualization | `visualization.py` | Biomech overlay, attribution heatmap, radar chart, robustness sensitivity chart (→ Task B) |
+| ⑫ Simulation | `simulation/` | Experiment runner + viewpoint variation distortion (→ Task A) |
+
+### Plan (Before Defense)
+
+| Task | Deliverable | Dissertation § |
+|---|---|---|
+| E — FMS linkage | FMS linkage document + `data/definitions/clinical/fms_mapping.yaml` | §7.4 |
+| A — Robustness runner | `scripts/run_robustness_experiment.py` | §8 |
+| B — Visualization charts | Six provenance-centric chart functions | §11 |
+| F — CDSS dashboard | `dashboard/app.py` (Streamlit + phantom 3D) | §7.5 |
 
 ---
 
@@ -90,35 +77,59 @@ Partial:
 ```text
 movement_project/
 ├── configs/
-│   └── pipeline_default.yaml
+│   └── pipeline_default.yaml        # stage toggles + all runtime parameters
 ├── data/
-│   ├── exercise_definitions/
-│   ├── clinical/
-│   │   ├── feature_meanings.yaml
-│   │   └── fms_mapping.yaml
-│   ├── interpretation_rules/
-│   ├── reference/
-│   └── sample/
+│   ├── pose/                        # joint-point time-series CSVs
+│   │   ├── sample/                  # synthetic/demo CSVs
+│   │   └── mediapipe/               # MediaPipe-extracted CSVs
+│   ├── definitions/                 # YAML-based analysis definitions
+│   │   ├── exercises/               # squat · lunge · pike_pushup · plank_shoulder_tap · generic
+│   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
+│   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   ├── reference/                   # baseline_zscore.json (synthetic-normal baseline)
+│   └── processed/                   # intermediate/final pipeline outputs by stage (.gitignore)
 ├── docs/
-│   ├── _terminology.md
-│   ├── 00_overview.md ~ 12_insilico_simulation.md
-│   └── clinical/
-├── docs_eng/
-│   ├── _terminology.md
-│   ├── 00_overview.md ~ 12_insilico_simulation.md
-│   └── clinical/
-├── notebook/
-├── scripts/
+│   ├── terminology.md               # single source of truth for domain terms
+│   ├── overview.md                  # framework overview
+│   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
+│   │   └── 01_data_format.md ~ 12_insilico_simulation.md
+│   ├── clinical/
+│   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
+│   └── code_revision_plan.md        # implementation plan before defense (.gitignore)
+├── notebook/                        # exploratory notebooks (00-13; 14-18 planned)
+├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
+│   ├── test_biomech_load_shift.py   # ⑨ load-shift slope sign + guards (17 cases)
+│   └── test_interpretation.py       # ⑩ rule loader + 3 scenarios (20 cases)
 └── src/movement/
     ├── annotation.py
     ├── biomech/
+    │   ├── __init__.py              # BiomechRecord · extract_rep_biomech()
+    │   ├── anthropometry.py
+    │   ├── com.py
+    │   ├── load_shift.py            # §6.5 within-set load transfer OLS
+    │   └── moment_arm.py
     ├── biomarker/
-    ├── clinical.py
+    │   ├── __init__.py
+    │   ├── interpretation.py        # §7.3 YAML rule engine → InterpretationRecord
+    │   └── scoring.py               # BiomarkerScoreRecord · Z-score · dynamic floor
+    ├── config.py
     ├── exercise_definition.py
     ├── features/
+    │   ├── __init__.py              # extract_rep_features() · FeatureRecord
+    │   ├── compensation.py          # COMPENSATION_RULES registry
+    │   ├── control.py
+    │   ├── spatial.py
+    │   └── temporal.py
+    ├── io.py
+    ├── motion_attribution.py
+    ├── normalization.py
     ├── pipeline.py
+    ├── preprocessing.py
     ├── segmentation.py
+    ├── simulation/
+    ├── utils.py
+    ├── validation.py
     └── visualization.py
 ```
 
@@ -126,10 +137,14 @@ movement_project/
 
 ## Installation
 
+Python 3.10 or newer is required. Python 3.11 or 3.12 is recommended for local
+research and development.
+
 ```bash
 git clone https://github.com/JonnielPark/movement_project.git
 cd movement_project
 python -m pip install -e .
+# Development dependency group (pytest)
 python -m pip install -e ".[dev]"
 ```
 
@@ -138,30 +153,26 @@ python -m pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-import pandas as pd
-
 from movement.io import load_pose_csv
 from movement.pipeline import load_pipeline_config, run_pipeline
+import pandas as pd
 
 config = load_pipeline_config("configs/pipeline_default.yaml")
-df = load_pose_csv("data/sample/mediapipe_squat_synthetic.csv")
-ann_df = pd.read_csv("data/sample/mediapipe_squat_synthetic_annotation.csv")
+df     = load_pose_csv("data/pose/sample/mediapipe_squat_synthetic.csv")
+ann_df = pd.read_csv("data/pose/sample/mediapipe_squat_synthetic_annotation.csv")
 
 df, report = run_pipeline(df, config, ann_df=ann_df)
 ```
 
-Interpretation rules and traffic-light support labels:
+Getting interpretation labels after running the pipeline:
 
 ```python
 from movement.biomarker.interpretation import derive_interpretations
-from movement.clinical import traffic_light_for_score
 
+# score_records: list[BiomarkerScoreRecord] returned by run_pipeline / derive_biomarkers
 for score in score_records:
-    label = traffic_light_for_score(score)
-    print(score.rep_id, label.label, label.meaning)
-
     for interp in derive_interpretations(score, biomech_records=biomech_records):
-        print(interp.rule_id, interp.label)
+        print(f"[rep {score.rep_id}] {interp.rule_id}: {interp.label}")
 ```
 
 ---
@@ -172,52 +183,70 @@ for score in score_records:
 pytest -q
 ```
 
-Current baseline:
+---
+
+## Data Format
+
+Input CSV — required columns:
 
 ```text
-46 passed
+frame          integer frame index (monotonic increasing)
+timestamp      seconds elapsed from start
+<landmark>_x   float
+<landmark>_y   float
+<landmark>_z   float
+<landmark>_visibility  float 0-1  (recommended)
 ```
+
+The full column specification and detailed document index are tracked in
+[docs_eng/overview.md](docs_eng/overview.md).
 
 ---
 
 ## Documentation
 
-| Version | File | Content | Korean Source |
+README tracks only the top-level documents. The list and versions of documents
+inside `pipeline/` and `clinical/` are tracked in the document index in
+[docs_eng/overview.md](docs_eng/overview.md).
+
+| Version | File | Content | Korean Sync |
 |---|---|---|---|
-| 1.0.0 | [docs_eng/_terminology.md](docs_eng/_terminology.md) | Terminology | [docs/_terminology.md](docs/_terminology.md) |
-| 1.0.0 | [docs_eng/00_overview.md](docs_eng/00_overview.md) | Overall pipeline overview and document index | [docs/00_overview.md](docs/00_overview.md) |
-| 1.0.0 | [docs_eng/01_data_format.md](docs_eng/01_data_format.md) | Input CSV data format | [docs/01_data_format.md](docs/01_data_format.md) |
-| 1.0.0 | [docs_eng/02_validation.md](docs_eng/02_validation.md) | ① Validation | [docs/02_validation.md](docs/02_validation.md) |
-| 1.0.0 | [docs_eng/03_annotation_and_segmentation.md](docs_eng/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation | [docs/03_annotation_and_segmentation.md](docs/03_annotation_and_segmentation.md) |
-| 1.0.0 | [docs_eng/04_exercise_definition.md](docs_eng/04_exercise_definition.md) | ③ Exercise Definition YAML | [docs/04_exercise_definition.md](docs/04_exercise_definition.md) |
-| 1.0.0 | [docs_eng/05_preprocessing.md](docs_eng/05_preprocessing.md) | ④ Preprocessing | [docs/05_preprocessing.md](docs/05_preprocessing.md) |
-| 1.0.0 | [docs_eng/06_normalization.md](docs_eng/06_normalization.md) | ⑤ Normalization | [docs/06_normalization.md](docs/06_normalization.md) |
-| 1.0.0 | [docs_eng/07_motion_attribution.md](docs_eng/07_motion_attribution.md) | ⑦ Motion Attribution | [docs/07_motion_attribution.md](docs/07_motion_attribution.md) |
-| 1.0.0 | [docs_eng/08_feature_extraction.md](docs_eng/08_feature_extraction.md) | ⑧ Feature Extraction | [docs/08_feature_extraction.md](docs/08_feature_extraction.md) |
-| 1.0.0 | [docs_eng/09_biomechanical_proxy.md](docs_eng/09_biomechanical_proxy.md) | ⑨ Biomech Proxy | [docs/09_biomechanical_proxy.md](docs/09_biomechanical_proxy.md) |
-| 1.0.0 | [docs_eng/10_biomarker_scoring.md](docs_eng/10_biomarker_scoring.md) | ⑩ Biomarker Scoring | [docs/10_biomarker_scoring.md](docs/10_biomarker_scoring.md) |
-| 1.0.0 | [docs_eng/11_visualization.md](docs_eng/11_visualization.md) | ⑪ Visualization | [docs/11_visualization.md](docs/11_visualization.md) |
-| 1.0.0 | [docs_eng/12_insilico_simulation.md](docs_eng/12_insilico_simulation.md) | ⑫ In-silico Simulation | [docs/12_insilico_simulation.md](docs/12_insilico_simulation.md) |
-| 1.0.0 | [docs_eng/clinical/per_exercise_mapping.md](docs_eng/clinical/per_exercise_mapping.md) | Per-exercise feature-meaning mapping | [docs/clinical/per_exercise_mapping.md](docs/clinical/per_exercise_mapping.md) |
-| 1.0.0 | [docs_eng/clinical/fms_linkage.md](docs_eng/clinical/fms_linkage.md) | FMS-like traffic-light mapping | [docs/clinical/fms_linkage.md](docs/clinical/fms_linkage.md) |
+| 1.0.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms | [docs/terminology.md](docs/terminology.md) |
+| 1.0.0 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index | [docs/overview.md](docs/overview.md) |
+
+Korean documents are synchronized under the same structure in `docs/`.
 
 ---
 
 ## Data Policy
 
-- Do not commit raw video, personal recordings, clinical data, or API keys.
-- Only shareable synthetic/demo data belongs in `data/sample/`.
-- Private and processed data belong in `data/raw/`, `data/private/`, and `data/processed/`.
-- Paper figures and experiment outputs are stored in `outputs/` by default and excluded from git upload.
+This project does not analyze videos directly. It analyzes only **joint-point
+time series (CSV)** extracted from videos.
+
+**Can be committed.**
+
+- `data/pose/sample/` — synthetic/demo joint-point CSVs generated by code
+- `data/pose/mediapipe/` — joint-point CSVs extracted with MediaPipe
+- `data/definitions/` — exercise definitions, interpretation rules, clinical mapping YAML
+- `data/reference/` — reference statistics such as the synthetic-normal baseline
+
+**Do not commit (`.gitignore`).**
+
+- Pipeline outputs — `data/processed/`
+
+**Caution.** If a committable CSV contains direct identifiers such as subject
+name or birth date, replace them with anonymous IDs before committing. Store the
+anonymous ID ↔ real-name mapping only after documenting the sidecar path and
+matching `.gitignore` rule.
 
 ---
 
 ## Research Scope
 
-This project targets engineering feasibility and robustness evaluation, not
+This project targets **engineering feasibility and robustness verification**, not
 clinical efficacy. All metrics are relative values (`torso_length_ratio`,
 `degree`, `dimensionless_cv`). Absolute force units (`N`, `N·m`, `kg`) are not
-computed.
+computed and must not appear in the source code.
 
 ---
 

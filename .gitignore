@@ -1,58 +1,23 @@
-# Python cache
+# Python generated files
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Build / packaging
-build/
-dist/
+.pytest_cache/
 *.egg-info/
 
-# Jupyter
+# Build output
+build/
+
+# Jupyter checkpoints
 .ipynb_checkpoints/
 
-# IDE / editor
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Local environment / secrets
-.env
-*.key
-*.pem
-config.local.py
-
-# Data - private or large files
-data/raw/
-data/private/
-data/clinical/
-!data/clinical/
-!data/clinical/*.yaml
-data/videos/
-data/mediapipe/
-
-# Video files
-*.mp4
-*.mov
-*.avi
-*.mkv
-
-# Large or generated outputs
-outputs/
-results/
-logs/
-
+# Local agent/project files
+.claude/
+AGENTS.md
 CLAUDE.md
 
-# Local planning docs (not uploaded)
+# Local planning docs
 docs/code_revision_plan.md
 docs_eng/code_revision_plan.md
+
+# Pipeline outputs
+data/processed/
