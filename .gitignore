@@ -10,7 +10,9 @@ build/
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Local agent/project files
+# Local agent/project files intentionally excluded from git.
+# AGENTS.md and CLAUDE.md are private/local instruction files in this project.
+# .claude/ contains machine-specific Claude settings such as settings.local.json.
 .claude/
 AGENTS.md
 CLAUDE.md

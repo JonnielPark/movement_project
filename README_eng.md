@@ -243,10 +243,23 @@ matching `.gitignore` rule.
 
 ## Research Scope
 
-This project targets **engineering feasibility and robustness verification**, not
-clinical efficacy. All metrics are relative values (`torso_length_ratio`,
-`degree`, `dimensionless_cv`). Absolute force units (`N`, `N·m`, `kg`) are not
-computed and must not appear in the source code.
+This project does **not** aim to perform **absolute quantification of joint
+load** that requires high-cost biomechanical equipment (absolute quantification;
+e.g., `N`, `N·m`, `kg`).
+
+Instead, it focuses on quantifying **relative load shift between body segments**
+and **kinetic-chain breakdown patterns** that can be tracked broadly in
+monocular-vision remote monitoring settings, in order to verify the system's
+**engineering feasibility and robustness**.
+
+Therefore, all biomechanical proxy metrics in this pipeline are designed and
+produced as body-scale-normalized relative values or angle-based metrics, not
+absolute force, mass, or length units (e.g., `torso_length_ratio`, `degree`,
+`dimensionless_cv`, `dimensionless`).
+
+This prioritizes a reliable XAI structure that can consistently support
+clinical reasoning under the physical limitations of monocular-camera data,
+before any direct demonstration of clinical efficacy.
 
 ---
 
