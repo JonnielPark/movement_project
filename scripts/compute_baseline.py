@@ -33,9 +33,9 @@ from movement.config import LANDMARKS
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_DEFAULT_INPUT = _PROJECT_ROOT / "data/sample/mediapipe_squat_synthetic.csv"
-_DEFAULT_ANN = _PROJECT_ROOT / "data/sample/mediapipe_squat_synthetic_annotation.csv"
-_DEFAULT_DEFS = _PROJECT_ROOT / "data/exercise_definitions"
+_DEFAULT_INPUT = _PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic.csv"
+_DEFAULT_ANN = _PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic_annotation.csv"
+_DEFAULT_DEFS = _PROJECT_ROOT / "data/definitions/exercises"
 _DEFAULT_OUTPUT = _PROJECT_ROOT / "data/reference/baseline_zscore.json"
 
 

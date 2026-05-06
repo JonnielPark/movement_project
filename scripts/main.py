@@ -5,7 +5,7 @@ Usage
 -----
     python scripts/main.py
     python scripts/main.py --config configs/pipeline_default.yaml
-    python scripts/main.py --input data/sample/mediapipe_forward_bend_sample.csv
+    python scripts/main.py --input data/pose/sample/mediapipe_forward_bend_sample.csv
 """
 from __future__ import annotations
 

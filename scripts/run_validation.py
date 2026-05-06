@@ -10,7 +10,7 @@ from movement.validation import run_basic_validation
 
 
 def main():
-    csv_path = "data/sample/mediapipe_forward_bend_sample.csv"
+    csv_path = "data/pose/sample/mediapipe_forward_bend_sample.csv"
 
     df = load_pose_csv(csv_path)
     print_data_summary(df)

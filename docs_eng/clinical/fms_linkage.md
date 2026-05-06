@@ -14,7 +14,7 @@ observation categories, and defines dashboard-ready traffic-light labels.
 - Green / Yellow / Red labels are support labels derived from `BiomarkerScoreRecord.final_score`; they are not FMS scores.
 - The YAML stores feature links and citation-only references, not protected scoring text.
 - Medical conclusion or classification claims are intentionally avoided.
-- `data/clinical/fms_mapping.yaml` is the single source of truth.
+- `data/definitions/clinical/fms_mapping.yaml` is the single source of truth.
 
 ## Exercise Crosswalk
 
@@ -28,7 +28,7 @@ observation categories, and defines dashboard-ready traffic-light labels.
 ## Implementation Surface
 
 ```text
-data/clinical/fms_mapping.yaml
+data/definitions/clinical/fms_mapping.yaml
 src/movement/clinical.py
 tests/test_fms_mapping.py
 ```

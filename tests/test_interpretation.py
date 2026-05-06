@@ -21,7 +21,10 @@ from movement.biomarker.interpretation import (
 # ── Path helpers ──────────────────────────────────────────────────────────────
 
 _RULES_DIR = (
-    Path(__file__).resolve().parent.parent / "data" / "interpretation_rules"
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "definitions"
+    / "interpretation_rules"
 )
 
 

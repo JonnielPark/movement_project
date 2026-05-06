@@ -17,7 +17,13 @@ import pytest
 from movement.clinical import load_fms_mapping, traffic_light_for_score
 
 
-_MAPPING_PATH = Path(__file__).resolve().parent.parent / "data" / "clinical" / "fms_mapping.yaml"
+_MAPPING_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "definitions"
+    / "clinical"
+    / "fms_mapping.yaml"
+)
 _EXERCISES = ("squat", "lunge", "pike_pushup", "plank_shoulder_tap")
 
 

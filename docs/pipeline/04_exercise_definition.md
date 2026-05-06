@@ -1,0 +1,457 @@
+# 04. 운동 정의 (Exercise Definition)
+
+**문서 버전:** 1.0.0  
+**최종 갱신:** 2026-05-06  
+**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
+**영문 동기화:** `docs_eng/pipeline/04_exercise_definition.md`는 동일 버전의 영문 번역본이다.
+
+파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
+모든 후속 단계(④–⑨)가 운동별 로직 적용을 위해 참조하는 `ExerciseDefinition` 객체를 반환한다.
+
+---
+
+## 1. 파이프라인 위치 (Pipeline Position)
+
+```text
+Pose CSV + 어노테이션 + 운동 YAML
+→ ① Validation
+→ ② Annotation                    (exercise_type, pattern 선언)
+→ ③ Exercise Definition           ← 본 단계
+→ ④ Preprocessing                 (laterality, landmarks, quality_rules 참조)
+→ ⑤ Normalization
+→ ⑥ Phase Segmentation
+→ ⑦ Motion Attribution            (laterality, primary_joints 참조)
+→ ⑧ Feature Extraction            (feature_domains, joint_actions 참조)
+→ ⑨ Biomech Proxy                 (biomechanical_focus 참조)
+→ ⑩ Biomarker Derivation          (compensation_candidates 참조)
+```
+
+운동 정의는 동작이 *무엇을 의미하는가*를 기술한다.
+어노테이션은 동작이 *어디서 발생했는가*를 기술한다.
+
+## 2. 설계 (Design)
+
+운동별 동작은 코드 분기가 아닌 YAML 데이터로 표현된다.
+새 운동 추가 = `data/definitions/exercises/`에 YAML 파일 1개 작성.
+
+⑧–⑩에서 산출되는 모든 바이오마커는 그 계산을 유발한 정의 필드를 가리키는 `source_fields`를
+반드시 참조해야 한다.
+
+## 3. 사용 가능한 정의 (Available Definitions)
+
+```text
+data/definitions/exercises/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
+    generic.yaml               ← 폴백
+```
+
+## 4. 폴백 동작 (Fallback Behavior)
+
+어노테이션에 `exercise_type`이 없거나 해당 YAML을 찾지 못하면 `generic.yaml`이 로드된다.
+generic 모드는 운동에 무관한(exercise-agnostic) 피처(ROM, 템포, 안정성)만 활성화한다.
+보상 움직임 바이오마커는 산출되지 않는다.
+
+```yaml
+# generic.yaml (발췌)
+exercise_id: generic
+classification:
+  laterality: bilateral_symmetric
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+compensation_candidates: []
+feature_domains:
+  spatial: [rom]
+  temporal: [tempo]
+  control: [stability]
+```
+
+## 5. YAML 스키마 개요 (YAML Schema Overview)
+
+```yaml
+exercise_id: string            # snake_case 고유 식별자
+display_name: string
+description: string
+version: string
+tags: list[string]
+
+classification:                # 거시 운동 분류
+support:                       # 접촉/지지 기저면
+phase_model:                   # 1회 반복의 시간 구조
+landmarks:                     # 랜드마크 모델 및 주요/보조 관절
+angle_definitions:             # 관절각 트리플렛
+joint_actions:                 # 기대되는 관절 동작
+biomechanical_focus:           # CoM 운동, 안정성, 부하 영역
+compensation_candidates:       # 모니터링할 보상 움직임 목록
+feature_domains:               # 활성화할 공간/시간/제어 피처
+view_requirements:             # 선호 카메라 뷰
+quality_rules:                 # 분석 적격성 임계값
+notes: string
+```
+
+초기 구현에서 모든 필드를 채울 필요는 없다.
+재구조화 없이 점진적으로 추가할 수 있도록 설계되었다.
+
+## 6. 필드 레퍼런스 (Field Reference)
+
+### classification
+
+```yaml
+classification:
+  family: lower_body           # lower_body | upper_body | core | full_body | balance | ...
+  equipment: none
+  load_type: bodyweight        # bodyweight | external_load | assisted | ...
+  posture_type: standing       # standing | plank | inverted_closed_chain | kneeling | ...
+  kinetic_chain: closed_chain  # open_chain | closed_chain | mixed_chain | ...
+  laterality: bilateral_symmetric
+      # bilateral_symmetric | bilateral_asymmetric | alternating
+      # unilateral_left | unilateral_right | unilateral_unspecified
+  movement_pattern: squat
+  primary_plane: sagittal      # sagittal | frontal | transverse | multiplanar | static
+  secondary_planes: [frontal, transverse]
+  complexity: compound         # single_joint | multi_joint | compound | whole_body
+```
+
+`laterality`가 제어하는 항목:
+- ④ 전처리: 좌·우 스왑 검출 실행 여부
+- ⑦ 모션 어트리뷰션: 반복별 활성 측 점검 실행 여부 (`bilateral_symmetric`은 건너뜀)
+
+### support
+
+```yaml
+support:
+  base_of_support: bilateral_feet   # bilateral_feet | single_foot_left | split_stance | ...
+  contact_points: [left_foot, right_foot]
+  support_surface: floor
+  weight_bearing_regions: [left_foot, right_foot]
+```
+
+### phase_model
+
+```yaml
+phase_model:
+  type: resistance_phase
+      # resistance_phase | task_phase | static_hold | cyclic | locomotion_phase | custom
+  expected_ratio:             # resistance_phase에 한함; 합 ≈ 1.0
+    eccentric: 0.4
+    isometric: 0.1
+    concentric: 0.5
+```
+
+표준 구간 이름:
+
+```text
+resistance_phase  : eccentric, isometric, concentric, transition_top, transition_bottom
+task_phase        : setup, support_stable, weight_shift, tap, reach, return, reset, hold, ...
+static_hold       : setup, hold, fatigue, release
+locomotion_phase  : initial_contact, loading_response, mid_stance, terminal_stance, ...
+```
+
+### landmarks
+
+```yaml
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints: [left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle]
+  secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis]
+  critical_landmarks: [23, 24, 25, 26, 27, 28]   # MediaPipe 인덱스
+  optional_landmarks: [11, 12, 29, 30, 31, 32]
+```
+
+표준 관절 이름:
+
+```text
+left_shoulder  right_shoulder  left_elbow    right_elbow
+left_wrist     right_wrist     left_hip      right_hip
+left_knee      right_knee      left_ankle    right_ankle
+left_foot      right_foot      trunk         pelvis       head
+```
+
+### angle_definitions
+
+```yaml
+angle_definitions:
+  left_knee_angle:  { points: [23, 25, 27], vertex: 25 }
+  right_knee_angle: { points: [24, 26, 28], vertex: 26 }
+  left_hip_angle:   { points: [11, 23, 25], vertex: 23 }
+  right_hip_angle:  { points: [12, 24, 26], vertex: 24 }
+```
+
+표준 트리플렛 (MediaPipe 인덱스):
+
+```text
+left_shoulder_angle  : [23, 11, 13]   right_shoulder_angle : [24, 12, 14]
+left_elbow_angle     : [11, 13, 15]   right_elbow_angle    : [12, 14, 16]
+left_hip_angle       : [11, 23, 25]   right_hip_angle      : [12, 24, 26]
+left_knee_angle      : [23, 25, 27]   right_knee_angle     : [24, 26, 28]
+left_ankle_angle     : [25, 27, 31]   right_ankle_angle    : [26, 28, 32]
+```
+
+### biomechanical_focus
+
+```yaml
+biomechanical_focus:
+  expected_com_motion: vertical
+      # minimal | vertical | anterior_posterior | medial_lateral
+      # vertical_and_anterior_posterior | vertical_and_medial_lateral
+      # rotational | multidirectional
+  stability_requirement: medium   # low | medium | high | very_high
+  main_load_regions: [hip, knee, ankle]
+      # shoulder | elbow | wrist | trunk | core | hip | knee | ankle | foot | pelvis
+  primary_constraints:
+    - maintain_foot_contact
+    - maintain_trunk_alignment
+    - avoid_knee_valgus
+```
+
+### compensation_candidates
+
+```yaml
+compensation_candidates:
+  - knee_valgus
+  - excessive_trunk_flexion
+  - lateral_pelvic_shift
+```
+
+여기에 명시된 보상 움직임만 ⑩에서 바이오마커로 산출된다.
+
+전체 어휘:
+
+```text
+# 하체
+knee_valgus                    knee_varus
+asymmetric_depth               asymmetric_knee_flexion
+asymmetric_hip_flexion         limited_ankle_dorsiflexion_proxy
+heel_lift                      foot_external_rotation_proxy
+foot_collapse_proxy            pelvis_drop
+lateral_pelvic_shift           hip_shift
+insufficient_rear_hip_extension unstable_step_width
+
+# 체간 / 골반
+excessive_trunk_flexion        trunk_extension_compensation
+lateral_trunk_lean             trunk_rotation
+trunk_sway                     pelvis_rotation
+pelvis_anterior_tilt_proxy     pelvis_posterior_tilt_proxy
+hip_pike                       hip_drop
+loss_of_neutral_spine_proxy
+
+# 상체
+shoulder_elevation_compensation shoulder_asymmetry
+shoulder_collapse              elbow_flare
+elbow_asymmetry                wrist_shift
+scapular_instability_proxy     insufficient_head_descent
+head_forward_shift
+
+# 제어 / 타이밍
+excessive_com_lateral_shift    excessive_com_variability
+phase_timing_asymmetry         tempo_instability
+left_right_timing_variability  movement_discontinuity
+```
+
+### feature_domains
+
+```yaml
+feature_domains:
+  spatial: [rom, symmetry, shape]
+  temporal: [tempo, variability]
+  control: [stability, compensation]
+  biomechanical_proxy: [com_displacement, moment_arm_proxy]
+```
+
+전체 어휘:
+
+```text
+spatial:
+  rom, joint_angle_min, joint_angle_max, joint_angle_range,
+  symmetry, shape, trajectory_similarity, alignment,
+  posture_angle, depth_proxy, reach_distance, support_width
+
+temporal:
+  tempo, rep_duration, phase_duration, eccentric_duration,
+  isometric_duration, concentric_duration, timing_ratio,
+  variability, rhythm_consistency, left_right_timing_variability, pause_duration
+
+control:
+  stability, compensation, com_stability, trunk_stability,
+  pelvis_stability, joint_tracking_error, lateral_shift,
+  rotation_control, balance_control, movement_smoothness, endpoint_control
+
+biomechanical_proxy:
+  com_displacement, com_velocity_proxy,
+  segment_length_normalized_displacement,
+  moment_arm_proxy, relative_joint_load_proxy,
+  load_distribution_proxy, support_moment_proxy,
+  compensation_load_shift_proxy
+```
+
+### quality_rules
+
+```yaml
+quality_rules:
+  minimum_visible_landmark_ratio: 0.8
+  minimum_critical_landmark_ratio: 0.9
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3        # ④ 전처리에서 참조
+  exclude_rep_if_critical_landmark_missing: true
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true
+```
+
+④ 전처리와 ⑧ 피처 추출에서 직접 참조된다.
+
+## 7. Provenance 규약 (Provenance Convention)
+
+⑧–⑩에서 산출되는 모든 바이오마커는 그 계산을 유발한 정의 필드를 가리키는 `source_fields`를
+포함한다. `source_fields`가 없는 바이오마커는 산출되지 않는다 (`BiomarkerRecord`에서
+`ValueError` 발생).
+
+```text
+biomarker_id       : knee_valgus_index
+exercise_id        : squat
+definition_version : 0.1.0
+source_fields      : [compensation_candidates.knee_valgus,
+                      classification.primary_plane,
+                      landmarks.primary_joints]
+rep_id             : 2
+value              : 0.13
+unit               : torso_length_ratio
+```
+
+## 8. 전체 예: squat.yaml (Full Example: squat.yaml)
+
+```yaml
+exercise_id: squat
+display_name: Bodyweight Squat
+description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
+version: 0.1.0
+tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
+
+classification:
+  family: lower_body
+  equipment: none
+  load_type: bodyweight
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  movement_pattern: squat
+  primary_plane: sagittal
+  secondary_planes: [frontal, transverse]
+  complexity: compound
+
+support:
+  base_of_support: bilateral_feet
+  contact_points: [left_foot, right_foot]
+  support_surface: floor
+  weight_bearing_regions: [left_foot, right_foot]
+
+phase_model:
+  type: resistance_phase
+  expected_ratio:
+    eccentric: 0.4
+    isometric: 0.1
+    concentric: 0.5
+
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints:
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+  secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis, left_foot, right_foot]
+  critical_landmarks: [23, 24, 25, 26, 27, 28]
+  optional_landmarks: [11, 12, 29, 30, 31, 32]
+
+angle_definitions:
+  left_hip_angle:    { points: [11, 23, 25], vertex: 23 }
+  right_hip_angle:   { points: [12, 24, 26], vertex: 24 }
+  left_knee_angle:   { points: [23, 25, 27], vertex: 25 }
+  right_knee_angle:  { points: [24, 26, 28], vertex: 26 }
+  left_ankle_angle:  { points: [25, 27, 31], vertex: 27 }
+  right_ankle_angle: { points: [26, 28, 32], vertex: 28 }
+
+joint_actions:
+  primary:
+    - hip_flexion_extension
+    - knee_flexion_extension
+    - ankle_dorsiflexion_plantarflexion
+  secondary:
+    - trunk_flexion_extension
+    - pelvis_lateral_tilt_proxy
+    - pelvis_rotation_proxy
+
+biomechanical_focus:
+  expected_com_motion: vertical
+  stability_requirement: medium
+  main_load_regions: [hip, knee, ankle]
+  primary_constraints:
+    - maintain_foot_contact
+    - maintain_trunk_alignment
+    - avoid_knee_valgus
+    - avoid_heel_lift
+    - avoid_excessive_lateral_shift
+
+compensation_candidates:
+  - knee_valgus
+  - knee_varus
+  - asymmetric_depth
+  - excessive_trunk_flexion
+  - lateral_pelvic_shift
+  - heel_lift
+  - foot_external_rotation_proxy
+  - pelvis_rotation
+  - tempo_instability
+
+feature_domains:
+  spatial: [rom, symmetry, shape, depth_proxy, alignment]
+  temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
+  control: [stability, compensation, com_stability, pelvis_stability, lateral_shift]
+  biomechanical_proxy: [com_displacement, moment_arm_proxy, relative_joint_load_proxy]
+
+view_requirements:
+  preferred_views: [frontal, sagittal_left, sagittal_right]
+  acceptable_views: [front_oblique, side_oblique]
+  critical_landmarks: [23, 24, 25, 26, 27, 28]
+  occlusion_risk: medium
+
+quality_rules:
+  minimum_visible_landmark_ratio: 0.8
+  minimum_critical_landmark_ratio: 0.9
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3
+  exclude_rep_if_critical_landmark_missing: true
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true
+```
+
+## 9. MediaPipe Pose 33 랜드마크 인덱스
+
+```text
+0  nose               1  left_eye_inner    2  left_eye          3  left_eye_outer
+4  right_eye_inner    5  right_eye         6  right_eye_outer
+7  left_ear           8  right_ear         9  mouth_left        10 mouth_right
+11 left_shoulder      12 right_shoulder    13 left_elbow        14 right_elbow
+15 left_wrist         16 right_wrist       17 left_pinky        18 right_pinky
+19 left_index         20 right_index       21 left_thumb        22 right_thumb
+23 left_hip           24 right_hip         25 left_knee         26 right_knee
+27 left_ankle         28 right_ankle       29 left_heel         30 right_heel
+31 left_foot_index    32 right_foot_index
+```
+
+## 10. 로더 API (Loader API)
+
+```python
+from movement.exercise_definition import load_exercise_definition, load_all_exercise_definitions
+
+definition = load_exercise_definition(
+    exercise_id="squat",
+    definitions_dir="data/definitions/exercises",
+)
+
+all_definitions = load_all_exercise_definitions("data/definitions/exercises")
+```

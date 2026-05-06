@@ -1,0 +1,63 @@
+# data/definitions/interpretation_rules/lunge.yaml
+#
+# Interpretation rules for the Forward Lunge exercise.
+# Consumed by biomarker.interpretation.derive_interpretations().
+# ---
+
+exercise_id: lunge
+
+rules:
+
+  - id: floor_hit_spatial
+    when:
+      floor_applied.spatial: true
+    label: >
+      Split-stance descent depth not achieved — ROM floor correction applied
+      to the spatial domain score. Review forward-leg ankle dorsiflexion and
+      hip-flexor extensibility.
+
+  - id: dominant_control_floor_free
+    when:
+      dominant_deduction_domain: control
+      floor_applied.spatial: false
+    label: >
+      Compensation patterns are the primary quality concern in the split-stance
+      task. ROM appears adequate — review knee-valgus and lateral pelvic shift
+      for the loaded leg.
+
+  - id: knee_load_shift_lunge
+    when:
+      load_shift_slope.knee: { lt: -0.01 }
+    label: >
+      Knee moment-arm decreasing across reps. Consistent with forward-leg load
+      redistribution under fatigue — consider reducing set volume or increasing
+      rest between reps.
+
+  - id: low_spatial_score
+    when:
+      domain_score.spatial: { lt: 80 }
+    label: >
+      Notable ROM restriction detected — review hip and ankle mobility for
+      both the loaded and trailing legs across alternating reps.
+
+  - id: low_temporal_score
+    when:
+      domain_score.temporal: { lt: 80 }
+    label: >
+      Temporal inconsistency detected — review inter-rep timing variability
+      for the alternating-limb loading pattern.
+
+  - id: floor_hit_control
+    when:
+      floor_applied.control: true
+    label: >
+      Control deductions exceeded the dynamic floor threshold. Compensation
+      level was high relative to the descent depth achieved.
+
+  - id: low_overall_score
+    when:
+      final_score: { lt: 75 }
+    label: >
+      Overall movement quality score below 75 in the lunge. Multiple domains
+      are contributing — review bilateral ROM symmetry, trunk control, and
+      pelvic stability together.

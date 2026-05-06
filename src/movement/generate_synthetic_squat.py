@@ -2,7 +2,7 @@
 [Deprecated] Use movement.simulation.synthetic.generate_squat_csv() instead.
 
     from movement.simulation.synthetic import generate_squat_csv
-    generate_squat_csv(out_dir="data/sample")
+    generate_squat_csv(out_dir="data/pose/sample")
 
 Generate a synthetic bodyweight squat pose CSV (MediaPipe 33-landmark format).
 

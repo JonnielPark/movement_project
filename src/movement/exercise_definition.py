@@ -1,7 +1,7 @@
 """
 ③ Exercise Definition Loading
 
-Loads and validates exercise YAML files from data/exercise_definitions/.
+Loads and validates exercise YAML files from data/definitions/exercises/.
 Each ExerciseDefinition object describes the biomechanical properties of an exercise
 and drives downstream feature extraction, proxy modeling, and biomarker derivation.
 
@@ -23,7 +23,7 @@ import yaml
 
 
 # ── Controlled vocabulary ─────────────────────────────────────────────────────
-# Source: docs/04_exercise_definition.md — Field Dictionary
+# Source: docs/pipeline/04_exercise_definition.md — Field Dictionary
 
 _VOCAB: dict[str, frozenset[str]] = {
     "classification.family": frozenset({

@@ -308,12 +308,12 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     """Generate synthetic squat pose CSV files.
 
     This is the main() function from generate_synthetic_squat.py, now housed here.
-    Accepts out_dir to preserve the data/sample/ directory path.
+    Accepts out_dir to preserve the data/pose/sample/ directory path.
 
     Parameters
     ----------
     out_dir : Path-like
-        Output directory (e.g. Path("data/sample")).
+        Output directory (e.g. Path("data/pose/sample")).
     fps : int
     seed : int
     """

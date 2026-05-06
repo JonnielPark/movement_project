@@ -8,7 +8,7 @@
 # Toggle each step with enabled: true / false
 
 input:
-  path: "data/sample/mediapipe_squat_synthetic.csv"
+  path: "data/pose/sample/mediapipe_squat_synthetic.csv"
 
 # ── ① Validation ─────────────────────────────────────────────────────────────
 validation:
@@ -19,12 +19,12 @@ validation:
 # ── ② Annotation ─────────────────────────────────────────────────────────────
 annotation:
   enabled: false
-  path: "data/sample/mediapipe_squat_synthetic_annotation.csv"
+  path: "data/pose/sample/mediapipe_squat_synthetic_annotation.csv"
 
 # ── ③ Exercise Definition Loading ────────────────────────────────────────────
 exercise_definition:
   enabled: true
-  definitions_dir: "data/exercise_definitions"
+  definitions_dir: "data/definitions/exercises"
   # null = derived from annotation exercise_type column; still null → generic fallback
   exercise_id: null
 

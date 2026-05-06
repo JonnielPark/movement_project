@@ -115,7 +115,7 @@ class AnnotationConfig:
 @dataclass
 class ExerciseDefinitionConfig:
     enabled: bool = True
-    definitions_dir: str = "data/exercise_definitions"
+    definitions_dir: str = "data/definitions/exercises"
     exercise_id: str | None = None
 
 
@@ -185,7 +185,7 @@ ScoringConfig = BiomarkerConfig
 
 @dataclass
 class InputConfig:
-    path: str = "data/sample/mediapipe_squat_synthetic.csv"
+    path: str = "data/pose/sample/mediapipe_squat_synthetic.csv"
 
 
 @dataclass
@@ -243,7 +243,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
 
     return PipelineConfig(
         input=InputConfig(
-            path=inp.get("path", "data/sample/mediapipe_squat_synthetic.csv"),
+            path=inp.get("path", "data/pose/sample/mediapipe_squat_synthetic.csv"),
         ),
         validation=ValidationConfig(
             enabled=val.get("enabled", True),
@@ -256,7 +256,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         ),
         exercise_definition=ExerciseDefinitionConfig(
             enabled=exd.get("enabled", True),
-            definitions_dir=exd.get("definitions_dir", "data/exercise_definitions"),
+            definitions_dir=exd.get("definitions_dir", "data/definitions/exercises"),
             exercise_id=exd.get("exercise_id", None),
         ),
         preprocessing=PreprocessingConfig(
