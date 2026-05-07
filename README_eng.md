@@ -1,5 +1,7 @@
 # Movement Project
 
+English | [한국어](README.md)
+
 PhD dissertation research: an analysis framework that quantifies movement quality
 from monocular mobile-camera 3D pose data in biomechanical terms and expresses
 the result as interpretable digital biomarkers.
