@@ -1,7 +1,7 @@
 # Overview
 
-**Document Version:** 1.4.0
-**Last Updated:** 2026-05-07
+**Document Version:** 1.4.1
+**Last Updated:** 2026-05-08
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
@@ -14,7 +14,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.3.0 | [terminology.md](terminology.md) | Terminology |
-| 1.4.0 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.1 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
@@ -96,21 +96,28 @@ Output
 
 ---
 
-## 3. Stage Responsibility Table
+## 3. Stage Processing and Outputs
 
-| Step | Does | Does NOT |
-|---|---|---|
-| ① Validation | integrity diagnostics | modify data |
-| ② Annotation | add frame-level metadata columns; pre-fills `phase` as NA | modify coordinates |
-| ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
-| ④ Preprocessing | correct data quality issues | alter movement quality patterns |
-| ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
-| ⑥ Segmentation | derive repetition boundaries with `rep_segmentation`, then intra-rep `phase` labels with the existing `phase_segmentation`; record failure points and incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
-| ⑦ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
-| ⑧ Feature Extraction | compute rep-level and phase-level spatial / temporal / control features | correct labels |
-| ⑨ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
-| ⑩ Biomarker Derivation | produce BiomarkerRecord + BiomarkerScoreRecord with provenance | emit records without source_fields |
-| ⑪ Visualization | produce diagnostic and result figures | modify data |
+| Step | Input / Reference Information | Main Processing | Output |
+|---|---|---|---|
+| ① Validation | Pose CSV | Checks required columns, frame order, timestamps, landmark coordinate structure, and missing-value patterns. | Validation report |
+| ② Annotation | Pose DataFrame, Annotation CSV | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, and the initial `phase` column. | Annotated DataFrame |
+| ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. | ExerciseDefinition |
+| ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
+| ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
+| ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
+| ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features. | FeatureRecord list, feature DataFrame |
+| ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
+| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
+| ⑫ Simulation | Normal or reference sequence, injector settings | Injects conditions such as noise, occlusion, ROM restriction, and velocity spikes, then evaluates metric responsiveness. | synthetic dataset, robustness report |
+
+Responsibility boundaries are as follows. Steps ①–③ do not modify coordinates, and
+⑥ does not arbitrarily overwrite confirmed manual labels. Steps ⑧–⑩ do not correct
+labels, and ⑨ does not compute absolute torque or absolute load. Steps ⑪–⑫ handle
+visualization and robustness evaluation of pipeline outputs without modifying the
+original pose data.
 
 ---
 

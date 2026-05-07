@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.0
-**최종 갱신:** 2026-05-07
+**문서 버전:** 1.4.1
+**최종 갱신:** 2026-05-08
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.3.0 | [terminology.md](terminology.md) | 용어집 |
-| 1.4.0 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.1 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
@@ -95,21 +95,27 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 
 ---
 
-## 3. 단계 책임 표 (Stage Responsibility Table)
+## 3. 단계별 처리 및 산출물 표 (Stage Processing and Outputs)
 
-| 단계 | 수행 항목 | 수행하지 않음 |
-|---|---|---|
-| ① Validation | 무결성 진단 | 데이터 수정 |
-| ② Annotation | 프레임 단위 메타데이터 칼럼 추가; `phase`를 NA로 사전 채움 | 좌표 수정 |
-| ③ Exercise Definition | ExerciseDefinition 객체 로드 | 어노테이션·좌표 수정 |
-| ④ Preprocessing | 데이터 품질 이슈 보정 | 동작 품질 패턴 변경 |
-| ⑤ Normalization | 신체 상대 좌표계로 평행이동 + 척도화 | 운동 종류별 분기 |
-| ⑥ Segmentation | `rep_segmentation`으로 반복 경계 산출, 기존 `phase_segmentation`으로 반복 내부 `phase` 라벨 산출; 자동 결과가 불명확하면 실패 지점 기록 및 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
-| ⑦ Motion Attribution | 반복별 활성 측 일관성 플래그 | 좌표·점수 수정 |
-| ⑧ Feature Extraction | 반복 단위·구간 단위 공간/시간/제어 피처 계산 | 라벨 보정 |
-| ⑨ Biomech Proxy | CoM, 모멘트 암, 상대 부하 분포 계산 | 절대 토크 계산 |
-| ⑩ Biomarker Derivation | provenance를 갖춘 BiomarkerRecord + BiomarkerScoreRecord 산출 | source_fields 없는 기록 방출 |
-| ⑪ Visualization | 진단·결과 도형 산출 | 데이터 수정 |
+| 단계 | 입력/참조 정보 | 주요 처리 | 산출물 |
+|---|---|---|---|
+| ① Validation | Pose CSV | 필수 칼럼, 프레임 순서, 시간값, 랜드마크 좌표 구조, 결측 패턴을 검사한다. | Validation report |
+| ② Annotation | Pose DataFrame, Annotation CSV | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase` 칼럼을 구성한다. | Annotation이 병합된 DataFrame |
+| ③ Exercise Definition | `exercise_type`, exercise YAML | 운동별 YAML을 로드하여 `ExerciseDefinition` 객체를 생성하고, 없을 경우 `generic.yaml`을 적용한다. | ExerciseDefinition |
+| ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
+| ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
+| ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
+| ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산한다. | FeatureRecord 목록, feature DataFrame |
+| ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
+| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑪ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
+| ⑫ Simulation | 정상 또는 기준 시퀀스, injector 설정 | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등 조건을 주입하고 지표 반응성을 평가한다. | synthetic dataset, robustness report |
+
+책임 경계는 다음과 같다. ①–③은 좌표를 수정하지 않고, ⑥은 확정된 수동 라벨을 임의로
+덮어쓰지 않는다. ⑧–⑩은 라벨을 보정하는 단계가 아니며, ⑨는 절대 토크나 절대 부하를
+계산하지 않는다. ⑪–⑫는 파이프라인 산출물의 시각화와 강건성 평가를 담당하며 원본 포즈
+데이터를 수정하지 않는다.
 
 ---
 
