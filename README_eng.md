@@ -213,8 +213,8 @@ inside `pipeline/` and `clinical/` are tracked in the document index in
 
 | Version | File | Content |
 |---|---|---|
-| 1.0.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
-| 1.1.1 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.1.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
+| 1.2.0 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 
 ---
 
