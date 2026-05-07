@@ -1,0 +1,181 @@
+# 02. Annotation
+
+**Document Version:** 1.0.0
+**Last Updated:** 2026-05-07
+**Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
+
+Pipeline step ②. Merges segment metadata from a user-prepared annotation CSV into
+the pose dataframe. This step only merges and propagates manual metadata; it does
+not estimate rep/phase boundaries automatically or semi-automatically. Rep/phase
+boundary estimation and failure-point recording are handled by
+[06_segmentation.md](06_segmentation.md).
+
+This step does not delete frames or modify coordinates.
+
+---
+
+## 1. Pipeline Position
+
+```text
+Pose CSV
+→ ① Validation
+→ ② Annotation             ← this step
+→ ③ Exercise Definition
+→ ④ Preprocessing
+→ ⑤ Normalization
+→ ⑥ Segmentation
+→ ⑦ Motion Attribution
+→ downstream steps
+```
+
+② runs before ③ because `exercise_type` declared here identifies which exercise YAML to load.
+
+## 2. Output Columns
+
+```text
+use_for_analysis    bool      whether to include in analysis
+segment_type        str       full_sequence | baseline | idle | rep | rest | transition | excluded
+set_id              Int64     nullable
+rep_id              Int64     nullable
+phase               object    nullable; preserved if manually provided
+exercise_type       str       exercise definition YAML identifier
+pattern             str       bilateral | alternating
+starting_side       str       left | right (alternating exercises only)
+```
+
+`exercise_type` drives ③ exercise definition loading.
+`pattern` and `starting_side` drive ④ preprocessing L/R swap detection and ⑦ motion attribution.
+When a manual `phase` value is provided, ② preserves it, but ⑥ Segmentation decides whether
+the label is confirmed and how any failure is handled.
+
+## 3. Annotation Hierarchy
+
+```text
+recording
+└─ set          group of consecutive reps of the same exercise
+   └─ rep       one complete movement cycle
+      └─ phase  sub-phase within a rep (optional; confirmed by ⑥)
+```
+
+## 4. segment_type Values
+
+```text
+full_sequence   default when no annotation file is provided
+baseline        stable standing posture before movement starts
+idle            waiting or non-exercise segment
+rep             one complete rep
+rest            inter-set rest
+transition      segment not attributed to a specific rep
+excluded        explicitly invalid segment
+```
+
+## 5. Annotation File Format
+
+Minimum required columns:
+
+```text
+segment_type, set_id, rep_id, start_frame, end_frame, use_for_analysis
+```
+
+Optional columns:
+
+```text
+exercise_type, pattern, starting_side, phase, note
+```
+
+### Example: single set, 3 reps
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
+baseline,,,20,60,false,squat,bilateral
+rep,1,1,85,160,true,squat,bilateral
+rep,1,2,170,245,true,squat,bilateral
+rep,1,3,255,330,true,squat,bilateral
+idle,,,331,370,false,squat,bilateral
+```
+
+### Example: two sets
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern
+baseline,,,20,60,false,squat,bilateral
+rep,1,1,85,160,true,squat,bilateral
+rep,1,2,170,245,true,squat,bilateral
+rep,1,3,255,330,true,squat,bilateral
+rest,1,,331,430,false,squat,bilateral
+rep,2,1,450,525,true,squat,bilateral
+rep,2,2,535,610,true,squat,bilateral
+rep,2,3,620,700,true,squat,bilateral
+idle,,,701,760,false,squat,bilateral
+```
+
+### Example: alternating exercise (plank shoulder tap)
+
+`starting_side = right` means rep 1 → right active, rep 2 → left active, alternating.
+
+```csv
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
+baseline,,,0,40,false,plank_shoulder_tap,alternating,right
+rep,1,1,50,100,true,plank_shoulder_tap,alternating,right
+rep,1,2,110,160,true,plank_shoulder_tap,alternating,right
+rep,1,3,170,220,true,plank_shoulder_tap,alternating,right
+rep,1,4,230,280,true,plank_shoulder_tap,alternating,right
+idle,,,281,320,false,plank_shoulder_tap,alternating,right
+```
+
+## 6. No-Annotation Fallback
+
+If no annotation file is provided, this step does not fail. Defaults applied:
+
+```text
+use_for_analysis = True  (all frames)
+segment_type     = full_sequence
+set_id           = None
+rep_id           = None
+phase            = None
+exercise_type    = None   → ③ loads generic fallback definition
+pattern          = bilateral
+starting_side    = None
+```
+
+Report records `annotation_provided = False`.
+
+## 7. When Annotation is Provided
+
+```text
+1. Initialize all frames to use_for_analysis = False.
+2. Apply use_for_analysis values from the annotation file for declared segments.
+3. Frames not covered by any annotation segment are excluded from analysis.
+4. Exercise context columns (exercise_type, pattern, starting_side) are propagated
+   to all frames within the declared segment.
+```
+
+## 8. Overlap Policy
+
+Overlapping annotation segments are treated as an error. The step either raises an error
+or records a failure in the annotation report; it does not silently overwrite.
+
+## 9. Frame Index Convention
+
+Original `frame` column values are preserved. This step does not renumber frames.
+
+## 10. Current Scope
+
+Supported:
+
+```text
+- Full-sequence fallback (no annotation file)
+- Set-level and rep-level annotation
+- idle / baseline / rest / excluded segment marking
+- use_for_analysis mask
+- Exercise context columns (exercise_type, pattern, starting_side)
+- Preserving manually provided phase labels
+```
+
+Not in scope:
+
+```text
+- Automatic or semi-automatic rep/phase boundary estimation
+- Segmentation failure-point recording
+- Coordinate edits
+```

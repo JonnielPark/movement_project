@@ -1,43 +1,43 @@
-# 04. 운동 정의 (Exercise Definition)
+# 03. Exercise Definition
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**영문 동기화:** `docs_eng/pipeline/04_exercise_definition.md`는 동일 버전의 영문 번역본이다.
+**Document Version:** 1.1.0  
+**Last Updated:** 2026-05-06  
+**Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
-파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
-모든 후속 단계(④–⑨)가 운동별 로직 적용을 위해 참조하는 `ExerciseDefinition` 객체를 반환한다.
+Pipeline step ③. Loads exercise YAML files from `data/definitions/exercises/`.
+Returns an `ExerciseDefinition` object that all downstream steps (④–⑨) reference
+to apply exercise-specific logic.
 
 ---
 
-## 1. 파이프라인 위치 (Pipeline Position)
+## 1. Pipeline Position
 
 ```text
-Pose CSV + 어노테이션 + 운동 YAML
+Pose CSV + annotation + exercise YAML
 → ① Validation
-→ ② Annotation                    (exercise_type, pattern 선언)
-→ ③ Exercise Definition           ← 본 단계
-→ ④ Preprocessing                 (laterality, landmarks, quality_rules 참조)
+→ ② Annotation                    (exercise_type, pattern declared)
+→ ③ Exercise Definition           ← this step
+→ ④ Preprocessing                 (reads laterality, landmarks, quality_rules)
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
-→ ⑦ Motion Attribution            (laterality, primary_joints 참조)
-→ ⑧ Feature Extraction            (feature_domains, joint_actions 참조)
-→ ⑨ Biomech Proxy                 (biomechanical_focus 참조)
-→ ⑩ Biomarker Derivation          (compensation_candidates 참조)
+→ ⑥ Segmentation
+→ ⑦ Motion Attribution            (reads laterality, primary_joints)
+→ ⑧ Feature Extraction            (reads feature_domains, joint_actions)
+→ ⑨ Biomech Proxy                 (reads biomechanical_focus)
+→ ⑩ Biomarker Derivation          (reads compensation_candidates)
 ```
 
-운동 정의는 동작이 *무엇을 의미하는가*를 기술한다.
-어노테이션은 동작이 *어디서 발생했는가*를 기술한다.
+Exercise definitions describe *what* the movement means.
+Annotation describes *where* the movement happened.
 
-## 2. 설계 (Design)
+## 2. Design
 
-운동별 동작은 코드 분기가 아닌 YAML 데이터로 표현된다.
-새 운동 추가 = `data/definitions/exercises/`에 YAML 파일 1개 작성.
+Exercise-specific behavior is expressed as YAML data, not code branches.
+Adding a new exercise = writing one YAML file in `data/definitions/exercises/`.
 
-⑧–⑩에서 산출되는 모든 바이오마커는 그 계산을 유발한 정의 필드를 가리키는 `source_fields`를
-반드시 참조해야 한다.
+Every biomarker produced by ⑧–⑩ must reference `source_fields` pointing to the
+definition fields that drove its computation.
 
-## 3. 사용 가능한 정의 (Available Definitions)
+## 3. Available Definitions
 
 ```text
 data/definitions/exercises/
@@ -45,17 +45,17 @@ data/definitions/exercises/
     lunge.yaml
     pike_pushup.yaml
     plank_shoulder_tap.yaml
-    generic.yaml               ← 폴백
+    generic.yaml               ← fallback
 ```
 
-## 4. 폴백 동작 (Fallback Behavior)
+## 4. Fallback Behavior
 
-어노테이션에 `exercise_type`이 없거나 해당 YAML을 찾지 못하면 `generic.yaml`이 로드된다.
-generic 모드는 운동에 무관한(exercise-agnostic) 피처(ROM, 템포, 안정성)만 활성화한다.
-보상 움직임 바이오마커는 산출되지 않는다.
+If `exercise_type` is absent from annotation, or the corresponding YAML is not found,
+`generic.yaml` is loaded. Generic mode activates only exercise-agnostic features
+(ROM, tempo, stability). Compensation movement biomarkers are not produced.
 
 ```yaml
-# generic.yaml (발췌)
+# generic.yaml (excerpt)
 exercise_id: generic
 classification:
   laterality: bilateral_symmetric
@@ -69,33 +69,35 @@ feature_domains:
   control: [stability]
 ```
 
-## 5. YAML 스키마 개요 (YAML Schema Overview)
+## 5. YAML Schema Overview
 
 ```yaml
-exercise_id: string            # snake_case 고유 식별자
+exercise_id: string            # snake_case unique identifier
 display_name: string
 description: string
 version: string
 tags: list[string]
 
-classification:                # 거시 운동 분류
-support:                       # 접촉/지지 기저면
-phase_model:                   # 1회 반복의 시간 구조
-landmarks:                     # 랜드마크 모델 및 주요/보조 관절
-angle_definitions:             # 관절각 트리플렛
-joint_actions:                 # 기대되는 관절 동작
-biomechanical_focus:           # CoM 운동, 안정성, 부하 영역
-compensation_candidates:       # 모니터링할 보상 움직임 목록
-feature_domains:               # 활성화할 공간/시간/제어 피처
-view_requirements:             # 선호 카메라 뷰
-quality_rules:                 # 분석 적격성 임계값
+classification:                # macro-level exercise classification
+support:                       # contact / base of support
+phase_model:                   # temporal structure of one rep
+rep_segmentation:              # repetition-boundary detection settings
+phase_segmentation:            # intra-rep phase detection settings
+landmarks:                     # landmark model and primary/secondary joints
+angle_definitions:             # joint angle triplets
+joint_actions:                 # expected joint actions
+biomechanical_focus:           # CoM motion, stability, load regions
+compensation_candidates:       # list of compensation movements to monitor
+feature_domains:               # which spatial/temporal/control features to activate
+view_requirements:             # preferred camera views
+quality_rules:                 # thresholds for analysis eligibility
 notes: string
 ```
 
-초기 구현에서 모든 필드를 채울 필요는 없다.
-재구조화 없이 점진적으로 추가할 수 있도록 설계되었다.
+Not all fields need to be populated in the initial implementation.
+The schema is designed to allow incremental addition without restructuring.
 
-## 6. 필드 레퍼런스 (Field Reference)
+## 6. Field Reference
 
 ### classification
 
@@ -115,9 +117,9 @@ classification:
   complexity: compound         # single_joint | multi_joint | compound | whole_body
 ```
 
-`laterality`가 제어하는 항목:
-- ④ 전처리: 좌·우 스왑 검출 실행 여부
-- ⑦ 모션 어트리뷰션: 반복별 활성 측 점검 실행 여부 (`bilateral_symmetric`은 건너뜀)
+`laterality` controls:
+- ④ preprocessing: whether to run L/R swap detection
+- ⑦ motion attribution: whether to run per-rep active-side check (`bilateral_symmetric` → skipped)
 
 ### support
 
@@ -135,19 +137,56 @@ support:
 phase_model:
   type: resistance_phase
       # resistance_phase | task_phase | static_hold | cyclic | locomotion_phase | custom
-  expected_ratio:             # resistance_phase에 한함; 합 ≈ 1.0
+  expected_ratio:             # only for resistance_phase; must sum to ~1.0
     eccentric: 0.4
     isometric: 0.1
     concentric: 0.5
 ```
 
-표준 구간 이름:
+Standard phase names:
 
 ```text
 resistance_phase  : eccentric, isometric, concentric, transition_top, transition_bottom
 task_phase        : setup, support_stable, weight_shift, tap, reach, return, reset, hold, ...
 static_hold       : setup, hold, fatigue, release
 locomotion_phase  : initial_contact, loading_response, mid_stance, terminal_stance, ...
+```
+
+### rep_segmentation / phase_segmentation
+
+`rep_segmentation` confirms repetition start/end boundaries and creates `rep_id`.
+`phase_segmentation` keeps the existing identifier and YAML key, and creates
+kinematic phase labels inside confirmed reps.
+
+```yaml
+rep_segmentation:
+  reference_landmark: hip_center
+  reference_axis: vertical
+  boundary_logic: local_maximum      # local_maximum | local_minimum | zero_crossing
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  minimum_rep_length_frames: 8
+  minimum_boundary_distance_frames: 8
+  minimum_reps: 1
+  boundary_prominence: null
+  include_endpoints: true
+
+phase_segmentation:
+  reference_landmark: hip_center
+  reference_axis: vertical
+  phase_sequence: [Descent, Ascent]
+  split_logic: local_minimum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  bottom_hold:
+    enabled: true
+    half_window_frames: 3
+  minimum_rep_length_frames: 8
+  multi_inflection_policy: global_extremum
 ```
 
 ### landmarks
@@ -157,11 +196,11 @@ landmarks:
   model: mediapipe_pose_33
   primary_joints: [left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle]
   secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis]
-  critical_landmarks: [23, 24, 25, 26, 27, 28]   # MediaPipe 인덱스
+  critical_landmarks: [23, 24, 25, 26, 27, 28]   # MediaPipe indices
   optional_landmarks: [11, 12, 29, 30, 31, 32]
 ```
 
-표준 관절 이름:
+Standard joint names:
 
 ```text
 left_shoulder  right_shoulder  left_elbow    right_elbow
@@ -180,7 +219,7 @@ angle_definitions:
   right_hip_angle:  { points: [12, 24, 26], vertex: 24 }
 ```
 
-표준 트리플렛 (MediaPipe 인덱스):
+Standard triplets (MediaPipe indices):
 
 ```text
 left_shoulder_angle  : [23, 11, 13]   right_shoulder_angle : [24, 12, 14]
@@ -216,12 +255,12 @@ compensation_candidates:
   - lateral_pelvic_shift
 ```
 
-여기에 명시된 보상 움직임만 ⑩에서 바이오마커로 산출된다.
+Only compensation movements listed here are produced as biomarkers by ⑩.
 
-전체 어휘:
+Full vocabulary:
 
 ```text
-# 하체
+# Lower body
 knee_valgus                    knee_varus
 asymmetric_depth               asymmetric_knee_flexion
 asymmetric_hip_flexion         limited_ankle_dorsiflexion_proxy
@@ -230,7 +269,7 @@ foot_collapse_proxy            pelvis_drop
 lateral_pelvic_shift           hip_shift
 insufficient_rear_hip_extension unstable_step_width
 
-# 체간 / 골반
+# Trunk / pelvis
 excessive_trunk_flexion        trunk_extension_compensation
 lateral_trunk_lean             trunk_rotation
 trunk_sway                     pelvis_rotation
@@ -238,14 +277,14 @@ pelvis_anterior_tilt_proxy     pelvis_posterior_tilt_proxy
 hip_pike                       hip_drop
 loss_of_neutral_spine_proxy
 
-# 상체
+# Upper body
 shoulder_elevation_compensation shoulder_asymmetry
 shoulder_collapse              elbow_flare
 elbow_asymmetry                wrist_shift
 scapular_instability_proxy     insufficient_head_descent
 head_forward_shift
 
-# 제어 / 타이밍
+# Control / timing
 excessive_com_lateral_shift    excessive_com_variability
 phase_timing_asymmetry         tempo_instability
 left_right_timing_variability  movement_discontinuity
@@ -261,7 +300,7 @@ feature_domains:
   biomechanical_proxy: [com_displacement, moment_arm_proxy]
 ```
 
-전체 어휘:
+Full vocabulary:
 
 ```text
 spatial:
@@ -294,24 +333,24 @@ quality_rules:
   minimum_visible_landmark_ratio: 0.8
   minimum_critical_landmark_ratio: 0.9
   max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3        # ④ 전처리에서 참조
+  max_interpolation_gap_frames: 3        # read by ④ preprocessing
   exclude_rep_if_critical_landmark_missing: true
   exclude_rep_if_phase_missing: false
   allow_partial_feature_output: true
 ```
 
-④ 전처리와 ⑧ 피처 추출에서 직접 참조된다.
+Read directly by ④ preprocessing and ⑧ feature extraction.
 
-## 7. Provenance 규약 (Provenance Convention)
+## 7. Provenance Convention
 
-⑧–⑩에서 산출되는 모든 바이오마커는 그 계산을 유발한 정의 필드를 가리키는 `source_fields`를
-포함한다. `source_fields`가 없는 바이오마커는 산출되지 않는다 (`BiomarkerRecord`에서
-`ValueError` 발생).
+Every biomarker produced by ⑧–⑩ includes `source_fields` pointing to the definition fields
+that drove the computation. Biomarkers without `source_fields` are not produced (raises
+`ValueError` in `BiomarkerRecord`).
 
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
-definition_version : 0.1.0
+definition_version : 0.3.0
 source_fields      : [compensation_candidates.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
@@ -320,13 +359,13 @@ value              : 0.13
 unit               : torso_length_ratio
 ```
 
-## 8. 전체 예: squat.yaml (Full Example: squat.yaml)
+## 8. Full Example: squat.yaml
 
 ```yaml
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.1.0
+version: 0.3.0
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -353,6 +392,35 @@ phase_model:
     eccentric: 0.4
     isometric: 0.1
     concentric: 0.5
+
+rep_segmentation:
+  reference_landmark: hip_center
+  reference_axis: vertical
+  boundary_logic: local_maximum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  minimum_rep_length_frames: 8
+  minimum_boundary_distance_frames: 8
+  minimum_reps: 1
+  boundary_prominence: null
+  include_endpoints: true
+
+phase_segmentation:
+  reference_landmark: hip_center
+  reference_axis: vertical
+  phase_sequence: [Descent, Ascent]
+  split_logic: local_minimum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  bottom_hold:
+    enabled: true
+    half_window_frames: 3
+  minimum_rep_length_frames: 8
+  multi_inflection_policy: global_extremum
 
 landmarks:
   model: mediapipe_pose_33
@@ -429,7 +497,7 @@ quality_rules:
   allow_partial_feature_output: true
 ```
 
-## 9. MediaPipe Pose 33 랜드마크 인덱스
+## 9. MediaPipe Pose 33 Landmark Index
 
 ```text
 0  nose               1  left_eye_inner    2  left_eye          3  left_eye_outer
@@ -443,7 +511,7 @@ quality_rules:
 31 left_foot_index    32 right_foot_index
 ```
 
-## 10. 로더 API (Loader API)
+## 10. Loader API
 
 ```python
 from movement.exercise_definition import load_exercise_definition, load_all_exercise_definitions

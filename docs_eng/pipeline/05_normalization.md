@@ -1,9 +1,8 @@
-# 06. Normalization
+# 05. Normalization
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `docs/pipeline/06_normalization.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
 Pipeline step ⑤. Converts raw pose coordinates to a body-relative coordinate system,
 removing the effects of camera position, subject position, and body size.
@@ -22,7 +21,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization          ← this step
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 ```

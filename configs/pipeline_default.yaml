@@ -1,7 +1,7 @@
 # Movement Project — Pipeline Configuration
 # Step order:
 #   ①  validation           ②  annotation          ③  exercise_definition
-#   ④  preprocessing        ⑤  normalization        ⑥  phase_segmentation
+#   ④  preprocessing        ⑤  normalization        ⑥  segmentation
 #   ⑦  motion_attribution   ⑧  features             ⑨  biomech
 #   ⑩  biomarker            ⑪  visualization (called outside the runner)
 #   ⑫  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
@@ -60,9 +60,16 @@ normalization:
   method: hip_torso           # hip center translation + sequence median torso scale
   keep_reference_columns: true  # preserve hip_center, shoulder_center, torso_length columns
 
+# ── ⑥ Rep Segmentation ───────────────────────────────────────────────────────
+# Estimates rep boundaries from joint-motion tracking and fills `rep_id`.
+# Auto-skips when the exercise definition has no `rep_segmentation` block.
+rep_segmentation:
+  enabled: false              # set to true when rep_id is not supplied by annotation
+  fps_default: 30.0           # used when df.attrs["fps"] is absent
+
 # ── ⑥ Phase Segmentation ─────────────────────────────────────────────────────
 # Inserts kinematic phase labels (e.g., Descent / Ascent) into the `phase` column
-# for each annotated rep. Auto-skips when the exercise definition has no
+# for each confirmed rep. Auto-skips when the exercise definition has no
 # `phase_segmentation` block (e.g., generic.yaml) or when no rep frames are present.
 phase_segmentation:
   enabled: false              # set to true after annotation is enabled

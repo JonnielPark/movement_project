@@ -7,7 +7,7 @@ Runs the analysis steps in order:
     ③ exercise_definition    biomechanical property object loading
     ④ preprocessing          monocular data quality correction
     ⑤ normalization          body-relative coordinate normalization
-    ⑥ phase_segmentation    semi-automatic intra-rep kinematic phase splitting
+    ⑥ segmentation          semi-automatic rep splitting + intra-rep phase splitting
     ⑦ motion_attribution     per-rep active-side consistency
     ⑧ features               spatial / temporal / control feature extraction
     ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
@@ -15,6 +15,7 @@ Runs the analysis steps in order:
 
 Each step is toggled via the enabled flag in configs/pipeline_default.yaml.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -44,6 +45,7 @@ def _resolve_path(p: str | Path) -> Path:
 
 
 # ── Per-step config dataclasses ───────────────────────────────────────────────
+
 
 @dataclass
 class ValidationConfig:
@@ -165,6 +167,12 @@ class BiomechConfig:
 
 
 @dataclass
+class RepSegmentationConfig:
+    enabled: bool = False
+    fps_default: float = 30.0
+
+
+@dataclass
 class PhaseSegmentationConfig:
     enabled: bool = False
     fps_default: float = 30.0
@@ -201,11 +209,20 @@ class PipelineConfig:
     input: InputConfig = field(default_factory=InputConfig)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
-    exercise_definition: ExerciseDefinitionConfig = field(default_factory=ExerciseDefinitionConfig)
+    exercise_definition: ExerciseDefinitionConfig = field(
+        default_factory=ExerciseDefinitionConfig
+    )
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
-    phase_segmentation: PhaseSegmentationConfig = field(default_factory=PhaseSegmentationConfig)
-    motion_attribution: MotionAttributionConfig = field(default_factory=MotionAttributionConfig)
+    rep_segmentation: RepSegmentationConfig = field(
+        default_factory=RepSegmentationConfig
+    )
+    phase_segmentation: PhaseSegmentationConfig = field(
+        default_factory=PhaseSegmentationConfig
+    )
+    motion_attribution: MotionAttributionConfig = field(
+        default_factory=MotionAttributionConfig
+    )
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
     biomarker: BiomarkerConfig = field(default_factory=BiomarkerConfig)
@@ -214,32 +231,34 @@ class PipelineConfig:
 
 # ── Config loader ─────────────────────────────────────────────────────────────
 
+
 def load_pipeline_config(path: Path | str) -> PipelineConfig:
     """Load a PipelineConfig from a YAML file."""
     with open(path, encoding="utf-8") as f:
         raw: dict = yaml.safe_load(f) or {}
 
-    inp  = raw.get("input", {})
-    val  = raw.get("validation", {})
-    ann  = raw.get("annotation", {})
-    exd  = raw.get("exercise_definition", {})
-    pre  = raw.get("preprocessing", {})
-    rel  = pre.get("reliability", {})
-    sw   = pre.get("swap_detection", {})
-    itp  = pre.get("interpolation", {})
-    sm   = pre.get("smoothing", {})
-    kal  = pre.get("kalman_filter", {})
-    nor  = raw.get("normalization", {})
-    psg  = raw.get("phase_segmentation", {})
-    ma   = raw.get("motion_attribution", {})
+    inp = raw.get("input", {})
+    val = raw.get("validation", {})
+    ann = raw.get("annotation", {})
+    exd = raw.get("exercise_definition", {})
+    pre = raw.get("preprocessing", {})
+    rel = pre.get("reliability", {})
+    sw = pre.get("swap_detection", {})
+    itp = pre.get("interpolation", {})
+    sm = pre.get("smoothing", {})
+    kal = pre.get("kalman_filter", {})
+    nor = raw.get("normalization", {})
+    rsg = raw.get("rep_segmentation", {})
+    psg = raw.get("phase_segmentation", {})
+    ma = raw.get("motion_attribution", {})
     feat = raw.get("features", {})
-    sp   = feat.get("spatial", {})
-    te   = feat.get("temporal", {})
-    co   = feat.get("control", {})
-    bio  = raw.get("biomech", {})
+    sp = feat.get("spatial", {})
+    te = feat.get("temporal", {})
+    co = feat.get("control", {})
+    bio = raw.get("biomech", {})
     # backward-compat: fall back to 'scoring' key if 'biomarker' is absent
-    bm   = raw.get("biomarker", raw.get("scoring", {}))
-    out  = raw.get("output", {})
+    bm = raw.get("biomarker", raw.get("scoring", {}))
+    out = raw.get("output", {})
 
     return PipelineConfig(
         input=InputConfig(
@@ -263,15 +282,21 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=pre.get("enabled", False),
             reliability=ReliabilityConfig(
                 visibility_threshold=float(rel.get("visibility_threshold", 0.5)),
-                segment_length_tolerance=float(rel.get("segment_length_tolerance", 0.25)),
+                segment_length_tolerance=float(
+                    rel.get("segment_length_tolerance", 0.25)
+                ),
                 joint_angle_check=bool(rel.get("joint_angle_check", True)),
-                velocity_threshold_torso_per_sec=float(rel.get("velocity_threshold_torso_per_sec", 5.0)),
+                velocity_threshold_torso_per_sec=float(
+                    rel.get("velocity_threshold_torso_per_sec", 5.0)
+                ),
             ),
             swap_detection=SwapDetectionConfig(
                 enabled=bool(sw.get("enabled", True)),
                 temporal_consistency=bool(sw.get("temporal_consistency", True)),
                 orientation_prior=bool(sw.get("orientation_prior", True)),
-                orientation_disagree_ratio=float(sw.get("orientation_disagree_ratio", 0.4)),
+                orientation_disagree_ratio=float(
+                    sw.get("orientation_disagree_ratio", 0.4)
+                ),
             ),
             interpolation=InterpolationConfig(
                 enabled=bool(itp.get("enabled", True)),
@@ -294,10 +319,16 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
         ),
+        rep_segmentation=RepSegmentationConfig(
+            enabled=rsg.get("enabled", False),
+            fps_default=float(rsg.get("fps_default", 30.0)),
+        ),
         phase_segmentation=PhaseSegmentationConfig(
             enabled=psg.get("enabled", False),
             fps_default=float(psg.get("fps_default", 30.0)),
-            multi_inflection_policy=psg.get("multi_inflection_policy", "global_extremum"),
+            multi_inflection_policy=psg.get(
+                "multi_inflection_policy", "global_extremum"
+            ),
             minimum_rep_length_frames=int(psg.get("minimum_rep_length_frames", 8)),
         ),
         motion_attribution=MotionAttributionConfig(
@@ -345,6 +376,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
 
 
 # ── Pipeline runner ────────────────────────────────────────────────────────────
+
 
 def run_pipeline(
     df: pd.DataFrame,
@@ -395,6 +427,7 @@ def run_pipeline(
     # ── ② Annotation ─────────────────────────────────────────────────────────
     if config.annotation.enabled:
         from movement.annotation import apply_annotation
+
         df, ann_report = apply_annotation(df, ann_df)
         report["annotation"] = ann_report
 
@@ -433,6 +466,7 @@ def run_pipeline(
     # ── ④ Preprocessing ───────────────────────────────────────────────────────
     if config.preprocessing.enabled:
         from movement.preprocessing import preprocess_pose_dataframe
+
         df, pre_report = preprocess_pose_dataframe(
             df=df,
             landmarks=landmarks,
@@ -450,6 +484,25 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
+    # ── ⑥ Rep Segmentation ───────────────────────────────────────────────────
+    if config.rep_segmentation.enabled:
+        if exercise_def is None:
+            print("[Step ⑥] Rep Segmentation: exercise_def not available — skipped.")
+        elif getattr(exercise_def, "rep_segmentation", None) is None:
+            print(
+                f"[Step ⑥] Rep Segmentation: exercise '{exercise_def.exercise_id}' "
+                "has no rep_segmentation block — skipped."
+            )
+        else:
+            from movement.segmentation import segment_reps
+
+            df, rep_report = segment_reps(
+                df,
+                exercise_def,
+                fps_default=config.rep_segmentation.fps_default,
+            )
+            report["rep_segmentation"] = rep_report.as_dict()
+
     # ── ⑥ Phase Segmentation ─────────────────────────────────────────────────
     if config.phase_segmentation.enabled:
         if exercise_def is None:
@@ -461,13 +514,13 @@ def run_pipeline(
             )
         else:
             _has_reps = (
-                "segment_type" in df.columns
-                and (df["segment_type"] == "rep").any()
+                "segment_type" in df.columns and (df["segment_type"] == "rep").any()
             )
             if not _has_reps:
                 print("[Step ⑥] Phase Segmentation: no rep frames found — skipped.")
             else:
                 from movement.segmentation import segment_phases
+
                 df, phase_reports = segment_phases(
                     df,
                     exercise_def,
@@ -480,6 +533,7 @@ def run_pipeline(
     # ── ⑦ Motion Attribution ─────────────────────────────────────────────────
     if config.motion_attribution.enabled:
         from movement.motion_attribution import AttributionThresholds, attribute_motion
+
         thresholds = AttributionThresholds(
             active=config.motion_attribution.tau_active,
             ambiguous=config.motion_attribution.tau_ambiguous,
@@ -523,7 +577,10 @@ def run_pipeline(
             print("[Step ⑨] Biomech Proxy: exercise_def not available — skipped.")
         else:
             from movement.biomech import extract_rep_biomech
-            biomech_records = extract_rep_biomech(df, exercise_def, use_visibility_weight=True)
+
+            biomech_records = extract_rep_biomech(
+                df, exercise_def, use_visibility_weight=True
+            )
             report["biomech"] = [
                 {
                     "metric_id": r.metric_id,
@@ -542,7 +599,9 @@ def run_pipeline(
     # ── ⑩ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
         if exercise_def is None:
-            print("[Step ⑩] Biomarker Derivation: exercise_def not available — skipped.")
+            print(
+                "[Step ⑩] Biomarker Derivation: exercise_def not available — skipped."
+            )
         else:
             from movement.biomarker.scoring import derive_biomarkers
 

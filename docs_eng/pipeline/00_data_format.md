@@ -1,9 +1,8 @@
-# 01. Data Format
+# 00. Data Format
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `docs/pipeline/01_data_format.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/00_data_format.md` is the same-version Korean source.
 
 Input format specification for monocular 3D pose time series data.
 
@@ -75,14 +74,14 @@ Sample file: `data/pose/sample/mediapipe_squat_synthetic.csv`
 5. Landmark names match the definitions in src/movement/config.py.
 ```
 
-Violations are reported by ① validation (see [02_validation.md](02_validation.md)).
+Violations are reported by ① validation (see [01_validation.md](01_validation.md)).
 
 ## 7. Coordinate Convention
 
 - Input coordinates are in the native units of the pose estimation engine
   (e.g., MediaPipe normalized image coordinates).
 - ⑤ normalization converts to a body-relative coordinate system
-  (see [06_normalization.md](06_normalization.md)).
+  (see [05_normalization.md](05_normalization.md)).
 - All downstream features and biomarkers use dimensionless `torso_length_ratio` units or degrees.
   Absolute force/length units are not used.
 

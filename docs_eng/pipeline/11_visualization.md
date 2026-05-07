@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
 
 Pipeline step ⑪. Called independently outside the ①–⑩ runner. A collection of
@@ -39,7 +38,7 @@ After ② Annotation              → rep boundary + segment-label timeline
 After ③ Exercise Definition     → (no coordinate output; no visualization)
 After ④ Preprocessing           → reliability mask overlay, before / after
 After ⑤ Normalization           → raw vs. normalized skeleton comparison
-After ⑥ Phase Segmentation      → smoothed reference trajectory + phase bands
+After ⑥ Segmentation      → smoothed reference trajectory + phase bands
 After ⑦ Motion Attribution      → per-rep active-side assignment chart
 After ⑧ Feature Extraction      → joint angle time-series, ROM bar, symmetry
 After ⑨ Biomech Proxy           → CoM trajectory, moment-arm overlay
@@ -221,7 +220,7 @@ Provenance-traceback heatmap for ⑩ biomarker scoring deductions.
 X axis    time (frame or phase boundary)
 Y axis    feature_id grouped by domain (spatial / temporal / control / biomech)
 Cell      deduction magnitude (color), with hover-disclosed source_fields
-Overlay   phase boundaries from ⑥ phase segmentation
+Overlay   phase boundaries from ⑥ segmentation
 ```
 
 ```python

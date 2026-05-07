@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
@@ -24,7 +23,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction         ← 본 단계
 → ⑨ Biomech Proxy
@@ -117,7 +116,7 @@ control.compensation.<candidate>     규칙 레지스트리 기반 보상 지표
 
 ## 5. Phase-Aware 피처 패밀리 (Phase-Aware Feature Families)
 
-⑥ Phase Segmentation이 `phase` 칼럼을 채우면, `PHASE_AWARE_FEATURE_FAMILIES`에 속한
+⑥ Segmentation이 `phase` 칼럼을 채우면, `PHASE_AWARE_FEATURE_FAMILIES`에 속한
 피처는 반복 단위(`phase=None`)와 구간 단위(`phase='Descent'` 등) 모두에서 방출된다.
 
 ```text
@@ -134,7 +133,7 @@ PHASE_AWARE_FEATURE_FAMILIES = {
 - 구간 단위 feature_id에는 소문자 phase 접미사가 붙는다
   예: spatial.rom.left_knee  →  spatial.rom.left_knee.descent
 
-- 구간 단위 FeatureRecord.source_fields에 'phase_segmentation.*' 항목이 포함된다
+- 구간 단위 FeatureRecord.source_fields에 'segmentation.*' 항목이 포함된다
   (reference_landmark, reference_axis, split_logic)
 
 - control.compensation은 반복 단위 전용 — 후보가 구간 경계를 가로지르므로
@@ -220,7 +219,7 @@ compensation_candidates:
 
 ## 10. 다른 단계와의 관계 (Relationship to Other Steps)
 
-- **⑥ Phase Segmentation** — `phase` 칼럼을 채워 구간 단위 피처 방출을 활성화한다.
+- **⑥ Segmentation** — `phase` 칼럼을 채워 구간 단위 피처 방출을 활성화한다.
   칼럼이 없거나 비어 있으면 반복 단위 레코드만 산출된다(graceful no-op).
 - **⑦ Motion Attribution** — 반복별 `attribution_consistent`와 `attribution_action`을 공급.
   비일관 반복의 가중치 하향/제외는 본 단계에서 피처를 변형하지 않고 바이오마커 계층에서 처리한다.

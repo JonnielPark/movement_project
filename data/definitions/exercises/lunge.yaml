@@ -1,7 +1,7 @@
 exercise_id: lunge
 display_name: Forward Lunge
 description: Alternating split-stance lower-body movement; the forward leg loads while the rear leg controls hip extension.
-version: 0.2.0
+version: 0.3.0
 tags:
   - bodyweight
   - lower_body
@@ -40,6 +40,20 @@ phase_model:
     eccentric: 0.45
     isometric: 0.05
     concentric: 0.5
+
+rep_segmentation:
+  reference_landmark: hip_center     # midpoint of left_hip / right_hip
+  reference_axis: vertical           # top split-stance position separates reps
+  boundary_logic: local_maximum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  minimum_rep_length_frames: 8
+  minimum_boundary_distance_frames: 8
+  minimum_reps: 1
+  boundary_prominence: null
+  include_endpoints: true
 
 phase_segmentation:
   reference_landmark: hip_center     # midpoint of left_hip / right_hip

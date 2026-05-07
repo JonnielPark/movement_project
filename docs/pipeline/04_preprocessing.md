@@ -1,9 +1,8 @@
-# 05. 전처리 (Preprocessing)
+# 04. 전처리 (Preprocessing)
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**영문 동기화:** `docs_eng/pipeline/05_preprocessing.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/04_preprocessing.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ④. 정규화 이전에 단안 포즈 데이터의 품질 이슈를 보정한다.
 보정된 데이터프레임 사본을 반환하며, 입력은 수정하지 않는다.
@@ -21,7 +20,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing          ← 본 단계
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 ```

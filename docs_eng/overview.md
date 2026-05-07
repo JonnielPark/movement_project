@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.2.0
+**Document Version:** 1.4.0
 **Last Updated:** 2026-05-07
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -13,14 +13,15 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.1.0 | [terminology.md](terminology.md) | Terminology |
-| 1.2.0 | [overview.md](overview.md) | Overall pipeline overview |
-| 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | Input CSV data format |
-| 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation |
-| 1.1.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
-| 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML |
-| 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing |
-| 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization |
+| 1.3.0 | [terminology.md](terminology.md) | Terminology |
+| 1.4.0 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
+| 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
+| 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.1.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
+| 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
+| 1.1.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
@@ -42,6 +43,8 @@ Fields defined in the exercise YAML:
 classification        laterality, primary_plane, movement_chain, posture_type
 landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_of_support
 phases                phase model (e.g., eccentric / concentric)
+rep_segmentation      repetition-boundary detection settings
+phase_segmentation    intra-rep phase detection settings
 compensation_candidates  movement patterns to monitor
 feature_domains       which spatial / temporal / control features to activate
 biomechanical_focus   which proxy metrics to compute
@@ -67,7 +70,7 @@ Steps
     ③  Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
     ④  Preprocessing        reliability detection, swap correction, interpolation, smoothing
     ⑤  Normalization        hip-center translation + median torso-length scale
-    ⑥  Phase Segmentation  semi-automatic rep/phase splitting from joint-motion tracking
+    ⑥  Segmentation        semi-automatic rep/phase splitting from joint-motion tracking
     ⑦  Motion Attribution   per-rep active-side consistency check
     ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level)
     ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
@@ -78,6 +81,7 @@ Steps
 Output
     Per-step dataframes (columns accumulate)
     Per-step report dicts
+    rep_id              — semi-automatically or manually confirmed repetition ID
     phase column        — 'Descent' | 'Ascent' | 'Bottom_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature table       — FeatureRecord list, rep-level (phase=None) + phase-level (phase=str)
     Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
@@ -85,7 +89,7 @@ Output
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
     Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
-    Phase segmentation report — PhaseSegmentationReport list, one per rep
+    Segmentation report — SegmentationReport list, one per rep
     Segmentation failure point records — SegmentationFailurePoint list for frames/ranges needing manual intervention
     Visualization figures
 ```
@@ -101,7 +105,7 @@ Output
 | ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
 | ④ Preprocessing | correct data quality issues | alter movement quality patterns |
 | ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
-| ⑥ Phase Segmentation | derive rep/phase boundaries and `phase` labels; record failure points and incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
+| ⑥ Segmentation | derive repetition boundaries with `rep_segmentation`, then intra-rep `phase` labels with the existing `phase_segmentation`; record failure points and incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
 | ⑦ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
 | ⑧ Feature Extraction | compute rep-level and phase-level spatial / temporal / control features | correct labels |
 | ⑨ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
@@ -140,12 +144,27 @@ in the exercise YAML.
 ## 5. Annotation Strategy
 
 ② Annotation merges a user-prepared manual annotation CSV into the pose dataframe.
-During early validation, rep boundaries and kinematic phases may be provided as manual
-frame segmentation results. Later, ⑥ Phase Segmentation will track joint motion to split
-reps and phases such as descent, hold, and ascent semi-automatically. When automatic
-recognition is unclear, the user intervenes to force rep boundaries or phase labels.
-
 If no annotation file is supplied, the full sequence is treated as a single analysis segment.
+
+Key annotation columns that drive downstream steps:
+
+```text
+exercise_type      identifies which exercise YAML to load (③)
+pattern            bilateral | alternating
+starting_side      first active side in alternating exercises (⑦)
+```
+
+See [02_annotation.md](pipeline/02_annotation.md).
+
+---
+
+## 6. Segmentation Strategy
+
+⑥ Segmentation has two sub-procedures. The new `rep_segmentation` tracks joint motion
+to confirm repetition boundaries semi-automatically, and the existing
+`phase_segmentation` splits phases such as descent, hold, and ascent inside confirmed
+reps. When automatic recognition is unclear, the user intervenes to force rep boundaries
+or phase labels.
 
 Segmentation failures are recorded as `SegmentationFailurePoint` entries. Failure levels
 are handled as follows.
@@ -156,23 +175,16 @@ phase_boundary failure    keep rep-level metrics, but do not emit phase-level me
 optional_phase failure    skip optional phases such as Bottom_Hold and continue with coarse phases
 ```
 
-After manual intervention confirms a boundary, the result is marked with
-`segmentation_source = manual_override`, and downstream steps use only confirmed labels.
-Failure points are never silently interpolated or treated as successful segmentation.
+After manual intervention confirms a boundary, `rep_segmentation_source` or
+`phase_segmentation_source` is marked as `manual_override`, and downstream steps use
+only confirmed labels. Failure points are never silently interpolated or treated as
+successful segmentation.
 
-Key annotation columns that drive downstream steps:
-
-```text
-exercise_type      identifies which exercise YAML to load (③)
-pattern            bilateral | alternating
-starting_side      first active side in alternating exercises (⑦)
-```
-
-See [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md).
+See [06_segmentation.md](pipeline/06_segmentation.md).
 
 ---
 
-## 6. Normalization Strategy
+## 7. Normalization Strategy
 
 ```text
 Translation reference : frame-wise hip center
@@ -185,11 +197,11 @@ jitter caused by per-frame torso length noise in monocular data.
 All downstream features and biomarkers are expressed in `torso_length_ratio` units
 (dimensionless) or degrees. Absolute force/length units are not used.
 
-See [06_normalization.md](pipeline/06_normalization.md).
+See [05_normalization.md](pipeline/05_normalization.md).
 
 ---
 
-## 7. Development Roadmap
+## 8. Development Roadmap
 
 ```text
 2026.03 – 2026.05  Environment setup and pipeline design
@@ -218,7 +230,7 @@ See [06_normalization.md](pipeline/06_normalization.md).
   [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, composite domain score (0–100)
   [done]  derive_biomarkers() entry point wired into pipeline ⑩
   [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [planned]  Phase segmentation (⑥) — semi-automatic rep/phase splitting from joint-motion tracking; manual intervention on failure
+  [in progress]  Segmentation (⑥) — `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase splitting; manual intervention on failure
   [planned]  Exercise YAML `phases` definitions connected to semi-automatic phase labels and phase-level features
   [done]  FeatureRecord.phase field; extract_rep_features() emits rep-level + phase-level records
   [done]  summarize_phase_to_rep() hierarchical aggregator (Descent/Ascent ROM ratio)

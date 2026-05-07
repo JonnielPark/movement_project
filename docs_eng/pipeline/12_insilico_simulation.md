@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/12_insilico_simulation.md` is the same-version Korean source.
 
 Pipeline step ⑫. Called independently outside the ①–⑩ runner. An engineering

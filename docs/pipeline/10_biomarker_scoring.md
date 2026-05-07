@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
@@ -28,7 +27,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction          (FeatureRecord 목록)
 → ⑨ Biomech Proxy               (BiomechRecord  목록)

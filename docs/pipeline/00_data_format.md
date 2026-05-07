@@ -1,9 +1,8 @@
-# 01. 데이터 포맷 (Data Format)
+# 00. 데이터 포맷 (Data Format)
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**영문 동기화:** `docs_eng/pipeline/01_data_format.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/00_data_format.md`는 동일 버전의 영문 번역본이다.
 
 단안(monocular) 3D 포즈 시계열 데이터의 입력 포맷 명세.
 
@@ -75,14 +74,14 @@ frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
 5. 랜드마크 이름은 src/movement/config.py의 정의와 일치한다.
 ```
 
-위반 사항은 ① 검증에서 보고된다 ([02_validation.md](02_validation.md) 참조).
+위반 사항은 ① 검증에서 보고된다 ([01_validation.md](01_validation.md) 참조).
 
 ## 7. 좌표 규약 (Coordinate Convention)
 
 - 입력 좌표는 포즈 추정 엔진의 원시 단위로 들어온다
   (예: MediaPipe 정규화 이미지 좌표).
 - ⑤ 정규화 단계에서 신체 상대 좌표계로 변환된다
-  ([06_normalization.md](06_normalization.md) 참조).
+  ([05_normalization.md](05_normalization.md) 참조).
 - 이후 모든 피처와 바이오마커는 무차원 `torso_length_ratio` 단위 또는 도(degree)를 사용한다.
   절대 힘·길이 단위는 사용하지 않는다.
 

@@ -1,6 +1,6 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.1.0
+**문서 버전:** 1.3.0
 **최종 갱신:** 2026-05-07
 **버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.  
@@ -76,12 +76,15 @@
 | 용어 | 정의 |
 |---|---|
 | 운동 정의 (Exercise definition) | 한 운동의 생체역학적 특성을 인코딩한 YAML 객체: 주요 관절(primary joints), 지지 기저면(base of support), 구간 모델(phase model), 보상 후보(compensation candidates), 품질 규칙 등. 분석 단위는 운동 이름이 아닌 운동 정의 객체이다. |
-| 구간 (Phase) | 한 반복(rep) 내의 의미 있는 하위 구간. 두 가지 별개의 라벨링 체계가 공존한다: (1) **운동학적(kinetic) 구간** 라벨(eccentric / isometric / concentric)은 `phase_model.expected_ratio`에 저장되어 지속 시간 비율 참조용으로 사용되고, (2) **기구학적(kinematic) 구간** 라벨(Descent / Ascent / Bottom_Hold 등)은 ⑥ Phase Segmentation 단계에서 `phase` 칼럼에 기록된다. 두 체계는 의도적으로 분리되어 있다. |
-| 기구학적 구간 (Kinematic phase) | 기준 랜드마크의 운동 방향(예: 골반 중심의 하강 vs. 상승)으로 정의되는 한 반복 내의 궤적 기반 하위 구간. 라벨: `Descent`, `Ascent`, `Bottom_Hold` (저항 운동); `Lift`, `Tap`, `Return` (과제형 운동). ⑥ Phase Segmentation에서 `phase` 칼럼에 기록되며, 운동학적 용어(eccentric, concentric)와 절대 혼용하지 않는다. |
+| 구간 (Phase) | 한 반복(rep) 내의 의미 있는 하위 구간. 두 가지 별개의 라벨링 체계가 공존한다: (1) **운동학적(kinetic) 구간** 라벨(eccentric / isometric / concentric)은 `phase_model.expected_ratio`에 저장되어 지속 시간 비율 참조용으로 사용되고, (2) **기구학적(kinematic) 구간** 라벨(Descent / Ascent / Bottom_Hold 등)은 ⑥ Segmentation 단계에서 `phase` 칼럼에 기록된다. 두 체계는 의도적으로 분리되어 있다. |
+| 기구학적 구간 (Kinematic phase) | 기준 랜드마크의 운동 방향(예: 골반 중심의 하강 vs. 상승)으로 정의되는 한 반복 내의 궤적 기반 하위 구간. 라벨: `Descent`, `Ascent`, `Bottom_Hold` (저항 운동); `Lift`, `Tap`, `Return` (과제형 운동). ⑥ Segmentation에서 `phase` 칼럼에 기록되며, 운동학적 용어(eccentric, concentric)와 절대 혼용하지 않는다. |
+| 반복 분할 (Rep segmentation) | 정규화된 기준 랜드마크 궤적에서 반복(rep)의 시작·종료 경계를 반자동으로 결정하고 `rep_id`를 확정하는 절차. 운동 정의의 신규 `rep_segmentation` YAML 블록을 참조한다. |
+| 구간 분할 (Phase segmentation) | 확정된 각 반복 내부에서 기구학적 phase 경계를 나누고 `phase` 칼럼을 채우는 절차. 기존 코드 식별자와 운동 YAML 키인 `phase_segmentation`을 그대로 사용한다. |
 | 변곡 프레임 (Inflection frame) | 기준 랜드마크가 방향을 반전하는 프레임. 평활화된 궤적의 국소 최소·최대로 검출된다. 한 반복을 구성 기구학적 구간들로 분할한다. SG 필터를 적용한 `find_peaks`로 식별되고 `multi_inflection_policy`에 의해 단일 후보로 축약된다. |
-| 분할 실패 지점 (Segmentation failure point) | ⑥ Phase Segmentation에서 rep 경계 또는 phase 경계를 신뢰 가능하게 결정하지 못한 프레임 또는 프레임 구간. 포즈 품질 저하, 불충분한 ROM, 다중 후보, 기준 랜드마크 가려짐, 수동 보정 필요 등이 원인이 될 수 있다. 실패 지점은 숨기지 않고 리포트에 기록하며, 해결 전에는 해당 범위의 phase 단위 지표를 산출하지 않는다. |
+| 분할 실패 지점 (Segmentation failure point) | ⑥ Segmentation에서 rep 경계 또는 phase 경계를 신뢰 가능하게 결정하지 못한 프레임 또는 프레임 구간. 포즈 품질 저하, 불충분한 ROM, 다중 후보, 기준 랜드마크 가려짐, 수동 보정 필요 등이 원인이 될 수 있다. 실패 지점은 숨기지 않고 리포트에 기록하며, 해결 전에는 해당 범위의 반복 또는 구간 단위 지표를 산출하지 않는다. |
 | Bottom_Hold | 변곡 프레임 주변 ±N 프레임에 부여하는 선택적 기구학적 구간 라벨. 운동이 가동 범위 하단에서 통제된 등척성(isometric) 유지 구간을 갖는 경우(예: 스쿼트 바닥) 사용한다. `phase_segmentation` 블록의 `bottom_hold.enabled: true`로 활성화된다. |
-| Phase segmentation 블록 | 운동 정의의 `phase_segmentation:` YAML 블록으로, ⑥ Phase Segmentation의 기준 랜드마크, 기준 축, 구간 시퀀스, 평활화 파라미터, 변곡 검출 로직을 선언한다. `generic.yaml`에는 없으며, 부재 시 ⑥ 단계는 동작하지 않는다(no-op). |
+| Rep segmentation 블록 | 운동 정의의 `rep_segmentation:` YAML 블록으로, ⑥ Segmentation의 반복 경계 검출 기준 랜드마크, 기준 축, 경계 검출 로직, 평활화 파라미터를 선언한다. |
+| Phase segmentation 블록 | 운동 정의의 기존 `phase_segmentation:` YAML 블록으로, 확정된 반복 내부의 phase 시퀀스, 기준 랜드마크, 기준 축, 변곡 검출 로직을 선언한다. `generic.yaml`에는 없으며, 부재 시 phase 분할은 동작하지 않는다(no-op). |
 | 보상 후보 (Compensation candidate) | 특정 운동에서 모니터링할 보상 움직임 유형. 정의에 명시된 후보만 바이오마커로 산출된다. |
 | 품질 규칙 (Quality rules) | 분석 적격성을 결정하는 임계값: 가시성 비율(visibility ratio), 최대 갭 프레임 등. |
 
@@ -97,8 +100,8 @@
 | 전처리 (Preprocessing) | 단안 포즈 데이터의 품질 이슈(낮은 가시성, 분절 길이 불일치, 비정상 관절각, 속도 이상값, 좌·우 라벨 스왑)를 보정한다. 동작 품질 패턴(보상 움직임 등)은 보정하지 않는다. |
 | 정규화 (Normalization) | 좌표를 신체 기준 좌표계(골반 중심 평행이동 + 시퀀스 중앙값 몸통 길이 척도)로 변환한다. 신체 크기와 카메라 위치 효과를 제거한다. |
 | 모션 어트리뷰션 (Motion attribution) | 반복마다 관찰된 활성 사지(active limb)가 운동이 기대하는 측과 일치하는지 점검한다. 메타데이터만 추가하며 좌표를 수정하지 않는다. |
-| 구간 분할 (Phase segmentation) | 관절 움직임을 추적하여 rep 경계와 반복 내 기구학적 구간 라벨(Descent / Ascent / Bottom_Hold 등)을 반자동으로 결정하고 `phase` 칼럼에 기록한다. 자동 결과가 불명확하면 분할 실패 지점을 기록하고 수동 개입으로 경계를 확정한다. 학위논문 §4.5에 해당. |
-| 피처 추출 (Feature extraction) | 정규화 좌표와 운동 정의로부터 공간·시간·제어 도메인 정량 지표를 계산한다. ⑥ Phase Segmentation이 `phase` 칼럼을 채웠을 때, PHASE_AWARE_FEATURE_FAMILIES에 속한 피처는 반복 단위 기록과 더불어 (rep_id, phase) 단위로도 산출된다. |
+| 세그멘테이션 (Segmentation) | 관절 움직임을 추적하여 `rep_segmentation`으로 rep 경계를 확정하고, 기존 `phase_segmentation`으로 반복 내 기구학적 구간 라벨(Descent / Ascent / Bottom_Hold 등)을 `phase` 칼럼에 기록한다. 자동 결과가 불명확하면 분할 실패 지점을 기록하고 수동 개입으로 경계를 확정한다. 학위논문 §4.5에 해당. |
+| 피처 추출 (Feature extraction) | 정규화 좌표와 운동 정의로부터 공간·시간·제어 도메인 정량 지표를 계산한다. ⑥ Segmentation이 `phase` 칼럼을 채웠을 때, PHASE_AWARE_FEATURE_FAMILIES에 속한 피처는 반복 단위 기록과 더불어 (rep_id, phase) 단위로도 산출된다. |
 | 생체역학 프록시 모델링 (Biomechanical proxy modeling) | 통계적 인체 계측, CoM, 모멘트 암 근사를 사용해 상대적 관절 부하 분포 경향을 추정한다. |
 | 바이오마커 도출 (Biomarker derivation) | 피처와 프록시 지표를 (1) `source_fields` provenance를 갖춘 개별 `BiomarkerRecord` 항목과 (2) 합성 정상 베이스라인 대비 계산되는 반복 단위 `BiomarkerScoreRecord` 종합 점수(0–100)로 통합한다. |
 | 가시성 기반 신뢰도 가중 (Visibility-based confidence weighting) | ⑨ 생체역학 프록시 모델링용 프레임 단위 가중 방식. 프레임 가중치 = 주요 관절 랜드마크의 평균 가시성. `minimum_visible_landmark_ratio` 미만 프레임은 가중치 0으로 지표 계산에서 제외된다. 단안 비전 고유의 깊이 추정 노이즈 영향을 줄인다. |
