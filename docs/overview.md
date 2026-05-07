@@ -1,43 +1,20 @@
-# 00. 개요 (Overview)
+# 개요 (Overview)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**영문 동기화:** `docs_eng/overview.md`는 동일 버전의 영문 번역본이다.
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-07
+**영문 동기화:** `docs_eng/overview.md`는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
 용어 정의는 [`docs/terminology.md`](terminology.md)를 참조한다.
 
 ---
 
-## 0. 문서 버전 관리 (Document Versioning)
-
-모든 문서는 2026-05-06부터 `1.0.0`으로 버전 표기를 시작한다. 버전 규칙은
-Semantic Versioning 2.0.0의 `MAJOR.MINOR.PATCH` 형식을 따른다.
-
-```text
-MAJOR  문서 구조, 파이프라인 단계 정의, 공개 API 의미가 호환되지 않게 바뀐 경우
-MINOR  새 기능/새 섹션/새 산출물 설명이 추가되었으나 기존 의미와 호환되는 경우
-PATCH  오탈자, 번역, 링크, 표현 명확화처럼 의미 변화가 없는 경우
-```
-
-운영 규칙:
-
-```text
-[필수]
-- `docs/`는 한글 기준 문서이다.
-- `docs_eng/`는 같은 버전과 같은 내용을 가진 영문 번역본이다.
-- `README_eng.md`는 `README.md`의 영문 번역본일 뿐이며 별도 내용을 갖지 않는다.
-- `code_revision_plan.md`는 로컬 실행 계획으로 유지하고 git 업로드 대상에서 제외한다.
-- `terminology.md`와 `overview.md`는 문서 루트에 두고, 파이프라인 단계 문서는 `pipeline/` 하위에 둔다.
-```
-
-문서 인덱스:
+## 문서 인덱스 (Document Index)
 
 | 버전 | 파일 | 내용 | 영문 번역본 |
 |---|---|---|---|
 | 1.0.0 | [terminology.md](terminology.md) | 용어집 | [docs_eng/terminology.md](../docs_eng/terminology.md) |
-| 1.0.0 | [overview.md](overview.md) | 전체 파이프라인 개요 | [docs_eng/overview.md](../docs_eng/overview.md) |
+| 1.1.0 | [overview.md](overview.md) | 전체 파이프라인 개요 | [docs_eng/overview.md](../docs_eng/overview.md) |
 | 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | 입력 CSV 데이터 포맷 | [docs_eng/pipeline/01_data_format.md](../docs_eng/pipeline/01_data_format.md) |
 | 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation | [docs_eng/pipeline/02_validation.md](../docs_eng/pipeline/02_validation.md) |
 | 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation | [docs_eng/pipeline/03_annotation_and_segmentation.md](../docs_eng/pipeline/03_annotation_and_segmentation.md) |
@@ -51,20 +28,13 @@ PATCH  오탈자, 번역, 링크, 표현 명확화처럼 의미 변화가 없는
 | 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization | [docs_eng/pipeline/11_visualization.md](../docs_eng/pipeline/11_visualization.md) |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation | [docs_eng/pipeline/12_insilico_simulation.md](../docs_eng/pipeline/12_insilico_simulation.md) |
 
-`code_revision_plan.md`는 위 버전 관리 대상에는 포함하지만, git 업로드 대상에서는 제외한다.
-
 ---
 
 ## 1. 핵심 설계: YAML 객체로서의 운동 정의 (Exercise Definitions as YAML Objects)
 
-운동별 분석 코드를 작성하는 대신, 각 운동을 YAML 객체로 기술한다
-(`data/definitions/exercises/<exercise_id>.yaml`). 모든 파이프라인 단계는 동일한
-`ExerciseDefinition` 객체를 소비하며, 운동별 동작은 코드 분기가 아니라 YAML 필드에서 비롯된다.
-
-```
-이전 : 운동별(스쿼트, 런지, …)로 분리된 분석 코드
-이후  : 운동별 YAML 1개, 모든 운동에 동일한 파이프라인 단계 적용
-```
+각 운동은 `data/definitions/exercises/<exercise_id>.yaml`의 YAML 객체로 기술한다.
+모든 파이프라인 단계는 동일한 `ExerciseDefinition` 객체를 소비하며, 운동별 동작은
+YAML 필드에서 결정된다.
 
 운동 YAML에 정의되는 필드:
 
@@ -96,7 +66,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     ③  Exercise Definition  ExerciseDefinition 객체 로드(미존재 시 generic 폴백)
     ④  Preprocessing        신뢰도 검출, 좌·우 스왑(swap) 보정, 보간(interpolation), 평활화(smoothing)
     ⑤  Normalization        골반 중심 평행이동 + 몸통 길이 중앙값 척도화
-    ⑥  Phase Segmentation  반복 내 기구학적 구간(Descent/Ascent/…)의 반자동 분할
+    ⑥  Phase Segmentation  관절 움직임 추적 기반 rep/phase 반자동 분할
     ⑦  Motion Attribution   반복별 활성 측(active-side) 일관성 검사
     ⑧  Feature Extraction   공간/시간/제어 피처(반복 단위 + 구간 단위)
     ⑨  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
@@ -118,9 +88,6 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     시각화 도형 (figures)
 ```
 
-② 단계는 ③ 이전에 실행된다. 어노테이션 파일의 `exercise_type` 칼럼이 어떤 운동 YAML을
-로드할지 식별하기 때문이다. ③ 이후 모든 단계는 동일한 정의 객체를 참조한다.
-
 ---
 
 ## 3. 단계 책임 표 (Stage Responsibility Table)
@@ -132,7 +99,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ③ Exercise Definition | ExerciseDefinition 객체 로드 | 어노테이션·좌표 수정 |
 | ④ Preprocessing | 데이터 품질 이슈 보정 | 동작 품질 패턴 변경 |
 | ⑤ Normalization | 신체 상대 좌표계로 평행이동 + 척도화 | 운동 종류별 분기 |
-| ⑥ Phase Segmentation | 반복 프레임의 `phase` 칼럼 채우기(기구학적 라벨) | 기존 비-NA `phase` 값 덮어쓰기; 좌표 수정 |
+| ⑥ Phase Segmentation | 반복/구간 경계와 `phase` 라벨 산출; 자동 결과가 불명확하면 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
 | ⑦ Motion Attribution | 반복별 활성 측 일관성 플래그 | 좌표·점수 수정 |
 | ⑧ Feature Extraction | 반복 단위·구간 단위 공간/시간/제어 피처 계산 | 라벨 보정 |
 | ⑨ Biomech Proxy | CoM, 모멘트 암, 상대 부하 분포 계산 | 절대 토크 계산 |
@@ -169,8 +136,13 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 
 ## 5. 어노테이션 전략 (Annotation Strategy)
 
-자동 분할(automatic segmentation)은 본 연구의 범위가 아니다. 반복 경계는 사전에 준비된
-어노테이션 CSV로 제공된다. 어노테이션 파일이 공급되지 않으면 전체 시퀀스가 단일 분석 구간으로 처리된다.
+② Annotation은 사용자가 준비한 수동 어노테이션 CSV를 포즈 데이터프레임에 병합한다.
+초기 검증 단계에서는 반복 경계와 기구학적 구간이 수동 프레임 분할 결과로 제공될 수 있다.
+이후 ⑥ Phase Segmentation은 관절 움직임을 추적하여 하강, 정지, 상승 같은 rep/phase를
+반자동으로 분리한다. 자동 인식이 불명확하면 사용자가 중간에 개입하여 반복 경계나 phase
+라벨을 강제로 지정한다.
+
+어노테이션 파일이 공급되지 않으면 전체 시퀀스가 단일 분석 구간으로 처리된다.
 
 후속 단계를 구동하는 주요 어노테이션 칼럼:
 
@@ -230,8 +202,8 @@ starting_side      교대 운동에서 첫 활성 측 (⑦)
   [완료]  BiomarkerScoreRecord — Z-score 감점, 동적 하한(dynamic floor), 도메인 종합 점수 (0–100)
   [완료]  derive_biomarkers() 진입점을 파이프라인 ⑩에 결선
   [완료]  합성 정상 베이스라인 (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [완료]  Phase segmentation (⑥) — segment_phases(), SG 평활화 + find_peaks, 파이프라인 결선
-  [완료]  Exercise YAML에 phase_segmentation 블록 추가 (v0.2.0); PhaseSegmentationSpec 파싱
+  [계획]  Phase segmentation (⑥) — 관절 움직임 추적 기반 rep/phase 반자동 분할; 실패 시 수동 개입
+  [계획]  Exercise YAML의 `phases` 정의를 반자동 phase 라벨 및 구간 단위 피처와 연결
   [완료]  FeatureRecord.phase 필드; extract_rep_features()가 반복 단위 + 구간 단위 레코드 방출
   [완료]  summarize_phase_to_rep() 계층 집계기 (Descent/Ascent ROM 비율)
   [완료]  Load-shift OLS — biomech/load_shift.py의 compute_load_shift(); 지표 biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); ≥ 3 반복 필요; test_biomech_load_shift.py (17건)
