@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.1
+**Document Version:** 1.4.4
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -13,20 +13,20 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.3.0 | [terminology.md](terminology.md) | Terminology |
-| 1.4.1 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.1 | [terminology.md](terminology.md) | Study-specific terms and forbidden expressions |
+| 1.4.4 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.1.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.2.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
-| 1.1.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
@@ -82,7 +82,7 @@ Output
     Per-step dataframes (columns accumulate)
     Per-step report dicts
     rep_id              — semi-automatically or manually confirmed repetition ID
-    phase column        — 'Descent' | 'Ascent' | 'Bottom_Hold' | 'Lift' | 'Tap' | 'Return' | NA
+    phase column        — 'Descent' | 'Ascent' | 'Turnaround_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature table       — FeatureRecord list, rep-level (phase=None) + phase-level (phase=str)
     Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
@@ -112,12 +112,6 @@ Output
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
 | ⑫ Simulation | Normal or reference sequence, injector settings | Injects conditions such as noise, occlusion, ROM restriction, and velocity spikes, then evaluates metric responsiveness. | synthetic dataset, robustness report |
-
-Responsibility boundaries are as follows. Steps ①–③ do not modify coordinates, and
-⑥ does not arbitrarily overwrite confirmed manual labels. Steps ⑧–⑩ do not correct
-labels, and ⑨ does not compute absolute torque or absolute load. Steps ⑪–⑫ handle
-visualization and robustness evaluation of pipeline outputs without modifying the
-original pose data.
 
 ---
 
@@ -179,7 +173,7 @@ are handled as follows.
 ```text
 rep_boundary failure      exclude the affected rep/range from rep-level and phase-level analysis until manual correction
 phase_boundary failure    keep rep-level metrics, but do not emit phase-level metrics for that rep
-optional_phase failure    skip optional phases such as Bottom_Hold and continue with coarse phases
+optional_phase failure    skip optional phases such as Turnaround_Hold and continue with coarse phases
 ```
 
 After manual intervention confirms a boundary, `rep_segmentation_source` or

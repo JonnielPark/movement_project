@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.1.0  
+**문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-06  
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -181,7 +181,7 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
     half_window_frames: 3
   minimum_rep_length_frames: 8
@@ -349,7 +349,7 @@ quality_rules:
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
-definition_version : 0.3.0
+definition_version : 0.4.0
 source_fields      : [compensation_candidates.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
@@ -364,7 +364,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.3.0
+version: 0.4.0
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -415,7 +415,7 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
     half_window_frames: 3
   minimum_rep_length_frames: 8

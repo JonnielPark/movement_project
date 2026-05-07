@@ -91,7 +91,7 @@ movement_project/
 │   ├── reference/                   # baseline_zscore.json (synthetic-normal baseline)
 │   └── processed/                   # intermediate/final pipeline outputs by stage (.gitignore)
 ├── docs/
-│   ├── terminology.md               # single source of truth for domain terms
+│   ├── terminology.md               # study-specific terms and forbidden expressions
 │   ├── overview.md                  # framework overview
 │   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
@@ -213,8 +213,8 @@ inside `pipeline/` and `clinical/` are tracked in the document index in
 
 | Version | File | Content |
 |---|---|---|
-| 1.3.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
-| 1.4.1 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.1 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and forbidden expressions |
+| 1.4.4 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 
 ---
 

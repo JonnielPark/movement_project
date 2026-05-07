@@ -1,6 +1,6 @@
 # 06. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.1.0
+**문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-07
 **영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
@@ -44,7 +44,7 @@ rep_id                         Int64     자동/수동 확정된 반복 ID
 rep_segmentation_status        str       not_run | success | failed | manual_override | skipped
 rep_segmentation_source        str       annotation | semi_auto | manual_override | fallback
 rep_segmentation_failure_id    str       nullable; rep 경계 실패 리포트와 연결
-phase                          object    Descent | Ascent | Bottom_Hold | Lift | Tap | Return | NA
+phase                          object    Descent | Ascent | Turnaround_Hold | Lift | Tap | Return | NA
 phase_segmentation_status      str       not_run | success | failed | manual_override | skipped
 phase_segmentation_source      str       annotation | semi_auto | manual_override | fallback
 phase_segmentation_failure_id  str       nullable; phase 경계 실패 리포트와 연결
@@ -59,13 +59,13 @@ phase_segmentation_failure_id  str       nullable; phase 경계 실패 리포트
 ```text
 rep boundary      반복 시작/종료 프레임
 phase boundary    반복 내부의 기구학적 전환 프레임
-optional phase    Bottom_Hold 등 선택적 하위 구간
+optional phase    Turnaround_Hold 등 선택적 하위 구간
 ```
 
 대표 phase 라벨:
 
 ```text
-저항 운동    Descent | Bottom_Hold | Ascent
+저항 운동    Descent | Turnaround_Hold | Ascent
 과제형 운동  Lift | Tap | Return
 ```
 
@@ -131,7 +131,7 @@ phase_boundary 실패
     - 해당 반복의 phase 단위 피처와 phase summary는 산출하지 않는다.
 
 optional_phase 실패
-    - Bottom_Hold처럼 선택적 phase만 불명확한 경우.
+    - Turnaround_Hold처럼 선택적 phase만 불명확한 경우.
     - 선택 phase는 생략하고 Descent/Ascent 같은 coarse phase로 계속 진행한다.
     - 리포트에는 선택 phase 생략 사유를 남긴다.
 ```
