@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.1.1
+**Document Version:** 1.2.0
 **Last Updated:** 2026-05-07
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -13,11 +13,11 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.0.0 | [terminology.md](terminology.md) | Terminology |
-| 1.1.1 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.1.0 | [terminology.md](terminology.md) | Terminology |
+| 1.2.0 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | Input CSV data format |
 | 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation |
-| 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
+| 1.1.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
 | 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization |
@@ -86,6 +86,7 @@ Output
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
     Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
     Phase segmentation report — PhaseSegmentationReport list, one per rep
+    Segmentation failure point records — SegmentationFailurePoint list for frames/ranges needing manual intervention
     Visualization figures
 ```
 
@@ -100,7 +101,7 @@ Output
 | ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
 | ④ Preprocessing | correct data quality issues | alter movement quality patterns |
 | ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
-| ⑥ Phase Segmentation | derive rep/phase boundaries and `phase` labels; incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
+| ⑥ Phase Segmentation | derive rep/phase boundaries and `phase` labels; record failure points and incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
 | ⑦ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
 | ⑧ Feature Extraction | compute rep-level and phase-level spatial / temporal / control features | correct labels |
 | ⑨ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
@@ -145,6 +146,19 @@ reps and phases such as descent, hold, and ascent semi-automatically. When autom
 recognition is unclear, the user intervenes to force rep boundaries or phase labels.
 
 If no annotation file is supplied, the full sequence is treated as a single analysis segment.
+
+Segmentation failures are recorded as `SegmentationFailurePoint` entries. Failure levels
+are handled as follows.
+
+```text
+rep_boundary failure      exclude the affected rep/range from rep-level and phase-level analysis until manual correction
+phase_boundary failure    keep rep-level metrics, but do not emit phase-level metrics for that rep
+optional_phase failure    skip optional phases such as Bottom_Hold and continue with coarse phases
+```
+
+After manual intervention confirms a boundary, the result is marked with
+`segmentation_source = manual_override`, and downstream steps use only confirmed labels.
+Failure points are never silently interpolated or treated as successful segmentation.
 
 Key annotation columns that drive downstream steps:
 

@@ -208,8 +208,8 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.0.0 | [docs/terminology.md](docs/terminology.md) | 모든 도메인 용어의 단일 진실원 |
-| 1.1.1 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.1.0 | [docs/terminology.md](docs/terminology.md) | 모든 도메인 용어의 단일 진실원 |
+| 1.2.0 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 
 ---
 

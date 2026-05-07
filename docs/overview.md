@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.1.1
+**문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-07
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -13,11 +13,11 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.0.0 | [terminology.md](terminology.md) | 용어집 |
-| 1.1.1 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.1.0 | [terminology.md](terminology.md) | 용어집 |
+| 1.2.0 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation |
-| 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
+| 1.1.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
 | 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization |
@@ -85,6 +85,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     바이오마커 점수 목록 — BiomarkerScoreRecord (반복별 Z-score 종합, 0–100)
     해석 기록 목록      — InterpretationRecord (반복별 YAML 규칙 기반 서술 라벨)
     구간 분할 리포트    — PhaseSegmentationReport 목록, 반복당 1개
+    분할 실패 지점 기록 — SegmentationFailurePoint 목록, 수동 개입 필요 프레임/구간
     시각화 도형 (figures)
 ```
 
@@ -99,7 +100,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ③ Exercise Definition | ExerciseDefinition 객체 로드 | 어노테이션·좌표 수정 |
 | ④ Preprocessing | 데이터 품질 이슈 보정 | 동작 품질 패턴 변경 |
 | ⑤ Normalization | 신체 상대 좌표계로 평행이동 + 척도화 | 운동 종류별 분기 |
-| ⑥ Phase Segmentation | 반복/구간 경계와 `phase` 라벨 산출; 자동 결과가 불명확하면 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
+| ⑥ Phase Segmentation | 반복/구간 경계와 `phase` 라벨 산출; 자동 결과가 불명확하면 실패 지점 기록 및 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
 | ⑦ Motion Attribution | 반복별 활성 측 일관성 플래그 | 좌표·점수 수정 |
 | ⑧ Feature Extraction | 반복 단위·구간 단위 공간/시간/제어 피처 계산 | 라벨 보정 |
 | ⑨ Biomech Proxy | CoM, 모멘트 암, 상대 부하 분포 계산 | 절대 토크 계산 |
@@ -143,6 +144,17 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 라벨을 강제로 지정한다.
 
 어노테이션 파일이 공급되지 않으면 전체 시퀀스가 단일 분석 구간으로 처리된다.
+
+분할 실패 지점은 `SegmentationFailurePoint`로 기록한다. 실패 수준은 다음처럼 처리한다.
+
+```text
+rep_boundary 실패      해당 반복/구간은 수동 보정 전까지 반복 단위·구간 단위 분석에서 제외
+phase_boundary 실패    반복 단위 지표는 유지하되, 해당 반복의 구간 단위 지표는 산출하지 않음
+optional_phase 실패    Bottom_Hold 등 선택 구간만 생략하고 coarse phase로 계속 진행
+```
+
+수동 개입으로 경계가 확정되면 `segmentation_source = manual_override`로 남기고 후속 단계는
+확정된 라벨만 사용한다. 실패 지점은 조용히 보간하거나 성공으로 간주하지 않는다.
 
 후속 단계를 구동하는 주요 어노테이션 칼럼:
 

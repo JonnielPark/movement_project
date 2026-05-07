@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-07
 **버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.  
 **파일명 정책:** `AGENTS.md` 기준에 따라 `terminology.md`를 표준 파일명으로 유지한다.
@@ -79,6 +79,7 @@
 | 구간 (Phase) | 한 반복(rep) 내의 의미 있는 하위 구간. 두 가지 별개의 라벨링 체계가 공존한다: (1) **운동학적(kinetic) 구간** 라벨(eccentric / isometric / concentric)은 `phase_model.expected_ratio`에 저장되어 지속 시간 비율 참조용으로 사용되고, (2) **기구학적(kinematic) 구간** 라벨(Descent / Ascent / Bottom_Hold 등)은 ⑥ Phase Segmentation 단계에서 `phase` 칼럼에 기록된다. 두 체계는 의도적으로 분리되어 있다. |
 | 기구학적 구간 (Kinematic phase) | 기준 랜드마크의 운동 방향(예: 골반 중심의 하강 vs. 상승)으로 정의되는 한 반복 내의 궤적 기반 하위 구간. 라벨: `Descent`, `Ascent`, `Bottom_Hold` (저항 운동); `Lift`, `Tap`, `Return` (과제형 운동). ⑥ Phase Segmentation에서 `phase` 칼럼에 기록되며, 운동학적 용어(eccentric, concentric)와 절대 혼용하지 않는다. |
 | 변곡 프레임 (Inflection frame) | 기준 랜드마크가 방향을 반전하는 프레임. 평활화된 궤적의 국소 최소·최대로 검출된다. 한 반복을 구성 기구학적 구간들로 분할한다. SG 필터를 적용한 `find_peaks`로 식별되고 `multi_inflection_policy`에 의해 단일 후보로 축약된다. |
+| 분할 실패 지점 (Segmentation failure point) | ⑥ Phase Segmentation에서 rep 경계 또는 phase 경계를 신뢰 가능하게 결정하지 못한 프레임 또는 프레임 구간. 포즈 품질 저하, 불충분한 ROM, 다중 후보, 기준 랜드마크 가려짐, 수동 보정 필요 등이 원인이 될 수 있다. 실패 지점은 숨기지 않고 리포트에 기록하며, 해결 전에는 해당 범위의 phase 단위 지표를 산출하지 않는다. |
 | Bottom_Hold | 변곡 프레임 주변 ±N 프레임에 부여하는 선택적 기구학적 구간 라벨. 운동이 가동 범위 하단에서 통제된 등척성(isometric) 유지 구간을 갖는 경우(예: 스쿼트 바닥) 사용한다. `phase_segmentation` 블록의 `bottom_hold.enabled: true`로 활성화된다. |
 | Phase segmentation 블록 | 운동 정의의 `phase_segmentation:` YAML 블록으로, ⑥ Phase Segmentation의 기준 랜드마크, 기준 축, 구간 시퀀스, 평활화 파라미터, 변곡 검출 로직을 선언한다. `generic.yaml`에는 없으며, 부재 시 ⑥ 단계는 동작하지 않는다(no-op). |
 | 보상 후보 (Compensation candidate) | 특정 운동에서 모니터링할 보상 움직임 유형. 정의에 명시된 후보만 바이오마커로 산출된다. |
@@ -96,7 +97,7 @@
 | 전처리 (Preprocessing) | 단안 포즈 데이터의 품질 이슈(낮은 가시성, 분절 길이 불일치, 비정상 관절각, 속도 이상값, 좌·우 라벨 스왑)를 보정한다. 동작 품질 패턴(보상 움직임 등)은 보정하지 않는다. |
 | 정규화 (Normalization) | 좌표를 신체 기준 좌표계(골반 중심 평행이동 + 시퀀스 중앙값 몸통 길이 척도)로 변환한다. 신체 크기와 카메라 위치 효과를 제거한다. |
 | 모션 어트리뷰션 (Motion attribution) | 반복마다 관찰된 활성 사지(active limb)가 운동이 기대하는 측과 일치하는지 점검한다. 메타데이터만 추가하며 좌표를 수정하지 않는다. |
-| 구간 분할 (Phase segmentation) | 반복 내 기구학적 전환점을 검출하여 기구학적 구간 라벨(Descent / Ascent / Bottom_Hold 등)을 `phase` 칼럼에 기록한다. 반복 경계는 어노테이션 CSV로 사람이 큐레이션하며, 반복 내 변곡만 자동화한다. 학위논문 §4.5에 해당. |
+| 구간 분할 (Phase segmentation) | 관절 움직임을 추적하여 rep 경계와 반복 내 기구학적 구간 라벨(Descent / Ascent / Bottom_Hold 등)을 반자동으로 결정하고 `phase` 칼럼에 기록한다. 자동 결과가 불명확하면 분할 실패 지점을 기록하고 수동 개입으로 경계를 확정한다. 학위논문 §4.5에 해당. |
 | 피처 추출 (Feature extraction) | 정규화 좌표와 운동 정의로부터 공간·시간·제어 도메인 정량 지표를 계산한다. ⑥ Phase Segmentation이 `phase` 칼럼을 채웠을 때, PHASE_AWARE_FEATURE_FAMILIES에 속한 피처는 반복 단위 기록과 더불어 (rep_id, phase) 단위로도 산출된다. |
 | 생체역학 프록시 모델링 (Biomechanical proxy modeling) | 통계적 인체 계측, CoM, 모멘트 암 근사를 사용해 상대적 관절 부하 분포 경향을 추정한다. |
 | 바이오마커 도출 (Biomarker derivation) | 피처와 프록시 지표를 (1) `source_fields` provenance를 갖춘 개별 `BiomarkerRecord` 항목과 (2) 합성 정상 베이스라인 대비 계산되는 반복 단위 `BiomarkerScoreRecord` 종합 점수(0–100)로 통합한다. |
@@ -129,4 +130,4 @@
 | 절대 토크/부하 (N·m) | 단안 비전으로는 추정 불가. → "관절 간 상대적 부하 분포 경향" |
 | "정상/비정상(normal/abnormal)" 이분법 | 합성 비정상 데이터는 시뮬레이션 라벨이며 임상 진단이 아니다. → "참조 동작 / 합성 변형(synthetic variant)" |
 | "환자 데이터" | 입력은 합성 데이터 + 정상 동작 데이터이다. 임상 데이터를 명시적으로 지칭할 때만 사용한다. |
-| "자동 탐지(automatic detection)"(무한정) | 일차 분석은 어노테이션 기반이다. 자동 분할(automatic segmentation)은 향후 확장 항목이다. |
+| "자동 탐지(automatic detection)"(무한정) | rep/phase 분할은 실패 지점 기록과 수동 개입을 포함하는 반자동 절차이다. → "반자동 분할", "수동 검토 후 확정" |
