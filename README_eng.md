@@ -211,12 +211,10 @@ README tracks only the top-level documents. The list and versions of documents
 inside `pipeline/` and `clinical/` are tracked in the document index in
 [docs_eng/overview.md](docs_eng/overview.md).
 
-| Version | File | Content | Korean Sync |
-|---|---|---|---|
-| 1.0.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms | [docs/terminology.md](docs/terminology.md) |
-| 1.1.0 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index | [docs/overview.md](docs/overview.md) |
-
-Korean documents are synchronized under the same structure in `docs/`.
+| Version | File | Content |
+|---|---|---|
+| 1.0.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
+| 1.1.1 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 
 ---
 

@@ -1,8 +1,8 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.1.0
+**문서 버전:** 1.1.1
 **최종 갱신:** 2026-05-07
-**영문 동기화:** `docs_eng/overview.md`는 동일 내용의 영문 번역본이다.
+**영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
 용어 정의는 [`docs/terminology.md`](terminology.md)를 참조한다.
@@ -11,22 +11,22 @@
 
 ## 문서 인덱스 (Document Index)
 
-| 버전 | 파일 | 내용 | 영문 번역본 |
-|---|---|---|---|
-| 1.0.0 | [terminology.md](terminology.md) | 용어집 | [docs_eng/terminology.md](../docs_eng/terminology.md) |
-| 1.1.0 | [overview.md](overview.md) | 전체 파이프라인 개요 | [docs_eng/overview.md](../docs_eng/overview.md) |
-| 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | 입력 CSV 데이터 포맷 | [docs_eng/pipeline/01_data_format.md](../docs_eng/pipeline/01_data_format.md) |
-| 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation | [docs_eng/pipeline/02_validation.md](../docs_eng/pipeline/02_validation.md) |
-| 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation | [docs_eng/pipeline/03_annotation_and_segmentation.md](../docs_eng/pipeline/03_annotation_and_segmentation.md) |
-| 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML | [docs_eng/pipeline/04_exercise_definition.md](../docs_eng/pipeline/04_exercise_definition.md) |
-| 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing | [docs_eng/pipeline/05_preprocessing.md](../docs_eng/pipeline/05_preprocessing.md) |
-| 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization | [docs_eng/pipeline/06_normalization.md](../docs_eng/pipeline/06_normalization.md) |
-| 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution | [docs_eng/pipeline/07_motion_attribution.md](../docs_eng/pipeline/07_motion_attribution.md) |
-| 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction | [docs_eng/pipeline/08_feature_extraction.md](../docs_eng/pipeline/08_feature_extraction.md) |
-| 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy | [docs_eng/pipeline/09_biomechanical_proxy.md](../docs_eng/pipeline/09_biomechanical_proxy.md) |
-| 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring | [docs_eng/pipeline/10_biomarker_scoring.md](../docs_eng/pipeline/10_biomarker_scoring.md) |
-| 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization | [docs_eng/pipeline/11_visualization.md](../docs_eng/pipeline/11_visualization.md) |
-| 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation | [docs_eng/pipeline/12_insilico_simulation.md](../docs_eng/pipeline/12_insilico_simulation.md) |
+| 버전 | 파일 | 내용 |
+|---|---|---|
+| 1.0.0 | [terminology.md](terminology.md) | 용어집 |
+| 1.1.1 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | 입력 CSV 데이터 포맷 |
+| 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation |
+| 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
+| 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing |
+| 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization |
+| 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
+| 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
 
