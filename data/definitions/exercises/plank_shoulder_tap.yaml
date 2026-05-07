@@ -1,7 +1,7 @@
 exercise_id: plank_shoulder_tap
 display_name: Plank Shoulder Tap
 description: Plank-position anti-rotation task; one hand alternately taps the opposite shoulder while the trunk and pelvis must remain stable.
-version: 0.4.0
+version: 0.5.0
 tags:
   - bodyweight
   - core
@@ -187,14 +187,25 @@ feature_domains:
 
 view_requirements:
   preferred_views:
-    - top_down
-    - frontal
-  acceptable_views:
     - front_oblique
+  acceptable_views:
+    - frontal
     - rear_oblique
   critical_landmarks: [11, 12, 15, 16, 23, 24]
   visibility_sensitive_landmarks: [11, 12, 15, 16, 23, 24]
   occlusion_risk: very_high
+
+camera_protocol:
+  recommended_zones: [Z1, Z3]
+  recommended_height: H1
+  anchor: yoga_mat
+  distance_cm: [200, 250]
+  primary_observation_purpose:
+    - pelvic_rotation
+    - weight_shift_control
+    - lateral_sway
+  out_of_zone_policy: warn_and_continue
+  coordinate_correction: none
 
 quality_rules:
   minimum_visible_landmark_ratio: 0.75
@@ -208,6 +219,6 @@ quality_rules:
 notes: |
   Plank shoulder tap is the primary stability-under-perturbation exercise.
   Active hand per rep is determined by annotation.starting_side and
-  pattern=alternating. Top-down or frontal views give the cleanest read of
-  pelvis_rotation and com_lateral_shift; sagittal views are not recommended
-  because the active wrist self-occludes in profile.
+  pattern=alternating. Front-oblique low-angle views give a practical read of
+  pelvis_rotation and com_lateral_shift while preserving in-the-wild feasibility;
+  sagittal views are not recommended because the active wrist self-occludes in profile.

@@ -1,0 +1,67 @@
+version: 1.0.0
+last_updated: 2026-05-08
+coordinate_reference: subject_center_Z5
+
+default_distance_cm: [200, 250]
+
+zones:
+  Z1:
+    label: front_left_oblique
+    azimuth_deg: -45
+    observation_plane: frontal_sagittal_mixed
+    offset_cm:
+      lateral: [-175, -140]
+      anterior: [140, 175]
+  Z2:
+    label: frontal
+    azimuth_deg: 0
+    observation_plane: frontal
+    distance_cm: [200, 250]
+    lateral_tolerance_cm: [-30, 30]
+  Z3:
+    label: front_right_oblique
+    azimuth_deg: 45
+    observation_plane: frontal_sagittal_mixed
+    offset_cm:
+      lateral: [140, 175]
+      anterior: [140, 175]
+  Z4:
+    label: left_sagittal
+    azimuth_deg: -90
+    observation_plane: sagittal
+    distance_cm: [200, 250]
+    anterior_tolerance_cm: [-30, 30]
+  Z6:
+    label: right_sagittal
+    azimuth_deg: 90
+    observation_plane: sagittal
+    distance_cm: [200, 250]
+    anterior_tolerance_cm: [-30, 30]
+
+height_levels:
+  H1:
+    label: floor
+    height_cm: [0, 30]
+    recommended_for: floor_based_exercises
+  H2:
+    label: waist
+    height_cm: [80, 110]
+    recommended_for: lower_body_exercises
+  H3:
+    label: eye
+    height_cm: [140, 170]
+    recommended_for: full_body_or_upper_body_exercises
+
+anchor:
+  yoga_mat:
+    approximate_size_cm: [180, 60]
+    distance_guidance: full_mat_visible_at_200_to_250_cm
+    oblique_guidance: align_camera_to_front_corner
+    side_guidance: align_camera_parallel_to_long_edge
+
+policy:
+  out_of_zone: warn_and_continue
+  missing_zone: mark_unknown_and_continue
+  missing_anchor: warn_and_continue
+  coordinate_correction: none
+  coordinate_reprojection: none

@@ -1,13 +1,13 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.0.0
-**최종 갱신:** 2026-05-07
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ②. 사용자가 준비한 어노테이션 CSV의 구간(segment) 메타데이터를 포즈
-데이터프레임에 병합한다. 본 단계는 수동 메타데이터를 병합하고 전파하는 단계이며, rep/phase
-경계를 자동 또는 반자동으로 추정하지 않는다. rep/phase 경계 추정과 실패 지점 기록은
-[06_segmentation.md](06_segmentation.md)에서 담당한다.
+데이터프레임에 병합한다. 본 단계는 수동 메타데이터와 촬영 provenance를 병합하고 전파하는
+단계이며, rep/phase 경계를 자동 또는 반자동으로 추정하지 않는다. rep/phase 경계 추정과
+실패 지점 기록은 [06_segmentation.md](06_segmentation.md)에서 담당한다.
 
 본 단계는 프레임을 삭제하거나 좌표를 수정하지 않는다.
 
@@ -41,12 +41,21 @@ phase               object    nullable; 수동으로 제공된 phase 라벨이 �
 exercise_type       str       운동 정의 YAML 식별자
 pattern             str       bilateral | alternating
 starting_side       str       left | right (좌·우 교대 운동에 한함)
+session_id          str       nullable; 여러 recording을 하나의 세션으로 묶는 식별자
+recording_id        str       nullable; 원테이크 촬영 파일 식별자
+set_index           Int64     nullable; 세션 내 세트 순번
+camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z6 | unknown
+camera_height_level str       nullable; H1 | H2 | H3 | unknown
+mat_anchor_used     bool      nullable; 요가매트 앵커 사용 여부
+filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
 ```
 
 `exercise_type`은 ③ 운동 정의 로딩을 구동한다.
 `pattern`과 `starting_side`는 ④ 전처리의 좌·우 스왑(swap) 검출 및 ⑦ 모션 어트리뷰션을 구동한다.
 `phase` 값이 수동으로 제공된 경우 ②는 이를 보존하지만, 라벨 확정 여부와 실패 처리는
 ⑥ Segmentation에서 판단한다.
+촬영 provenance 칼럼은 좌표를 보정하거나 데이터를 제외하는 데 사용하지 않는다. 권장 촬영
+조건과의 일치 여부는 결과 리포트나 시각화에서 경고 정보로 표시한다.
 
 ## 3. 어노테이션 계층 (Annotation Hierarchy)
 
@@ -80,7 +89,9 @@ segment_type, set_id, rep_id, start_frame, end_frame, use_for_analysis
 선택 칼럼:
 
 ```text
-exercise_type, pattern, starting_side, phase, note
+exercise_type, pattern, starting_side, phase, note,
+session_id, recording_id, set_index,
+camera_zone, camera_height_level, mat_anchor_used, filming_protocol_status
 ```
 
 ### 예: 단일 세트, 3 반복
@@ -136,6 +147,13 @@ phase            = None
 exercise_type    = None   → ③ 단계는 generic 폴백 정의를 로드
 pattern          = bilateral
 starting_side    = None
+session_id       = None
+recording_id     = None
+set_index        = None
+camera_zone      = unknown
+camera_height_level = unknown
+mat_anchor_used  = None
+filming_protocol_status = unknown
 ```
 
 리포트는 `annotation_provided = False`로 기록된다.
@@ -148,6 +166,8 @@ starting_side    = None
 3. 어떤 어노테이션 구간에도 포함되지 않는 프레임은 분석에서 제외된다.
 4. 운동 컨텍스트 칼럼(exercise_type, pattern, starting_side)은
    해당 구간 내의 모든 프레임으로 전파된다.
+5. 촬영 provenance 칼럼(session_id, camera_zone 등)은 해당 recording 또는 구간 내의 모든
+   프레임으로 전파된다.
 ```
 
 ## 8. 중첩 정책 (Overlap Policy)
@@ -170,6 +190,7 @@ starting_side    = None
 - use_for_analysis 마스크
 - 운동 컨텍스트 칼럼 (exercise_type, pattern, starting_side)
 - 수동으로 제공된 phase 라벨 보존
+- 촬영 provenance 칼럼 보존 (session_id, recording_id, set_index, camera_zone, camera_height_level)
 ```
 
 범위 외 항목:
@@ -177,5 +198,7 @@ starting_side    = None
 ```text
 - rep/phase 경계 자동 또는 반자동 추정
 - 분할 실패 지점 기록
+- 카메라 각도 보정 또는 좌표 재투영
+- 촬영 조건 불일치 데이터의 강제 거부
 - 좌표값 수정
 ```

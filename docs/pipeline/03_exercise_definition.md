@@ -1,7 +1,7 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.3.0
+**최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
@@ -89,6 +89,7 @@ biomechanical_focus:           # CoM 운동, 안정성, 부하 영역
 compensation_candidates:       # 모니터링할 보상 움직임 목록
 feature_domains:               # 활성화할 공간/시간/제어 피처
 view_requirements:             # 선호 카메라 뷰
+camera_protocol:               # 권장 촬영 zone/height와 경고 정책
 quality_rules:                 # 분석 적격성 임계값
 notes: string
 ```
@@ -325,6 +326,28 @@ biomechanical_proxy:
   compensation_load_shift_proxy
 ```
 
+### camera_protocol
+
+`camera_protocol`은 운동별 권장 촬영 조건을 기록하는 메타데이터이다. 이 필드는 데이터 취득
+가이드와 결과 경고에 사용하며, 좌표를 직접 보정하거나 데이터를 강제로 제외하는 기준으로
+사용하지 않는다.
+
+```yaml
+camera_protocol:
+  recommended_zones: [Z1, Z3]
+  recommended_height: H2
+  anchor: yoga_mat
+  distance_cm: [200, 250]
+  primary_observation_purpose:
+    - knee_valgus
+    - hip_flexion_depth
+  out_of_zone_policy: warn_and_continue
+  coordinate_correction: none
+```
+
+공통 zone/height 정의는 `data/camera/camera_zones.yaml`을 참조한다.
+자세한 촬영 원칙은 [camera_protocol.md](../camera_protocol.md)를 참조한다.
+
 ### quality_rules
 
 ```yaml
@@ -349,7 +372,7 @@ quality_rules:
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
-definition_version : 0.4.0
+definition_version : 0.5.0
 source_fields      : [compensation_candidates.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
@@ -364,7 +387,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.4.0
+version: 0.5.0
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -481,10 +504,21 @@ feature_domains:
   biomechanical_proxy: [com_displacement, moment_arm_proxy, relative_joint_load_proxy]
 
 view_requirements:
-  preferred_views: [frontal, sagittal_left, sagittal_right]
-  acceptable_views: [front_oblique, side_oblique]
+  preferred_views: [front_oblique]
+  acceptable_views: [frontal, sagittal_left, sagittal_right, side_oblique]
   critical_landmarks: [23, 24, 25, 26, 27, 28]
   occlusion_risk: medium
+
+camera_protocol:
+  recommended_zones: [Z1, Z3]
+  recommended_height: H2
+  anchor: yoga_mat
+  distance_cm: [200, 250]
+  primary_observation_purpose:
+    - knee_valgus
+    - hip_flexion_depth
+  out_of_zone_policy: warn_and_continue
+  coordinate_correction: none
 
 quality_rules:
   minimum_visible_landmark_ratio: 0.8
