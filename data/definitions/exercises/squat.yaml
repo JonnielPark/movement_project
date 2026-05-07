@@ -1,7 +1,7 @@
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and ankle coordination.
-version: 0.3.0
+version: 0.4.0
 tags:
   - bodyweight
   - lower_body
@@ -65,9 +65,9 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
-    half_window_frames: 3            # ±3 frames around the inflection = Bottom_Hold
+    half_window_frames: 3            # ±3 frames around the reversal = Turnaround_Hold
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 

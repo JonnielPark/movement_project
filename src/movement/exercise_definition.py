@@ -201,11 +201,15 @@ class SmoothingSpec:
 
 
 @dataclass
-class BottomHoldSpec:
-    """Bottom-hold phase specification: frames around the inflection labeled as Bottom_Hold."""
+class TurnaroundHoldSpec:
+    """Turnaround-hold phase specification: frames around motion reversal."""
 
     enabled: bool = True
     half_window_frames: int = 3  # ±N frames around the inflection frame
+
+
+# Backward-compatible alias for older imports and YAML terminology.
+BottomHoldSpec = TurnaroundHoldSpec
 
 
 @dataclass
@@ -249,7 +253,7 @@ class PhaseSegmentationSpec:
         "local_minimum"  # local_minimum | local_maximum | zero_crossing
     )
     smoothing: SmoothingSpec = field(default_factory=SmoothingSpec)
-    bottom_hold: BottomHoldSpec = field(default_factory=BottomHoldSpec)
+    turnaround_hold: TurnaroundHoldSpec = field(default_factory=TurnaroundHoldSpec)
     minimum_rep_length_frames: int = 8
     multi_inflection_policy: str = (
         "global_extremum"  # global_extremum | first | reject_rep
@@ -461,7 +465,7 @@ def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
     if not ps:
         return None
     sm = ps.get("smoothing") or {}
-    bh = ps.get("bottom_hold") or {}
+    th = ps.get("turnaround_hold") or ps.get("bottom_hold") or {}
     sl = ps.get("split_logic", "local_minimum")
     return PhaseSegmentationSpec(
         reference_landmark=ps.get("reference_landmark", "hip_center"),
@@ -473,9 +477,9 @@ def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
             window_frames=int(sm.get("window_frames", 7)),
             polyorder=int(sm.get("polyorder", 3)),
         ),
-        bottom_hold=BottomHoldSpec(
-            enabled=bool(bh.get("enabled", True)),
-            half_window_frames=int(bh.get("half_window_frames", 3)),
+        turnaround_hold=TurnaroundHoldSpec(
+            enabled=bool(th.get("enabled", True)),
+            half_window_frames=int(th.get("half_window_frames", 3)),
         ),
         minimum_rep_length_frames=int(ps.get("minimum_rep_length_frames", 8)),
         multi_inflection_policy=ps.get("multi_inflection_policy", "global_extremum"),

@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.1.0  
+**Document Version:** 1.2.0
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -182,7 +182,7 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
     half_window_frames: 3
   minimum_rep_length_frames: 8
@@ -350,7 +350,7 @@ that drove the computation. Biomarkers without `source_fields` are not produced 
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
-definition_version : 0.3.0
+definition_version : 0.4.0
 source_fields      : [compensation_candidates.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
@@ -365,7 +365,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.3.0
+version: 0.4.0
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -416,7 +416,7 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
     half_window_frames: 3
   minimum_rep_length_frames: 8

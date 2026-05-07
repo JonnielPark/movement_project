@@ -1,6 +1,6 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
@@ -143,7 +143,7 @@ Rules:
 - control.compensation is rep-level only — candidates span phase boundaries
   and would lose meaning if split
 
-- Kinematic phase labels (Descent / Ascent / Bottom_Hold / Lift / Tap / Return)
+- Kinematic phase labels (Descent / Ascent / Turnaround_Hold / Lift / Tap / Return)
   must not be mixed with kinetic labels (eccentric / isometric / concentric)
 ```
 

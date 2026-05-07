@@ -1,7 +1,7 @@
 exercise_id: pike_pushup
 display_name: Pike Push-up
 description: Inverted closed-chain upper-body push movement; head descends toward the floor between the hands while the hips remain piked.
-version: 0.3.0
+version: 0.4.0
 tags:
   - bodyweight
   - upper_body
@@ -69,7 +69,7 @@ phase_segmentation:
     method: savitzky_golay
     window_frames: 7
     polyorder: 3
-  bottom_hold:
+  turnaround_hold:
     enabled: true
     half_window_frames: 3
   minimum_rep_length_frames: 8

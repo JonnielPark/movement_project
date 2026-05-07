@@ -1,6 +1,6 @@
 # 06. Segmentation
 
-**Document Version:** 1.1.0
+**Document Version:** 1.2.0
 **Last Updated:** 2026-05-07
 **Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
 
@@ -44,7 +44,7 @@ rep_id                         Int64     automatically/manually confirmed rep ID
 rep_segmentation_status        str       not_run | success | failed | manual_override | skipped
 rep_segmentation_source        str       annotation | semi_auto | manual_override | fallback
 rep_segmentation_failure_id    str       nullable; links frames to the rep-boundary failure report
-phase                          object    Descent | Ascent | Bottom_Hold | Lift | Tap | Return | NA
+phase                          object    Descent | Ascent | Turnaround_Hold | Lift | Tap | Return | NA
 phase_segmentation_status      str       not_run | success | failed | manual_override | skipped
 phase_segmentation_source      str       annotation | semi_auto | manual_override | fallback
 phase_segmentation_failure_id  str       nullable; links frames to the phase-boundary failure report
@@ -59,13 +59,13 @@ silently; it records a failure point or manual-intervention requirement.
 ```text
 rep boundary      start/end frame of a repetition
 phase boundary    kinematic transition frame inside a repetition
-optional phase    optional sub-phase such as Bottom_Hold
+optional phase    optional sub-phase such as Turnaround_Hold
 ```
 
 Representative phase labels:
 
 ```text
-resistance exercises   Descent | Bottom_Hold | Ascent
+resistance exercises   Descent | Turnaround_Hold | Ascent
 task exercises         Lift | Tap | Return
 ```
 
@@ -134,7 +134,7 @@ phase_boundary failure
     - Phase-level features and phase summaries are not emitted for that rep.
 
 optional_phase failure
-    - Only an optional phase such as Bottom_Hold is unclear.
+    - Only an optional phase such as Turnaround_Hold is unclear.
     - The optional phase is skipped, and the pipeline continues with coarse phases.
     - The report records why the optional phase was skipped.
 ```

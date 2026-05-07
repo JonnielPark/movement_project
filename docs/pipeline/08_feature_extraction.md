@@ -1,6 +1,6 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-06  
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
@@ -139,7 +139,7 @@ PHASE_AWARE_FEATURE_FAMILIES = {
 - control.compensation은 반복 단위 전용 — 후보가 구간 경계를 가로지르므로
   분할하면 의미를 잃는다
 
-- 기구학적(kinematic) phase 라벨 (Descent / Ascent / Bottom_Hold / Lift / Tap / Return)은
+- 기구학적(kinematic) phase 라벨 (Descent / Ascent / Turnaround_Hold / Lift / Tap / Return)은
   운동학적(kinetic) 라벨 (eccentric / isometric / concentric)과 혼용해서는 안 된다
 ```
 

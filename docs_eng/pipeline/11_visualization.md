@@ -1,6 +1,6 @@
 # 11. Visualization
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
 
@@ -166,7 +166,7 @@ plot_attribution_chart(
 ### 5-5. plot_phase_segmentation
 
 Smoothed reference-landmark trajectory with the inflection frame marker and
-phase-color bands (Descent, Ascent, Bottom_Hold, etc.). Verifies ⑥ phase
+phase-color bands (Descent, Ascent, Turnaround_Hold, etc.). Verifies ⑥ phase
 segmentation visually.
 
 ```python

@@ -1,6 +1,6 @@
 # 11. 시각화 (Visualization)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-06  
 **영문 동기화:** `docs_eng/pipeline/11_visualization.md`는 동일 버전의 영문 번역본이다.
 
@@ -159,7 +159,7 @@ plot_attribution_chart(
 ### 5-5. plot_phase_segmentation
 
 평활화된 기준 랜드마크 궤적과 변곡 프레임 마커, phase 색상 밴드(Descent, Ascent,
-Bottom_Hold 등). ⑥ 구간 분할을 시각적으로 검증한다.
+Turnaround_Hold 등). ⑥ 구간 분할을 시각적으로 검증한다.
 
 ```python
 plot_phase_segmentation(

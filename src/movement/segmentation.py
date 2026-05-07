@@ -353,15 +353,15 @@ def _assign_simple_labels(
     n_frames: int,
     inflection_local: int,
     phase_sequence: list[str],
-    bottom_hold_enabled: bool,
+    turnaround_hold_enabled: bool,
     half_window: int,
 ) -> dict[int, str]:
     """
     Assign phase labels for the simple two-phase (Descent/Ascent) case.
 
     Returns a mapping {local_frame_index: phase_label}.
-    When bottom_hold_enabled, frames within ±half_window of the inflection
-    are labeled 'Bottom_Hold', sandwiched between the two phases.
+    When turnaround_hold_enabled, frames within ±half_window of the inflection
+    are labeled 'Turnaround_Hold', sandwiched between the two directional phases.
     """
     label_map: dict[int, str] = {}
     if len(phase_sequence) < 2:
@@ -369,13 +369,13 @@ def _assign_simple_labels(
 
     p0, p1 = phase_sequence[0], phase_sequence[-1]
 
-    if bottom_hold_enabled and half_window > 0:
+    if turnaround_hold_enabled and half_window > 0:
         hold_start = max(0, inflection_local - half_window)
         hold_end = min(n_frames - 1, inflection_local + half_window)
         for i in range(hold_start):
             label_map[i] = p0
         for i in range(hold_start, hold_end + 1):
-            label_map[i] = "Bottom_Hold"
+            label_map[i] = "Turnaround_Hold"
         for i in range(hold_end + 1, n_frames):
             label_map[i] = p1
     else:
@@ -667,8 +667,8 @@ def segment_phases(
     smoothed with a Savitzky-Golay filter, then the local minimum (or maximum)
     frame is detected as the turn-around point.  Frames before the inflection
     are labeled with the first element of `phase_sequence` (e.g., 'Descent'),
-    frames after with the last (e.g., 'Ascent').  An optional `Bottom_Hold`
-    window is inserted around the inflection.
+    frames after with the last (e.g., 'Ascent').  An optional `Turnaround_Hold`
+    window is inserted around the motion-reversal frame.
 
     Frames that already have explicit phase annotations are honored as ground
     truth and are not overwritten.
@@ -828,8 +828,8 @@ def segment_phases(
                 n_frames,
                 inflection_local,
                 ps.phase_sequence,
-                ps.bottom_hold.enabled,
-                ps.bottom_hold.half_window_frames,
+                ps.turnaround_hold.enabled,
+                ps.turnaround_hold.half_window_frames,
             )
 
         # ── Multi-phase case (≥2 inflections needed) ─────────────────────────

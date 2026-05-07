@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.1
+**문서 버전:** 1.4.4
 **최종 갱신:** 2026-05-08
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -13,20 +13,20 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.3.0 | [terminology.md](terminology.md) | 용어집 |
-| 1.4.1 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.1 | [terminology.md](terminology.md) | 연구 특화 용어와 금지 표현 |
+| 1.4.4 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.1.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.2.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
-| 1.1.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
@@ -81,7 +81,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     단계별 데이터프레임(DataFrame) (칼럼 누적)
     단계별 리포트(report) 딕셔너리
     rep_id             — 반자동 또는 수동 확정 반복 ID
-    phase 칼럼          — 'Descent' | 'Ascent' | 'Bottom_Hold' | 'Lift' | 'Tap' | 'Return' | NA
+    phase 칼럼          — 'Descent' | 'Ascent' | 'Turnaround_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature 테이블      — FeatureRecord 목록, 반복 단위(phase=None) + 구간 단위(phase=str)
     Phase summary       — summarize_phase_to_rep() 계층 집계 (예: Descent/Ascent ROM 비율)
     생체역학 프록시 테이블 — BiomechRecord 목록, 반복 단위, 가시성(visibility) 가중
@@ -111,11 +111,6 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
 | ⑫ Simulation | 정상 또는 기준 시퀀스, injector 설정 | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등 조건을 주입하고 지표 반응성을 평가한다. | synthetic dataset, robustness report |
-
-책임 경계는 다음과 같다. ①–③은 좌표를 수정하지 않고, ⑥은 확정된 수동 라벨을 임의로
-덮어쓰지 않는다. ⑧–⑩은 라벨을 보정하는 단계가 아니며, ⑨는 절대 토크나 절대 부하를
-계산하지 않는다. ⑪–⑫는 파이프라인 산출물의 시각화와 강건성 평가를 담당하며 원본 포즈
-데이터를 수정하지 않는다.
 
 ---
 
@@ -174,7 +169,7 @@ starting_side      교대 운동에서 첫 활성 측 (⑦)
 ```text
 rep_boundary 실패      해당 반복/구간은 수동 보정 전까지 반복 단위·구간 단위 분석에서 제외
 phase_boundary 실패    반복 단위 지표는 유지하되, 해당 반복의 구간 단위 지표는 산출하지 않음
-optional_phase 실패    Bottom_Hold 등 선택 구간만 생략하고 coarse phase로 계속 진행
+optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coarse phase로 계속 진행
 ```
 
 수동 개입으로 경계가 확정되면 `rep_segmentation_source` 또는 `phase_segmentation_source`를
