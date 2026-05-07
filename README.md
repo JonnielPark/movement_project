@@ -209,7 +209,7 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 | 버전 | 파일 | 내용 | 영문 동기화 |
 |---|---|---|---|
 | 1.0.0 | [docs/terminology.md](docs/terminology.md) | 모든 도메인 용어의 단일 진실원 | [docs_eng/terminology.md](docs_eng/terminology.md) |
-| 1.0.0 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 | [docs_eng/overview.md](docs_eng/overview.md) |
+| 1.1.0 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 | [docs_eng/overview.md](docs_eng/overview.md) |
 
 영문 문서는 동일한 구조로 `docs_eng/`에 동기화되어 있다.
 

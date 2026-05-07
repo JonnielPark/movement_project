@@ -1,43 +1,20 @@
-# 00. Overview
+# Overview
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `docs/overview.md` is the same-version Korean source.
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-07
+**Korean Sync:** `docs/overview.md` is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
 For terminology definitions see [`terminology.md`](terminology.md).
 
 ---
 
-## 0. Document Versioning
-
-All documents start version notation at `1.0.0` as of 2026-05-06. The versioning
-rule follows the Semantic Versioning 2.0.0 `MAJOR.MINOR.PATCH` format.
-
-```text
-MAJOR  incompatible changes to document structure, pipeline step definitions, or public API meaning
-MINOR  new features, sections, or deliverables added while preserving existing meaning
-PATCH  typos, translation, links, or wording clarifications with no meaning change
-```
-
-Operating rules:
-
-```text
-[Required]
-- `docs/` is the Korean source documentation.
-- `docs_eng/` is the same-version English translation with the same content.
-- `README_eng.md` is only the English translation of `README.md`; it must not diverge.
-- `code_revision_plan.md` remains a local execution plan and is excluded from git upload.
-- `terminology.md` and `overview.md` stay at the document root; pipeline step documents live under `pipeline/`.
-```
-
-Document index:
+## Document Index
 
 | Version | File | Content | Korean Source |
 |---|---|---|---|
 | 1.0.0 | [terminology.md](terminology.md) | Terminology | [docs/terminology.md](../docs/terminology.md) |
-| 1.0.0 | [overview.md](overview.md) | Overall pipeline overview | [docs/overview.md](../docs/overview.md) |
+| 1.1.0 | [overview.md](overview.md) | Overall pipeline overview | [docs/overview.md](../docs/overview.md) |
 | 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | Input CSV data format | [docs/pipeline/01_data_format.md](../docs/pipeline/01_data_format.md) |
 | 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation | [docs/pipeline/02_validation.md](../docs/pipeline/02_validation.md) |
 | 1.0.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation | [docs/pipeline/03_annotation_and_segmentation.md](../docs/pipeline/03_annotation_and_segmentation.md) |
@@ -51,21 +28,13 @@ Document index:
 | 1.0.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization | [docs/pipeline/11_visualization.md](../docs/pipeline/11_visualization.md) |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation | [docs/pipeline/12_insilico_simulation.md](../docs/pipeline/12_insilico_simulation.md) |
 
-`code_revision_plan.md` is version-managed locally but excluded from git upload.
-
 ---
 
 ## 1. Core Design: Exercise Definitions as YAML Objects
 
-Instead of writing per-exercise analysis code, each exercise is described as a YAML object
-(`data/definitions/exercises/<exercise_id>.yaml`). All pipeline steps consume the same
-`ExerciseDefinition` object; exercise-specific behavior comes from the YAML fields, not from
-code branches.
-
-```
-Before : separate analysis code per exercise (squat, lunge, …)
-After  : one YAML file per exercise, same pipeline steps for all exercises
-```
+Each exercise is described as a YAML object in
+`data/definitions/exercises/<exercise_id>.yaml`. All pipeline steps consume the same
+`ExerciseDefinition` object, and exercise-specific behavior is determined by YAML fields.
 
 Fields defined in the exercise YAML:
 
@@ -98,7 +67,7 @@ Steps
     ③  Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
     ④  Preprocessing        reliability detection, swap correction, interpolation, smoothing
     ⑤  Normalization        hip-center translation + median torso-length scale
-    ⑥  Phase Segmentation  semi-automatic intra-rep kinematic phase splitting (Descent/Ascent/…)
+    ⑥  Phase Segmentation  semi-automatic rep/phase splitting from joint-motion tracking
     ⑦  Motion Attribution   per-rep active-side consistency check
     ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level)
     ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
@@ -120,9 +89,6 @@ Output
     Visualization figures
 ```
 
-② runs before ③ because the `exercise_type` column in the annotation file identifies
-which exercise YAML to load. All steps from ③ onward reference the same definition object.
-
 ---
 
 ## 3. Stage Responsibility Table
@@ -134,7 +100,7 @@ which exercise YAML to load. All steps from ③ onward reference the same defini
 | ③ Exercise Definition | load ExerciseDefinition object | modify annotation or coordinates |
 | ④ Preprocessing | correct data quality issues | alter movement quality patterns |
 | ⑤ Normalization | translate + scale to body-relative coords | branch per exercise type |
-| ⑥ Phase Segmentation | populate `phase` column for rep frames (kinematic labels) | overwrite existing non-NA phase values; modify coordinates |
+| ⑥ Phase Segmentation | derive rep/phase boundaries and `phase` labels; incorporate manual intervention when automatic results are unclear | modify coordinates; overwrite confirmed labels arbitrarily |
 | ⑦ Motion Attribution | flag per-rep active-side consistency | modify coordinates or scores |
 | ⑧ Feature Extraction | compute rep-level and phase-level spatial / temporal / control features | correct labels |
 | ⑨ Biomech Proxy | compute CoM, moment arms, relative load distribution | compute absolute torques |
@@ -172,9 +138,13 @@ in the exercise YAML.
 
 ## 5. Annotation Strategy
 
-Automatic segmentation is not in scope. Rep boundaries are provided via a pre-prepared
-annotation CSV. If no annotation file is supplied, the full sequence is treated as a single
-analysis segment.
+② Annotation merges a user-prepared manual annotation CSV into the pose dataframe.
+During early validation, rep boundaries and kinematic phases may be provided as manual
+frame segmentation results. Later, ⑥ Phase Segmentation will track joint motion to split
+reps and phases such as descent, hold, and ascent semi-automatically. When automatic
+recognition is unclear, the user intervenes to force rep boundaries or phase labels.
+
+If no annotation file is supplied, the full sequence is treated as a single analysis segment.
 
 Key annotation columns that drive downstream steps:
 
@@ -234,8 +204,8 @@ See [06_normalization.md](pipeline/06_normalization.md).
   [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, composite domain score (0–100)
   [done]  derive_biomarkers() entry point wired into pipeline ⑩
   [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [done]  Phase segmentation (⑥) — segment_phases() with SG smoothing + find_peaks, wired into pipeline
-  [done]  Exercise YAMLs updated with phase_segmentation blocks (v0.2.0); PhaseSegmentationSpec parsed
+  [planned]  Phase segmentation (⑥) — semi-automatic rep/phase splitting from joint-motion tracking; manual intervention on failure
+  [planned]  Exercise YAML `phases` definitions connected to semi-automatic phase labels and phase-level features
   [done]  FeatureRecord.phase field; extract_rep_features() emits rep-level + phase-level records
   [done]  summarize_phase_to_rep() hierarchical aggregator (Descent/Ascent ROM ratio)
   [done]  Load-shift OLS — compute_load_shift() in biomech/load_shift.py; metric biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); requires ≥ 3 reps; test_biomech_load_shift.py (17 tests)
