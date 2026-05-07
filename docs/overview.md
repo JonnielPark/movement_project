@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.4
+**문서 버전:** 1.4.5
 **최종 갱신:** 2026-05-08
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -13,8 +13,8 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.1 | [terminology.md](terminology.md) | 연구 특화 용어와 금지 표현 |
-| 1.4.4 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.2 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.5 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |

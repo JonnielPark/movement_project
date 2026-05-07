@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.4
+**Document Version:** 1.4.5
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -13,8 +13,8 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.1 | [terminology.md](terminology.md) | Study-specific terms and forbidden expressions |
-| 1.4.4 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.2 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.5 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
