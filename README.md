@@ -1,5 +1,7 @@
 # Movement Project
 
+[English](README_eng.md) | 한국어
+
 박사학위 논문 연구 — 단일 비전(monocular, 모바일 카메라) 3D 포즈 데이터로부터 신체 동작의
 질을 생체역학적으로 정량화하여 해석 가능한 디지털 바이오마커(digital biomarker)로 표현하는
 분석 프레임워크.
