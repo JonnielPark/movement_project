@@ -1,6 +1,6 @@
 # Terminology
 
-**Document Version:** 1.4.1
+**Document Version:** 1.4.2
 **Last Updated:** 2026-05-08
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
@@ -53,15 +53,39 @@ appear in an output, treat it as a documentation or code error.
 
 ---
 
-## 4. Terms Not to Use
+## 4. Clinical Language Use
 
-Expressions that overstate scope or create misleading impressions.
+This study does not avoid clinical interpretation. However, because it does not
+perform a clinical trial, patient-cohort validation, or diagnostic-performance
+evaluation, clinical wording must stay within the scope of **clinical interpretability**
+and **decision-support information for clinicians**.
 
-| Avoid | Reason / Use instead |
+| Expression Type | Usage Principle |
 |---|---|
-| "clinically significant" | This project is engineering robustness verification, not clinical efficacy testing. → "consistently identifies deviation from the biomechanical reference" |
-| "diagnoses / predicts disease" | Not a diagnostic tool. → "may serve as a reference index for future clinical data studies" with explicit scope. |
-| Absolute torque / load (`N·m`, `kg`) | Not estimated from monocular vision. → "relative load distribution tendency between joints" |
-| "normal / abnormal" as a binary | Synthetic abnormal data is a simulation label, not a clinical diagnosis. → "reference movement / synthetic variant" |
-| "patient data" | Inputs are synthetic data and normal movement data. Use only when explicitly referring to clinical data. |
-| "automatic detection" without qualification | Rep/phase segmentation is semi-automatic and includes failure-point recording plus manual intervention. → "semi-automatic segmentation", "confirmed after manual review" |
+| clinical interpretation / clinical meaning | Allowed, as long as the wording does not imply disease diagnosis or treatment-effect proof. |
+| clinically significant | Use only when actual clinical data and statistical/clinical significance testing support it. At this stage, use "clinically interpretable" or "may support clinician judgment." |
+| diagnoses / predicts disease | Do not use. Use "candidate metric for future clinical studies" or "quantitative information that may support clinician assessment." |
+| sensitivity / specificity / diagnostic accuracy | Use only with clinical labels and a diagnostic-performance evaluation design. In this study, use robustness, responsiveness, and consistency. |
+| normal / abnormal | Do not use as a clinical binary without clinical criteria. Use "reference movement", "synthetic variant", or "deviation from reference." |
+| patient data | Use only for actual patient-cohort data. Current inputs are synthetic data and normal movement data; prefer "participant", "subject", or "sample." |
+| absolute torque / load | Do not use. Monocular-pose outputs are relative metrics, expressed as "relative load distribution tendency between joints." |
+| automatic detection | Do not use without qualification. Rep/phase segmentation is semi-automatic and includes failure-point recording plus manual intervention; use "semi-automatic segmentation" or "confirmed after manual review." |
+
+Suggested wording:
+
+```text
+This metric is not designed to diagnose a specific disease. It provides quantitative
+information that clinicians may use when interpreting movement quality biomechanically.
+
+The observed compensatory movement should be interpreted as a candidate movement
+strategy for further clinical assessment, not as direct evidence of a specific pathology.
+
+The biomechanical outputs of this pipeline are monocular-pose-based relative metrics;
+they do not directly represent absolute strength, joint torque, or clinical prognosis.
+
+The result does not replace clinician assessment. It structures rep-level movement
+patterns and compensatory strategies to support clinical reasoning.
+
+Clinical meaning should be further reviewed by medical advisors and validated in
+future clinical-data studies.
+```
