@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑨. 정규화된 포즈 데이터로부터 단순화된 생체역학 프록시 지표
@@ -27,7 +26,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 → ⑨ Biomech Proxy              ← 본 단계

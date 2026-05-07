@@ -20,7 +20,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 ③  Exercise Definition 생체역학적 특성 객체 로딩
 ④  Preprocessing       단안 데이터 품질 보정
 ⑤  Normalization       신체 상대 좌표 정규화
-⑥  Phase Segmentation  반복 내 기구학적(kinematic) 구간의 반자동 분할
+⑥  Segmentation        관절 움직임 추적 기반 rep/phase 반자동 분할
 ⑦  Motion Attribution  반복별 활성 측(active-side) 일관성
 ⑧  Feature Extraction  공간/시간/제어 피처 (반복 + 구간 단위)
 ⑨  Biomech Proxy       CoM · 모멘트 암(moment arms) · load-shift 추세
@@ -33,7 +33,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 
 ---
 
-## 구현 상태 (2026-05-05)
+## 구현 상태 (2026-05-07)
 
 ### 완료
 
@@ -42,10 +42,10 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | Pose I/O 및 설정 | `io.py`, `config.py` | CSV 로딩, 랜드마크/연결 정의 |
 | ① Validation | `validation.py` | 구조적 무결성 리포트 |
 | ② Annotation | `annotation.py` | 프레임 단위 메타데이터 병합; `phase` 칼럼 예약 |
-| ③ Exercise Definition | `exercise_definition.py` | YAML 로더 + 검증기 + generic 폴백; `PhaseSegmentationSpec` |
+| ③ Exercise Definition | `exercise_definition.py` | YAML 로더 + 검증기 + generic 폴백; `rep_segmentation` + `phase_segmentation` 설정 |
 | ④ Preprocessing | `preprocessing.py` | 가시성 게이팅, 분절 일관성, 각도 한계, 속도 이상값, 좌·우 swap, 보간, 평활화 |
 | ⑤ Normalization | `normalization.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도 |
-| ⑥ Phase Segmentation | `segmentation.py` | SG 평활 변곡 검출; Descent / Ascent / Bottom\_Hold; multi-inflection 정책; 4개 운동 YAML 모두 v0.2.0 |
+| ⑥ Segmentation | `segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
 | ⑦ Motion Attribution | `motion_attribution.py` | 반복별 활성 사지(active-limb) 일관성; conservative / auto-correct 모드 |
 | ⑧ Feature Extraction | `features/` | ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
@@ -53,7 +53,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 대시보드 툴팁용 YAML 미러 |
 | 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 4개 운동 × 5–7개 규칙; 금지 어휘 검증 완료 |
 | 파이프라인 러너 | `pipeline.py` | 단계 ①–⑩ 결선 |
-| 단위 테스트 | `tests/` | `test_biomech_load_shift.py` (17건), `test_interpretation.py` (20건) |
+| 단위 테스트 | `tests/` | `test_biomech_load_shift.py` (17건), `test_interpretation.py` (20건), `test_segmentation.py` (3건) |
 
 ### 부분 완료
 
@@ -93,7 +93,7 @@ movement_project/
 │   ├── terminology.md               # 모든 도메인 용어의 단일 진실원
 │   ├── overview.md                  # 프레임워크 개요
 │   ├── pipeline/                    # 파이프라인 ① ~ ⑫ 단계 문서
-│   │   └── 01_data_format.md ~ 12_insilico_simulation.md
+│   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 피처 × 임상적 의미
 │   └── code_revision_plan.md        # 방어 이전 구현 계획 (.gitignore)
@@ -208,8 +208,8 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.1.0 | [docs/terminology.md](docs/terminology.md) | 모든 도메인 용어의 단일 진실원 |
-| 1.2.0 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.3.0 | [docs/terminology.md](docs/terminology.md) | 모든 도메인 용어의 단일 진실원 |
+| 1.4.0 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 
 ---
 

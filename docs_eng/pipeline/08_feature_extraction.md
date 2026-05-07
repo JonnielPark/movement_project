@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑧. Computes movement-quality features from normalized pose data.
@@ -24,7 +23,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction         ← this step
 → ⑨ Biomech Proxy
@@ -120,7 +119,7 @@ Each rule returns one or more `FeatureRecord` with `feature_id` pattern
 
 ## 5. Phase-Aware Feature Families
 
-When ⑥ Phase Segmentation populates the `phase` column, features in
+When ⑥ Segmentation populates the `phase` column, features in
 `PHASE_AWARE_FEATURE_FAMILIES` are emitted at both rep-level (`phase=None`)
 and phase-level (`phase='Descent'`, etc.).
 
@@ -138,7 +137,7 @@ Rules:
 - Phase-level feature_id appends a lowercased phase suffix
   e.g. spatial.rom.left_knee  →  spatial.rom.left_knee.descent
 
-- Phase-level FeatureRecord.source_fields includes 'phase_segmentation.*' entries
+- Phase-level FeatureRecord.source_fields includes 'segmentation.*' entries
   (reference_landmark, reference_axis, split_logic)
 
 - control.compensation is rep-level only — candidates span phase boundaries
@@ -225,7 +224,7 @@ compensation_candidates:
 
 ## 10. Relationship to Other Steps
 
-- **⑥ Phase Segmentation** — populates the `phase` column, enabling phase-level
+- **⑥ Segmentation** — populates the `phase` column, enabling phase-level
   feature emission. When the column is absent or empty, only rep-level records
   are produced (graceful no-op).
 - **⑦ Motion Attribution** — supplies per-rep `attribution_consistent` and

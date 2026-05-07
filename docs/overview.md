@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.2.0
+**문서 버전:** 1.4.0
 **최종 갱신:** 2026-05-07
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -13,14 +13,15 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.1.0 | [terminology.md](terminology.md) | 용어집 |
-| 1.2.0 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.0.0 | [01_data_format.md](pipeline/01_data_format.md) | 입력 CSV 데이터 포맷 |
-| 1.0.0 | [02_validation.md](pipeline/02_validation.md) | ① Validation |
-| 1.1.0 | [03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) | ② Annotation · ⑥ Phase Segmentation |
-| 1.0.0 | [04_exercise_definition.md](pipeline/04_exercise_definition.md) | ③ Exercise Definition YAML |
-| 1.0.0 | [05_preprocessing.md](pipeline/05_preprocessing.md) | ④ Preprocessing |
-| 1.0.0 | [06_normalization.md](pipeline/06_normalization.md) | ⑤ Normalization |
+| 1.3.0 | [terminology.md](terminology.md) | 용어집 |
+| 1.4.0 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
+| 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
+| 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.1.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
+| 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
+| 1.1.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.0.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
@@ -42,6 +43,8 @@ YAML 필드에서 결정된다.
 classification        laterality, primary_plane, movement_chain, posture_type
 landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_of_support
 phases                구간 모델 (예: eccentric / concentric)
+rep_segmentation      반복 경계 검출 설정
+phase_segmentation    반복 내부 phase 검출 설정
 compensation_candidates  모니터링할 움직임 패턴
 feature_domains       활성화할 공간/시간/제어 피처
 biomechanical_focus   계산할 프록시(proxy) 지표
@@ -66,7 +69,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     ③  Exercise Definition  ExerciseDefinition 객체 로드(미존재 시 generic 폴백)
     ④  Preprocessing        신뢰도 검출, 좌·우 스왑(swap) 보정, 보간(interpolation), 평활화(smoothing)
     ⑤  Normalization        골반 중심 평행이동 + 몸통 길이 중앙값 척도화
-    ⑥  Phase Segmentation  관절 움직임 추적 기반 rep/phase 반자동 분할
+    ⑥  Segmentation        관절 움직임 추적 기반 rep/phase 반자동 분할
     ⑦  Motion Attribution   반복별 활성 측(active-side) 일관성 검사
     ⑧  Feature Extraction   공간/시간/제어 피처(반복 단위 + 구간 단위)
     ⑨  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
@@ -77,6 +80,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 출력
     단계별 데이터프레임(DataFrame) (칼럼 누적)
     단계별 리포트(report) 딕셔너리
+    rep_id             — 반자동 또는 수동 확정 반복 ID
     phase 칼럼          — 'Descent' | 'Ascent' | 'Bottom_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature 테이블      — FeatureRecord 목록, 반복 단위(phase=None) + 구간 단위(phase=str)
     Phase summary       — summarize_phase_to_rep() 계층 집계 (예: Descent/Ascent ROM 비율)
@@ -84,7 +88,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     바이오마커 기록 목록 — BiomarkerRecord (개별 지표 패스스루)
     바이오마커 점수 목록 — BiomarkerScoreRecord (반복별 Z-score 종합, 0–100)
     해석 기록 목록      — InterpretationRecord (반복별 YAML 규칙 기반 서술 라벨)
-    구간 분할 리포트    — PhaseSegmentationReport 목록, 반복당 1개
+    세그멘테이션 리포트 — SegmentationReport 목록, 반복당 1개
     분할 실패 지점 기록 — SegmentationFailurePoint 목록, 수동 개입 필요 프레임/구간
     시각화 도형 (figures)
 ```
@@ -100,7 +104,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ③ Exercise Definition | ExerciseDefinition 객체 로드 | 어노테이션·좌표 수정 |
 | ④ Preprocessing | 데이터 품질 이슈 보정 | 동작 품질 패턴 변경 |
 | ⑤ Normalization | 신체 상대 좌표계로 평행이동 + 척도화 | 운동 종류별 분기 |
-| ⑥ Phase Segmentation | 반복/구간 경계와 `phase` 라벨 산출; 자동 결과가 불명확하면 실패 지점 기록 및 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
+| ⑥ Segmentation | `rep_segmentation`으로 반복 경계 산출, 기존 `phase_segmentation`으로 반복 내부 `phase` 라벨 산출; 자동 결과가 불명확하면 실패 지점 기록 및 수동 개입 반영 | 좌표 수정; 확정된 라벨 임의 덮어쓰기 |
 | ⑦ Motion Attribution | 반복별 활성 측 일관성 플래그 | 좌표·점수 수정 |
 | ⑧ Feature Extraction | 반복 단위·구간 단위 공간/시간/제어 피처 계산 | 라벨 보정 |
 | ⑨ Biomech Proxy | CoM, 모멘트 암, 상대 부하 분포 계산 | 절대 토크 계산 |
@@ -138,23 +142,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 ## 5. 어노테이션 전략 (Annotation Strategy)
 
 ② Annotation은 사용자가 준비한 수동 어노테이션 CSV를 포즈 데이터프레임에 병합한다.
-초기 검증 단계에서는 반복 경계와 기구학적 구간이 수동 프레임 분할 결과로 제공될 수 있다.
-이후 ⑥ Phase Segmentation은 관절 움직임을 추적하여 하강, 정지, 상승 같은 rep/phase를
-반자동으로 분리한다. 자동 인식이 불명확하면 사용자가 중간에 개입하여 반복 경계나 phase
-라벨을 강제로 지정한다.
-
 어노테이션 파일이 공급되지 않으면 전체 시퀀스가 단일 분석 구간으로 처리된다.
-
-분할 실패 지점은 `SegmentationFailurePoint`로 기록한다. 실패 수준은 다음처럼 처리한다.
-
-```text
-rep_boundary 실패      해당 반복/구간은 수동 보정 전까지 반복 단위·구간 단위 분석에서 제외
-phase_boundary 실패    반복 단위 지표는 유지하되, 해당 반복의 구간 단위 지표는 산출하지 않음
-optional_phase 실패    Bottom_Hold 등 선택 구간만 생략하고 coarse phase로 계속 진행
-```
-
-수동 개입으로 경계가 확정되면 `segmentation_source = manual_override`로 남기고 후속 단계는
-확정된 라벨만 사용한다. 실패 지점은 조용히 보간하거나 성공으로 간주하지 않는다.
 
 후속 단계를 구동하는 주요 어노테이션 칼럼:
 
@@ -164,11 +152,34 @@ pattern            bilateral | alternating
 starting_side      교대 운동에서 첫 활성 측 (⑦)
 ```
 
-[03_annotation_and_segmentation.md](pipeline/03_annotation_and_segmentation.md) 참조.
+[02_annotation.md](pipeline/02_annotation.md) 참조.
 
 ---
 
-## 6. 정규화 전략 (Normalization Strategy)
+## 6. 세그멘테이션 전략 (Segmentation Strategy)
+
+⑥ Segmentation은 두 하위 절차로 나뉜다. 신규 `rep_segmentation`은 관절 움직임을 추적해
+반복 경계를 반자동으로 확정하고, 기존 `phase_segmentation`은 확정된 반복 내부에서 하강,
+정지, 상승 같은 phase를 나눈다. 자동 인식이 불명확하면 사용자가 중간에 개입하여 반복
+경계나 phase 라벨을 강제로 지정한다.
+
+분할 실패 지점은 `SegmentationFailurePoint`로 기록한다. 실패 수준은 다음처럼 처리한다.
+
+```text
+rep_boundary 실패      해당 반복/구간은 수동 보정 전까지 반복 단위·구간 단위 분석에서 제외
+phase_boundary 실패    반복 단위 지표는 유지하되, 해당 반복의 구간 단위 지표는 산출하지 않음
+optional_phase 실패    Bottom_Hold 등 선택 구간만 생략하고 coarse phase로 계속 진행
+```
+
+수동 개입으로 경계가 확정되면 `rep_segmentation_source` 또는 `phase_segmentation_source`를
+`manual_override`로 남기고 후속 단계는 확정된 라벨만 사용한다. 실패 지점은 조용히 보간하거나
+성공으로 간주하지 않는다.
+
+[06_segmentation.md](pipeline/06_segmentation.md) 참조.
+
+---
+
+## 7. 정규화 전략 (Normalization Strategy)
 
 ```text
 평행이동 기준 : 프레임별 골반 중심
@@ -181,11 +192,11 @@ starting_side      교대 운동에서 첫 활성 측 (⑦)
 이후 모든 피처와 바이오마커는 `torso_length_ratio` 단위(무차원) 또는 도(degree)로 표현된다.
 절대 힘·길이 단위는 사용하지 않는다.
 
-[06_normalization.md](pipeline/06_normalization.md) 참조.
+[05_normalization.md](pipeline/05_normalization.md) 참조.
 
 ---
 
-## 7. 개발 로드맵 (Development Roadmap)
+## 8. 개발 로드맵 (Development Roadmap)
 
 ```text
 2026.03 – 2026.05  환경 구축 및 파이프라인 설계
@@ -214,7 +225,7 @@ starting_side      교대 운동에서 첫 활성 측 (⑦)
   [완료]  BiomarkerScoreRecord — Z-score 감점, 동적 하한(dynamic floor), 도메인 종합 점수 (0–100)
   [완료]  derive_biomarkers() 진입점을 파이프라인 ⑩에 결선
   [완료]  합성 정상 베이스라인 (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [계획]  Phase segmentation (⑥) — 관절 움직임 추적 기반 rep/phase 반자동 분할; 실패 시 수동 개입
+  [진행]  Segmentation (⑥) — `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 분할; 실패 시 수동 개입
   [계획]  Exercise YAML의 `phases` 정의를 반자동 phase 라벨 및 구간 단위 피처와 연결
   [완료]  FeatureRecord.phase 필드; extract_rep_features()가 반복 단위 + 구간 단위 레코드 방출
   [완료]  summarize_phase_to_rep() 계층 집계기 (Descent/Ascent ROM 비율)

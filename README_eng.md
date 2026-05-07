@@ -20,7 +20,7 @@ Pose CSV  +  annotation CSV  +  exercise definition YAML
 ③  Exercise Definition  biomechanical property object loading
 ④  Preprocessing        monocular data quality correction
 ⑤  Normalization        body-relative coordinate normalization
-⑥  Phase Segmentation   semi-automatic intra-rep kinematic phase splitting
+⑥  Segmentation        semi-automatic rep/phase splitting from joint-motion tracking
 ⑦  Motion Attribution   per-rep active-side consistency
 ⑧  Feature Extraction   spatial / temporal / control features, rep and phase level
 ⑨  Biomech Proxy        CoM, moment arms, load-shift trend
@@ -34,7 +34,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-05-05)
+## Implementation Status (2026-05-07)
 
 ### Complete
 
@@ -43,10 +43,10 @@ Stage activation is controlled by the `enabled` flags in
 | Pose I/O and config | `io.py`, `config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `validation.py` | Structural integrity report |
 | ② Annotation | `annotation.py` | Frame-level metadata merge; `phase` column reserved |
-| ③ Exercise Definition | `exercise_definition.py` | YAML loader + validator + generic fallback; `PhaseSegmentationSpec` |
+| ③ Exercise Definition | `exercise_definition.py` | YAML loader + validator + generic fallback; `rep_segmentation` + `phase_segmentation` settings |
 | ④ Preprocessing | `preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
 | ⑤ Normalization | `normalization.py` | Hip-center translation + median torso-length scale |
-| ⑥ Phase Segmentation | `segmentation.py` | SG-smoothed inflection detection; Descent / Ascent / Bottom_Hold; multi-inflection policy; all four exercise YAMLs v0.2.0 |
+| ⑥ Segmentation | `segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
 | ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; conservative / auto-correct modes |
 | ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
@@ -54,7 +54,7 @@ Stage activation is controlled by the `enabled` flags in
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + YAML mirror for dashboard tooltips |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
 | Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
-| Unit tests | `tests/` | `test_biomech_load_shift.py` (17 cases), `test_interpretation.py` (20 cases) |
+| Unit tests | `tests/` | `test_biomech_load_shift.py` (17 cases), `test_interpretation.py` (20 cases), `test_segmentation.py` (3 cases) |
 
 ### Partial
 
@@ -94,7 +94,7 @@ movement_project/
 │   ├── terminology.md               # single source of truth for domain terms
 │   ├── overview.md                  # framework overview
 │   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
-│   │   └── 01_data_format.md ~ 12_insilico_simulation.md
+│   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
 │   └── code_revision_plan.md        # implementation plan before defense (.gitignore)
@@ -213,8 +213,8 @@ inside `pipeline/` and `clinical/` are tracked in the document index in
 
 | Version | File | Content |
 |---|---|---|
-| 1.1.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
-| 1.2.0 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.3.0 | [docs_eng/terminology.md](docs_eng/terminology.md) | Single source of truth for all domain terms |
+| 1.4.0 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 
 ---
 

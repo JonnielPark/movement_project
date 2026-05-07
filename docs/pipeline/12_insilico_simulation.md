@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/pipeline/12_insilico_simulation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑫. ①–⑩ 러너 외부에서 독립적으로 호출된다. 정상 합성 포즈 데이터에

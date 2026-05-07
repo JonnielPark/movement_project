@@ -10,7 +10,7 @@ Pipeline steps:
     ③  exercise_definition    biomechanical property object loading
     ④  preprocessing          monocular data quality correction
     ⑤  normalization          body-relative coordinate normalization
-    ⑥  segmentation           semi-automatic intra-rep kinematic phase splitter
+    ⑥  segmentation           semi-automatic rep splitter + intra-rep phase splitter
     ⑦  motion_attribution     per-rep active-side consistency
     ⑧  features               spatial / temporal / control feature extraction
                                (rep-level and phase-level when ⑥ has populated phase column)
@@ -22,6 +22,7 @@ Pipeline steps:
 Step activation: enabled flags in configs/pipeline_default.yaml.
 Terminology: docs/terminology.md.
 """
+
 from __future__ import annotations
 
 from movement.io import load_pose_csv  # noqa
@@ -33,7 +34,7 @@ from movement.exercise_definition import (  # noqa
 )
 from movement.preprocessing import preprocess_pose_dataframe  # noqa
 from movement.normalization import normalize_pose_by_hip_torso  # noqa
-from movement.segmentation import segment_phases  # noqa
+from movement.segmentation import segment_reps, segment_phases  # noqa
 from movement.motion_attribution import attribute_motion, AttributionThresholds  # noqa
 from movement.visualization import (  # noqa
     create_pose_animation,
@@ -47,7 +48,11 @@ from movement.visualization import (  # noqa
 from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
 from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
 from movement.biomech import BiomechRecord  # noqa
-from movement.biomarker import BiomarkerRecord, from_feature_record, from_biomech_record  # noqa
+from movement.biomarker import (
+    BiomarkerRecord,
+    from_feature_record,
+    from_biomech_record,
+)  # noqa
 from movement.clinical import load_fms_mapping, traffic_light_for_score  # noqa
 
 __all__ = [
@@ -65,7 +70,8 @@ __all__ = [
     "preprocess_pose_dataframe",
     # ⑤ normalization
     "normalize_pose_by_hip_torso",
-    # ⑥ phase segmentation
+    # ⑥ segmentation
+    "segment_reps",
     "segment_phases",
     # ⑦ motion attribution
     "attribute_motion",

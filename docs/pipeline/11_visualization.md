@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/pipeline/11_visualization.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑪. ①–⑩ 러너 외부에서 독립적으로 호출된다. 진단 검사 및 임상의 대상
@@ -34,7 +33,7 @@ CDSS(Clinical Decision Support System) 관점에서, 시각적 밀도보다 해�
 ③ Exercise Definition 후     → (좌표 출력 없음; 시각화 없음)
 ④ Preprocessing 후           → 신뢰도 마스크 오버레이, 보정 전·후
 ⑤ Normalization 후           → 원시 vs. 정규화 골격 비교
-⑥ Phase Segmentation 후     → 평활화된 기준 궤적 + 구간 밴드
+⑥ Segmentation 후     → 평활화된 기준 궤적 + 구간 밴드
 ⑦ Motion Attribution 후      → 반복별 활성 측 할당 차트
 ⑧ Feature Extraction 후      → 관절각 시계열, ROM 막대, 대칭
 ⑨ Biomech Proxy 후           → CoM 궤적, 모멘트 암 오버레이
@@ -212,7 +211,7 @@ plot_biomech_load_shift(
 X축       시간 (frame 또는 phase 경계)
 Y축       도메인별로 묶인 feature_id (spatial / temporal / control / biomech)
 셀        감점 크기 (색상), 호버로 source_fields 공개
-오버레이  ⑥ Phase Segmentation의 phase 경계
+오버레이  ⑥ Segmentation의 phase 경계
 ```
 
 ```python

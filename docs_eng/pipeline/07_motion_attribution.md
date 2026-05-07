@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/07_motion_attribution.md` is the same-version Korean source.
 
 Pipeline step ⑦. Checks whether the limb that moved most in each rep matches the
@@ -21,7 +20,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution     ← this step
 → ⑧ Feature Extraction
 ```

@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
 
 Pipeline step ⑨. Computes simplified biomechanical proxy metrics — center of
@@ -28,7 +27,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 → ⑨ Biomech Proxy              ← this step

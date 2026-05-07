@@ -1,9 +1,8 @@
-# 02. Validation
+# 01. Validation
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `docs/pipeline/02_validation.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
 Pipeline step ①. Checks structural and formal integrity of input pose data.
 Does not modify the data. Returns a diagnostic report dict.
@@ -22,8 +21,9 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Motion Attribution
-→ ⑦ Feature Extraction
+→ ⑥ Segmentation
+→ ⑦ Motion Attribution
+→ ⑧ Feature Extraction
 ```
 
 Runs before all other steps. Downstream steps can rely on the integrity assumptions

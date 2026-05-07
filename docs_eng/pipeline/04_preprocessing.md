@@ -1,9 +1,8 @@
-# 05. Preprocessing
+# 04. Preprocessing
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**Korean Sync:** `docs/pipeline/05_preprocessing.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/04_preprocessing.md` is the same-version Korean source.
 
 Pipeline step ④. Corrects data quality issues in monocular pose data before normalization.
 Returns a corrected copy of the dataframe; does not modify the input.
@@ -22,7 +21,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing          ← this step
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
 ```

@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩. Integrates ⑧ feature extraction and ⑨ biomechanical proxy
@@ -30,7 +29,7 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Phase Segmentation
+→ ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction          (FeatureRecord list)
 → ⑨ Biomech Proxy               (BiomechRecord  list)

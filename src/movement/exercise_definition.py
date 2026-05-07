@@ -12,6 +12,7 @@ Public API
 load_exercise_definition(exercise_id, definitions_dir) -> ExerciseDefinition
 load_all_exercise_definitions(definitions_dir)         -> dict[str, ExerciseDefinition]
 """
+
 from __future__ import annotations
 
 import warnings
@@ -23,59 +24,148 @@ import yaml
 
 
 # ── Controlled vocabulary ─────────────────────────────────────────────────────
-# Source: docs/pipeline/04_exercise_definition.md — Field Dictionary
+# Source: docs/pipeline/03_exercise_definition.md — Field Dictionary
 
 _VOCAB: dict[str, frozenset[str]] = {
-    "classification.family": frozenset({
-        "lower_body", "upper_body", "core", "full_body",
-        "balance", "locomotion", "mobility", "plyometric", "rehabilitation",
-    }),
-    "classification.posture_type": frozenset({
-        "standing", "standing_split", "single_leg_standing",
-        "kneeling", "half_kneeling", "quadruped",
-        "prone", "supine", "side_lying",
-        "seated", "plank", "side_plank",
-        "inverted", "inverted_closed_chain", "hanging",
-        "locomotion", "transitioning",
-    }),
-    "classification.kinetic_chain": frozenset({
-        "open_chain", "closed_chain", "mixed_chain",
-        "closed_chain_alternating", "open_chain_alternating",
-    }),
-    "classification.laterality": frozenset({
-        "bilateral_symmetric", "bilateral_asymmetric",
-        "unilateral_left", "unilateral_right", "unilateral_unspecified",
-        "alternating", "anti_rotation", "cross_body",
-    }),
-    "classification.primary_plane": frozenset({
-        "sagittal", "frontal", "transverse", "multiplanar", "static",
-    }),
-    "phase_model.type": frozenset({
-        "resistance_phase", "task_phase", "static_hold",
-        "cyclic", "locomotion_phase", "balance_phase",
-        "transition_phase", "custom",
-    }),
-    "biomechanical_focus.expected_com_motion": frozenset({
-        "minimal", "vertical",
-        "anterior_posterior", "medial_lateral",
-        "vertical_and_anterior_posterior", "vertical_and_medial_lateral",
-        "rotational", "multidirectional",
-    }),
-    "biomechanical_focus.stability_requirement": frozenset({
-        "low", "medium", "high", "very_high",
-    }),
-    "view_requirements.occlusion_risk": frozenset({
-        "low", "medium", "high", "very_high",
-    }),
-    "phase_segmentation.reference_axis": frozenset({
-        "vertical", "anterior_posterior", "medial_lateral",
-    }),
-    "phase_segmentation.split_logic": frozenset({
-        "local_minimum", "local_maximum", "zero_crossing",
-    }),
-    "phase_segmentation.multi_inflection_policy": frozenset({
-        "global_extremum", "first", "reject_rep",
-    }),
+    "classification.family": frozenset(
+        {
+            "lower_body",
+            "upper_body",
+            "core",
+            "full_body",
+            "balance",
+            "locomotion",
+            "mobility",
+            "plyometric",
+            "rehabilitation",
+        }
+    ),
+    "classification.posture_type": frozenset(
+        {
+            "standing",
+            "standing_split",
+            "single_leg_standing",
+            "kneeling",
+            "half_kneeling",
+            "quadruped",
+            "prone",
+            "supine",
+            "side_lying",
+            "seated",
+            "plank",
+            "side_plank",
+            "inverted",
+            "inverted_closed_chain",
+            "hanging",
+            "locomotion",
+            "transitioning",
+        }
+    ),
+    "classification.kinetic_chain": frozenset(
+        {
+            "open_chain",
+            "closed_chain",
+            "mixed_chain",
+            "closed_chain_alternating",
+            "open_chain_alternating",
+        }
+    ),
+    "classification.laterality": frozenset(
+        {
+            "bilateral_symmetric",
+            "bilateral_asymmetric",
+            "unilateral_left",
+            "unilateral_right",
+            "unilateral_unspecified",
+            "alternating",
+            "anti_rotation",
+            "cross_body",
+        }
+    ),
+    "classification.primary_plane": frozenset(
+        {
+            "sagittal",
+            "frontal",
+            "transverse",
+            "multiplanar",
+            "static",
+        }
+    ),
+    "phase_model.type": frozenset(
+        {
+            "resistance_phase",
+            "task_phase",
+            "static_hold",
+            "cyclic",
+            "locomotion_phase",
+            "balance_phase",
+            "transition_phase",
+            "custom",
+        }
+    ),
+    "biomechanical_focus.expected_com_motion": frozenset(
+        {
+            "minimal",
+            "vertical",
+            "anterior_posterior",
+            "medial_lateral",
+            "vertical_and_anterior_posterior",
+            "vertical_and_medial_lateral",
+            "rotational",
+            "multidirectional",
+        }
+    ),
+    "biomechanical_focus.stability_requirement": frozenset(
+        {
+            "low",
+            "medium",
+            "high",
+            "very_high",
+        }
+    ),
+    "view_requirements.occlusion_risk": frozenset(
+        {
+            "low",
+            "medium",
+            "high",
+            "very_high",
+        }
+    ),
+    "rep_segmentation.reference_axis": frozenset(
+        {
+            "vertical",
+            "anterior_posterior",
+            "medial_lateral",
+        }
+    ),
+    "rep_segmentation.boundary_logic": frozenset(
+        {
+            "local_minimum",
+            "local_maximum",
+            "zero_crossing",
+        }
+    ),
+    "phase_segmentation.reference_axis": frozenset(
+        {
+            "vertical",
+            "anterior_posterior",
+            "medial_lateral",
+        }
+    ),
+    "phase_segmentation.split_logic": frozenset(
+        {
+            "local_minimum",
+            "local_maximum",
+            "zero_crossing",
+        }
+    ),
+    "phase_segmentation.multi_inflection_policy": frozenset(
+        {
+            "global_extremum",
+            "first",
+            "reject_rep",
+        }
+    ),
 }
 
 _REQUIRED_FIELDS: tuple[str, ...] = (
@@ -94,6 +184,7 @@ _GENERIC_ID = "generic"
 
 # ── Dataclasses ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class PhaseModel:
     type: str
@@ -103,16 +194,39 @@ class PhaseModel:
 @dataclass
 class SmoothingSpec:
     """Smoothing parameters for phase segmentation trajectory preprocessing."""
+
     method: str = "savitzky_golay"  # savitzky_golay | butterworth | rolling_median
-    window_frames: int = 7          # must be odd for Savitzky-Golay
+    window_frames: int = 7  # must be odd for Savitzky-Golay
     polyorder: int = 3
 
 
 @dataclass
 class BottomHoldSpec:
     """Bottom-hold phase specification: frames around the inflection labeled as Bottom_Hold."""
+
     enabled: bool = True
-    half_window_frames: int = 3     # ±N frames around the inflection frame
+    half_window_frames: int = 3  # ±N frames around the inflection frame
+
+
+@dataclass
+class RepSegmentationSpec:
+    """
+    Repetition-boundary segmentation specification.
+
+    Describes how to detect repetition start/end boundaries from a smoothed
+    reference-landmark trajectory. The confirmed intervals become `rep_id`
+    labels before intra-rep phase segmentation runs.
+    """
+
+    reference_landmark: str = "hip_center"
+    reference_axis: str = "vertical"
+    boundary_logic: str = "local_maximum"
+    smoothing: SmoothingSpec = field(default_factory=SmoothingSpec)
+    minimum_rep_length_frames: int = 8
+    minimum_boundary_distance_frames: int = 8
+    minimum_reps: int = 1
+    boundary_prominence: float | None = None
+    include_endpoints: bool = True
 
 
 @dataclass
@@ -127,14 +241,19 @@ class PhaseSegmentationSpec:
     These labels are kinematic (trajectory-based), not kinetic (muscle-action-based).
     The biomechanical interpretation of each phase is provided separately by the exercise.
     """
+
     reference_landmark: str = "hip_center"
-    reference_axis: str = "vertical"               # maps to norm_z (vertical), norm_y, norm_x
+    reference_axis: str = "vertical"  # maps to norm_z (vertical), norm_y, norm_x
     phase_sequence: list[str] = field(default_factory=list)
-    split_logic: str | list[str] = "local_minimum" # local_minimum | local_maximum | zero_crossing
+    split_logic: str | list[str] = (
+        "local_minimum"  # local_minimum | local_maximum | zero_crossing
+    )
     smoothing: SmoothingSpec = field(default_factory=SmoothingSpec)
     bottom_hold: BottomHoldSpec = field(default_factory=BottomHoldSpec)
     minimum_rep_length_frames: int = 8
-    multi_inflection_policy: str = "global_extremum"  # global_extremum | first | reject_rep
+    multi_inflection_policy: str = (
+        "global_extremum"  # global_extremum | first | reject_rep
+    )
 
 
 @dataclass
@@ -184,8 +303,10 @@ class ExerciseDefinition:
     Downstream modules should emit a warning when this flag is True, because
     compensation biomarkers will not be produced.
 
-    The `phase_segmentation` field is None for the generic fallback or when the
-    YAML does not declare a `phase_segmentation` block. When None, step ⑥ is a no-op.
+    The `rep_segmentation` and `phase_segmentation` fields are None for the
+    generic fallback or when the YAML does not declare those blocks.
+    `rep_segmentation` controls repetition-boundary detection; `phase_segmentation`
+    controls intra-rep kinematic phase splitting.
 
     Coordinate convention inherited from the pipeline: (T, J, 3) = (frame, joint_index, xyz).
 
@@ -207,9 +328,12 @@ class ExerciseDefinition:
     compensation_candidates : list[str]
     feature_domains : FeatureDomains
     quality_rules : QualityRules
+    rep_segmentation : RepSegmentationSpec | None
+        Repetition-boundary splitter spec. None → rep splitting is skipped.
     phase_segmentation : PhaseSegmentationSpec | None
-        Kinematic phase splitter spec. None → ⑥ is skipped.
+        Kinematic phase splitter spec. None → phase splitting is skipped.
     """
+
     exercise_id: str
     display_name: str
     version: str
@@ -223,17 +347,15 @@ class ExerciseDefinition:
     compensation_candidates: list[str]
     feature_domains: FeatureDomains
     quality_rules: QualityRules
+    rep_segmentation: RepSegmentationSpec | None = None
     phase_segmentation: PhaseSegmentationSpec | None = None
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
+
 def _check_required_fields(raw: dict, exercise_id: str) -> list[str]:
-    return [
-        f"missing required field: '{f}'"
-        for f in _REQUIRED_FIELDS
-        if f not in raw
-    ]
+    return [f"missing required field: '{f}'" for f in _REQUIRED_FIELDS if f not in raw]
 
 
 def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
@@ -241,20 +363,26 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
     bio = raw.get("biomechanical_focus", {})
     vr = raw.get("view_requirements", {})
     pm = raw.get("phase_model", {})
+    rs = raw.get("rep_segmentation") or {}
     ps = raw.get("phase_segmentation") or {}
 
     checks = [
-        ("classification.family",                        clf.get("family")),
-        ("classification.posture_type",                  clf.get("posture_type")),
-        ("classification.kinetic_chain",                 clf.get("kinetic_chain")),
-        ("classification.laterality",                    clf.get("laterality")),
-        ("classification.primary_plane",                 clf.get("primary_plane")),
-        ("phase_model.type",                             pm.get("type")),
-        ("biomechanical_focus.expected_com_motion",      bio.get("expected_com_motion")),
-        ("biomechanical_focus.stability_requirement",    bio.get("stability_requirement")),
-        ("view_requirements.occlusion_risk",             vr.get("occlusion_risk")),
-        ("phase_segmentation.reference_axis",            ps.get("reference_axis") if ps else None),
-        ("phase_segmentation.multi_inflection_policy",   ps.get("multi_inflection_policy") if ps else None),
+        ("classification.family", clf.get("family")),
+        ("classification.posture_type", clf.get("posture_type")),
+        ("classification.kinetic_chain", clf.get("kinetic_chain")),
+        ("classification.laterality", clf.get("laterality")),
+        ("classification.primary_plane", clf.get("primary_plane")),
+        ("phase_model.type", pm.get("type")),
+        ("biomechanical_focus.expected_com_motion", bio.get("expected_com_motion")),
+        ("biomechanical_focus.stability_requirement", bio.get("stability_requirement")),
+        ("view_requirements.occlusion_risk", vr.get("occlusion_risk")),
+        ("rep_segmentation.reference_axis", rs.get("reference_axis") if rs else None),
+        ("rep_segmentation.boundary_logic", rs.get("boundary_logic") if rs else None),
+        ("phase_segmentation.reference_axis", ps.get("reference_axis") if ps else None),
+        (
+            "phase_segmentation.multi_inflection_policy",
+            ps.get("multi_inflection_policy") if ps else None,
+        ),
     ]
 
     warns = [
@@ -302,6 +430,32 @@ def _validate(raw: dict) -> tuple[list[str], list[str]]:
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
 
+
+def _parse_rep_segmentation(rs: dict | None) -> RepSegmentationSpec | None:
+    """Parse a rep_segmentation YAML block into a RepSegmentationSpec, or None."""
+    if not rs:
+        return None
+    sm = rs.get("smoothing") or {}
+    prominence = rs.get("boundary_prominence", None)
+    return RepSegmentationSpec(
+        reference_landmark=rs.get("reference_landmark", "hip_center"),
+        reference_axis=rs.get("reference_axis", "vertical"),
+        boundary_logic=rs.get("boundary_logic", "local_maximum"),
+        smoothing=SmoothingSpec(
+            method=sm.get("method", "savitzky_golay"),
+            window_frames=int(sm.get("window_frames", 7)),
+            polyorder=int(sm.get("polyorder", 3)),
+        ),
+        minimum_rep_length_frames=int(rs.get("minimum_rep_length_frames", 8)),
+        minimum_boundary_distance_frames=int(
+            rs.get("minimum_boundary_distance_frames", 8)
+        ),
+        minimum_reps=int(rs.get("minimum_reps", 1)),
+        boundary_prominence=None if prominence is None else float(prominence),
+        include_endpoints=bool(rs.get("include_endpoints", True)),
+    )
+
+
 def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
     """Parse a phase_segmentation YAML block into a PhaseSegmentationSpec, or None."""
     if not ps:
@@ -344,7 +498,9 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
         classification=raw.get("classification", {}),
         phase_model=PhaseModel(
             type=pm.get("type", "cyclic"),
-            expected_ratio={k: float(v) for k, v in pm.get("expected_ratio", {}).items()},
+            expected_ratio={
+                k: float(v) for k, v in pm.get("expected_ratio", {}).items()
+            },
         ),
         landmarks=LandmarkSpec(
             model=lm.get("model", "mediapipe_pose_33"),
@@ -372,16 +528,25 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             biomechanical_proxy=list(fd.get("biomechanical_proxy") or []),
         ),
         quality_rules=QualityRules(
-            minimum_visible_landmark_ratio=float(qr.get("minimum_visible_landmark_ratio", 0.8)),
-            minimum_critical_landmark_ratio=float(qr.get("minimum_critical_landmark_ratio", 0.9)),
+            minimum_visible_landmark_ratio=float(
+                qr.get("minimum_visible_landmark_ratio", 0.8)
+            ),
+            minimum_critical_landmark_ratio=float(
+                qr.get("minimum_critical_landmark_ratio", 0.9)
+            ),
             max_missing_gap_frames=int(qr.get("max_missing_gap_frames", 10)),
             max_interpolation_gap_frames=int(qr.get("max_interpolation_gap_frames", 3)),
             exclude_rep_if_critical_landmark_missing=bool(
                 qr.get("exclude_rep_if_critical_landmark_missing", True)
             ),
-            exclude_rep_if_phase_missing=bool(qr.get("exclude_rep_if_phase_missing", False)),
-            allow_partial_feature_output=bool(qr.get("allow_partial_feature_output", True)),
+            exclude_rep_if_phase_missing=bool(
+                qr.get("exclude_rep_if_phase_missing", False)
+            ),
+            allow_partial_feature_output=bool(
+                qr.get("allow_partial_feature_output", True)
+            ),
         ),
+        rep_segmentation=_parse_rep_segmentation(raw.get("rep_segmentation")),
         phase_segmentation=_parse_phase_segmentation(raw.get("phase_segmentation")),
     )
 
@@ -392,6 +557,7 @@ def _load_raw(yaml_path: Path) -> dict:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def load_exercise_definition(
     exercise_id: str | None,

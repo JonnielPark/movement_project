@@ -1,9 +1,8 @@
-# 02. 검증 (Validation)
+# 01. 검증 (Validation)
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
-**영문 동기화:** `docs_eng/pipeline/02_validation.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/01_validation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ①. 입력 포즈 데이터의 구조적·형식적 무결성을 점검한다.
 데이터를 수정하지 않으며 진단 리포트(report) 딕셔너리를 반환한다.
@@ -22,8 +21,9 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Motion Attribution
-→ ⑦ Feature Extraction
+→ ⑥ Segmentation
+→ ⑦ Motion Attribution
+→ ⑧ Feature Extraction
 ```
 
 다른 모든 단계 이전에 실행된다. 후속 단계는 검증 리포트가 확인한 무결성 가정에 의존할 수 있다.
