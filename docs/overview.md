@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.5
+**문서 버전:** 1.4.6
 **최종 갱신:** 2026-05-08
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -14,11 +14,12 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.2 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.5 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.6 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.0.0 | [camera_protocol.md](camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.2.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.1.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.3.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
@@ -45,6 +46,7 @@ landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_
 phases                구간 모델 (예: eccentric / concentric)
 rep_segmentation      반복 경계 검출 설정
 phase_segmentation    반복 내부 phase 검출 설정
+camera_protocol       권장 촬영 zone/height와 경고 정책
 compensation_candidates  모니터링할 움직임 패턴
 feature_domains       활성화할 공간/시간/제어 피처
 biomechanical_focus   계산할 프록시(proxy) 지표
@@ -61,6 +63,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 입력
     Pose CSV           단안 3D 포즈 시계열
     Annotation 파일    (선택) 구간 및 반복 라벨
+    Recording metadata (선택) session_id, set_index, camera zone/height
     Exercise YAML      운동 정의
 
 단계
@@ -100,8 +103,8 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | 단계 | 입력/참조 정보 | 주요 처리 | 산출물 |
 |---|---|---|---|
 | ① Validation | Pose CSV | 필수 칼럼, 프레임 순서, 시간값, 랜드마크 좌표 구조, 결측 패턴을 검사한다. | Validation report |
-| ② Annotation | Pose DataFrame, Annotation CSV | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase` 칼럼을 구성한다. | Annotation이 병합된 DataFrame |
-| ③ Exercise Definition | `exercise_type`, exercise YAML | 운동별 YAML을 로드하여 `ExerciseDefinition` 객체를 생성하고, 없을 경우 `generic.yaml`을 적용한다. | ExerciseDefinition |
+| ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼을 구성한다. | Annotation이 병합된 DataFrame |
+| ③ Exercise Definition | `exercise_type`, exercise YAML | 운동별 YAML을 로드하여 `ExerciseDefinition` 객체를 생성하고, 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 정의 메타데이터로 보존한다. | ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |

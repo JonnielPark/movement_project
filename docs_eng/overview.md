@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.5
+**Document Version:** 1.4.6
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,11 +14,12 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.2 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.5 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.6 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.0.0 | [camera_protocol.md](camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.0.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.2.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.1.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.3.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
@@ -45,6 +46,7 @@ landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_
 phases                phase model (e.g., eccentric / concentric)
 rep_segmentation      repetition-boundary detection settings
 phase_segmentation    intra-rep phase detection settings
+camera_protocol       recommended filming zone/height and warning policy
 compensation_candidates  movement patterns to monitor
 feature_domains       which spatial / temporal / control features to activate
 biomechanical_focus   which proxy metrics to compute
@@ -62,6 +64,7 @@ is found.
 Input
     Pose CSV           monocular 3D pose time series
     Annotation file    (optional) segment and rep labels
+    Recording metadata (optional) session_id, set_index, camera zone/height
     Exercise YAML      exercise definition
 
 Steps
@@ -101,8 +104,8 @@ Output
 | Step | Input / Reference Information | Main Processing | Output |
 |---|---|---|---|
 | ① Validation | Pose CSV | Checks required columns, frame order, timestamps, landmark coordinate structure, and missing-value patterns. | Validation report |
-| ② Annotation | Pose DataFrame, Annotation CSV | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, and the initial `phase` column. | Annotated DataFrame |
-| ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. | ExerciseDefinition |
+| ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, and filming provenance columns. | Annotated DataFrame |
+| ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as definition metadata for filming recommendations and warning policy. | ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |

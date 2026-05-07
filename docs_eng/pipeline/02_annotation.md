@@ -1,14 +1,14 @@
 # 02. Annotation
 
-**Document Version:** 1.0.0
-**Last Updated:** 2026-05-07
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-08
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
 Pipeline step ②. Merges segment metadata from a user-prepared annotation CSV into
-the pose dataframe. This step only merges and propagates manual metadata; it does
-not estimate rep/phase boundaries automatically or semi-automatically. Rep/phase
-boundary estimation and failure-point recording are handled by
-[06_segmentation.md](06_segmentation.md).
+the pose dataframe. This step merges and propagates manual metadata and filming
+provenance; it does not estimate rep/phase boundaries automatically or
+semi-automatically. Rep/phase boundary estimation and failure-point recording are
+handled by [06_segmentation.md](06_segmentation.md).
 
 This step does not delete frames or modify coordinates.
 
@@ -41,12 +41,22 @@ phase               object    nullable; preserved if manually provided
 exercise_type       str       exercise definition YAML identifier
 pattern             str       bilateral | alternating
 starting_side       str       left | right (alternating exercises only)
+session_id          str       nullable; identifier that groups multiple recordings into one session
+recording_id        str       nullable; one-take filming-file identifier
+set_index           Int64     nullable; set order within the session
+camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z6 | unknown
+camera_height_level str       nullable; H1 | H2 | H3 | unknown
+mat_anchor_used     bool      nullable; whether the yoga-mat anchor was used
+filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
 ```
 
 `exercise_type` drives ③ exercise definition loading.
 `pattern` and `starting_side` drive ④ preprocessing L/R swap detection and ⑦ motion attribution.
 When a manual `phase` value is provided, ② preserves it, but ⑥ Segmentation decides whether
 the label is confirmed and how any failure is handled.
+Filming provenance columns are not used to correct coordinates or exclude data.
+Whether the recording matches the recommended protocol is shown as warning information
+in reports or visualization.
 
 ## 3. Annotation Hierarchy
 
@@ -80,7 +90,9 @@ segment_type, set_id, rep_id, start_frame, end_frame, use_for_analysis
 Optional columns:
 
 ```text
-exercise_type, pattern, starting_side, phase, note
+exercise_type, pattern, starting_side, phase, note,
+session_id, recording_id, set_index,
+camera_zone, camera_height_level, mat_anchor_used, filming_protocol_status
 ```
 
 ### Example: single set, 3 reps
@@ -136,6 +148,13 @@ phase            = None
 exercise_type    = None   → ③ loads generic fallback definition
 pattern          = bilateral
 starting_side    = None
+session_id       = None
+recording_id     = None
+set_index        = None
+camera_zone      = unknown
+camera_height_level = unknown
+mat_anchor_used  = None
+filming_protocol_status = unknown
 ```
 
 Report records `annotation_provided = False`.
@@ -148,6 +167,8 @@ Report records `annotation_provided = False`.
 3. Frames not covered by any annotation segment are excluded from analysis.
 4. Exercise context columns (exercise_type, pattern, starting_side) are propagated
    to all frames within the declared segment.
+5. Filming provenance columns (session_id, camera_zone, and related fields) are
+   propagated to every frame in the recording or declared range.
 ```
 
 ## 8. Overlap Policy
@@ -170,6 +191,7 @@ Supported:
 - use_for_analysis mask
 - Exercise context columns (exercise_type, pattern, starting_side)
 - Preserving manually provided phase labels
+- Preserving filming provenance columns (session_id, recording_id, set_index, camera_zone, camera_height_level)
 ```
 
 Not in scope:
@@ -177,5 +199,7 @@ Not in scope:
 ```text
 - Automatic or semi-automatic rep/phase boundary estimation
 - Segmentation failure-point recording
+- Camera-angle correction or coordinate reprojection
+- Forced rejection of data with mismatched filming conditions
 - Coordinate edits
 ```

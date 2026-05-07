@@ -33,7 +33,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 
 ---
 
-## 구현 상태 (2026-05-07)
+## 구현 상태 (2026-05-08)
 
 ### 완료
 
@@ -87,11 +87,13 @@ movement_project/
 │   │   ├── exercises/               # squat · lunge · pike_pushup · plank_shoulder_tap · generic
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
 │   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   ├── camera/                      # camera_zones.yaml 촬영 구역 정의
 │   ├── reference/                   # baseline_zscore.json (합성 정상 베이스라인)
 │   └── processed/                   # 파이프라인 단계별 중간·최종 산출물 (.gitignore)
 ├── docs/
 │   ├── terminology.md               # 연구 특화 용어와 임상 표현 원칙
 │   ├── overview.md                  # 프레임워크 개요
+│   ├── camera_protocol.md           # 대상 운동별 촬영 프로토콜
 │   ├── pipeline/                    # 파이프라인 ① ~ ⑫ 단계 문서
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
@@ -209,7 +211,8 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.2 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.5 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.6 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.0.0 | [docs/camera_protocol.md](docs/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 
 ---
 
@@ -222,6 +225,7 @@ README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinic
 - `data/pose/sample/` — 코드로 임의 생성한 합성/데모 관절 포인트 CSV
 - `data/pose/mediapipe/` — MediaPipe로 추출한 관절 포인트 CSV
 - `data/definitions/` — 운동 정의, 해석 규칙, 임상 매핑 YAML
+- `data/camera/` — 촬영 구역과 높이 수준에 대한 공통 YAML
 - `data/reference/` — 합성 정상 베이스라인 등 기준 통계
 
 **커밋하지 않음 (`.gitignore`).**
