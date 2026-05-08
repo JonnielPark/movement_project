@@ -336,7 +336,7 @@ biomechanical_proxy:
 camera_protocol:
   recommended_zones: [Z1, Z3]
   recommended_height: H2
-  anchor: yoga_mat
+  anchor: reference_mat
   distance_cm: [200, 250]
   primary_observation_purpose:
     - knee_valgus
@@ -512,7 +512,7 @@ view_requirements:
 camera_protocol:
   recommended_zones: [Z1, Z3]
   recommended_height: H2
-  anchor: yoga_mat
+  anchor: reference_mat
   distance_cm: [200, 250]
   primary_observation_purpose:
     - knee_valgus

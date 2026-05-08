@@ -46,7 +46,7 @@ recording_id        str       nullable; one-take filming-file identifier
 set_index           Int64     nullable; set order within the session
 camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z6 | unknown
 camera_height_level str       nullable; H1 | H2 | H3 | unknown
-mat_anchor_used     bool      nullable; whether the yoga-mat anchor was used
+reference_mat_used  bool      nullable; whether the reference-mat anchor was used
 filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
 ```
 
@@ -92,7 +92,7 @@ Optional columns:
 ```text
 exercise_type, pattern, starting_side, phase, note,
 session_id, recording_id, set_index,
-camera_zone, camera_height_level, mat_anchor_used, filming_protocol_status
+camera_zone, camera_height_level, reference_mat_used, filming_protocol_status
 ```
 
 ### Example: single set, 3 reps
@@ -153,7 +153,7 @@ recording_id     = None
 set_index        = None
 camera_zone      = unknown
 camera_height_level = unknown
-mat_anchor_used  = None
+reference_mat_used = None
 filming_protocol_status = unknown
 ```
 

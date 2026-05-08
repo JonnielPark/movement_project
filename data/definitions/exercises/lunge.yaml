@@ -185,7 +185,7 @@ view_requirements:
 camera_protocol:
   recommended_zones: [Z4, Z6]
   recommended_height: H2
-  anchor: yoga_mat
+  anchor: reference_mat
   distance_cm: [200, 250]
   primary_observation_purpose:
     - anterior_knee_travel

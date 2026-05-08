@@ -39,20 +39,21 @@ Height is recorded using three levels.
 
 ---
 
-## 2. Yoga-Mat Physical Anchor
+## 2. Reference-Mat Physical Anchor
 
-A yoga mat is used as a physical anchor so the user can estimate distance and
-direction without a separate calibration device. A standard yoga mat is treated as
-approximately 180 cm × 60 cm.
+A reference mat is used as a physical anchor so the user can estimate distance and
+direction without a separate calibration device. A standard reference mat is treated
+as approximately 180 cm × 60 cm.
 
 | Item | Guidance |
 |---|---|
-| Distance | Step back about three steps, or 200-250 cm, until the full mat is visible on the smartphone screen. |
-| Oblique filming | For `Z1` or `Z3`, align the camera toward the front corner of the mat. |
-| Side filming | For `Z4` or `Z6`, align the long edge of the mat with the screen center axis. |
+| Distance | Step back about three steps, or 200-250 cm, until the full reference mat is visible on the smartphone screen. |
+| Oblique filming | For `Z1` or `Z3`, align the camera toward the front corner of the reference mat. |
+| Side filming | For `Z4` or `Z6`, align the long edge of the reference mat with the screen center axis. |
 
-Data is still accepted when no yoga mat is available or when the recommended distance
-cannot be met. The condition is recorded in filming metadata and reported as a warning.
+Data is still accepted when no reference mat is available or when the recommended
+distance cannot be met. The condition is recorded in filming metadata and reported
+as a warning.
 
 ---
 
@@ -100,7 +101,7 @@ data/definitions/exercises/<exercise_id>.yaml
 
 Annotation or recording metadata
     optional columns such as session_id, recording_id, set_index, camera_zone,
-    camera_height_level, mat_anchor_used, filming_protocol_status
+    camera_height_level, reference_mat_used, filming_protocol_status
 ```
 
 Processing policy:
@@ -109,7 +110,7 @@ Processing policy:
 recommended zone matched       record as provenance and process normally
 recommended zone mismatched    warn and process normally
 filming zone missing           record as unknown and process normally
-yoga mat not used              warn, but do not force exclusion
+reference mat not used         warn, but do not force exclusion
 camera-angle correction        not applied
 coordinate reprojection        not applied
 ```
