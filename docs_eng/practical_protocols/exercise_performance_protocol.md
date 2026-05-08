@@ -1,6 +1,6 @@
 # Exercise Performance Protocol per Exercise
 
-**Document Version:** 1.0.2
+**Document Version:** 1.0.3
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/practical_protocols/exercise_performance_protocol.md](../../docs/practical_protocols/exercise_performance_protocol.md) is the matching Korean document.
 
@@ -47,6 +47,10 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 
 ### 2-1. Squat
 
+![Squat example posture](assets/exercise_squat.png)
+
+*Figure 2-1. Squat example image for participant-facing movement understanding.*
+
 **Camera Setup**
 
 ```text
@@ -86,6 +90,10 @@ This protocol can map to `knee_valgus`, `knee_varus`, `asymmetric_depth`,
 `compensation_candidates`.
 
 ### 2-2. Lunge
+
+![Lunge example posture](assets/exercise_lunge.png)
+
+*Figure 2-2. Lunge example image for participant-facing movement understanding.*
 
 **Camera Setup**
 
@@ -130,6 +138,10 @@ or `side_block_size` may be needed.
 
 ### 2-3. Pike Push-up
 
+![Pike push-up example posture](assets/exercise_pike_pushup.png)
+
+*Figure 2-3. Pike push-up example image for participant-facing movement understanding.*
+
 **Camera Setup**
 
 ```text
@@ -170,6 +182,10 @@ This protocol can map to `insufficient_head_descent`, `head_forward_shift`,
 `actual_rep_count` is needed.
 
 ### 2-4. Plank Shoulder Tap
+
+![Plank shoulder tap example posture](assets/exercise_plank_shoulder_tap.png)
+
+*Figure 2-4. Plank shoulder tap example image for participant-facing movement understanding.*
 
 **Camera Setup**
 
