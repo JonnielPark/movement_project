@@ -53,9 +53,9 @@ height_levels:
     recommended_for: full_body_or_upper_body_exercises
 
 anchor:
-  yoga_mat:
+  reference_mat:
     approximate_size_cm: [180, 60]
-    distance_guidance: full_mat_visible_at_200_to_250_cm
+    distance_guidance: full_reference_mat_visible_at_200_to_250_cm
     oblique_guidance: align_camera_to_front_corner
     side_guidance: align_camera_parallel_to_long_edge
 
