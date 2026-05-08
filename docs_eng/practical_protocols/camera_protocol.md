@@ -1,6 +1,6 @@
 # Camera Filming Protocol per Exercise
 
-**Document Version:** 1.2.2
+**Document Version:** 1.2.3
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
@@ -79,10 +79,10 @@ as a warning.
 
 | Exercise | Recommended Zone | Recommended Height | Observation Purpose |
 |---|---|---|---|
-| Squat | Z1 / Z8 | H2 | Observe frontal knee tracking with a front-left oblique option for hip-depth context |
-| Lunge | Z2 / Z7 | H2 | Observe anterior knee travel and sagittal trunk/lower-limb alignment |
-| Pike push-up | Z2 / Z7 | H1 | Observe shoulder angle and hip-hinge geometry |
-| Plank shoulder tap | Z1 / Z8 | H1 | Observe pelvic rotation and lateral sway during weight shift |
+| Squat | Z2 / Z8 | H2 | Observe knee valgus and hip-flexion depth from front-oblique views |
+| Lunge | Z3 / Z7 | H2 | Observe anterior knee travel and sagittal trunk/lower-limb alignment |
+| Pike push-up | Z3 / Z7 | H1 | Observe shoulder angle and hip-hinge geometry |
+| Plank shoulder tap | Z2 / Z8 | H1 | Observe pelvic rotation and lateral sway during weight shift |
 
 The recommended zone describes the best observation condition. The pipeline still
 processes data outside the recommendation, but interpretation should display possible

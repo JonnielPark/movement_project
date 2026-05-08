@@ -53,10 +53,10 @@ def test_camera_zone_azimuths_match_expected_viewpoints():
 
 def test_target_exercise_camera_protocol_recommended_zones():
     expected_zones = {
-        "squat": ["Z1", "Z8"],
-        "plank_shoulder_tap": ["Z1", "Z8"],
-        "lunge": ["Z2", "Z7"],
-        "pike_pushup": ["Z2", "Z7"],
+        "squat": ["Z2", "Z8"],
+        "plank_shoulder_tap": ["Z2", "Z8"],
+        "lunge": ["Z3", "Z7"],
+        "pike_pushup": ["Z3", "Z7"],
     }
 
     for exercise_id, zones in expected_zones.items():

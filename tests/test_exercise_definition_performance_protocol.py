@@ -43,6 +43,14 @@ def test_pike_pushup_allows_partial_completion_metadata():
     assert protocol.completion.recommended_sets == 3
 
 
+def test_target_exercises_recommend_three_validation_sets():
+    for exercise_id in ("squat", "lunge", "pike_pushup", "plank_shoulder_tap"):
+        definition = load_exercise_definition(exercise_id, DEFINITIONS_DIR)
+
+        assert definition.performance_protocol is not None
+        assert definition.performance_protocol.completion.recommended_sets == 3
+
+
 def test_generic_definition_keeps_performance_protocol_optional():
     definition = load_exercise_definition("generic", DEFINITIONS_DIR)
 

@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.2
+**문서 버전:** 1.4.3
 **최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -212,7 +212,7 @@ performance_protocol:
     first_side_source: null      # null | annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_fixed
     - avoid_arm_swing
@@ -250,7 +250,7 @@ performance_protocol:
     first_side_source: annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
 
 # 플랭크 숄더탭: 좌우 한 쌍을 프로토콜 1회로 계산.
 performance_protocol:
@@ -264,7 +264,7 @@ performance_protocol:
     first_side_source: annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
 ```
 
 현재 구현은 ③ Exercise Definition에서 이 메타데이터를 파싱하고 검증한다.
@@ -416,7 +416,7 @@ biomechanical_proxy:
 
 ```yaml
 camera_protocol:
-  recommended_zones: [Z1, Z8]
+  recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
@@ -471,7 +471,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.5.1
+version: 0.5.2
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -539,7 +539,7 @@ performance_protocol:
     first_side_source: null
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_fixed
     - avoid_arm_swing
@@ -614,7 +614,7 @@ view_requirements:
   occlusion_risk: medium
 
 camera_protocol:
-  recommended_zones: [Z1, Z8]
+  recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]

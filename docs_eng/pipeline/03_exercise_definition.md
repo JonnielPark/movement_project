@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.2
+**Document Version:** 1.4.3
 **Last Updated:** 2026-05-08
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -214,7 +214,7 @@ performance_protocol:
     first_side_source: null      # null | annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_fixed
     - avoid_arm_swing
@@ -252,7 +252,7 @@ performance_protocol:
     first_side_source: annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
 
 # Plank shoulder tap: one left-right pair is counted as one protocol cycle.
 performance_protocol:
@@ -266,7 +266,7 @@ performance_protocol:
     first_side_source: annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
 ```
 
 Current implementation parses and validates this metadata in ③ Exercise Definition.
@@ -418,7 +418,7 @@ coordinates directly or to force data exclusion.
 
 ```yaml
 camera_protocol:
-  recommended_zones: [Z1, Z8]
+  recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
@@ -474,7 +474,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.5.1
+version: 0.5.2
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -542,7 +542,7 @@ performance_protocol:
     first_side_source: null
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_fixed
     - avoid_arm_swing
@@ -617,7 +617,7 @@ view_requirements:
   occlusion_risk: medium
 
 camera_protocol:
-  recommended_zones: [Z1, Z8]
+  recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
