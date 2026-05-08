@@ -1,7 +1,7 @@
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and ankle coordination.
-version: 0.5.1
+version: 0.5.2
 tags:
   - bodyweight
   - lower_body
@@ -82,7 +82,7 @@ performance_protocol:
     first_side_source: null
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_fixed
     - avoid_arm_swing
@@ -199,7 +199,7 @@ view_requirements:
   occlusion_risk: medium
 
 camera_protocol:
-  recommended_zones: [Z1, Z8]
+  recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]

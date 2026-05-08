@@ -1,6 +1,6 @@
 # Exercise Performance Protocol per Exercise
 
-**Document Version:** 1.0.1
+**Document Version:** 1.0.2
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/practical_protocols/exercise_performance_protocol.md](../../docs/practical_protocols/exercise_performance_protocol.md) is the matching Korean document.
 
@@ -17,12 +17,27 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 
 1. Each set should be filmed in one take when possible, without a separate static
    waiting period after recording starts.
-2. The target is 10 repetitions. If the participant cannot complete 10 repetitions,
+2. For pilot pipeline-validation data, the default acquisition unit is one exercise
+   per day, 3 sets per exercise, and 10 repetitions per set. Store each set as a
+   separate recording when possible.
+3. Rest for about 2-3 minutes between sets, or until breathing has returned close
+   to baseline. If two or more exercise types must be filmed on the same day, rest
+   for at least 15-20 minutes between exercise types.
+4. Wear exercise clothing that allows the main joints to be detected. Very loose
+   shirts or wide pants should be avoided because they can hide knee, hip, shoulder,
+   or trunk landmarks.
+5. Film in an independent space without mirror reflections or other people entering
+   the frame, so the pose detector does not confuse the target participant with
+   another body or reflected body.
+6. If the posture deteriorates near the end of a set, do not artificially perform
+   cleaner-looking repetitions for the camera. Continue naturally only within a
+   pain-free range, and stop immediately if pain or injury risk appears.
+7. The target is 10 repetitions. If the participant cannot complete 10 repetitions,
    record the maximum clean repetitions before the posture fully breaks down, and
    store the actual count in annotation or recording metadata.
-3. When arm motion is not the target of analysis, the hands should be fixed so arm
+8. When arm motion is not the target of analysis, the hands should be fixed so arm
    swing does not contaminate the intended joint trajectory.
-4. The "analysis-disrupting performance patterns" below are not automatic exclusion
+9. The "analysis-disrupting performance patterns" below are not automatic exclusion
    rules. They are candidates for data-quality warnings, annotation notes,
    synthetic distortion design, or future YAML-based quality rules.
 
@@ -35,13 +50,13 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 **Camera Setup**
 
 ```text
-Zone: Z1 / Z8
+Zone: Z2 / Z8
 Height: H2
 ```
 
-Place the camera either on the frontal centerline of the reference mat (`Z1`) or
-at the front-left oblique position (`Z8`). Set the lens around pelvis or navel
-height, approximately 80-110 cm.
+Place the camera at a front-oblique position, either `Z2` or `Z8`, relative to
+the reference mat. Set the lens around pelvis or navel height, approximately
+80-110 cm.
 
 **Measurement Rationale**
 
@@ -75,13 +90,12 @@ This protocol can map to `knee_valgus`, `knee_varus`, `asymmetric_depth`,
 **Camera Setup**
 
 ```text
-Zone: Z2 / Z7
+Zone: Z3 / Z7
 Height: H2
 ```
 
-Place the camera either at the front-right oblique position (`Z2`) or the left
-sagittal position (`Z7`) relative to the reference mat. Set the lens around pelvis
-height, approximately 80-110 cm.
+Place the camera at a side-view position, either `Z3` or `Z7`, relative to the
+reference mat. Set the lens around pelvis height, approximately 80-110 cm.
 
 **Measurement Rationale**
 
@@ -119,13 +133,12 @@ or `side_block_size` may be needed.
 **Camera Setup**
 
 ```text
-Zone: Z2 / Z7
+Zone: Z3 / Z7
 Height: H1
 ```
 
-Place the camera either at the front-right oblique position (`Z2`) or the left
-sagittal position (`Z7`) relative to the reference mat. Keep the camera low,
-approximately 0-30 cm above the floor.
+Place the camera at a side-view position, either `Z3` or `Z7`, relative to the
+reference mat. Keep the camera low, approximately 0-30 cm above the floor.
 
 **Measurement Rationale**
 
@@ -139,7 +152,7 @@ trajectory of the head, shoulder, and elbow.
    up using the shoulders.
 3. The target is 10 repetitions. If 10 repetitions are too difficult, do not force
    the movement; perform only the maximum clean repetitions before the posture fully
-   breaks down. Up to 3 sets may be recorded in the same manner if needed.
+   breaks down, and keep the same 3-set acquisition structure when possible.
 
 **Analysis-Disrupting Patterns**
 
@@ -161,13 +174,12 @@ This protocol can map to `insufficient_head_descent`, `head_forward_shift`,
 **Camera Setup**
 
 ```text
-Zone: Z1 / Z8
+Zone: Z2 / Z8
 Height: H1
 ```
 
-Place the camera either on the frontal centerline of the reference mat (`Z1`) or
-at the front-left oblique position (`Z8`). Keep the camera low, approximately
-0-30 cm above the floor.
+Place the camera at a front-oblique position, either `Z2` or `Z8`, relative to
+the reference mat. Keep the camera low, approximately 0-30 cm above the floor.
 
 **Measurement Rationale**
 

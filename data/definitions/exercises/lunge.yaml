@@ -1,7 +1,7 @@
 exercise_id: lunge
 display_name: Forward Lunge
 description: Alternating split-stance lower-body movement; the forward leg loads while the rear leg controls hip extension.
-version: 0.5.1
+version: 0.5.2
 tags:
   - bodyweight
   - lower_body
@@ -81,7 +81,7 @@ performance_protocol:
     first_side_source: annotation.starting_side
   completion:
     allow_partial_completion: false
-    recommended_sets: 1
+    recommended_sets: 3
   participant_cues:
     - keep_hands_on_pelvis
     - avoid_arm_swing
@@ -206,7 +206,7 @@ view_requirements:
   occlusion_risk: high
 
 camera_protocol:
-  recommended_zones: [Z2, Z7]
+  recommended_zones: [Z3, Z7]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
