@@ -2,7 +2,7 @@
 
 **문서 버전:** 1.0.0
 **최종 갱신:** 2026-05-08
-**영문 동기화:** [docs_eng/camera_protocol.md](../docs_eng/camera_protocol.md)는 동일 내용의 영문 번역본이다.
+**영문 동기화:** [docs_eng/practical_protocols/camera_protocol.md](../../docs_eng/practical_protocols/camera_protocol.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 단안 비전(monocular vision) 환경에서 포즈 데이터 왜곡을 줄이고, 반복 가능한
 분석 조건을 확보하기 위한 데이터 취득 가이드이다. 사용자의 일상 환경을 고려해 인위적
@@ -112,6 +112,7 @@ Annotation 또는 recording metadata
 
 관련 문서:
 
-- [02_annotation.md](pipeline/02_annotation.md)
-- [03_exercise_definition.md](pipeline/03_exercise_definition.md)
-- [12_insilico_simulation.md](pipeline/12_insilico_simulation.md)
+- [exercise_performance_protocol.md](exercise_performance_protocol.md)
+- [02_annotation.md](../pipeline/02_annotation.md)
+- [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
+- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)

@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.3.0
+**Document Version:** 1.4.0
 **Last Updated:** 2026-05-08
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -83,6 +83,7 @@ support:                       # contact / base of support
 phase_model:                   # temporal structure of one rep
 rep_segmentation:              # repetition-boundary detection settings
 phase_segmentation:            # intra-rep phase detection settings
+performance_protocol:          # practical counting, side sequence, and completion rules
 landmarks:                     # landmark model and primary/secondary joints
 angle_definitions:             # joint angle triplets
 joint_actions:                 # expected joint actions
@@ -189,6 +190,88 @@ phase_segmentation:
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 ```
+
+### performance_protocol
+
+`performance_protocol` records how the participant is instructed to perform and
+count the exercise. It is separate from `rep_segmentation`: segmentation defines
+which movement unit receives a `rep_id`, while the performance protocol defines
+how the protocol-facing count is interpreted.
+
+This separation is needed for exercises such as plank shoulder tap, where each tap
+may be segmented as an atomic movement but one participant-facing protocol count
+means a left-right pair.
+
+```yaml
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition       # repetition | left_right_pair | hold_seconds
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none                   # none | alternating_each_rep | same_side_block_then_switch
+    block_size_counts: null      # e.g., lunge: 5
+    first_side_source: null      # null | annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_fixed
+    - avoid_arm_swing
+  analysis_disrupting_patterns:
+    - arm_swing
+    - unstable_foot_contact
+    - incomplete_depth
+```
+
+Field meanings:
+
+```text
+target_count                  participant-facing target count
+count_unit                    what one protocol count means
+segmentation_reps_per_count   how many segmented atomic reps correspond to one protocol count
+side_sequence.mode            expected left/right order at the protocol level
+block_size_counts             count size before side switching, if block-based
+first_side_source             where the first side is declared
+allow_partial_completion      whether fewer than target_count can be accepted with metadata
+recommended_sets              practical acquisition recommendation, not an automatic multiplier
+```
+
+Examples:
+
+```yaml
+# Lunge: 5 repetitions on one side, then 5 on the other side.
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: same_side_block_then_switch
+    block_size_counts: 5
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+
+# Plank shoulder tap: one left-right pair is counted as one protocol cycle.
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: left_right_pair
+    segmentation_reps_per_count: 2
+  side_sequence:
+    mode: alternating_each_rep
+    block_size_counts: null
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+```
+
+Current implementation parses and validates this metadata in ③ Exercise Definition.
+⑦ Motion Attribution still uses the existing `pattern` / `starting_side` behavior;
+block-based side-sequence enforcement is a later implementation step.
 
 ### landmarks
 
@@ -347,7 +430,10 @@ camera_protocol:
 ```
 
 Shared zone/height definitions are stored in `data/camera/camera_zones.yaml`.
-For the full filming principle, see [camera_protocol.md](../camera_protocol.md).
+For the full filming principle, see
+[camera_protocol.md](../practical_protocols/camera_protocol.md). For
+participant-facing exercise cues and analysis-disrupting performance patterns, see
+[exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md).
 
 ### quality_rules
 
@@ -444,6 +530,26 @@ phase_segmentation:
     half_window_frames: 3
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
+
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_fixed
+    - avoid_arm_swing
+  analysis_disrupting_patterns:
+    - arm_swing
+    - unstable_foot_contact
+    - incomplete_depth
 
 landmarks:
   model: mediapipe_pose_33

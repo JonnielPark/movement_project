@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.3.0
+**문서 버전:** 1.4.0
 **최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -82,6 +82,7 @@ support:                       # 접촉/지지 기저면
 phase_model:                   # 1회 반복의 시간 구조
 rep_segmentation:              # 반복 경계 검출 설정
 phase_segmentation:            # 반복 내부 phase 검출 설정
+performance_protocol:          # 실전 수행 카운트, 좌우 순서, 완료 규칙
 landmarks:                     # 랜드마크 모델 및 주요/보조 관절
 angle_definitions:             # 관절각 트리플렛
 joint_actions:                 # 기대되는 관절 동작
@@ -188,6 +189,87 @@ phase_segmentation:
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 ```
+
+### performance_protocol
+
+`performance_protocol`은 피험자에게 운동을 어떻게 수행하고 몇 회로 세도록 안내했는지를
+기록한다. 이 필드는 `rep_segmentation`과 분리한다. `rep_segmentation`은 어떤 움직임 단위에
+`rep_id`를 붙일지를 정의하고, `performance_protocol`은 실전 프로토콜에서 그 단위를 어떻게
+카운트할지를 정의한다.
+
+이 분리는 플랭크 숄더탭처럼 각 tap은 원자적 움직임으로 분할할 수 있지만, 피험자 안내상
+1회는 좌우 한 쌍을 의미하는 운동에서 필요하다.
+
+```yaml
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition       # repetition | left_right_pair | hold_seconds
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none                   # none | alternating_each_rep | same_side_block_then_switch
+    block_size_counts: null      # 예: lunge는 5
+    first_side_source: null      # null | annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_fixed
+    - avoid_arm_swing
+  analysis_disrupting_patterns:
+    - arm_swing
+    - unstable_foot_contact
+    - incomplete_depth
+```
+
+필드 의미:
+
+```text
+target_count                  피험자 안내 기준 목표 횟수
+count_unit                    프로토콜상 1회가 의미하는 단위
+segmentation_reps_per_count   프로토콜 1회에 대응되는 세그멘테이션 원자 반복 수
+side_sequence.mode            프로토콜 수준의 기대 좌우 순서
+block_size_counts             블록 기반 전환에서 한쪽을 유지하는 횟수
+first_side_source             첫 수행 측을 선언하는 위치
+allow_partial_completion      목표 횟수 미만 수행을 메타데이터와 함께 수용할지 여부
+recommended_sets              실전 취득 권장 세트 수; 자동 반복 배수는 아님
+```
+
+예:
+
+```yaml
+# 런지: 한쪽 5회 뒤 반대쪽 5회.
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: same_side_block_then_switch
+    block_size_counts: 5
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+
+# 플랭크 숄더탭: 좌우 한 쌍을 프로토콜 1회로 계산.
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: left_right_pair
+    segmentation_reps_per_count: 2
+  side_sequence:
+    mode: alternating_each_rep
+    block_size_counts: null
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+```
+
+현재 구현은 ③ Exercise Definition에서 이 메타데이터를 파싱하고 검증한다.
+⑦ Motion Attribution은 아직 기존 `pattern` / `starting_side` 동작을 사용하며,
+블록 기반 좌우 순서 강제는 후속 구현 단계로 둔다.
 
 ### landmarks
 
@@ -346,7 +428,9 @@ camera_protocol:
 ```
 
 공통 zone/height 정의는 `data/camera/camera_zones.yaml`을 참조한다.
-자세한 촬영 원칙은 [camera_protocol.md](../camera_protocol.md)를 참조한다.
+자세한 촬영 원칙은 [camera_protocol.md](../practical_protocols/camera_protocol.md)를 참조한다.
+피험자 안내 문구와 분석을 방해하는 수행 패턴은
+[exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md)를 참조한다.
 
 ### quality_rules
 
@@ -443,6 +527,26 @@ phase_segmentation:
     half_window_frames: 3
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
+
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_fixed
+    - avoid_arm_swing
+  analysis_disrupting_patterns:
+    - arm_swing
+    - unstable_foot_contact
+    - incomplete_depth
 
 landmarks:
   model: mediapipe_pose_33

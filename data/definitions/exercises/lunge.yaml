@@ -70,6 +70,29 @@ phase_segmentation:
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: same_side_block_then_switch
+    block_size_counts: 5
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_on_pelvis
+    - avoid_arm_swing
+    - keep_trunk_upright
+  analysis_disrupting_patterns:
+    - inconsistent_step_length
+    - arm_swing
+    - excessive_trunk_flexion
+    - camera_side_change
+    - unstable_foot_contact
+
 landmarks:
   model: mediapipe_pose_33
   primary_joints:

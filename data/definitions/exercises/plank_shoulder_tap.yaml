@@ -79,6 +79,28 @@ phase_segmentation:
   minimum_rep_length_frames: 6
   multi_inflection_policy: global_extremum
 
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: left_right_pair
+    segmentation_reps_per_count: 2
+  side_sequence:
+    mode: alternating_each_rep
+    block_size_counts: null
+    first_side_source: annotation.starting_side
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - brace_core
+    - tap_opposite_shoulder
+  analysis_disrupting_patterns:
+    - excessive_pelvic_rotation
+    - hip_height_drift
+    - base_of_support_shift
+    - side_order_error
+    - missed_shoulder_tap
+
 landmarks:
   model: mediapipe_pose_33
   primary_joints:

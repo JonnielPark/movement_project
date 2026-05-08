@@ -166,6 +166,25 @@ _VOCAB: dict[str, frozenset[str]] = {
             "reject_rep",
         }
     ),
+    "performance_protocol.counting.count_unit": frozenset(
+        {
+            "repetition",
+            "left_right_pair",
+            "hold_seconds",
+        }
+    ),
+    "performance_protocol.side_sequence.mode": frozenset(
+        {
+            "none",
+            "alternating_each_rep",
+            "same_side_block_then_switch",
+        }
+    ),
+    "performance_protocol.side_sequence.first_side_source": frozenset(
+        {
+            "annotation.starting_side",
+        }
+    ),
 }
 
 _REQUIRED_FIELDS: tuple[str, ...] = (
@@ -297,6 +316,54 @@ class QualityRules:
 
 
 @dataclass
+class PerformanceCountingSpec:
+    """Participant-facing counting rule for the practical performance protocol."""
+
+    target_count: int = 10
+    count_unit: str = "repetition"
+    segmentation_reps_per_count: int = 1
+
+
+@dataclass
+class PerformanceSideSequenceSpec:
+    """Expected left/right order for exercises with side-specific execution."""
+
+    mode: str = "none"
+    block_size_counts: int | None = None
+    first_side_source: str | None = None
+
+
+@dataclass
+class PerformanceCompletionSpec:
+    """Completion policy for practical acquisition, not automatic data exclusion."""
+
+    allow_partial_completion: bool = False
+    recommended_sets: int = 1
+
+
+@dataclass
+class PerformanceProtocolSpec:
+    """
+    Practical exercise-performance protocol metadata.
+
+    Separates participant-facing count rules from `rep_segmentation`, so one
+    protocol count may correspond to one or more segmented atomic repetitions.
+    This preserves the biomechanical meaning of protocol execution without
+    forcing segmentation to use the same unit.
+    """
+
+    counting: PerformanceCountingSpec = field(default_factory=PerformanceCountingSpec)
+    side_sequence: PerformanceSideSequenceSpec = field(
+        default_factory=PerformanceSideSequenceSpec
+    )
+    completion: PerformanceCompletionSpec = field(
+        default_factory=PerformanceCompletionSpec
+    )
+    participant_cues: list[str] = field(default_factory=list)
+    analysis_disrupting_patterns: list[str] = field(default_factory=list)
+
+
+@dataclass
 class ExerciseDefinition:
     """
     Parsed exercise definition. Carries the biomechanical properties that drive
@@ -336,6 +403,9 @@ class ExerciseDefinition:
         Repetition-boundary splitter spec. None → rep splitting is skipped.
     phase_segmentation : PhaseSegmentationSpec | None
         Kinematic phase splitter spec. None → phase splitting is skipped.
+    performance_protocol : PerformanceProtocolSpec | None
+        Practical participant-facing counting and side-sequence metadata.
+        None → no exercise-specific performance protocol was declared.
     """
 
     exercise_id: str
@@ -353,6 +423,7 @@ class ExerciseDefinition:
     quality_rules: QualityRules
     rep_segmentation: RepSegmentationSpec | None = None
     phase_segmentation: PhaseSegmentationSpec | None = None
+    performance_protocol: PerformanceProtocolSpec | None = None
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -369,6 +440,9 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
     pm = raw.get("phase_model", {})
     rs = raw.get("rep_segmentation") or {}
     ps = raw.get("phase_segmentation") or {}
+    pp = raw.get("performance_protocol") or {}
+    pc = pp.get("counting") or {}
+    pss = pp.get("side_sequence") or {}
 
     checks = [
         ("classification.family", clf.get("family")),
@@ -386,6 +460,18 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
         (
             "phase_segmentation.multi_inflection_policy",
             ps.get("multi_inflection_policy") if ps else None,
+        ),
+        (
+            "performance_protocol.counting.count_unit",
+            pc.get("count_unit") if pp else None,
+        ),
+        (
+            "performance_protocol.side_sequence.mode",
+            pss.get("mode") if pp else None,
+        ),
+        (
+            "performance_protocol.side_sequence.first_side_source",
+            pss.get("first_side_source") if pp else None,
         ),
     ]
 
@@ -409,6 +495,48 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
     return warns
 
 
+def _check_performance_protocol(raw: dict, exercise_id: str) -> list[str]:
+    pp = raw.get("performance_protocol") or {}
+    if not pp:
+        return []
+
+    errors: list[str] = []
+    counting = pp.get("counting") or {}
+    side_sequence = pp.get("side_sequence") or {}
+    completion = pp.get("completion") or {}
+
+    target_count = int(counting.get("target_count", 10))
+    segmentation_reps_per_count = int(counting.get("segmentation_reps_per_count", 1))
+    recommended_sets = int(completion.get("recommended_sets", 1))
+
+    if target_count < 1:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.counting.target_count must be >= 1"
+        )
+    if segmentation_reps_per_count < 1:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.counting."
+            "segmentation_reps_per_count must be >= 1"
+        )
+    if recommended_sets < 1:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.completion.recommended_sets "
+            "must be >= 1"
+        )
+
+    mode = side_sequence.get("mode", "none")
+    block_size = side_sequence.get("block_size_counts")
+    if mode == "same_side_block_then_switch":
+        if block_size is None or int(block_size) < 1:
+            errors.append(
+                f"[{exercise_id}] performance_protocol.side_sequence."
+                "block_size_counts must be >= 1 when mode is "
+                "'same_side_block_then_switch'"
+            )
+
+    return errors
+
+
 def _check_phase_ratio(raw: dict, exercise_id: str) -> list[str]:
     pm = raw.get("phase_model", {})
     pm_type = pm.get("type", "")
@@ -427,7 +555,9 @@ def _check_phase_ratio(raw: dict, exercise_id: str) -> list[str]:
 def _validate(raw: dict) -> tuple[list[str], list[str]]:
     """Return (errors, warnings). Errors block loading; warnings are emitted but do not block."""
     ex_id = raw.get("exercise_id", "<unknown>")
-    errors = _check_required_fields(raw, ex_id)
+    errors = _check_required_fields(raw, ex_id) + _check_performance_protocol(
+        raw, ex_id
+    )
     warns = _check_vocabulary(raw, ex_id) + _check_phase_ratio(raw, ex_id)
     return errors, warns
 
@@ -483,6 +613,40 @@ def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
         ),
         minimum_rep_length_frames=int(ps.get("minimum_rep_length_frames", 8)),
         multi_inflection_policy=ps.get("multi_inflection_policy", "global_extremum"),
+    )
+
+
+def _parse_performance_protocol(pp: dict | None) -> PerformanceProtocolSpec | None:
+    """Parse a performance_protocol YAML block into a PerformanceProtocolSpec."""
+    if not pp:
+        return None
+
+    counting = pp.get("counting") or {}
+    side_sequence = pp.get("side_sequence") or {}
+    completion = pp.get("completion") or {}
+    block_size = side_sequence.get("block_size_counts")
+
+    return PerformanceProtocolSpec(
+        counting=PerformanceCountingSpec(
+            target_count=int(counting.get("target_count", 10)),
+            count_unit=counting.get("count_unit", "repetition"),
+            segmentation_reps_per_count=int(
+                counting.get("segmentation_reps_per_count", 1)
+            ),
+        ),
+        side_sequence=PerformanceSideSequenceSpec(
+            mode=side_sequence.get("mode", "none"),
+            block_size_counts=None if block_size is None else int(block_size),
+            first_side_source=side_sequence.get("first_side_source"),
+        ),
+        completion=PerformanceCompletionSpec(
+            allow_partial_completion=bool(
+                completion.get("allow_partial_completion", False)
+            ),
+            recommended_sets=int(completion.get("recommended_sets", 1)),
+        ),
+        participant_cues=list(pp.get("participant_cues") or []),
+        analysis_disrupting_patterns=list(pp.get("analysis_disrupting_patterns") or []),
     )
 
 
@@ -552,6 +716,9 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
         ),
         rep_segmentation=_parse_rep_segmentation(raw.get("rep_segmentation")),
         phase_segmentation=_parse_phase_segmentation(raw.get("phase_segmentation")),
+        performance_protocol=_parse_performance_protocol(
+            raw.get("performance_protocol")
+        ),
     )
 
 
