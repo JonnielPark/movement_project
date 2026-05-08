@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.0
+**Document Version:** 1.4.2
 **Last Updated:** 2026-05-08
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -418,7 +418,7 @@ coordinates directly or to force data exclusion.
 
 ```yaml
 camera_protocol:
-  recommended_zones: [Z1, Z3]
+  recommended_zones: [Z1, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
@@ -474,7 +474,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.5.0
+version: 0.5.1
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -617,7 +617,7 @@ view_requirements:
   occlusion_risk: medium
 
 camera_protocol:
-  recommended_zones: [Z1, Z3]
+  recommended_zones: [Z1, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]

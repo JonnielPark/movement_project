@@ -219,8 +219,8 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 |---|---|---|
 | 1.4.2 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
 | 1.4.6 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
-| 1.0.0 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.0.0 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.2.2 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.0.1 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 
 ---
 

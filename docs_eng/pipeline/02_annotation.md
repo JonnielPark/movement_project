@@ -1,6 +1,6 @@
 # 02. Annotation
 
-**Document Version:** 1.1.0
+**Document Version:** 1.1.1
 **Last Updated:** 2026-05-08
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
@@ -44,7 +44,7 @@ starting_side       str       left | right (alternating exercises only)
 session_id          str       nullable; identifier that groups multiple recordings into one session
 recording_id        str       nullable; one-take filming-file identifier
 set_index           Int64     nullable; set order within the session
-camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z6 | unknown
+camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z5 | Z6 | Z7 | Z8 | unknown
 camera_height_level str       nullable; H1 | H2 | H3 | unknown
 reference_mat_used  bool      nullable; whether the reference-mat anchor was used
 filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
