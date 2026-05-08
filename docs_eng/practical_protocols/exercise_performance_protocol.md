@@ -1,6 +1,6 @@
 # Exercise Performance Protocol per Exercise
 
-**Document Version:** 1.0.0
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/practical_protocols/exercise_performance_protocol.md](../../docs/practical_protocols/exercise_performance_protocol.md) is the matching Korean document.
 
@@ -35,12 +35,13 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 **Camera Setup**
 
 ```text
-Zone: Z1 / Z3
+Zone: Z1 / Z8
 Height: H2
 ```
 
-Place the camera about 45 degrees toward the front corner of the reference mat. Set
-the lens around pelvis or navel height, approximately 80-110 cm.
+Place the camera either on the frontal centerline of the reference mat (`Z1`) or
+at the front-left oblique position (`Z8`). Set the lens around pelvis or navel
+height, approximately 80-110 cm.
 
 **Measurement Rationale**
 
@@ -74,12 +75,13 @@ This protocol can map to `knee_valgus`, `knee_varus`, `asymmetric_depth`,
 **Camera Setup**
 
 ```text
-Zone: Z4 / Z6
+Zone: Z2 / Z7
 Height: H2
 ```
 
-Place the camera at a full side view, about 90 degrees to the long edge of the
-reference mat. Set the lens around pelvis height, approximately 80-110 cm.
+Place the camera either at the front-right oblique position (`Z2`) or the left
+sagittal position (`Z7`) relative to the reference mat. Set the lens around pelvis
+height, approximately 80-110 cm.
 
 **Measurement Rationale**
 
@@ -117,12 +119,13 @@ or `side_block_size` may be needed.
 **Camera Setup**
 
 ```text
-Zone: Z4 / Z6
+Zone: Z2 / Z7
 Height: H1
 ```
 
-Place the camera at a full side view, about 90 degrees to the reference mat. Keep
-the camera low, approximately 0-30 cm above the floor.
+Place the camera either at the front-right oblique position (`Z2`) or the left
+sagittal position (`Z7`) relative to the reference mat. Keep the camera low,
+approximately 0-30 cm above the floor.
 
 **Measurement Rationale**
 
@@ -158,12 +161,13 @@ This protocol can map to `insufficient_head_descent`, `head_forward_shift`,
 **Camera Setup**
 
 ```text
-Zone: Z1 / Z3
+Zone: Z1 / Z8
 Height: H1
 ```
 
-Place the camera about 45 degrees toward the front corner of the reference mat. Keep
-the camera low, approximately 0-30 cm above the floor.
+Place the camera either on the frontal centerline of the reference mat (`Z1`) or
+at the front-left oblique position (`Z8`). Keep the camera low, approximately
+0-30 cm above the floor.
 
 **Measurement Rationale**
 

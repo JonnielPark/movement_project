@@ -15,12 +15,12 @@ For terminology definitions see [`terminology.md`](terminology.md).
 |---|---|---|
 | 1.4.2 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
 | 1.4.6 | [overview.md](overview.md) | Overall pipeline overview |
-| 1.0.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.0.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.2.2 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.0.1 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.1.1 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.4.2 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |

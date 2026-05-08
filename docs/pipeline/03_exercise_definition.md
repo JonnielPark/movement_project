@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.0
+**문서 버전:** 1.4.2
 **최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -416,7 +416,7 @@ biomechanical_proxy:
 
 ```yaml
 camera_protocol:
-  recommended_zones: [Z1, Z3]
+  recommended_zones: [Z1, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]
@@ -471,7 +471,7 @@ unit               : torso_length_ratio
 exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.5.0
+version: 0.5.1
 tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
 
 classification:
@@ -614,7 +614,7 @@ view_requirements:
   occlusion_risk: medium
 
 camera_protocol:
-  recommended_zones: [Z1, Z3]
+  recommended_zones: [Z1, Z8]
   recommended_height: H2
   anchor: reference_mat
   distance_cm: [200, 250]

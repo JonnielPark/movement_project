@@ -1,6 +1,6 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.1.0
+**문서 버전:** 1.1.1
 **최종 갱신:** 2026-05-08
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
@@ -44,7 +44,7 @@ starting_side       str       left | right (좌·우 교대 운동에 한함)
 session_id          str       nullable; 여러 recording을 하나의 세션으로 묶는 식별자
 recording_id        str       nullable; 원테이크 촬영 파일 식별자
 set_index           Int64     nullable; 세션 내 세트 순번
-camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z6 | unknown
+camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z5 | Z6 | Z7 | Z8 | unknown
 camera_height_level str       nullable; H1 | H2 | H3 | unknown
 reference_mat_used  bool      nullable; 기준 매트 앵커 사용 여부
 filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown

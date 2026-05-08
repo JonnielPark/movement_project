@@ -1,6 +1,6 @@
 # Camera Filming Protocol per Exercise
 
-**Document Version:** 1.0.0
+**Document Version:** 1.2.2
 **Last Updated:** 2026-05-08
 **Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
@@ -17,17 +17,32 @@ as provenance and warning metadata.
 
 ## 1. Camera Zone Matrix
 
-The subject position is defined as `Z5`, and the default recommended camera distance
-is 200-250 cm from the subject. A filming setup is expressed by combining camera
-azimuth zones and height levels.
+The subject or reference-mat center is defined as `reference_origin`, not as a
+filming zone. Camera placement is modeled as a circular filming ring around this
+origin, with the default recommended distance set to 200-250 cm. A filming setup is
+expressed by combining azimuth zone, distance on this ring, and height level.
 
-| Zone | Azimuth / Position | Main Observation Plane | Physical Range |
+Zones describe viewing direction, not different distance rules. Each zone uses the
+same recommended radial distance and an azimuth tolerance of about ±10 degrees.
+In the top-down diagram, `Z1` is drawn at the top and positive azimuth increases
+clockwise; therefore `Z4` appears on the lower-right side of the ring and `Z6`
+on the lower-left side.
+
+![Camera-zone protocol for exercise filming](assets/camera_zone_protocol.png)
+
+*Figure 1. Camera zones are defined as azimuth sectors on the same 200-250 cm
+filming ring around `reference_origin`; height levels are recorded separately.*
+
+| Zone | Azimuth / Position | Main Observation Plane | Ring Position |
 |---|---|---|---|
-| Z1 | Front-left oblique, about 45 degrees | Frontal + sagittal mixed | 140-175 cm left and 140-175 cm anterior to the subject |
-| Z2 | Frontal, 0 degrees | Frontal | 200-250 cm in front of the subject, within ±30 cm lateral offset |
-| Z3 | Front-right oblique, about 45 degrees | Frontal + sagittal mixed | 140-175 cm right and 140-175 cm anterior to the subject |
-| Z4 | Left side, about 90 degrees | Sagittal | 200-250 cm left of the subject, within ±30 cm anterior-posterior offset |
-| Z6 | Right side, about 90 degrees | Sagittal | 200-250 cm right of the subject, within ±30 cm anterior-posterior offset |
+| Z1 | Frontal, 0 degrees | Frontal | 200-250 cm radius, ±10 degrees |
+| Z2 | Front-right oblique, +45 degrees | Frontal + sagittal mixed | 200-250 cm radius, ±10 degrees |
+| Z3 | Right side, +90 degrees | Sagittal | 200-250 cm radius, ±10 degrees |
+| Z4 | Rear-right oblique, +135 degrees | Posterior + sagittal mixed | 200-250 cm radius, ±10 degrees |
+| Z5 | Rear, 180 degrees | Posterior frontal | 200-250 cm radius, ±10 degrees |
+| Z6 | Rear-left oblique, -135 degrees | Posterior + sagittal mixed | 200-250 cm radius, ±10 degrees |
+| Z7 | Left side, -90 degrees | Sagittal | 200-250 cm radius, ±10 degrees |
+| Z8 | Front-left oblique, -45 degrees | Frontal + sagittal mixed | 200-250 cm radius, ±10 degrees |
 
 Height is recorded using three levels.
 
@@ -45,11 +60,14 @@ A reference mat is used as a physical anchor so the user can estimate distance a
 direction without a separate calibration device. A standard reference mat is treated
 as approximately 180 cm × 60 cm.
 
-| Item | Guidance |
-|---|---|
-| Distance | Step back about three steps, or 200-250 cm, until the full reference mat is visible on the smartphone screen. |
-| Oblique filming | For `Z1` or `Z3`, align the camera toward the front corner of the reference mat. |
-| Side filming | For `Z4` or `Z6`, align the long edge of the reference mat with the screen center axis. |
+| Item | Zones | Guidance |
+|---|---|---|
+| Distance | All zones | Step back about three steps, or 200-250 cm, until the full reference mat is visible on the smartphone screen. |
+| Frontal filming | `Z1` | Place the camera on the front centerline of the reference mat and aim at `reference_origin`. The left and right sides of the mat should appear approximately symmetric in the frame. This option is kept for current or future exercises where frontal-plane tracking is the primary observation target. |
+| Rear filming | `Z5` | Place the camera on the rear centerline of the reference mat and aim at `reference_origin`. This preserves the same origin while allowing posterior-view exercises or posterior compensation patterns to be filmed later. |
+| Front-oblique filming | `Z2` / `Z8` | Place the camera about 45 degrees from the front side and aim toward the nearest front corner of the reference mat or the `reference_origin`. This supports mixed frontal-sagittal observation. |
+| Rear-oblique filming | `Z4` / `Z6` | Place the camera about 45 degrees from the rear side and aim toward the nearest rear corner of the reference mat or the `reference_origin`. This is reserved for posterior-sagittal mixed observation when future exercises require it. |
+| Side filming | `Z3` / `Z7` | Align the long edge of the reference mat with the screen center axis and aim at `reference_origin`. This supports sagittal-plane observation. |
 
 Data is still accepted when no reference mat is available or when the recommended
 distance cannot be met. The condition is recorded in filming metadata and reported
@@ -61,10 +79,10 @@ as a warning.
 
 | Exercise | Recommended Zone | Recommended Height | Observation Purpose |
 |---|---|---|---|
-| Squat | Z1 / Z3 | H2 | Observe knee valgus and hip-flexion depth together |
-| Lunge | Z4 / Z6 | H2 | Observe anterior knee travel and sagittal trunk/lower-limb alignment |
-| Pike push-up | Z4 / Z6 | H1 | Observe shoulder angle and hip-hinge geometry |
-| Plank shoulder tap | Z1 / Z3 | H1 | Observe pelvic rotation and lateral sway during weight shift |
+| Squat | Z1 / Z8 | H2 | Observe frontal knee tracking with a front-left oblique option for hip-depth context |
+| Lunge | Z2 / Z7 | H2 | Observe anterior knee travel and sagittal trunk/lower-limb alignment |
+| Pike push-up | Z2 / Z7 | H1 | Observe shoulder angle and hip-hinge geometry |
+| Plank shoulder tap | Z1 / Z8 | H1 | Observe pelvic rotation and lateral sway during weight shift |
 
 The recommended zone describes the best observation condition. The pipeline still
 processes data outside the recommendation, but interpretation should display possible
@@ -94,7 +112,7 @@ The filming protocol is used as metadata in the following locations.
 
 ```text
 data/camera/camera_zones.yaml
-    shared definitions for Z1-Z6 zones, H1-H3 height levels, anchor, and out_of_zone policy
+    shared polar-ring definitions for Z1-Z8 zones, reference_origin, H1-H3 height levels, anchor, and out_of_zone policy
 
 data/definitions/exercises/<exercise_id>.yaml
     exercise-specific recommended zone, height, and observation purpose in camera_protocol
