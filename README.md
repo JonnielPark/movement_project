@@ -215,7 +215,7 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 | 1.4.2 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
 | 1.4.6 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.0.2 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 1.0.3 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 
 ---
 

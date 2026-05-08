@@ -16,7 +16,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.4.2 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
 | 1.4.6 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.0.2 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.0.3 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.1 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |

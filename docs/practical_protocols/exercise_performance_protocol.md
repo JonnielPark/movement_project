@@ -1,6 +1,6 @@
 # 대상 운동별 수행 프로토콜 (Exercise Performance Protocol per Exercise)
 
-**문서 버전:** 1.0.2
+**문서 버전:** 1.0.3
 **최종 갱신:** 2026-05-08
 **영문 동기화:** [docs_eng/practical_protocols/exercise_performance_protocol.md](../../docs_eng/practical_protocols/exercise_performance_protocol.md)는 동일 내용의 영문 번역본이다.
 
@@ -40,6 +40,10 @@
 
 ### 2-1. 스쿼트 (Squat)
 
+![스쿼트 예시 자세](assets/exercise_squat.png)
+
+*그림 2-1. 피험자가 동작을 이해하기 위한 스쿼트 수행 예시 이미지.*
+
 **카메라 세팅**
 
 ```text
@@ -75,6 +79,10 @@ Height: H2
 `excessive_trunk_flexion`, `heel_lift`, `tempo_instability`와 연결될 수 있다.
 
 ### 2-2. 런지 (Lunge)
+
+![런지 예시 자세](assets/exercise_lunge.png)
+
+*그림 2-2. 피험자가 동작을 이해하기 위한 런지 수행 예시 이미지.*
 
 **카메라 세팅**
 
@@ -115,6 +123,10 @@ Height: H2
 
 ### 2-3. 파이크 푸쉬업 (Pike Push-up)
 
+![파이크 푸쉬업 예시 자세](assets/exercise_pike_pushup.png)
+
+*그림 2-3. 피험자가 동작을 이해하기 위한 파이크 푸쉬업 수행 예시 이미지.*
+
 **카메라 세팅**
 
 ```text
@@ -152,6 +164,10 @@ Height: H1
 `actual_rep_count`를 기록하는 metadata가 필요하다.
 
 ### 2-4. 플랭크 숄더탭 (Plank Shoulder Tap)
+
+![플랭크 숄더탭 예시 자세](assets/exercise_plank_shoulder_tap.png)
+
+*그림 2-4. 피험자가 동작을 이해하기 위한 플랭크 숄더탭 수행 예시 이미지.*
 
 **카메라 세팅**
 
