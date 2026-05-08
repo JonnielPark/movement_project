@@ -15,11 +15,12 @@
 |---|---|---|
 | 1.4.2 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
 | 1.4.6 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.0.0 | [camera_protocol.md](camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.0.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.0.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.3.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.4.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
@@ -46,6 +47,7 @@ landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_
 phases                구간 모델 (예: eccentric / concentric)
 rep_segmentation      반복 경계 검출 설정
 phase_segmentation    반복 내부 phase 검출 설정
+performance_protocol  피험자 안내 기준 카운트와 좌우 수행 순서 규칙
 camera_protocol       권장 촬영 zone/height와 경고 정책
 compensation_candidates  모니터링할 움직임 패턴
 feature_domains       활성화할 공간/시간/제어 피처

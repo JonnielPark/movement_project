@@ -2,7 +2,7 @@
 
 **Document Version:** 1.0.0
 **Last Updated:** 2026-05-08
-**Korean Sync:** [docs/camera_protocol.md](../docs/camera_protocol.md) is the matching Korean document.
+**Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
 This document defines the data-acquisition guide used to reduce distortion in a
 monocular vision setup and to keep analysis conditions reproducible. It minimizes
@@ -121,6 +121,7 @@ the interpretation output.
 
 Related documents:
 
-- [02_annotation.md](pipeline/02_annotation.md)
-- [03_exercise_definition.md](pipeline/03_exercise_definition.md)
-- [12_insilico_simulation.md](pipeline/12_insilico_simulation.md)
+- [exercise_performance_protocol.md](exercise_performance_protocol.md)
+- [02_annotation.md](../pipeline/02_annotation.md)
+- [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
+- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)

@@ -1,0 +1,91 @@
+import pytest
+
+from movement.exercise_definition import load_exercise_definition
+
+
+DEFINITIONS_DIR = "data/definitions/exercises"
+
+
+def test_lunge_loads_same_side_block_performance_protocol():
+    definition = load_exercise_definition("lunge", DEFINITIONS_DIR)
+
+    protocol = definition.performance_protocol
+
+    assert protocol is not None
+    assert protocol.counting.target_count == 10
+    assert protocol.counting.count_unit == "repetition"
+    assert protocol.counting.segmentation_reps_per_count == 1
+    assert protocol.side_sequence.mode == "same_side_block_then_switch"
+    assert protocol.side_sequence.block_size_counts == 5
+    assert protocol.side_sequence.first_side_source == "annotation.starting_side"
+
+
+def test_plank_shoulder_tap_loads_left_right_pair_counting():
+    definition = load_exercise_definition("plank_shoulder_tap", DEFINITIONS_DIR)
+
+    protocol = definition.performance_protocol
+
+    assert protocol is not None
+    assert protocol.counting.target_count == 10
+    assert protocol.counting.count_unit == "left_right_pair"
+    assert protocol.counting.segmentation_reps_per_count == 2
+    assert protocol.side_sequence.mode == "alternating_each_rep"
+    assert "excessive_pelvic_rotation" in protocol.analysis_disrupting_patterns
+
+
+def test_pike_pushup_allows_partial_completion_metadata():
+    definition = load_exercise_definition("pike_pushup", DEFINITIONS_DIR)
+
+    protocol = definition.performance_protocol
+
+    assert protocol is not None
+    assert protocol.completion.allow_partial_completion is True
+    assert protocol.completion.recommended_sets == 3
+
+
+def test_generic_definition_keeps_performance_protocol_optional():
+    definition = load_exercise_definition("generic", DEFINITIONS_DIR)
+
+    assert definition.performance_protocol is None
+
+
+def test_block_side_sequence_requires_block_size(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(
+        """
+exercise_id: bad
+display_name: Bad
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: alternating
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: same_side_block_then_switch
+    block_size_counts: null
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="block_size_counts"):
+        load_exercise_definition("bad", tmp_path)

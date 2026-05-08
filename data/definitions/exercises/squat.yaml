@@ -71,6 +71,29 @@ phase_segmentation:
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+  participant_cues:
+    - keep_hands_fixed
+    - avoid_arm_swing
+  analysis_disrupting_patterns:
+    - arm_swing
+    - heel_lift
+    - unstable_foot_contact
+    - excessive_knee_deviation
+    - inconsistent_depth
+    - excessive_trunk_flexion
+
 landmarks:
   model: mediapipe_pose_33
   primary_joints:

@@ -94,7 +94,9 @@ movement_project/
 ├── docs/
 │   ├── terminology.md               # study-specific terms and clinical language principles
 │   ├── overview.md                  # framework overview
-│   ├── camera_protocol.md           # camera filming protocol per exercise
+│   ├── practical_protocols/         # practical filming and performance protocols
+│   │   ├── camera_protocol.md
+│   │   └── exercise_performance_protocol.md
 │   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
@@ -210,14 +212,15 @@ The full column specification and detailed document index are tracked in
 ## Documentation
 
 README tracks only the top-level documents. The list and versions of documents
-inside `pipeline/` and `clinical/` are tracked in the document index in
+inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the document index in
 [docs_eng/overview.md](docs_eng/overview.md).
 
 | Version | File | Content |
 |---|---|---|
 | 1.4.2 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
 | 1.4.6 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
-| 1.0.0 | [docs_eng/camera_protocol.md](docs_eng/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.0.0 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.0.0 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 
 ---
 

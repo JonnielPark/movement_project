@@ -93,7 +93,9 @@ movement_project/
 ├── docs/
 │   ├── terminology.md               # 연구 특화 용어와 임상 표현 원칙
 │   ├── overview.md                  # 프레임워크 개요
-│   ├── camera_protocol.md           # 대상 운동별 촬영 프로토콜
+│   ├── practical_protocols/         # 실전 촬영 및 수행 프로토콜
+│   │   ├── camera_protocol.md
+│   │   └── exercise_performance_protocol.md
 │   ├── pipeline/                    # 파이프라인 ① ~ ⑫ 단계 문서
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
@@ -206,13 +208,14 @@ timestamp      시작 이후 경과 초
 
 ## 문서 (Documentation)
 
-README에서는 최상위 문서만 버전 추적한다. `pipeline/` 및 `clinical/` 내부 문서의 목록과 버전은 [docs/overview.md](docs/overview.md)의 문서 인덱스에서 추적한다.
+README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`, `pipeline/`, `clinical/` 내부 문서의 목록과 버전은 [docs/overview.md](docs/overview.md)의 문서 인덱스에서 추적한다.
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.2 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
 | 1.4.6 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
-| 1.0.0 | [docs/camera_protocol.md](docs/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.0.0 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.0.0 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 
 ---
 

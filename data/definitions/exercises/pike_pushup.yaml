@@ -75,6 +75,28 @@ phase_segmentation:
   minimum_rep_length_frames: 8
   multi_inflection_policy: global_extremum
 
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  completion:
+    allow_partial_completion: true
+    recommended_sets: 3
+  participant_cues:
+    - maintain_inverted_v
+    - descend_head_between_hands
+  analysis_disrupting_patterns:
+    - hip_drop_to_pushup
+    - head_forward_shift
+    - elbow_flare
+    - inconsistent_depth
+    - hand_foot_repositioning
+
 landmarks:
   model: mediapipe_pose_33
   primary_joints:
