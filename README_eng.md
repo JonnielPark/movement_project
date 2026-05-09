@@ -8,6 +8,12 @@ the result as interpretable digital biomarkers.
 
 Repository: <https://github.com/JonnielPark/movement_project>
 
+![Interpretable digital biomarker framework overview](docs/assets/framework_overview.png)
+
+*Figure. Conceptual overview of the monocular-vision movement-quality analysis
+framework. The six macro-stages summarize the detailed 12-stage pipeline below;
+scores and labels on the right are illustrative examples, not validation results.*
+
 ---
 
 ## Pipeline
@@ -92,6 +98,7 @@ movement_project/
 │   ├── reference/                   # baseline_zscore.json (synthetic-normal baseline)
 │   └── processed/                   # intermediate/final pipeline outputs by stage (.gitignore)
 ├── docs/
+│   ├── assets/                       # Shared figures for README and documents
 │   ├── terminology.md               # study-specific terms and clinical language principles
 │   ├── overview.md                  # framework overview
 │   ├── practical_protocols/         # practical filming and performance protocols
@@ -221,7 +228,7 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 | 1.4.7 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 | 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.0.0 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.0.1 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 
 ---
 

@@ -1,6 +1,6 @@
 # 런지 상세 해석 배경 (Lunge Clinical Rationale)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-09  
 **영문 동기화:** `docs_eng/clinical/exercises/lunge.md`는 동일 버전의 영문 번역본이다.
 
@@ -81,7 +81,26 @@ attribution으로 구분해야 한다.
 
 ---
 
-## 6. 개발 참고 가능성
+## 6. 권장 view 해석
+
+런지의 기본 권장 view는 측면(`Z3` 또는 `Z7`)이다. 런지는 앞다리와 뒷다리의 역할이 다르고,
+하강 중 앞무릎 전방 이동, 앞다리/뒷다리의 시상면 ROM, 체간 전방 기울기, 보폭 일관성을 보는
+것이 핵심이므로 측면 view가 가장 직접적이다.
+
+이 선택은 관상면 보상 패턴을 무시한다는 뜻이 아니다. knee valgus, pelvis drop, lateral trunk
+lean은 정면 또는 전방 대각에서 더 잘 보일 수 있다. 다만 단일 카메라 기본 취득에서 두 view를
+요구하면 수행 부담이 커지고, 같은 반복을 동일 조건으로 비교하기도 어려워진다. 따라서 본
+프로토콜에서는 측면 view를 기본으로 두고, 관상면 패턴은 관찰 가능할 때 점수화 후보로 다루며,
+view상 불리하면 confidence note 또는 해석 제한 요인으로 남긴다.
+
+실제 촬영에서 far-side 관절이 잘 추출된다면 양측 또는 trailing-leg feature를 사용할 수 있다.
+반대로 가려짐이 반복되면 해당 feature를 나쁜 점수로 처리하지 않고 unavailable 또는
+low-confidence로 남기는 것이 적절하다. 이 방어 로직은 기본 요구사항이 아니라 파일럿 촬영 후
+필요성이 확인될 때 적용할 optional 확장으로 둔다.
+
+---
+
+## 7. 개발 참고 가능성
 
 런지에서 가장 중요한 개발 참고점은 side sequence와 active side provenance이다. 현재 연구
 프로토콜은 5회 한쪽 블록 뒤 5회 반대쪽 블록이지만, 향후 alternate-each-rep 런지를 추가할 수
@@ -90,4 +109,3 @@ variant가 필요할 수 있다.
 
 점수화 후보를 만들 때는 각 반복의 forward leg, trailing leg, expected side sequence, observed
 side sequence를 함께 보존해야 한다.
-

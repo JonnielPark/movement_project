@@ -1,6 +1,6 @@
 # 파이크 푸쉬업 상세 해석 배경 (Pike Push-up Clinical Rationale)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-09  
 **영문 동기화:** `docs_eng/clinical/exercises/pike_pushup.md`는 동일 버전의 영문 번역본이다.
 
@@ -78,10 +78,26 @@ shoulder_center 또는 head proxy로 보조해야 할 수 있다.
 
 ---
 
-## 6. 개발 참고 가능성
+## 6. 권장 view 해석
+
+파이크 푸쉬업의 기본 권장 view는 낮은 측면(`Z3` 또는 `Z7`, `H1`)이다. 이 view는 머리가 양손
+사이로 내려가는지, 엉덩이가 역V자 자세를 유지하는지, 일반 푸쉬업 형태로 hip drop이 발생하는지,
+상체가 어느 정도 수직 방향으로 이동하는지를 보기 좋다.
+
+정면 또는 전방 대각 view는 elbow flare, shoulder asymmetry, 좌우 손 지지 차이를 보는 데 도움이
+될 수 있지만, 머리 하강 깊이와 hip pike/hip drop 같은 핵심 구조를 해석하기에는 측면보다 불리할
+수 있다. 따라서 본 연구에서는 측면 view를 기본으로 두고, 좌우 상지 대칭성은 양측 어깨/팔꿈치
+landmark visibility가 충분할 때만 보조적으로 해석한다.
+
+측면 촬영에서는 카메라에서 먼 쪽 팔꿈치나 손목이 가려질 수 있다. 이 경우 반대편 상지 ROM이나
+대칭성을 나쁜 점수로 바로 반영하지 않고, visible-side sagittal ROM, head descent, hip position,
+trunk/hip alignment 같은 더 안정적인 지표를 우선한다.
+
+---
+
+## 7. 개발 참고 가능성
 
 파이크 푸쉬업에서 개발 참고 가치가 큰 항목은 partial completion과 failure point provenance이다.
 insufficient head descent, hip drop, head forward shift처럼 관절 포인트로 비교적 관찰 가능한 항목은
 점수화 후보가 될 수 있지만, shoulder asymmetry나 elbow flare는 self-occlusion과 view dependency가
 크므로 식별 가능성 평가가 먼저 필요하다.
-

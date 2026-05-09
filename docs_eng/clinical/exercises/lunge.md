@@ -1,6 +1,6 @@
 # Lunge Clinical Rationale
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-09  
 **Korean Sync:** `docs/clinical/exercises/lunge.md` is the same-version Korean source.
 
@@ -83,7 +83,30 @@ views help left-right alignment but weaken sagittal ROM and rear-limb interpreta
 
 ---
 
-## 6. Development Reference
+## 6. Recommended View Interpretation
+
+The default recommended view for lunge is side view (`Z3` or `Z7`). Lunge depends on
+the different roles of the forward and rear limbs, and the key observations include
+anterior knee travel, sagittal ROM of the forward/rear limbs, forward trunk lean,
+and step-length consistency. Side view is the most direct view for these features.
+
+This does not mean frontal-plane compensation is ignored. Knee valgus, pelvis drop,
+and lateral trunk lean may be more visible in frontal or front-oblique views. However,
+requiring two views in the basic single-camera protocol would increase acquisition
+burden and make identical-repetition comparison harder. Therefore, the default
+protocol uses side view; frontal-plane patterns are treated as scoring candidates
+when observable, and as confidence or interpretation limitations when the view is
+unfavorable.
+
+If far-side joints are extracted reliably in real filming, bilateral or trailing-leg
+features may be used. If occlusion repeatedly appears, those features should be
+reported as unavailable or low-confidence rather than scored as poor movement. This
+defensive logic is an optional extension to consider after pilot filming, not a
+default requirement.
+
+---
+
+## 7. Development Reference
 
 The key development reference for lunge is side-sequence and active-side provenance.
 The current protocol uses a same-side block followed by a switch, but an
@@ -92,4 +115,3 @@ not enough; a protocol profile or separate YAML variant may be needed.
 
 Scoring candidates should preserve forward leg, trailing leg, expected side
 sequence, and observed side sequence together.
-

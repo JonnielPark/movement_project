@@ -8,6 +8,11 @@
 
 저장소: <https://github.com/JonnielPark/movement_project>
 
+![Interpretable digital biomarker framework overview](docs/assets/framework_overview.png)
+
+*그림. 단일 비전 기반 동작 품질 분석 프레임워크의 개념도. 그림의 6개 macro-stage는 아래
+12단계 파이프라인을 요약한 것이며, 우측의 점수와 라벨은 실제 검증 결과가 아니라 설명용 예시이다.*
+
 ---
 
 ## 파이프라인 (Pipeline)
@@ -91,6 +96,7 @@ movement_project/
 │   ├── reference/                   # baseline_zscore.json (합성 정상 베이스라인)
 │   └── processed/                   # 파이프라인 단계별 중간·최종 산출물 (.gitignore)
 ├── docs/
+│   ├── assets/                       # README 및 문서용 공통 그림
 │   ├── terminology.md               # 연구 특화 용어와 임상 표현 원칙
 │   ├── overview.md                  # 프레임워크 개요
 │   ├── practical_protocols/         # 실전 촬영 및 수행 프로토콜
@@ -216,7 +222,7 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 | 1.4.7 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 1.0.0 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.0.1 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 
 ---
 
