@@ -1,7 +1,7 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.1.1
-**최종 갱신:** 2026-05-08
+**문서 버전:** 1.1.2
+**최종 갱신:** 2026-05-09
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ②. 사용자가 준비한 어노테이션 CSV의 구간(segment) 메타데이터를 포즈
@@ -38,6 +38,7 @@ segment_type        str       full_sequence | baseline | idle | rep | rest | tra
 set_id              Int64     nullable
 rep_id              Int64     nullable
 phase               object    nullable; 수동으로 제공된 phase 라벨이 있으면 보존
+note                str       nullable; 구간별 자유 기록
 exercise_type       str       운동 정의 YAML 식별자
 pattern             str       bilateral | alternating
 starting_side       str       left | right (좌·우 교대 운동에 한함)
@@ -48,6 +49,12 @@ camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z5 | Z6 | Z7 | Z8 | 
 camera_height_level str       nullable; H1 | H2 | H3 | unknown
 reference_mat_used  bool      nullable; 기준 매트 앵커 사용 여부
 filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
+performance_protocol_status str nullable; completed | partial | stopped_at_failure_point | unknown
+actual_rep_count    Int64     nullable; 실제 완료한 protocol count
+failure_point_frame Int64     nullable; 수행 실패 지점 또는 중단 지점 프레임
+failure_rep_id      Int64     nullable; 수행 실패가 처음 확인된 rep_id
+failure_reason      str       nullable; posture_breakdown | inconsistent_rom | side_order_error | pain_or_risk | participant_stop | unknown
+performance_note    str       nullable; 수행 품질 또는 중단 사유에 대한 자유 기록
 ```
 
 `exercise_type`은 ③ 운동 정의 로딩을 구동한다.
@@ -56,6 +63,8 @@ filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
 ⑥ Segmentation에서 판단한다.
 촬영 provenance 칼럼은 좌표를 보정하거나 데이터를 제외하는 데 사용하지 않는다. 권장 촬영
 조건과의 일치 여부는 결과 리포트나 시각화에서 경고 정보로 표시한다.
+수행 provenance 칼럼은 실제 촬영에서 목표 횟수, 수행 실패 지점, 중단 사유가 어떻게 나타났는지
+기록하기 위한 값이다. 이 값은 근력·피로를 진단하지 않으며, 자동 제외 규칙으로 사용하지 않는다.
 
 ## 3. 어노테이션 계층 (Annotation Hierarchy)
 
@@ -91,7 +100,9 @@ segment_type, set_id, rep_id, start_frame, end_frame, use_for_analysis
 ```text
 exercise_type, pattern, starting_side, phase, note,
 session_id, recording_id, set_index,
-camera_zone, camera_height_level, reference_mat_used, filming_protocol_status
+camera_zone, camera_height_level, reference_mat_used, filming_protocol_status,
+performance_protocol_status, actual_rep_count, failure_point_frame,
+failure_rep_id, failure_reason, performance_note
 ```
 
 ### 예: 단일 세트, 3 반복

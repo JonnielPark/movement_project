@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.4.2
-**Last Updated:** 2026-05-08
+**Document Version:** 1.4.3
+**Last Updated:** 2026-05-09
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -46,6 +46,7 @@ appear in an output, treat it as a documentation or code error.
 | Term | Fixed Meaning in This Study |
 |---|---|
 | Exercise definition | The YAML object, not the exercise name itself. It contains exercise-specific landmarks, phase settings, compensation candidates, feature domains, and quality rules used by downstream stages. |
+| Performance failure point | The first rep/frame or recording endpoint at which the participant can no longer maintain the exercise's baseline posture, ROM, rhythm, base of support, or left-right sequence consistently, even if no pain is reported. It is an acquisition/annotation marker for actual repetition count and stop reason, not a clinical diagnosis of strength or fatigue, and is distinct from a segmentation failure point. |
 | Compensatory movement | A non-primary movement that substitutes for or distorts the main task. Only candidates declared in YAML `compensation_candidates` and registered in the compensation-rule code are emitted as biomarkers. |
 | Validation | Structural and formal integrity checking of the input pose data. It is distinct from robustness evaluation and does not modify data. |
 | Robustness evaluation | Evaluation of metric responsiveness and consistency under synthetic conditions such as noise, occlusion, ROM restriction, or velocity spikes. It is not input-integrity validation. |
