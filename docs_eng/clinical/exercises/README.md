@@ -1,6 +1,6 @@
 # Per-Exercise Clinical Rationale
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-09  
 **Korean Sync:** `docs/clinical/exercises/README.md` is the same-version Korean source.
 

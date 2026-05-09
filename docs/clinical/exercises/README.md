@@ -1,6 +1,6 @@
 # 운동별 상세 해석 문서 (Per-Exercise Clinical Rationale)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-09  
 **영문 동기화:** `docs_eng/clinical/exercises/README.md`는 동일 버전의 영문 번역본이다.
 

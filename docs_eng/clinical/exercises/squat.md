@@ -1,6 +1,6 @@
 # Squat Clinical Rationale
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-09  
 **Korean Sync:** `docs/clinical/exercises/squat.md` is the same-version Korean source.
 
@@ -86,7 +86,29 @@ ROM interpretation.
 
 ---
 
-## 6. Development Reference
+## 6. Recommended View Interpretation
+
+The default recommended view for squat is front-oblique (`Z2` or `Z8`). This view
+is a compromise that preserves part of the frontal-plane information and part of
+the sagittal-plane information. A more frontal view helps knee valgus/varus, pelvic
+shift, and left-right knee tracking; a more side-view angle helps descent depth,
+trunk lean, hip/knee flexion ROM, and heel lift.
+
+The basic acquisition protocol does not require an additional pure frontal or pure
+side recording. Instead, features observable from the front-oblique view are
+prioritized, and view-sensitive features should carry interpretation limitations
+or confidence notes. For example, frontal-plane knee deviation may be underestimated
+when the camera is too close to side view, while sagittal ROM may become unstable
+when the camera is too close to frontal view.
+
+If auxiliary filming is available for a focused sub-study, a frontal view can help
+review left-right alignment and frontal-plane compensation, while a side view can
+help review depth and sagittal trunk/lower-limb movement. This is optional supporting
+material, not a default protocol requirement.
+
+---
+
+## 7. Development Reference
 
 This document is not a development requirement. If a pattern is promoted to a
 scoring candidate, use this sequence:
@@ -95,4 +117,3 @@ scoring candidate, use this sequence:
 2. Link it to `compensation_candidates` or `analysis_disrupting_patterns` in YAML.
 3. Document feature definitions and provenance rules in `docs_eng/pipeline/` and `docs/pipeline/`.
 4. Test reproducible detectability with synthetic input or a minimal annotation fixture.
-

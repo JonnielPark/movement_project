@@ -1,6 +1,6 @@
 # Plank Shoulder Tap Clinical Rationale
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-09  
 **Korean Sync:** `docs/clinical/exercises/plank_shoulder_tap.md` is the same-version Korean source.
 
@@ -83,7 +83,27 @@ notes than used as automatic exclusion rules.
 
 ---
 
-## 6. Development Reference
+## 6. Recommended View Interpretation
+
+The default recommended view for plank shoulder tap is low front-oblique view (`Z2`
+or `Z8`, `H1`). This view is a compromise for observing pelvic rotation, lateral
+weight shift, shoulder/pelvis-line sway, and active-hand trajectory while one hand
+leaves the floor.
+
+A pure frontal view can help lateral shift and tap order, but may make pelvic depth
+rotation and true hand-shoulder contact harder to distinguish. A pure side view can
+help hip-height drift or hip drop, but the active wrist can overlap the trunk and
+weaken tap segmentation and side-order interpretation. For this reason, the study
+uses low front-oblique view as the default and prioritizes combined lateral-shift
+and rotation-control interpretation.
+
+Patterns such as missed shoulder tap depend on true contact, which is difficult to
+confirm from pose alone. They should be handled conservatively as annotation notes,
+protocol warnings, or interpretation limitations rather than direct scoring factors.
+
+---
+
+## 7. Development Reference
 
 The high-value development reference in plank shoulder tap is separating protocol
 cycle from atomic tap. A left-right pair is one participant-facing protocol count,
@@ -92,4 +112,3 @@ but each active-hand trajectory may form an individual segment. Metadata such as
 
 Scoring candidates should begin with patterns that are relatively reproducible in
 pose data: pelvic rotation, lateral pelvic shift, hip drop, and side-order error.
-

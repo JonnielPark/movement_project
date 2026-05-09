@@ -1,6 +1,6 @@
 # Pike Push-up Clinical Rationale
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-09  
 **Korean Sync:** `docs/clinical/exercises/pike_pushup.md` is the same-version Korean source.
 
@@ -82,11 +82,30 @@ by itself.
 
 ---
 
-## 6. Development Reference
+## 6. Recommended View Interpretation
+
+The default recommended view for pike push-up is low side view (`Z3` or `Z7`, `H1`).
+This view supports observation of whether the head descends between the hands,
+whether the hips maintain the inverted-V shape, whether hip drop turns the task
+toward a regular push-up, and how the upper body moves vertically.
+
+Frontal or front-oblique views may help elbow flare, shoulder asymmetry, or left-right
+hand-support differences, but they are less direct for head descent and hip pike/drop.
+Therefore, side view remains the default, and upper-limb symmetry is interpreted as
+a secondary feature only when both shoulder and elbow landmarks have sufficient
+visibility.
+
+In side-view filming, the far-side elbow or wrist may be occluded. In that case,
+far-side upper-limb ROM or symmetry should not be penalized directly. More stable
+features such as visible-side sagittal ROM, head descent, hip position, and trunk/hip
+alignment should be prioritized.
+
+---
+
+## 7. Development Reference
 
 High-value development references in pike push-up are partial completion and
 failure-point provenance. Insufficient head descent, hip drop, and head forward
 shift are relatively observable from pose data. Shoulder asymmetry and elbow flare
 require detectability evaluation first because they are view and self-occlusion
 dependent.
-

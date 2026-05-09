@@ -1,6 +1,6 @@
 # 플랭크 숄더탭 상세 해석 배경 (Plank Shoulder Tap Clinical Rationale)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-09  
 **영문 동기화:** `docs_eng/clinical/exercises/plank_shoulder_tap.md`는 동일 버전의 영문 번역본이다.
 
@@ -80,7 +80,24 @@ exclusion보다 recording note, base-of-support warning, interpretation confiden
 
 ---
 
-## 6. 개발 참고 가능성
+## 6. 권장 view 해석
+
+플랭크 숄더탭의 기본 권장 view는 낮은 전방 대각(`Z2` 또는 `Z8`, `H1`)이다. 이 view는 한 손이
+떨어질 때 나타나는 골반 회전, 측방 체중 이동, 어깨/골반 라인의 흔들림, active hand trajectory를
+동시에 관찰하기 위한 절충이다.
+
+순수 정면 view는 좌우 측방 이동과 tap 순서를 보기 좋지만, 골반 회전의 깊이 성분과 손-어깨 접촉
+여부를 구분하기 어려울 수 있다. 순수 측면 view는 엉덩이 높이 변화나 hip drop을 보기 좋지만,
+active wrist가 몸통과 겹치기 쉬워 tap segmentation과 좌우 순서 해석이 약해질 수 있다. 따라서
+본 연구에서는 전방 대각 low-angle view를 기본으로 두고, 측방 이동과 회전 제어를 함께 보는
+방향을 택한다.
+
+missed shoulder tap처럼 실제 접촉 여부가 중요한 항목은 pose만으로 확정하기 어렵다. 이 경우
+점수화보다 annotation note, protocol warning, 해석 제한 요인으로 남기는 것이 보수적이다.
+
+---
+
+## 7. 개발 참고 가능성
 
 플랭크 숄더탭에서 개발 참고 가치가 큰 항목은 protocol cycle과 atomic tap의 분리이다. 한 쌍의
 좌우 tap은 피험자 안내 기준 1회이지만, active-hand trajectory에서는 각 tap이 개별 segment가 될
@@ -89,4 +106,3 @@ exclusion보다 recording note, base-of-support warning, interpretation confiden
 
 점수화 후보는 pelvic rotation, lateral pelvic shift, hip drop, side-order error처럼 pose
 시계열에서 비교적 반복 가능하게 관찰되는 항목부터 검토하는 것이 적절하다.
-
