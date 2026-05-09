@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/clinical/per_exercise_mapping.md`는 동일 버전의 영문 번역본이다.
 
 **학위논문 §5.5 / §5.6.** 4개 검증 운동 전체의 활성 피처와 단위, 생체역학적 해석.

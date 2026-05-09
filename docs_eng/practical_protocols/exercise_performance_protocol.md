@@ -1,6 +1,6 @@
 # Exercise Performance Protocol per Exercise
 
-**Document Version:** 1.0.6
+**Document Version:** 1.0.8
 **Last Updated:** 2026-05-09
 **Korean Sync:** [docs/practical_protocols/exercise_performance_protocol.md](../../docs/practical_protocols/exercise_performance_protocol.md) is the matching Korean document.
 
@@ -12,6 +12,10 @@ performance failure-point recording, also apply to future exercises added outsid
 the current four-exercise set.
 
 Shared camera position and height definitions follow [camera_protocol.md](camera_protocol.md).
+The example images in this document are representative photos for participant-facing
+movement understanding. For exercise-specific biomechanical rationale, compensation
+patterns, and scoring-candidate/control-factor distinctions, see the detailed
+documents under `docs_eng/clinical/exercises/`.
 
 ---
 
@@ -48,6 +52,15 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 10. The "analysis-disrupting performance patterns" below are not immediate recording
    invalidation rules. When observed, record them in the recording or annotation
    note so they can be reviewed during result interpretation.
+11. After recording, analysis-disrupting patterns are interpreted along two paths.
+   Patterns that can be identified reproducibly from joint-point time series remain
+   candidates for movement-quality degradation or compensatory-movement scoring.
+   Patterns that cannot be separated reliably from pose data are not scored; they
+   remain acquisition-control factors or interpretation-limitation factors.
+12. Detectability can vary for the same pattern depending on camera view, landmark
+   visibility, body shape, clothing, or changes in the base of support. Therefore,
+   analysis-disrupting patterns should not be used first as automatic exclusion
+   rules; record the observation basis and data-quality context together.
 
 ---
 
@@ -74,6 +87,10 @@ the reference mat. Set the lens around pelvis or navel height, approximately
 
 This setup supports simultaneous observation of frontal-plane knee tracking and
 hip-flexion depth.
+
+**Detailed Rationale**
+
+See [Squat Clinical Rationale](../clinical/exercises/squat.md).
 
 **Participant Cue**
 
@@ -111,6 +128,10 @@ reference mat. Set the lens around pelvis height, approximately 80-110 cm.
 
 This setup supports observation of anterior knee travel, sagittal trunk alignment,
 and the relative motion of the front and rear limbs.
+
+**Detailed Rationale**
+
+See [Lunge Clinical Rationale](../clinical/exercises/lunge.md).
 
 **Participant Cue**
 
@@ -152,6 +173,10 @@ reference mat. Keep the camera low, approximately 0-30 cm above the floor.
 This setup supports observation of the inverted-V posture and the sagittal-plane
 trajectory of the head, shoulder, and elbow.
 
+**Detailed Rationale**
+
+See [Pike Push-up Clinical Rationale](../clinical/exercises/pike_pushup.md).
+
 **Participant Cue**
 
 1. Lift the hips high so the body forms an inverted V.
@@ -189,6 +214,10 @@ the reference mat. Keep the camera low, approximately 0-30 cm above the floor.
 
 This setup supports observation of pelvic rotation, weight shift, and lateral sway
 while one hand taps the opposite shoulder.
+
+**Detailed Rationale**
+
+See [Plank Shoulder Tap Clinical Rationale](../clinical/exercises/plank_shoulder_tap.md).
 
 **Participant Cue**
 
