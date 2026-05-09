@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.4
+**Document Version:** 1.4.5
 **Last Updated:** 2026-05-09
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -273,15 +273,16 @@ Current implementation parses and validates this metadata in ③ Exercise Defini
 ⑦ Motion Attribution still uses the existing `pattern` / `starting_side` behavior;
 block-based side-sequence enforcement is a later implementation step.
 
-Development Use notes in `exercise_performance_protocol.md` map to this schema as
-follows. Protocol-level performance instructions belong in `performance_protocol`.
-What actually happened during acquisition (`actual_rep_count`, `failure_point_frame`,
+Acquisition rules that are fixed by the performance protocol, such as count unit,
+side sequence, and completion policy, belong in `performance_protocol`. What
+actually happened during acquisition (`actual_rep_count`, `failure_point_frame`,
 `failure_reason`, and related fields) belongs to ② Annotation or recording metadata,
 not to the exercise definition. Compensation candidates are declared in
 `compensation_candidates` and `feature_domains.control`; candidates that are not yet
-implemented by ⑧–⑩ must be reported rather than silently ignored.
-`analysis_disrupting_patterns` are not automatic exclusion rules. They are candidates
-for annotation notes, quality warnings, or ⑫ Simulation conditions.
+implemented by ⑧–⑩ must be reported rather than silently ignored. Temporary
+development mappings and TODOs belong only in the git-ignored
+`docs_eng/code_revision_plan.md`, not in the publication-facing acquisition
+protocol document.
 
 ### landmarks
 

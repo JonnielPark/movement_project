@@ -1,6 +1,6 @@
 # 대상 운동별 수행 프로토콜 (Exercise Performance Protocol per Exercise)
 
-**문서 버전:** 1.0.5
+**문서 버전:** 1.0.6
 **최종 갱신:** 2026-05-09
 **영문 동기화:** [docs_eng/practical_protocols/exercise_performance_protocol.md](../../docs_eng/practical_protocols/exercise_performance_protocol.md)는 동일 내용의 영문 번역본이다.
 
@@ -36,9 +36,8 @@
    위한 취득/annotation 표지이다.
 9. 팔 움직임이 분석 대상이 아닌 운동에서는 양손을 고정하여 팔 반동이 관절 궤적에 섞이지
    않도록 한다.
-10. 아래의 "분석을 방해하는 수행 패턴"은 자동 제외 규칙이 아니다. 데이터 품질 경고,
-   annotation note, synthetic distortion 설계, 또는 추후 YAML 기반 품질 규칙의 후보로
-   사용한다.
+10. 아래의 "분석을 방해하는 수행 패턴"은 촬영 즉시 무효 처리 기준이 아니다. 해당 패턴이
+   관찰되면 recording 또는 annotation note에 기록하여 결과 해석 시 함께 확인한다.
 
 ---
 
@@ -79,11 +78,6 @@ Height: H2
 - 하강 깊이가 반복마다 크게 달라져 ROM 기준점이 불안정한 경우
 - 체간을 과도하게 접어 고관절 굴곡과 체간 굴곡이 분리되지 않는 경우
 
-**개발 활용 메모**
-
-`compensation_candidates`의 `knee_valgus`, `knee_varus`, `asymmetric_depth`,
-`excessive_trunk_flexion`, `heel_lift`, `tempo_instability`와 연결될 수 있다.
-
 ### 2-2. 런지 (Lunge)
 
 ![런지 예시 자세](assets/exercise_lunge.png)
@@ -121,12 +115,6 @@ Height: H2
 - 좌우 전환 시 카메라 방향을 바꾸거나 몸 전체가 돌아서 측면 기준이 사라지는 경우
 - 앞발 또는 뒷발 접촉이 반복적으로 불안정해지는 경우
 
-**개발 활용 메모**
-
-런지는 수행 프로토콜상 5회 한쪽 블록 뒤 5회 반대쪽 블록으로 구성된다. 현재의 단순
-`pattern = alternating`만으로는 이 구조를 충분히 표현하지 못할 수 있으므로, 추후
-`rep_side_sequence` 또는 `side_block_size` 같은 metadata가 필요하다.
-
 ### 2-3. 파이크 푸쉬업 (Pike Push-up)
 
 ![파이크 푸쉬업 예시 자세](assets/exercise_pike_pushup.png)
@@ -163,11 +151,6 @@ Height: H1
 - 하강 깊이가 너무 얕거나 반복마다 크게 달라지는 경우
 - 손 또는 발 위치가 반복 중 크게 이동하는 경우
 
-**개발 활용 메모**
-
-`insufficient_head_descent`, `head_forward_shift`, `elbow_flare`, `shoulder_asymmetry`,
-`hip_drop`, `hip_pike`, `tempo_instability`와 연결될 수 있다.
-
 ### 2-4. 플랭크 숄더탭 (Plank Shoulder Tap)
 
 ![플랭크 숄더탭 예시 자세](assets/exercise_plank_shoulder_tap.png)
@@ -203,73 +186,3 @@ Height: H1
 - 손 또는 발 위치가 반복 중 크게 이동해 지지 기저면이 바뀌는 경우
 - 좌우 터치 순서가 누락되거나 한쪽만 반복되는 경우
 - 어깨를 실제로 터치하지 않고 손만 들어 올리는 경우
-
-**개발 활용 메모**
-
-수행 프로토콜에서는 좌우 터치 1쌍을 1회로 세지만, 세그멘테이션 구현에서는 각 tap을 원자적
-반복으로 다룰 가능성이 있다. 추후 annotation에서 `tap_count`, `protocol_cycle_id`,
-또는 `rep_unit`을 명시하는 방식이 필요하다.
-
----
-
-## 3. 개발 반영 규약 (Development Integration Rules)
-
-각 운동의 **개발 활용 메모**는 자유로운 아이디어 메모가 아니라, 실제 구현 전에 어디에 반영할지
-정해야 하는 요구사항 후보이다. 다만 메모에 적힌 모든 항목을 즉시 자동 판정 규칙으로 만들지는
-않는다. 먼저 YAML, annotation metadata, feature/biomarker 구현, 테스트 중 어느 산출물로
-내려갈지 결정한다.
-
-| 메모 유형 | 문서/YAML 반영 위치 | 코드 반영 위치 | 검증 기준 |
-|---|---|---|---|
-| 목표 횟수, 좌우 순서, 한쪽 블록 크기 | `performance_protocol.counting`, `performance_protocol.side_sequence` | ⑥ Segmentation, ⑦ Motion Attribution | 합성 annotation에서 expected side/count가 맞는지 테스트 |
-| 실제 반복 수, 중단 지점, 수행 실패 지점 | ② Annotation 또는 recording metadata | 리포트, ⑪ Visualization, 필요 시 scoring 경고 | `actual_rep_count`, `failure_point_frame`, `failure_reason` 보존 테스트 |
-| 보상 움직임 후보 | `compensation_candidates`, `feature_domains.control` | ⑧ Feature Extraction, ⑩ Biomarker Scoring | 후보별 feature/biomarker 산출 또는 미구현 경고 테스트 |
-| 분석을 방해하는 수행 패턴 | `performance_protocol.analysis_disrupting_patterns` | annotation note, 품질 경고, ⑫ Simulation injector 후보 | 자동 제외하지 않고 warning/provenance로 남는지 테스트 |
-| 카메라/시야 의존 관찰 조건 | `view_requirements`, `camera_protocol` | 촬영 조건 경고, ⑪ Visualization | 권장 조건 불일치가 보정/제외가 아니라 경고로 남는지 테스트 |
-
-### 운동별 우선 구현 연결
-
-| 운동 | 개발 활용 메모의 핵심 | 이미 문서/YAML에 반영된 위치 | 후속 개발에서 확인할 것 |
-|---|---|---|---|
-| 스쿼트 | 무릎 정렬, 하강 깊이, 체간 굴곡, 발뒤꿈치 들림, 템포 불안정 | `compensation_candidates`, `analysis_disrupting_patterns`, `quality_rules` | 후보별 보상 feature 구현 여부와 미구현 후보 리포트 |
-| 런지 | 한쪽 5회 후 반대쪽 5회, 앞다리 기준 좌우 어트리뷰션 | `performance_protocol.side_sequence` | `same_side_block_then_switch`를 ⑦ Motion Attribution에서 해석 |
-| 파이크 푸쉬업 | 부분 수행 허용, 머리 하강, 팔꿈치 벌어짐, 어깨/엉덩이 보상 | `completion.allow_partial_completion`, `compensation_candidates` | 수행 실패 지점 metadata와 상체 보상 feature 연결 |
-| 플랭크 숄더탭 | 좌우 tap 1쌍 = 프로토콜 1회, 원자 tap과 protocol count 분리 | `count_unit: left_right_pair`, `segmentation_reps_per_count: 2` | `protocol_cycle_id`, 좌우 순서 오류, missed tap 경고 |
-| 모든 운동 | 수행 실패 지점과 실제 반복 수 | ② Annotation/recording metadata 후보 | 리포트와 시각화에서 해석 신뢰도 경고로 표시 |
-
-완료 기준은 다음과 같다.
-
-```text
-1. 개발 활용 메모가 YAML 필드 또는 annotation/recording metadata 중 하나에 매핑된다.
-2. 코드가 해당 필드를 파싱하거나, 아직 미구현이면 명시적 warning/report 항목으로 남긴다.
-3. 보상 후보는 feature/biomarker로 산출되거나 "declared but not implemented"로 보고된다.
-4. 분석 방해 패턴은 사용자 확인 없이 자동 제외 규칙으로 승격하지 않는다.
-5. 새 동작은 합성 입력 또는 최소 annotation fixture로 테스트한다.
-```
-
-## 4. 코드 반영 경계 (Code Integration Boundary)
-
-실전 수행 프로토콜은 운동 YAML의 `performance_protocol`로 표현하고, ③ Exercise Definition에서
-구조화된 메타데이터로 파싱한다. 현재 구현은 이 값을 세그멘테이션이나 모션 어트리뷰션 동작에
-아직 직접 반영하지 않는다.
-
-```text
-performance_protocol metadata
-    target_count, count_unit, segmentation_reps_per_count, recommended_sets
-
-side sequence metadata
-    side_sequence.mode, block_size_counts, first_side_source
-
-performance quality metadata
-    performance_protocol_status, actual_rep_count, failure_point_frame,
-    failure_rep_id, failure_reason, performance_note
-
-analysis-disrupting pattern tags
-    arm_swing, unstable_foot_contact, excessive_pelvic_rotation, incomplete_depth, ...
-```
-
-`actual_rep_count`, `failure_point_frame`, `failure_rep_id`, `failure_reason`,
-`performance_protocol_status`처럼 실제 촬영에서 무엇이 발생했는지를 나타내는 필드는 운동
-정의가 아니라 annotation 또는 recording metadata에 둔다.
-
-관련 구현 계획은 `docs/code_revision_plan.md`와 `docs_eng/code_revision_plan.md`에 기록한다.

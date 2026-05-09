@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.4
+**문서 버전:** 1.4.5
 **최종 갱신:** 2026-05-09
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -271,13 +271,13 @@ performance_protocol:
 ⑦ Motion Attribution은 아직 기존 `pattern` / `starting_side` 동작을 사용하며,
 블록 기반 좌우 순서 강제는 후속 구현 단계로 둔다.
 
-`exercise_performance_protocol.md`의 개발 활용 메모는 다음 규칙으로 이 스키마에 연결한다.
-프로토콜상 수행 방식은 `performance_protocol`에 둔다. 실제 촬영에서 발생한 결과
-(`actual_rep_count`, `failure_point_frame`, `failure_reason` 등)는 운동 정의가 아니라
-② Annotation 또는 recording metadata에 둔다. 보상 움직임 후보는 `compensation_candidates`와
-`feature_domains.control`에 선언하고, ⑧–⑩에서 구현되지 않은 후보는 숨기지 않고 report에
-남긴다. `analysis_disrupting_patterns`는 자동 제외 규칙이 아니라 annotation note, 품질 경고,
-또는 ⑫ Simulation 조건 후보이다.
+수행 프로토콜의 카운트, 좌우 순서, 완료 규칙처럼 운동 정의에 고정되어야 하는 취득 규칙은
+`performance_protocol`에 둔다. 실제 촬영에서 발생한 결과(`actual_rep_count`,
+`failure_point_frame`, `failure_reason` 등)는 운동 정의가 아니라 ② Annotation 또는 recording
+metadata에 둔다. 보상 움직임 후보는 `compensation_candidates`와 `feature_domains.control`에
+선언하고, ⑧–⑩에서 구현되지 않은 후보는 숨기지 않고 report에 남긴다.
+개발 중 임시 매핑과 TODO는 출간 후 취득 프로토콜 문서가 아니라 git에서 제외된
+`docs/code_revision_plan.md`에만 둔다.
 
 ### landmarks
 
