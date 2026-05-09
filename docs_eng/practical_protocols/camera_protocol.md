@@ -1,7 +1,7 @@
 # Camera Filming Protocol per Exercise
 
 **Document Version:** 1.2.3
-**Last Updated:** 2026-05-08
+**Last Updated:** 2026-05-09
 **Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
 This document defines the data-acquisition guide used to reduce distortion in a
@@ -59,6 +59,12 @@ Height is recorded using three levels.
 A reference mat is used as a physical anchor so the user can estimate distance and
 direction without a separate calibration device. A standard reference mat is treated
 as approximately 180 cm × 60 cm.
+
+The mat is not a calibration target that is automatically detected in the video.
+The pipeline does not detect mat corners, infer mat size, estimate perspective
+transforms, or use the mat for camera calibration. Reference-mat information is
+used only as human-facing placement guidance and operational metadata for
+`reference_mat_used` and filming-condition warnings.
 
 | Item | Zones | Guidance |
 |---|---|---|
@@ -129,6 +135,8 @@ recommended zone matched       record as provenance and process normally
 recommended zone mismatched    warn and process normally
 filming zone missing           record as unknown and process normally
 reference mat not used         warn, but do not force exclusion
+reference-mat detection        not applied
+mat-based calibration          not applied
 camera-angle correction        not applied
 coordinate reprojection        not applied
 ```

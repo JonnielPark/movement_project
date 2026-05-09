@@ -1,13 +1,15 @@
 # Exercise Performance Protocol per Exercise
 
-**Document Version:** 1.0.3
-**Last Updated:** 2026-05-08
+**Document Version:** 1.0.5
+**Last Updated:** 2026-05-09
 **Korean Sync:** [docs/practical_protocols/exercise_performance_protocol.md](../../docs/practical_protocols/exercise_performance_protocol.md) is the matching Korean document.
 
 This document defines standard performance instructions, participant-facing cues,
-and analysis-disrupting performance patterns for the four target exercises. Here,
-"standard performance" means a reproducible acquisition target for monocular pose
-analysis, not a clinical correction standard.
+and analysis-disrupting performance patterns for the current four target exercises.
+Here, "standard performance" means a reproducible acquisition target for monocular
+pose analysis, not a clinical correction standard. The common principles, especially
+performance failure-point recording, also apply to future exercises added outside
+the current four-exercise set.
 
 Shared camera position and height definitions follow [camera_protocol.md](camera_protocol.md).
 
@@ -35,9 +37,15 @@ Shared camera position and height definitions follow [camera_protocol.md](camera
 7. The target is 10 repetitions. If the participant cannot complete 10 repetitions,
    record the maximum clean repetitions before the posture fully breaks down, and
    store the actual count in annotation or recording metadata.
-8. When arm motion is not the target of analysis, the hands should be fixed so arm
+8. Every exercise should support performance failure-point recording. The performance
+   failure point is the first rep/frame, or the recording endpoint, where the participant
+   can no longer maintain the core requirement of that exercise consistently: baseline
+   posture, ROM, rhythm, base of support, or left-right sequence. This marker is not
+   used to diagnose strength or fatigue; it is an acquisition/annotation marker for
+   actual repetition count and interpretation-confidence warnings.
+9. When arm motion is not the target of analysis, the hands should be fixed so arm
    swing does not contaminate the intended joint trajectory.
-9. The "analysis-disrupting performance patterns" below are not automatic exclusion
+10. The "analysis-disrupting performance patterns" below are not automatic exclusion
    rules. They are candidates for data-quality warnings, annotation notes,
    synthetic distortion design, or future YAML-based quality rules.
 
@@ -162,9 +170,9 @@ trajectory of the head, shoulder, and elbow.
 1. Lift the hips high so the body forms an inverted V.
 2. Lower the crown of the head toward the floor between the hands, then press back
    up using the shoulders.
-3. The target is 10 repetitions. If 10 repetitions are too difficult, do not force
-   the movement; perform only the maximum clean repetitions before the posture fully
-   breaks down, and keep the same 3-set acquisition structure when possible.
+3. The target is 10 repetitions. If 10 repetitions are too difficult, stop according
+   to the common performance failure-point rule without forcing the movement, and
+   keep the same 3-set acquisition structure when possible.
 
 **Analysis-Disrupting Patterns**
 
@@ -178,8 +186,7 @@ trajectory of the head, shoulder, and elbow.
 
 This protocol can map to `insufficient_head_descent`, `head_forward_shift`,
 `elbow_flare`, `shoulder_asymmetry`, `hip_drop`, `hip_pike`, and
-`tempo_instability`. If fewer than 10 repetitions are completed, metadata such as
-`actual_rep_count` is needed.
+`tempo_instability`.
 
 ### 2-4. Plank Shoulder Tap
 
@@ -226,7 +233,42 @@ treat each tap as an atomic repetition. Future annotation may need explicit
 
 ---
 
-## 3. Code Integration Boundary
+## 3. Development Integration Rules
+
+The **Development Use** notes in each exercise are not free-form ideas. They are
+requirement candidates that must be mapped before implementation. Not every item
+becomes an automatic detection rule immediately. Each note is first assigned to
+YAML, annotation metadata, feature/biomarker implementation, or tests.
+
+| Note Type | Documentation / YAML Location | Code Location | Verification |
+|---|---|---|---|
+| Target count, side sequence, block size | `performance_protocol.counting`, `performance_protocol.side_sequence` | ⑥ Segmentation, ⑦ Motion Attribution | Synthetic annotation tests for expected side/count |
+| Actual repetitions, stop point, performance failure point | ② Annotation or recording metadata | Reports, ⑪ Visualization, optional scoring warnings | Preservation tests for `actual_rep_count`, `failure_point_frame`, `failure_reason` |
+| Compensation movement candidates | `compensation_candidates`, `feature_domains.control` | ⑧ Feature Extraction, ⑩ Biomarker Scoring | Per-candidate feature/biomarker output or not-implemented warning tests |
+| Analysis-disrupting performance patterns | `performance_protocol.analysis_disrupting_patterns` | Annotation notes, quality warnings, ⑫ Simulation injector candidates | Warning/provenance behavior without automatic exclusion |
+| Camera/view-dependent observation conditions | `view_requirements`, `camera_protocol` | Filming-condition warnings, ⑪ Visualization | Recommended-condition mismatch becomes a warning, not correction or exclusion |
+
+### Per-Exercise Implementation Links
+
+| Exercise | Core Development Use Note | Already Represented In | Follow-Up Implementation Check |
+|---|---|---|---|
+| Squat | Knee tracking, depth, trunk flexion, heel lift, tempo instability | `compensation_candidates`, `analysis_disrupting_patterns`, `quality_rules` | Compensation feature coverage and unimplemented-candidate report |
+| Lunge | Five reps on one side, then five on the other; front-leg attribution | `performance_protocol.side_sequence` | Interpret `same_side_block_then_switch` in ⑦ Motion Attribution |
+| Pike push-up | Partial completion, head descent, elbow flare, shoulder/hip compensation | `completion.allow_partial_completion`, `compensation_candidates` | Link performance failure metadata with upper-body compensation features |
+| Plank shoulder tap | One left-right pair equals one protocol count; separate atomic taps from protocol counts | `count_unit: left_right_pair`, `segmentation_reps_per_count: 2` | Add `protocol_cycle_id`, side-order error, and missed-tap warnings |
+| All exercises | Performance failure point and actual repetition count | ② Annotation / recording metadata candidates | Display interpretation-confidence warnings in reports and visualization |
+
+Done criteria:
+
+```text
+1. Each Development Use note maps to a YAML field or annotation/recording metadata.
+2. Code either parses the field or reports it explicitly as not implemented yet.
+3. Each compensation candidate is emitted as a feature/biomarker or reported as declared but not implemented.
+4. Analysis-disrupting patterns are not promoted to automatic exclusion without explicit user confirmation.
+5. New behavior is tested with synthetic input or a minimal annotation fixture.
+```
+
+## 4. Code Integration Boundary
 
 The practical protocol is represented in exercise YAML as `performance_protocol`
 and parsed by ③ Exercise Definition. Current implementation treats it as structured
@@ -240,15 +282,17 @@ side sequence metadata
     side_sequence.mode, block_size_counts, first_side_source
 
 performance quality metadata
-    performance_protocol_status, actual_rep_count, performance_note
+    performance_protocol_status, actual_rep_count, failure_point_frame,
+    failure_rep_id, failure_reason, performance_note
 
 analysis-disrupting pattern tags
     arm_swing, unstable_foot_contact, excessive_pelvic_rotation, incomplete_depth, ...
 ```
 
 Fields that describe what actually happened during recording, such as
-`actual_rep_count` or `performance_protocol_status`, belong to annotation or
-recording metadata rather than the exercise definition.
+`actual_rep_count`, `failure_point_frame`, `failure_rep_id`, `failure_reason`, or
+`performance_protocol_status`, belong to annotation or recording metadata rather
+than the exercise definition.
 
 Related implementation plans are recorded in `docs/code_revision_plan.md` and
 `docs_eng/code_revision_plan.md`.

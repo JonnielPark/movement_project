@@ -1,7 +1,7 @@
 # 02. Annotation
 
-**Document Version:** 1.1.1
-**Last Updated:** 2026-05-08
+**Document Version:** 1.1.2
+**Last Updated:** 2026-05-09
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
 Pipeline step ②. Merges segment metadata from a user-prepared annotation CSV into
@@ -38,6 +38,7 @@ segment_type        str       full_sequence | baseline | idle | rep | rest | tra
 set_id              Int64     nullable
 rep_id              Int64     nullable
 phase               object    nullable; preserved if manually provided
+note                str       nullable; free-text segment note
 exercise_type       str       exercise definition YAML identifier
 pattern             str       bilateral | alternating
 starting_side       str       left | right (alternating exercises only)
@@ -48,6 +49,12 @@ camera_zone         str       nullable; Z1 | Z2 | Z3 | Z4 | Z5 | Z6 | Z7 | Z8 | 
 camera_height_level str       nullable; H1 | H2 | H3 | unknown
 reference_mat_used  bool      nullable; whether the reference-mat anchor was used
 filming_protocol_status str   recommended | out_of_zone | no_anchor | unknown
+performance_protocol_status str nullable; completed | partial | stopped_at_failure_point | unknown
+actual_rep_count    Int64     nullable; protocol count actually completed
+failure_point_frame Int64     nullable; frame where the performance failure point or stop point occurs
+failure_rep_id      Int64     nullable; rep_id where performance failure is first observed
+failure_reason      str       nullable; posture_breakdown | inconsistent_rom | side_order_error | pain_or_risk | participant_stop | unknown
+performance_note    str       nullable; free-text note about performance quality or stop reason
 ```
 
 `exercise_type` drives ③ exercise definition loading.
@@ -57,6 +64,9 @@ the label is confirmed and how any failure is handled.
 Filming provenance columns are not used to correct coordinates or exclude data.
 Whether the recording matches the recommended protocol is shown as warning information
 in reports or visualization.
+Performance provenance columns record what actually happened during acquisition:
+target-count completion, performance failure point, and stop reason. They do not
+diagnose strength or fatigue and are not automatic exclusion rules.
 
 ## 3. Annotation Hierarchy
 
@@ -92,7 +102,9 @@ Optional columns:
 ```text
 exercise_type, pattern, starting_side, phase, note,
 session_id, recording_id, set_index,
-camera_zone, camera_height_level, reference_mat_used, filming_protocol_status
+camera_zone, camera_height_level, reference_mat_used, filming_protocol_status,
+performance_protocol_status, actual_rep_count, failure_point_frame,
+failure_rep_id, failure_reason, performance_note
 ```
 
 ### Example: single set, 3 reps

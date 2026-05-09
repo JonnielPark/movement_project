@@ -13,9 +13,11 @@ Output columns added to the pose dataframe:
     set_id           : Int64  (nullable)
     rep_id           : Int64  (nullable)
     phase            : object (nullable, reserved for future use)
+    optional recording, filming, and performance provenance columns when provided
 
 Pipeline position: after ① validation, before ③ exercise definition loading.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,17 +43,32 @@ ANNOTATION_OPTIONAL_COLUMNS: list[str] = [
     "starting_side",
     "phase",
     "note",
+    "session_id",
+    "recording_id",
+    "set_index",
+    "camera_zone",
+    "camera_height_level",
+    "reference_mat_used",
+    "filming_protocol_status",
+    "performance_protocol_status",
+    "actual_rep_count",
+    "failure_point_frame",
+    "failure_rep_id",
+    "failure_reason",
+    "performance_note",
 ]
 
-VALID_SEGMENT_TYPES: frozenset[str] = frozenset({
-    "full_sequence",
-    "baseline",
-    "idle",
-    "rep",
-    "rest",
-    "transition",
-    "excluded",
-})
+VALID_SEGMENT_TYPES: frozenset[str] = frozenset(
+    {
+        "full_sequence",
+        "baseline",
+        "idle",
+        "rep",
+        "rest",
+        "transition",
+        "excluded",
+    }
+)
 
 ANNOTATION_OUTPUT_COLUMNS: list[str] = [
     "use_for_analysis",
@@ -62,10 +79,69 @@ ANNOTATION_OUTPUT_COLUMNS: list[str] = [
     "exercise_type",
     "pattern",
     "starting_side",
+    "note",
+    "session_id",
+    "recording_id",
+    "set_index",
+    "camera_zone",
+    "camera_height_level",
+    "reference_mat_used",
+    "filming_protocol_status",
+    "performance_protocol_status",
+    "actual_rep_count",
+    "failure_point_frame",
+    "failure_rep_id",
+    "failure_reason",
+    "performance_note",
 ]
+
+NULLABLE_INT_OUTPUT_COLUMNS: frozenset[str] = frozenset(
+    {
+        "set_id",
+        "rep_id",
+        "set_index",
+        "actual_rep_count",
+        "failure_point_frame",
+        "failure_rep_id",
+    }
+)
+
+NULLABLE_BOOL_OUTPUT_COLUMNS: frozenset[str] = frozenset(
+    {
+        "reference_mat_used",
+    }
+)
+
+
+def _parse_nullable_bool(value: Any) -> Any:
+    """Parse optional annotation booleans while preserving missing values."""
+    if pd.isna(value):
+        return pd.NA
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("true", "1", "yes")
+
+
+def _empty_output_column(name: str, n: int) -> Any:
+    """Return a nullable default column for annotation metadata."""
+    if name in NULLABLE_INT_OUTPUT_COLUMNS:
+        return pd.array([pd.NA] * n, dtype="Int64")
+    if name in NULLABLE_BOOL_OUTPUT_COLUMNS:
+        return pd.array([pd.NA] * n, dtype="boolean")
+    return pd.array([None] * n, dtype=object)
+
+
+def _coerce_output_value(name: str, value: Any) -> Any:
+    """Coerce one annotation value to the dtype used by the output dataframe."""
+    if name in NULLABLE_INT_OUTPUT_COLUMNS:
+        return pd.NA if pd.isna(value) else int(value)
+    if name in NULLABLE_BOOL_OUTPUT_COLUMNS:
+        return _parse_nullable_bool(value)
+    return None if pd.isna(value) else str(value)
 
 
 # ── Loader ────────────────────────────────────────────────────────────────────
+
 
 def load_annotation_csv(path: Path | str) -> pd.DataFrame:
     """
@@ -105,19 +181,26 @@ def load_annotation_csv(path: Path | str) -> pd.DataFrame:
         raise ValueError(f"Annotation CSV missing required columns: {missing}")
 
     ann["use_for_analysis"] = ann["use_for_analysis"].apply(
-        lambda x: str(x).strip().lower() in ("true", "1", "yes")
-        if pd.notna(x)
-        else False
+        lambda x: (
+            str(x).strip().lower() in ("true", "1", "yes") if pd.notna(x) else False
+        )
     )
     ann["set_id"] = ann["set_id"].astype("Int64")
     ann["rep_id"] = ann["rep_id"].astype("Int64")
     ann["start_frame"] = ann["start_frame"].astype(int)
     ann["end_frame"] = ann["end_frame"].astype(int)
+    for col in NULLABLE_INT_OUTPUT_COLUMNS:
+        if col in ann.columns:
+            ann[col] = ann[col].astype("Int64")
+    for col in NULLABLE_BOOL_OUTPUT_COLUMNS:
+        if col in ann.columns:
+            ann[col] = ann[col].apply(_parse_nullable_bool).astype("boolean")
 
     return ann
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
+
 
 def _detect_overlaps(ann_df: pd.DataFrame) -> list[tuple[int, int]]:
     """
@@ -208,18 +291,16 @@ def validate_annotation(
 
 # ── Application ───────────────────────────────────────────────────────────────
 
+
 def _full_sequence_fallback(pose_df: pd.DataFrame) -> pd.DataFrame:
     """Add annotation columns with full-sequence defaults."""
     n = len(pose_df)
     result = pose_df.copy()
+    for col in ANNOTATION_OUTPUT_COLUMNS:
+        result[col] = _empty_output_column(col, n)
     result["use_for_analysis"] = True
     result["segment_type"] = "full_sequence"
-    result["set_id"] = pd.array([pd.NA] * n, dtype="Int64")
-    result["rep_id"] = pd.array([pd.NA] * n, dtype="Int64")
-    result["phase"] = pd.array([pd.NA] * n, dtype=object)
-    result["exercise_type"] = pd.array([None] * n, dtype=object)
     result["pattern"] = "bilateral"
-    result["starting_side"] = pd.array([None] * n, dtype=object)
     return result
 
 
@@ -283,17 +364,12 @@ def apply_annotation(
 
     n = num_total
     result = pose_df.copy()
+    for col in ANNOTATION_OUTPUT_COLUMNS:
+        result[col] = _empty_output_column(col, n)
     result["use_for_analysis"] = False
     result["segment_type"] = pd.NA
-    result["set_id"] = pd.array([pd.NA] * n, dtype="Int64")
-    result["rep_id"] = pd.array([pd.NA] * n, dtype="Int64")
-    result["phase"] = pd.array([pd.NA] * n, dtype=object)
-    result["exercise_type"] = pd.array([None] * n, dtype=object)
-    result["pattern"] = pd.array([None] * n, dtype=object)
-    result["starting_side"] = pd.array([None] * n, dtype=object)
 
     frame_series = result[frame_col].astype(int)
-    has_phase_col = "phase" in ann_df.columns
 
     for _, row in ann_df.iterrows():
         start = int(row["start_frame"])
@@ -309,20 +385,9 @@ def apply_annotation(
         rep_val = row["rep_id"]
         result.loc[mask, "rep_id"] = pd.NA if pd.isna(rep_val) else int(rep_val)
 
-        phase_val = row["phase"] if has_phase_col else pd.NA
-        result.loc[mask, "phase"] = None if pd.isna(phase_val) else str(phase_val)
-
-        if "exercise_type" in ann_df.columns:
-            ex_val = row["exercise_type"]
-            result.loc[mask, "exercise_type"] = None if pd.isna(ex_val) else str(ex_val)
-
-        if "pattern" in ann_df.columns:
-            pat_val = row["pattern"]
-            result.loc[mask, "pattern"] = None if pd.isna(pat_val) else str(pat_val)
-
-        if "starting_side" in ann_df.columns:
-            ss_val = row["starting_side"]
-            result.loc[mask, "starting_side"] = None if pd.isna(ss_val) else str(ss_val)
+        for col in ANNOTATION_OPTIONAL_COLUMNS:
+            if col in ann_df.columns:
+                result.loc[mask, col] = _coerce_output_value(col, row[col])
 
     num_analysis = int(result["use_for_analysis"].sum())
 
