@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.5
+**문서 버전:** 1.4.6
 **최종 갱신:** 2026-05-09
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -233,6 +233,7 @@ block_size_counts             블록 기반 전환에서 한쪽을 유지하는 
 first_side_source             첫 수행 측을 선언하는 위치
 allow_partial_completion      목표 횟수 미만 수행을 메타데이터와 함께 수용할지 여부
 recommended_sets              실전 취득 권장 세트 수; 자동 반복 배수는 아님
+analysis_disrupting_patterns  분석 중 관찰/기록할 수행 패턴 후보; 자동 제외 규칙 아님
 ```
 
 예:
@@ -276,6 +277,10 @@ performance_protocol:
 `failure_point_frame`, `failure_reason` 등)는 운동 정의가 아니라 ② Annotation 또는 recording
 metadata에 둔다. 보상 움직임 후보는 `compensation_candidates`와 `feature_domains.control`에
 선언하고, ⑧–⑩에서 구현되지 않은 후보는 숨기지 않고 report에 남긴다.
+`analysis_disrupting_patterns`는 관절 포인트 시계열에서 반복 가능하게 식별되는 경우에는
+동작 품질 점수 또는 보상 움직임 후보로 연결될 수 있다. 포즈 데이터만으로 안정적으로 구분하기
+어려운 경우에는 점수화하지 않고, 취득 통제 요인 또는 결과 해석 제한 요인으로 남긴다.
+두 경우 모두 기본 동작은 자동 제외가 아니라 observation note, warning, provenance 기록이다.
 개발 중 임시 매핑과 TODO는 출간 후 취득 프로토콜 문서가 아니라 git에서 제외된
 `docs/code_revision_plan.md`에만 둔다.
 

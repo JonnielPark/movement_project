@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/clinical/fms_linkage.md` is the same-version Korean source.
 
 This document does not reproduce FMS scoring text. It describes how

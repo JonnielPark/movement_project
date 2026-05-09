@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.5
+**Document Version:** 1.4.6
 **Last Updated:** 2026-05-09
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -235,6 +235,7 @@ block_size_counts             count size before side switching, if block-based
 first_side_source             where the first side is declared
 allow_partial_completion      whether fewer than target_count can be accepted with metadata
 recommended_sets              practical acquisition recommendation, not an automatic multiplier
+analysis_disrupting_patterns  performance-pattern candidates to observe/record; not automatic exclusion rules
 ```
 
 Examples:
@@ -279,7 +280,13 @@ actually happened during acquisition (`actual_rep_count`, `failure_point_frame`,
 `failure_reason`, and related fields) belongs to ② Annotation or recording metadata,
 not to the exercise definition. Compensation candidates are declared in
 `compensation_candidates` and `feature_domains.control`; candidates that are not yet
-implemented by ⑧–⑩ must be reported rather than silently ignored. Temporary
+implemented by ⑧–⑩ must be reported rather than silently ignored.
+`analysis_disrupting_patterns` may be linked to movement-quality scoring or
+compensatory-movement candidates when they can be identified reproducibly from
+joint-point time series. Patterns that cannot be separated reliably from pose data
+remain acquisition-control factors or interpretation-limitation factors rather than
+scoring factors. In both cases, the default behavior is observation note, warning,
+and provenance recording, not automatic exclusion. Temporary
 development mappings and TODOs belong only in the git-ignored
 `docs_eng/code_revision_plan.md`, not in the publication-facing acquisition
 protocol document.

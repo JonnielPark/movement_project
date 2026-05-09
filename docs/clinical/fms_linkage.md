@@ -2,7 +2,6 @@
 
 **문서 버전:** 1.0.0  
 **최종 갱신:** 2026-05-06  
-**버전 규칙:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **영문 동기화:** `docs_eng/clinical/fms_linkage.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 FMS 채점표를 복제하지 않는다. `movement_project`의 feature/domain 기반 감점이

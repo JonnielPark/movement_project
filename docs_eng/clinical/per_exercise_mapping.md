@@ -2,7 +2,6 @@
 
 **Document Version:** 1.0.0  
 **Last Updated:** 2026-05-06  
-**Versioning Rule:** Semantic Versioning 2.0.0 (`MAJOR.MINOR.PATCH`)  
 **Korean Sync:** `docs/clinical/per_exercise_mapping.md` is the same-version Korean source.
 
 **Dissertation §5.5 / §5.6.** Active features for all four validation exercises, with unit and
