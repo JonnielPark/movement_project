@@ -567,11 +567,6 @@ def run_pipeline(
     if config.rep_segmentation.enabled:
         if exercise_def is None:
             print("[Step ⑥] Rep Segmentation: exercise_def not available — skipped.")
-        elif getattr(exercise_def, "rep_segmentation", None) is None:
-            print(
-                f"[Step ⑥] Rep Segmentation: exercise '{exercise_def.exercise_id}' "
-                "has no rep_segmentation block — skipped."
-            )
         else:
             from movement.segmentation import segment_reps
 
@@ -581,6 +576,11 @@ def run_pipeline(
                 fps_default=config.rep_segmentation.fps_default,
             )
             report["rep_segmentation"] = rep_report.as_dict()
+            if rep_report.status == "skipped":
+                print(
+                    f"[Step ⑥] Rep Segmentation: exercise "
+                    f"'{exercise_def.exercise_id}' has no rep_segmentation block — skipped."
+                )
 
     # ── ⑥ Phase Segmentation ─────────────────────────────────────────────────
     if config.phase_segmentation.enabled:
@@ -632,11 +632,21 @@ def run_pipeline(
     # ── ⑧ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
-        from movement.features import extract_rep_features
+        from movement.features import (
+            audit_analysis_disrupting_patterns,
+            audit_feature_registry,
+            extract_rep_features,
+        )
 
         if exercise_def is None:
             print("[Step ⑧] Feature Extraction: exercise_def not available — skipped.")
         else:
+            coverage_report = audit_feature_registry(exercise_def)
+            report["feature_registry_coverage"] = coverage_report.as_dict()
+            detectability_report = audit_analysis_disrupting_patterns(exercise_def)
+            report["analysis_disrupting_pattern_detectability"] = (
+                detectability_report.as_dict()
+            )
             feat_records = extract_rep_features(df, exercise_def)
             report["features"] = [
                 {

@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.8
+**문서 버전:** 1.4.9
 **최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -290,6 +290,32 @@ metadata에 둔다. 보상 움직임 후보는 `compensation_candidates`와 `fea
 두 경우 모두 기본 동작은 자동 제외가 아니라 observation note, warning, provenance 기록이다.
 개발 중 임시 매핑과 TODO는 출간 후 취득 프로토콜 문서가 아니라 git에서 제외된
 `docs/code_revision_plan.md`에만 둔다.
+
+A4는 이 목록에 대한 downstream detectability audit를 정의한다. YAML 필드는 여전히 단순한
+pattern 이름 목록으로 유지하고, 감사 리포트가 각 선언 항목을 네 가지 구현 범주 중 하나로
+분류한다.
+
+```text
+pose_detectable_scoring_candidate
+    권장 촬영 시야에서 관절 포인트 궤적으로 반복 가능하게 관찰할 수 있고,
+    향후 feature/biomarker linkage 후보가 될 수 있는 패턴.
+
+acquisition_control_factor
+    movement interpretation을 오염시킬 수 있지만 직접 점수화하지 않는
+    protocol-performance 또는 recording-control 문제.
+
+interpretation_limitation_factor
+    취득 후 note로 남길 수 있으나 pose data만으로 안정적으로 분리하기 어려운 패턴.
+
+unknown
+    YAML에는 선언되었으나 아직 분류되지 않은 항목. warning/provenance로만 남긴다.
+```
+
+감사 리포트는 각 pattern에 대해 required landmarks, view sensitivity, visibility dependency,
+annotation fallback, 연결된 compensation candidate 또는 feature-domain entry를 보고한다.
+`pose_detectable_scoring_candidate`도 즉시 자동 점수가 된다는 뜻은 아니다. 이는 feature 정의와
+검증 가능한 provenance rule이 추가된 뒤 ⑧ Feature Extraction, ⑩ Biomarker Scoring, 또는
+⑫ Simulation 후보로 고려할 수 있다는 의미다.
 
 ### landmarks
 

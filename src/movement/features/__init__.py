@@ -59,6 +59,62 @@ class FeatureRecord:
             )
 
 
+@dataclass
+class FeatureRegistryCoverageReport:
+    """Coverage audit for YAML-declared feature and compensation entries."""
+
+    exercise_id: str
+    connected_feature_domain_entries: dict[str, list[str]] = field(
+        default_factory=dict
+    )
+    unsupported_feature_domain_entries: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+    external_step_feature_domain_entries: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+    implemented_compensation_candidates: list[str] = field(default_factory=list)
+    unimplemented_compensation_candidates: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "exercise_id": self.exercise_id,
+            "connected_feature_domain_entries": self.connected_feature_domain_entries,
+            "unsupported_feature_domain_entries": self.unsupported_feature_domain_entries,
+            "external_step_feature_domain_entries": self.external_step_feature_domain_entries,
+            "implemented_compensation_candidates": self.implemented_compensation_candidates,
+            "unimplemented_compensation_candidates": self.unimplemented_compensation_candidates,
+        }
+
+
+@dataclass
+class AnalysisDisruptingPatternDetectabilityReport:
+    """Detectability audit for performance_protocol.analysis_disrupting_patterns."""
+
+    exercise_id: str
+    pose_detectable_scoring_candidates: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+    acquisition_control_factors: list[dict[str, Any]] = field(default_factory=list)
+    interpretation_limitation_factors: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+    unknown_patterns: list[dict[str, Any]] = field(default_factory=list)
+    all_patterns: list[dict[str, Any]] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "exercise_id": self.exercise_id,
+            "pose_detectable_scoring_candidates": self.pose_detectable_scoring_candidates,
+            "acquisition_control_factors": self.acquisition_control_factors,
+            "interpretation_limitation_factors": self.interpretation_limitation_factors,
+            "unknown_patterns": self.unknown_patterns,
+            "all_patterns": self.all_patterns,
+        }
+
+
 # ── Phase-aware feature families ─────────────────────────────────────────────
 # These feature families are computed per (rep_id, phase) when the phase column
 # is populated.  control.compensation is rep-level only because compensation
@@ -70,6 +126,347 @@ PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset({
     "temporal.tempo",
     "control.stability",
 })
+
+_FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
+    "spatial": {
+        "rom": "compute_rom",
+        "symmetry": "compute_symmetry",
+        "shape": "compute_shape",
+    },
+    "temporal": {
+        "tempo": "compute_tempo",
+        "rep_duration": "compute_tempo",
+        "variability": "compute_variability",
+    },
+    "control": {
+        "stability": "compute_stability",
+        "com_stability": "compute_stability",
+        "compensation": "compute_compensation",
+    },
+}
+_FEATURE_DOMAIN_EXTERNAL_STEPS: dict[str, str] = {
+    "biomechanical_proxy": "09_biomechanical_proxy",
+}
+
+_POSE_DETECTABLE_SCORING_CANDIDATE = "pose_detectable_scoring_candidate"
+_ACQUISITION_CONTROL_FACTOR = "acquisition_control_factor"
+_INTERPRETATION_LIMITATION_FACTOR = "interpretation_limitation_factor"
+_UNKNOWN_PATTERN = "unknown"
+
+_ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
+    "arm_swing": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_shoulder", "right_shoulder", "left_wrist", "right_wrist"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": [],
+        "basis": (
+            "Arm motion is visible, but whether it assists the movement cannot be "
+            "proven from pose trajectories alone."
+        ),
+    },
+    "heel_lift": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_heel", "right_heel", "left_ankle", "right_ankle"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": None,
+        "linked_compensation_candidates": ["heel_lift"],
+        "linked_feature_domain_entries": ["control.compensation"],
+        "basis": "Heel vertical displacement can be estimated from heel landmarks when visible.",
+    },
+    "unstable_foot_contact": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_ankle", "right_ankle", "left_heel", "right_heel"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": ["spatial.support_width"],
+        "basis": (
+            "Foot landmark motion can suggest support changes, but true floor contact "
+            "and landmark jitter are hard to separate."
+        ),
+    },
+    "excessive_knee_deviation": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": [
+            "left_hip",
+            "right_hip",
+            "left_knee",
+            "right_knee",
+            "left_ankle",
+            "right_ankle",
+        ],
+        "view_sensitivity": "high",
+        "visibility_dependency": "medium",
+        "annotation_fallback": None,
+        "linked_compensation_candidates": ["knee_valgus", "knee_varus"],
+        "linked_feature_domain_entries": ["control.compensation", "spatial.alignment"],
+        "basis": "Knee deviation can map to frontal-plane valgus or varus proxies.",
+    },
+    "inconsistent_depth": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["hip_center", "left_hip", "right_hip"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "rep_segmentation.report",
+        "linked_compensation_candidates": ["asymmetric_depth", "insufficient_head_descent"],
+        "linked_feature_domain_entries": ["spatial.depth_proxy", "spatial.rom"],
+        "basis": "Depth variation is pose-detectable when rep boundaries and reference landmarks are stable.",
+    },
+    "excessive_trunk_flexion": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": None,
+        "linked_compensation_candidates": ["excessive_trunk_flexion"],
+        "linked_feature_domain_entries": ["control.compensation", "spatial.posture_angle"],
+        "basis": "Trunk lean from the shoulder-center to hip-center vector is already feature-compatible.",
+    },
+    "inconsistent_step_length": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_ankle", "right_ankle", "left_foot", "right_foot"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": ["unstable_step_width"],
+        "linked_feature_domain_entries": ["spatial.support_width"],
+        "basis": "Step changes affect comparability and active-side interpretation before they are score factors.",
+    },
+    "camera_side_change": {
+        "classification": _INTERPRETATION_LIMITATION_FACTOR,
+        "required_landmarks": ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+        "view_sensitivity": "high",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "recording_metadata.camera_zone or annotation.note",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": [],
+        "basis": "A camera-facing direction change weakens side comparison and is best reported as a limitation.",
+    },
+    "hip_drop_to_pushup": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_hip", "right_hip", "left_shoulder", "right_shoulder"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "failure_reason",
+        "linked_compensation_candidates": ["hip_drop"],
+        "linked_feature_domain_entries": ["control.trunk_stability", "spatial.depth_proxy"],
+        "basis": "Hip-height collapse changes the pike geometry and is observable from hip/shoulder landmarks.",
+    },
+    "head_forward_shift": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["nose", "left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": "head_proxy note when nose is unstable",
+        "linked_compensation_candidates": ["head_forward_shift"],
+        "linked_feature_domain_entries": ["spatial.depth_proxy", "spatial.shape"],
+        "basis": "Head trajectory relative to hand/shoulder landmarks can indicate forward drift.",
+    },
+    "elbow_flare": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist"],
+        "view_sensitivity": "high",
+        "visibility_dependency": "high",
+        "annotation_fallback": None,
+        "linked_compensation_candidates": ["elbow_flare"],
+        "linked_feature_domain_entries": ["control.compensation", "spatial.alignment"],
+        "basis": "Elbow line deviation is pose-readable but view and self-occlusion sensitive.",
+    },
+    "hand_foot_repositioning": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_wrist", "right_wrist", "left_ankle", "right_ankle"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": ["spatial.support_width"],
+        "basis": "Support-point changes alter the task reference and should remain a protocol warning.",
+    },
+    "excessive_pelvic_rotation": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_hip", "right_hip"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": None,
+        "linked_compensation_candidates": ["pelvis_rotation", "trunk_rotation"],
+        "linked_feature_domain_entries": ["control.compensation", "control.rotation_control"],
+        "basis": "Left-right hip depth asymmetry is a pose-based transverse-plane rotation proxy.",
+    },
+    "hip_height_drift": {
+        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "required_landmarks": ["left_hip", "right_hip"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "set-level trend note",
+        "linked_compensation_candidates": ["hip_drop", "hip_pike"],
+        "linked_feature_domain_entries": ["control.trunk_stability", "control.stability"],
+        "basis": "Set-level hip-center vertical drift is visible when hip landmarks remain stable.",
+    },
+    "base_of_support_shift": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_wrist", "right_wrist", "left_ankle", "right_ankle"],
+        "view_sensitivity": "medium",
+        "visibility_dependency": "high",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": ["spatial.support_width"],
+        "basis": "Support-width changes can be tracked but true contact changes remain acquisition-control issues.",
+    },
+    "side_order_error": {
+        "classification": _ACQUISITION_CONTROL_FACTOR,
+        "required_landmarks": ["left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "view_sensitivity": "low",
+        "visibility_dependency": "medium",
+        "annotation_fallback": "annotation.starting_side and performance_protocol.side_sequence",
+        "linked_compensation_candidates": ["left_right_timing_variability"],
+        "linked_feature_domain_entries": ["temporal.left_right_timing_variability"],
+        "basis": "Side-order errors are protocol-adherence warnings tied to motion attribution.",
+    },
+    "missed_shoulder_tap": {
+        "classification": _INTERPRETATION_LIMITATION_FACTOR,
+        "required_landmarks": ["left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "view_sensitivity": "high",
+        "visibility_dependency": "high",
+        "annotation_fallback": "annotation.note or video_review",
+        "linked_compensation_candidates": [],
+        "linked_feature_domain_entries": ["spatial.reach_distance"],
+        "basis": "Wrist proximity can suggest a missed tap, but true shoulder contact is not proven by pose alone.",
+    },
+}
+
+
+def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageReport:
+    """Report YAML feature-domain and compensation candidates without failing extraction."""
+    from movement.features.compensation import COMPENSATION_RULES, _UNIMPLEMENTED
+
+    feature_domains = getattr(exercise_definition, "feature_domains", None)
+    report = FeatureRegistryCoverageReport(
+        exercise_id=getattr(exercise_definition, "exercise_id", "unknown")
+    )
+
+    for domain in ("spatial", "temporal", "control"):
+        entries = list(getattr(feature_domains, domain, []) or [])
+        registry = _FEATURE_DOMAIN_EXTRACTOR_REGISTRY.get(domain, {})
+        report.connected_feature_domain_entries.setdefault(domain, [])
+        for entry in entries:
+            if entry in registry:
+                report.connected_feature_domain_entries[domain].append(entry)
+            else:
+                report.unsupported_feature_domain_entries.append(
+                    {
+                        "domain": domain,
+                        "entry": entry,
+                        "reason": "no_extractor_registered",
+                    }
+                )
+
+    for domain, target_step in _FEATURE_DOMAIN_EXTERNAL_STEPS.items():
+        entries = list(getattr(feature_domains, domain, []) or [])
+        for entry in entries:
+            report.external_step_feature_domain_entries.append(
+                {
+                    "domain": domain,
+                    "entry": entry,
+                    "target_step": target_step,
+                }
+            )
+
+    for candidate in list(getattr(exercise_definition, "compensation_candidates", []) or []):
+        if candidate in COMPENSATION_RULES:
+            report.implemented_compensation_candidates.append(candidate)
+        else:
+            reason = (
+                "declared_unimplemented"
+                if candidate in _UNIMPLEMENTED
+                else "no_rule_registered"
+            )
+            report.unimplemented_compensation_candidates.append(
+                {
+                    "candidate": candidate,
+                    "reason": reason,
+                }
+            )
+
+    return report
+
+
+def audit_analysis_disrupting_patterns(
+    exercise_definition: Any,
+) -> AnalysisDisruptingPatternDetectabilityReport:
+    """Classify analysis-disrupting patterns by joint-point detectability."""
+    protocol = getattr(exercise_definition, "performance_protocol", None)
+    patterns = list(getattr(protocol, "analysis_disrupting_patterns", []) or [])
+    exercise_id = getattr(exercise_definition, "exercise_id", "unknown")
+
+    report = AnalysisDisruptingPatternDetectabilityReport(exercise_id=exercise_id)
+    declared_candidates = set(
+        getattr(exercise_definition, "compensation_candidates", []) or []
+    )
+
+    for pattern in patterns:
+        spec = _ANALYSIS_DISRUPTING_PATTERN_REGISTRY.get(pattern)
+        if spec is None:
+            item = {
+                "pattern": pattern,
+                "classification": _UNKNOWN_PATTERN,
+                "required_landmarks": [],
+                "view_sensitivity": "unknown",
+                "visibility_dependency": "unknown",
+                "annotation_fallback": None,
+                "linked_compensation_candidates": [],
+                "declared_linked_compensation_candidates": [],
+                "linked_feature_domain_entries": [],
+                "source_fields": [
+                    f"performance_protocol.analysis_disrupting_patterns.{pattern}"
+                ],
+                "basis": "No detectability classification registered.",
+            }
+        else:
+            linked_candidates = list(spec.get("linked_compensation_candidates", []))
+            item = {
+                "pattern": pattern,
+                "classification": spec["classification"],
+                "required_landmarks": list(spec.get("required_landmarks", [])),
+                "view_sensitivity": spec.get("view_sensitivity", "unknown"),
+                "visibility_dependency": spec.get(
+                    "visibility_dependency", "unknown"
+                ),
+                "annotation_fallback": spec.get("annotation_fallback"),
+                "linked_compensation_candidates": linked_candidates,
+                "declared_linked_compensation_candidates": [
+                    candidate
+                    for candidate in linked_candidates
+                    if candidate in declared_candidates
+                ],
+                "linked_feature_domain_entries": list(
+                    spec.get("linked_feature_domain_entries", [])
+                ),
+                "source_fields": [
+                    f"performance_protocol.analysis_disrupting_patterns.{pattern}",
+                    "landmarks",
+                    "view_requirements",
+                    "camera_protocol",
+                ],
+                "basis": spec.get("basis", ""),
+            }
+
+        report.all_patterns.append(item)
+        classification = item["classification"]
+        if classification == _POSE_DETECTABLE_SCORING_CANDIDATE:
+            report.pose_detectable_scoring_candidates.append(item)
+        elif classification == _ACQUISITION_CONTROL_FACTOR:
+            report.acquisition_control_factors.append(item)
+        elif classification == _INTERPRETATION_LIMITATION_FACTOR:
+            report.interpretation_limitation_factors.append(item)
+        else:
+            report.unknown_patterns.append(item)
+
+    return report
 
 
 def _phase_source_fields(exercise_definition: Any) -> list[str]:
@@ -119,6 +516,7 @@ def _emit_phase_level(
     """
     from movement.features.spatial import compute_rom, compute_shape
     from movement.features.control import compute_stability
+    from movement.features.temporal import compute_tempo
 
     if len(df_phase) == 0:
         return []
@@ -153,6 +551,18 @@ def _emit_phase_level(
         ))
 
     for rec in compute_stability(df_phase, exercise_definition, rep_id=rep_id):
+        records.append(FeatureRecord(
+            feature_id=rec.feature_id + phase_suffix,
+            exercise_id=rec.exercise_id,
+            rep_id=rep_id,
+            value=rec.value,
+            unit=rec.unit,
+            source_fields=rec.source_fields + ps_fields,
+            note=rec.note,
+            phase=phase_label,
+        ))
+
+    for rec in compute_tempo(df_phase, exercise_definition, rep_id=rep_id):
         records.append(FeatureRecord(
             feature_id=rec.feature_id + phase_suffix,
             exercise_id=rec.exercise_id,
@@ -358,8 +768,12 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
 
 
 __all__ = [
+    "AnalysisDisruptingPatternDetectabilityReport",
     "FeatureRecord",
+    "FeatureRegistryCoverageReport",
     "PHASE_AWARE_FEATURE_FAMILIES",
+    "audit_analysis_disrupting_patterns",
+    "audit_feature_registry",
     "extract_rep_features",
     "summarize_phase_to_rep",
     "features_to_dataframe",

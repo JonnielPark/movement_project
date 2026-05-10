@@ -48,26 +48,26 @@ Stage activation is controlled by the `enabled` flags in
 |---|---|---|
 | Pose I/O and config | `io.py`, `config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `validation.py` | Structural integrity report |
-| ② Annotation | `annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved |
+| ② Annotation | `annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved; performance/failure provenance summarized in the annotation report |
 | ③ Exercise Definition | `exercise_definition.py` | YAML loader + validator + generic fallback; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
 | ④ Preprocessing | `preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
 | ⑤ Normalization | `normalization.py` | Hip-center translation + median torso-length scale |
 | ⑥ Segmentation | `segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
 | ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
-| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; `summarize_phase_to_rep()` |
+| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
 | Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
 | Protocol metadata schema | `exercise_definition.py`, `annotation.py`, `motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
-| Unit tests | `tests/` | Protocol-metadata schema targeted tests pass 17 cases; latest full run passes 70/71 with one known active Task A/P1 segmentation-policy failure |
+| Unit tests | `tests/` | Protocol-metadata schema targeted tests pass 17 cases; latest full run passes 97/97 after Task A5 performance-provenance reporting |
 
 ### Partial
 
 | Area | Module | Remaining Work |
 |---|---|---|
-| Existing pipeline verification | `segmentation.py`, `features/`, reporting records | Phase segmentation tests, feature registry coverage, declared-but-unimplemented reports, provenance/source-field policy (→ Task A) |
+| Existing pipeline verification | `segmentation.py`, `features/`, reporting records | A1-A5 core verification slices cover phase segmentation, feature registry coverage, analysis-disrupting detectability, source-field policy, and performance/failure provenance consumption (→ Task A) |
 | Motion attribution / robustness evidence | `motion_attribution.py`, `simulation/` | Structured correction log, false-correction metrics, viewpoint variation, compensation injection, experiment runner, robustness summaries (→ Task B) |
 | ⑪ Visualization | `visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task C) |
 
@@ -75,7 +75,7 @@ Stage activation is controlled by the `enabled` flags in
 
 | Task | Deliverable | Dissertation § |
 |---|---|---|
-| A — Existing pipeline verification | Phase segmentation tests, feature registry coverage, compensation candidate reports, provenance/source-field policy | Method verification |
+| A — Existing pipeline verification | Phase segmentation tests, feature registry coverage, analysis-disrupting detectability, performance/failure provenance, compensation candidate reports, provenance/source-field policy | Method verification |
 | B — Motion attribution and robustness backbone | Structured correction log, false-correction metrics, viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, robustness summaries | §8 |
 | C — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
 | D — Clinical mapping integration | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting | §7.4 |
@@ -234,7 +234,7 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.14 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.19 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 | 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |

@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.14
+**Document Version:** 1.4.19
 **Last Updated:** 2026-05-10
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,19 +14,19 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.14 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.19 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.3 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.8 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.1.4 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.4.9 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
-| 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.2.2 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.4 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
@@ -120,7 +120,7 @@ Steps
     ⑤  Normalization        hip-center translation + median torso-length scale
     ⑥  Segmentation        semi-automatic rep/phase splitting from joint-motion tracking
     ⑦  Motion Attribution   per-rep active-side consistency check
-    ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level)
+    ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level) + audit reports
     ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
     ⑩  Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
     ⑪  Visualization        called outside the ①–⑩ runner; diagnostic and result charts
@@ -132,11 +132,13 @@ Output
     rep_id              — semi-automatically or manually confirmed repetition ID
     phase column        — 'Descent' | 'Ascent' | 'Turnaround_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature table       — FeatureRecord list, rep-level (phase=None) + phase-level (phase=str)
+    Feature audit reports — feature-registry coverage + analysis-disrupting pattern detectability
     Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, default 0–100 configurable scale)
     Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
+    Performance provenance report — actual_rep_count / failure-point metadata for confidence notes
     Segmentation report — SegmentationReport list, one per rep
     Segmentation failure point records — SegmentationFailurePoint list for frames/ranges needing manual intervention
     Visualization figures
@@ -149,13 +151,13 @@ Output
 | Step | Input / Reference Information | Main Processing | Output |
 |---|---|---|---|
 | ① Validation | Pose CSV | Checks required columns, frame order, timestamps, landmark coordinate structure, and missing-value patterns. | Validation report |
-| ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, and filming provenance columns. | Annotated DataFrame |
+| ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
 | ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as definition metadata for filming recommendations and warning policy. | ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features. | FeatureRecord list, feature DataFrame |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |

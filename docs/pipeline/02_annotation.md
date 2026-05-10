@@ -1,6 +1,6 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.1.3
+**문서 버전:** 1.1.4
 **최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
@@ -72,6 +72,45 @@ protocol_cycle_id   Int64     nullable; 원자 반복을 묶는 피험자 안내
 관찰된 count/side-sequence 칼럼(`rep_side_sequence`, `side_block_size`, `rep_unit`,
 `protocol_cycle_id`)은 이후 report와 ⑦ Motion Attribution에서 ③ `performance_protocol`과
 비교한다. 불일치는 자동 프레임 제외가 아니라 warning/provenance로 남긴다.
+
+A5는 performance/failure provenance가 runner/reporting 출력에서 소비되는 방식을 공식화한다.
+위의 프레임 단위 칼럼은 상세 기록으로 유지하고, annotation report는 downstream visualization
+또는 interpretation layer가 전체 pose dataframe을 다시 훑지 않고 읽을 수 있는 set-level 요약을
+추가로 노출한다.
+
+```text
+performance_provenance.available                 bool
+performance_provenance.policy                    warning_provenance_only
+performance_provenance.forced_exclusion          false
+performance_provenance.score_penalty_applied     false
+performance_provenance.records                   list[dict]
+performance_provenance.summary                   dict
+performance_provenance.interpretation_confidence_notes list[str]
+```
+
+각 record는 다음을 포함한다.
+
+```text
+segment_type, set_id, rep_id, start_frame, end_frame
+performance_protocol_status
+actual_rep_count
+failure_point_frame
+failure_rep_id
+failure_reason
+performance_note
+source_fields
+```
+
+규칙:
+
+```text
+- Performance metadata가 없거나 부분적으로만 있어도 annotation은 실패하지 않는다.
+- 실제 반복 수가 낮다는 이유만으로 movement-quality score를 직접 감점하지 않는다.
+- 수행 실패 지점은 segmentation failure point가 아니다. 이는 피험자가 protocol task를
+  더 이상 유지하지 못하기 시작한 위치를 기록하는 표지다.
+- 기본 동작은 warning/provenance only이다. downstream scoring 또는 figure caption에서
+  note를 표시할 수 있지만, ②는 프레임을 제외하지 않고 ⑩은 이 metadata만으로 점수를 감점하지 않는다.
+```
 
 ## 3. 어노테이션 계층 (Annotation Hierarchy)
 
@@ -176,6 +215,8 @@ filming_protocol_status = unknown
 ```
 
 리포트는 `annotation_provided = False`로 기록된다.
+또한 `performance_provenance.available = False`를 기록한다. annotation metadata가 없다는
+이유만으로 수행 실패를 추론하지 않는다.
 
 ## 7. 어노테이션이 제공된 경우 (When Annotation is Provided)
 
@@ -211,6 +252,7 @@ filming_protocol_status = unknown
 - 수동으로 제공된 phase 라벨 보존
 - 촬영 provenance 칼럼 보존 (session_id, recording_id, set_index, camera_zone, camera_height_level)
 - 관찰된 protocol metadata 보존 (rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id)
+- Performance/failure provenance를 annotation report로 요약
 ```
 
 범위 외 항목:
@@ -220,5 +262,6 @@ filming_protocol_status = unknown
 - 분할 실패 지점 기록
 - 카메라 각도 보정 또는 좌표 재투영
 - 촬영 조건 불일치 데이터의 강제 거부
+- 낮은 실제 반복 수 또는 failure metadata만으로 자동 점수 감점
 - 좌표값 수정
 ```

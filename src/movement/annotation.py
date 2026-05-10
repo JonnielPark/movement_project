@@ -122,6 +122,177 @@ NULLABLE_BOOL_OUTPUT_COLUMNS: frozenset[str] = frozenset(
     }
 )
 
+PERFORMANCE_PROVENANCE_COLUMNS: tuple[str, ...] = (
+    "performance_protocol_status",
+    "actual_rep_count",
+    "failure_point_frame",
+    "failure_rep_id",
+    "failure_reason",
+    "performance_note",
+)
+
+
+def _empty_performance_provenance_report() -> dict[str, Any]:
+    """Return the default report when performance/failure metadata is absent."""
+    return {
+        "available": False,
+        "policy": "warning_provenance_only",
+        "forced_exclusion": False,
+        "score_penalty_applied": False,
+        "records": [],
+        "summary": {
+            "num_records": 0,
+            "statuses": [],
+            "actual_rep_counts": [],
+            "failure_reasons": [],
+            "has_partial_completion": False,
+            "has_failure_point": False,
+        },
+        "interpretation_confidence_notes": [],
+    }
+
+
+def _report_value(value: Any) -> Any:
+    """Convert pandas/numpy scalars to JSON-friendly Python values."""
+    if pd.isna(value):
+        return None
+    if hasattr(value, "item"):
+        return value.item()
+    return value
+
+
+def _has_report_value(value: Any) -> bool:
+    """Return True when a scalar annotation value carries information."""
+    value = _report_value(value)
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
+
+
+def _format_performance_note(record: dict[str, Any]) -> str:
+    """Create a compact interpretation-confidence note for reporting captions."""
+    parts = []
+    for key in (
+        "performance_protocol_status",
+        "actual_rep_count",
+        "failure_point_frame",
+        "failure_rep_id",
+        "failure_reason",
+        "performance_note",
+    ):
+        value = record.get(key)
+        if value is not None and not (isinstance(value, str) and not value.strip()):
+            parts.append(f"{key}={value}")
+
+    context = []
+    for key in ("set_id", "rep_id"):
+        value = record.get(key)
+        if value is not None:
+            context.append(f"{key}={value}")
+
+    prefix = ", ".join(context)
+    body = "; ".join(parts)
+    return f"{prefix}: {body}" if prefix else body
+
+
+def summarize_performance_provenance(
+    ann_df: pd.DataFrame | None,
+) -> dict[str, Any]:
+    """
+    Summarize performance/failure metadata for runner reports.
+
+    The summary is warning/provenance only. It does not exclude frames and does
+    not apply scoring penalties from actual repetition count or failure metadata.
+    """
+    report = _empty_performance_provenance_report()
+    if ann_df is None or ann_df.empty:
+        return report
+
+    records: list[dict[str, Any]] = []
+    available_columns = [
+        col for col in PERFORMANCE_PROVENANCE_COLUMNS if col in ann_df.columns
+    ]
+    if not available_columns:
+        return report
+
+    for _, row in ann_df.iterrows():
+        if not any(_has_report_value(row[col]) for col in available_columns):
+            continue
+
+        record: dict[str, Any] = {
+            "segment_type": _report_value(row.get("segment_type")),
+            "set_id": _report_value(row.get("set_id")),
+            "rep_id": _report_value(row.get("rep_id")),
+            "start_frame": _report_value(row.get("start_frame")),
+            "end_frame": _report_value(row.get("end_frame")),
+        }
+        for col in PERFORMANCE_PROVENANCE_COLUMNS:
+            record[col] = _report_value(row[col]) if col in ann_df.columns else None
+
+        record["source_fields"] = [
+            f"annotation.{col}"
+            for col in PERFORMANCE_PROVENANCE_COLUMNS
+            if col in ann_df.columns and _has_report_value(row[col])
+        ]
+        records.append(record)
+
+    if not records:
+        return report
+
+    statuses = sorted(
+        {
+            record["performance_protocol_status"]
+            for record in records
+            if record.get("performance_protocol_status") is not None
+        }
+    )
+    actual_rep_counts = sorted(
+        {
+            int(record["actual_rep_count"])
+            for record in records
+            if record.get("actual_rep_count") is not None
+        }
+    )
+    failure_reasons = sorted(
+        {
+            record["failure_reason"]
+            for record in records
+            if record.get("failure_reason") is not None
+        }
+    )
+    has_failure_point = any(
+        record.get("failure_point_frame") is not None
+        or record.get("failure_rep_id") is not None
+        or record.get("failure_reason") is not None
+        for record in records
+    )
+    has_partial_completion = any(
+        record.get("performance_protocol_status")
+        in {"partial", "stopped_at_failure_point"}
+        for record in records
+    )
+
+    report.update(
+        {
+            "available": True,
+            "records": records,
+            "summary": {
+                "num_records": len(records),
+                "statuses": statuses,
+                "actual_rep_counts": actual_rep_counts,
+                "failure_reasons": failure_reasons,
+                "has_partial_completion": has_partial_completion,
+                "has_failure_point": has_failure_point,
+            },
+            "interpretation_confidence_notes": [
+                _format_performance_note(record) for record in records
+            ],
+        }
+    )
+    return report
+
 
 def _parse_nullable_bool(value: Any) -> Any:
     """Parse optional annotation booleans while preserving missing values."""
@@ -364,6 +535,7 @@ def apply_annotation(
             "num_total_frames": num_total,
             "num_analysis_frames": num_total,
             "num_excluded_frames": 0,
+            "performance_provenance": summarize_performance_provenance(None),
         }
         return result, report
 
@@ -415,6 +587,7 @@ def apply_annotation(
         "num_sets": num_sets,
         "num_reps": num_reps,
         "validation": val_report,
+        "performance_provenance": summarize_performance_provenance(ann_df),
     }
 
     return result, report

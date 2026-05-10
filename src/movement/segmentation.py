@@ -57,6 +57,7 @@ _VIRTUAL_LANDMARKS: dict[str, tuple[str, str]] = {
     "hip_center": ("left_hip", "right_hip"),
     "shoulder_center": ("left_shoulder", "right_shoulder"),
 }
+_MIN_TRACE_RANGE_FOR_REP_DETECTION: float = 1e-9
 
 
 # ── Report dataclasses ────────────────────────────────────────────────────────
@@ -560,6 +561,28 @@ def segment_reps(
         fps=fps,
     )
     report.smoothing_method = smoothing_method_used
+
+    if (
+        float(np.nanmax(smoothed) - np.nanmin(smoothed))
+        <= _MIN_TRACE_RANGE_FOR_REP_DETECTION
+    ):
+        failure = _make_failure_point(
+            "rep_boundary_001",
+            start_frame=frame_vals[0],
+            end_frame=frame_vals[-1],
+            reason="insufficient_reps",
+        )
+        result.loc[analysis_indices, "rep_segmentation_status"] = "failed"
+        result.loc[analysis_indices, "rep_segmentation_failure_id"] = failure[
+            "failure_id"
+        ]
+        report.status = "failed"
+        report.failure_points = [failure]
+        report.rejected_reason = (
+            "reference trajectory is flat; "
+            f"detected 0 reps < required {rs.minimum_reps}"
+        )
+        return result, report
 
     interior = _detect_rep_boundaries(
         smoothed,

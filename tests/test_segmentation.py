@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from movement.exercise_definition import RepSegmentationSpec, SmoothingSpec
+from movement.pipeline import PipelineConfig, run_pipeline
 from movement.segmentation import segment_reps
 
 
@@ -70,3 +71,24 @@ def test_segment_reps_records_failure_when_required_rep_count_not_met():
     assert report.failure_points[0]["reason"] == "insufficient_reps"
     assert df["rep_id"].isna().all()
     assert set(df["rep_segmentation_status"]) == {"failed"}
+
+
+def test_pipeline_reports_skipped_rep_segmentation_when_definition_has_no_block():
+    config = PipelineConfig()
+    config.validation.enabled = False
+    config.annotation.enabled = False
+    config.exercise_definition.enabled = True
+    config.exercise_definition.exercise_id = "generic"
+    config.preprocessing.enabled = False
+    config.normalization.enabled = False
+    config.rep_segmentation.enabled = True
+    config.phase_segmentation.enabled = False
+
+    _, report = run_pipeline(_pose_df(np.ones(5)), config)
+
+    assert report["rep_segmentation"]["status"] == "skipped"
+    assert report["rep_segmentation"]["source"] == "fallback"
+    assert (
+        report["rep_segmentation"]["rejected_reason"]
+        == "exercise definition has no rep_segmentation block"
+    )

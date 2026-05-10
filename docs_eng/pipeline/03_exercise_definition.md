@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.8
+**Document Version:** 1.4.9
 **Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -298,6 +298,34 @@ and provenance recording, not automatic exclusion. Temporary
 development mappings and TODOs belong only in the git-ignored
 `docs_eng/code_revision_plan.md`, not in the publication-facing acquisition
 protocol document.
+
+A4 defines a downstream detectability audit for this list. The YAML field remains
+a simple list of pattern names; the audit classifies each declared pattern into one
+of four implementation categories:
+
+```text
+pose_detectable_scoring_candidate
+    Reproducibly observable from joint-point trajectories under the recommended
+    view and eligible for future feature/biomarker linkage.
+
+acquisition_control_factor
+    A protocol-performance or recording-control issue that may contaminate
+    movement interpretation but should not be scored directly.
+
+interpretation_limitation_factor
+    A pattern that can be noted after acquisition but is not reliably separable
+    from pose data alone.
+
+unknown
+    Declared in YAML but not yet classified; must remain warning/provenance only.
+```
+
+For each declared pattern, the audit reports required landmarks, view sensitivity,
+visibility dependency, annotation fallback, and any linked compensation candidates
+or feature-domain entries. A `pose_detectable_scoring_candidate` is still not an
+automatic score. It only means the pattern can be considered for ⑧ Feature
+Extraction, ⑩ Biomarker Scoring, or ⑫ Simulation after a feature definition and
+testable provenance rule are added.
 
 ### landmarks
 
