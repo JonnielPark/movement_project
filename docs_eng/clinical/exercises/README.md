@@ -1,7 +1,7 @@
 # Per-Exercise Clinical Rationale
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-09  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/clinical/exercises/README.md` is the same-version Korean source.
 
 This folder provides detailed biomechanical and clinical-interpretation rationale
@@ -16,16 +16,20 @@ scoring rules. When an item is promoted to a computational rule, first record it
 `docs_eng/code_revision_plan.md`, then update `docs_eng/pipeline/`, `docs/pipeline/`,
 YAML, and code in that order.
 
+The `Analysis Parameter Summary` section in each exercise document explains the key
+exercise-YAML settings from an interpretation perspective. The execution source of
+truth is always the linked `data/definitions/exercises/<exercise_id>.yaml` file.
+
 ---
 
 ## Document List
 
-| Exercise | Detailed Document | Current Performance Protocol |
-|---|---|---|
-| Squat | [squat.md](squat.md) | [exercise_performance_protocol.md §2-1](../../practical_protocols/exercise_performance_protocol.md#2-1-squat) |
-| Lunge | [lunge.md](lunge.md) | [exercise_performance_protocol.md §2-2](../../practical_protocols/exercise_performance_protocol.md#2-2-lunge) |
-| Pike Push-up | [pike_pushup.md](pike_pushup.md) | [exercise_performance_protocol.md §2-3](../../practical_protocols/exercise_performance_protocol.md#2-3-pike-push-up) |
-| Plank Shoulder Tap | [plank_shoulder_tap.md](plank_shoulder_tap.md) | [exercise_performance_protocol.md §2-4](../../practical_protocols/exercise_performance_protocol.md#2-4-plank-shoulder-tap) |
+| Exercise | Detailed Document | Exercise YAML | Current Performance Protocol |
+|---|---|---|---|
+| Squat | [squat.md](squat.md) | [squat.yaml](../../../data/definitions/exercises/squat.yaml) | [exercise_performance_protocol.md §2-1](../../practical_protocols/exercise_performance_protocol.md#2-1-squat) |
+| Lunge | [lunge.md](lunge.md) | [lunge.yaml](../../../data/definitions/exercises/lunge.yaml) | [exercise_performance_protocol.md §2-2](../../practical_protocols/exercise_performance_protocol.md#2-2-lunge) |
+| Pike Push-up | [pike_pushup.md](pike_pushup.md) | [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml) | [exercise_performance_protocol.md §2-3](../../practical_protocols/exercise_performance_protocol.md#2-3-pike-push-up) |
+| Plank Shoulder Tap | [plank_shoulder_tap.md](plank_shoulder_tap.md) | [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml) | [exercise_performance_protocol.md §2-4](../../practical_protocols/exercise_performance_protocol.md#2-4-plank-shoulder-tap) |
 
 ---
 

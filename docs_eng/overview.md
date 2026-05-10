@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.10
+**Document Version:** 1.4.11
 **Last Updated:** 2026-05-10
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,10 +14,10 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.10 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.11 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.0.1 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.3 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |

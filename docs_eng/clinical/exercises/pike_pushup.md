@@ -1,7 +1,7 @@
 # Pike Push-up Clinical Rationale
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-09  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/clinical/exercises/pike_pushup.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of pike push-up in this study,
@@ -12,8 +12,28 @@ or a code specification.
 Related documents:
 
 - Performance protocol: [exercise_performance_protocol.md §2-3](../../practical_protocols/exercise_performance_protocol.md#2-3-pike-push-up)
-- Exercise YAML: `data/definitions/exercises/pike_pushup.yaml`
+- Exercise YAML: [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml)
 - Feature meaning map: [per_exercise_mapping.md §Pike Push-up](../per_exercise_mapping.md#pike-push-up)
+
+---
+
+## Analysis Parameter Summary
+
+This summary explains the key exercise-YAML settings from an interpretation
+perspective. The execution source of truth is
+[pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml).
+
+| YAML Block | Current Setting | Setting Intent |
+|---|---|---|
+| `classification` | `bilateral_symmetric`, inverted closed-chain, primary plane `sagittal` | Define the task as an upper-body push in which both upper limbs support body weight in an inverted-V posture. |
+| `landmarks` / `angle_definitions` | Shoulder, elbow, and wrist centered; hip/head as support | Track upper-limb ROM, head descent, and maintenance of the piked hip position together. |
+| `rep_segmentation` / `phase_segmentation` | `nose` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | Split repetitions and phases from head descent/ascent; a head proxy may be needed if the nose is unstable. |
+| `performance_protocol` | 10 repetitions, side sequence `none`, partial completion allowed | Record failure provenance when the target count is not reached because this task is difficult. |
+| `camera_protocol` | `Z3` / `Z7`, `H1`, 200-250 cm | Use a low side view to observe head descent, hip drop, and inverted-V maintenance. |
+| `feature_domains` | ROM, symmetry, shape, depth, reach, tempo, trunk/CoM stability | Review upper-body support ROM, posture maintenance, and difficulty/fatigue-related changes. |
+| `biomechanical_focus` | Shoulder/elbow/wrist/trunk load regions, support moment/load-shift proxies | Interpret support structure and relative load tendency rather than absolute upper-limb strength. |
+| `compensation_candidates` | elbow flare/asymmetry, shoulder asymmetry/collapse, insufficient head descent, head forward shift, hip drop/pike, etc. | Prioritize observable posture breakdown and partial-completion candidates in an upper-body support task. |
+| `quality_rules` | visible ratio `0.75`, critical ratio `0.9`, max interpolation gap 3 frames | Allow for self-occlusion risk while still requiring high reliability for core upper-limb and pelvis landmarks. |
 
 ---
 

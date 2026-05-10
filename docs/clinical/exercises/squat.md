@@ -1,7 +1,7 @@
 # 스쿼트 상세 해석 배경 (Squat Clinical Rationale)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-09  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/clinical/exercises/squat.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 스쿼트가 본 연구에서 어떤 생체역학적 의미를 갖는지, 어떤 움직임 패턴을 관찰하고,
@@ -11,8 +11,27 @@
 관련 문서:
 
 - 수행 프로토콜: [exercise_performance_protocol.md §2-1](../../practical_protocols/exercise_performance_protocol.md#2-1-스쿼트-squat)
-- 운동 정의 YAML: `data/definitions/exercises/squat.yaml`
+- 운동 정의 YAML: [squat.yaml](../../../data/definitions/exercises/squat.yaml)
 - 피처 의미 매핑: [per_exercise_mapping.md §Squat](../per_exercise_mapping.md#squat-스쿼트)
+
+---
+
+## 분석 파라미터 요약 (Analysis Parameter Summary)
+
+아래 요약은 운동 정의 YAML의 핵심 설정을 해석 관점에서 풀어쓴 것이다. 실행 기준은
+[squat.yaml](../../../data/definitions/exercises/squat.yaml)이다.
+
+| YAML 블록 | 현재 설정 | 설정 의도 |
+|---|---|---|
+| `classification` | `bilateral_symmetric`, standing closed-chain, primary plane `sagittal` | 양측 하지가 동시에 체중을 지지하는 기준 운동으로 정의하고, 시상면 ROM과 관상면 정렬을 함께 관찰한다. |
+| `landmarks` / `angle_definitions` | hip, knee, ankle 중심; shoulder/pelvis line 보조 | 하지 삼중 굴곡, 체간 기울기, 골반 정렬을 같은 반복 단위에서 추적한다. |
+| `rep_segmentation` / `phase_segmentation` | `hip_center` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | 골반 중심의 상하 이동으로 반복 경계와 하강/상승 phase를 안정적으로 나눈다. |
+| `performance_protocol` | 10 repetitions, side sequence `none`, hands fixed cue | 좌우 교대가 없는 양측 운동으로 두고, 팔 반동이 하지/체간 지표에 섞이지 않게 한다. |
+| `camera_protocol` | `Z2` / `Z8`, `H2`, 200-250 cm | 전방 대각 view에서 무릎 정렬과 하강 깊이를 동시에 관찰한다. |
+| `feature_domains` | ROM, symmetry, shape, depth, alignment, tempo, stability, compensation | 기본 공간/시간/제어 feature를 넓게 켜서 reference exercise 역할을 하게 한다. |
+| `biomechanical_focus` | vertical CoM motion, hip/knee/ankle load regions, moment-arm/load-shift proxy | 절대 부하가 아니라 하지 관절 간 상대 부하 분포 경향을 본다. |
+| `compensation_candidates` | knee valgus/varus, asymmetric depth, trunk flexion, pelvic shift, heel lift 등 | 단안 pose에서 반복적으로 관찰 가능한 대표 하지 보상 후보를 우선 검토한다. |
+| `quality_rules` | visible ratio `0.8`, critical ratio `0.9`, max interpolation gap 3 frames | 핵심 하지 landmark가 충분히 보이는 반복만 신뢰 가능한 지표로 사용한다. |
 
 ---
 
