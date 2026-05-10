@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.10
+**문서 버전:** 1.4.11
 **최종 갱신:** 2026-05-10
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -14,10 +14,10 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.10 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.11 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 1.0.1 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.3 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |

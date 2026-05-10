@@ -1,7 +1,7 @@
 # Plank Shoulder Tap Clinical Rationale
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-09  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/clinical/exercises/plank_shoulder_tap.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of plank shoulder tap in this
@@ -12,8 +12,28 @@ specification.
 Related documents:
 
 - Performance protocol: [exercise_performance_protocol.md §2-4](../../practical_protocols/exercise_performance_protocol.md#2-4-plank-shoulder-tap)
-- Exercise YAML: `data/definitions/exercises/plank_shoulder_tap.yaml`
+- Exercise YAML: [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml)
 - Feature meaning map: [per_exercise_mapping.md §Plank Shoulder Tap](../per_exercise_mapping.md#plank-shoulder-tap)
+
+---
+
+## Analysis Parameter Summary
+
+This summary explains the key exercise-YAML settings from an interpretation
+perspective. The execution source of truth is
+[plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml).
+
+| YAML Block | Current Setting | Setting Intent |
+|---|---|---|
+| `classification` | `alternating`, plank closed-chain alternating, primary plane `frontal`, secondary `transverse` | Define the task as anti-rotation control during one-hand support perturbation. |
+| `landmarks` / `angle_definitions` | Wrist/shoulder centered; hip, ankle, and pelvis as support | Track active-hand trajectory, shoulder support, pelvic rotation, and lateral shift together. |
+| `rep_segmentation` / `phase_segmentation` | Active-wrist vertical trajectory; `Lift` / `Tap` / `Return`; wrist selected by starting side | Split each tap as an atomic repetition and separate lift, contact, and return phases. |
+| `performance_protocol` | 10 left-right pairs; `segmentation_reps_per_count: 2`; `alternating_each_rep` | Store participant-facing count separately from the two atomic taps used for segmentation. |
+| `camera_protocol` | `Z2` / `Z8`, `H1`, 200-250 cm | Use a low front-oblique view to observe pelvic rotation, lateral sway, and active-hand trajectory together. |
+| `feature_domains` | alignment, symmetry, reach, support width, rhythm, rotation/lateral-shift control | Preserve stability, side order, and anti-rotation control as feature outputs. |
+| `biomechanical_focus` | Medial-lateral CoM motion, shoulder/trunk/core/pelvis load regions, load-distribution proxy | Interpret lateral weight shift and rotation-control tendency during one-hand support. |
+| `compensation_candidates` | pelvis/trunk rotation, lateral pelvic shift, hip drop, shoulder collapse, side-order error, etc. | Review anti-rotation compensations and protocol-adherence problems together. |
+| `quality_rules` | visible ratio `0.75`, critical ratio `0.85`, max interpolation gap 3 frames | Limit side-order and stability interpretation when active wrist and shoulder/hip landmarks are unstable. |
 
 ---
 

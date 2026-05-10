@@ -1,7 +1,7 @@
 # 플랭크 숄더탭 상세 해석 배경 (Plank Shoulder Tap Clinical Rationale)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-09  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/clinical/exercises/plank_shoulder_tap.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 플랭크 숄더탭이 본 연구에서 어떤 생체역학적 의미를 갖는지, anti-rotation 과제를
@@ -11,8 +11,27 @@
 관련 문서:
 
 - 수행 프로토콜: [exercise_performance_protocol.md §2-4](../../practical_protocols/exercise_performance_protocol.md#2-4-플랭크-숄더탭-plank-shoulder-tap)
-- 운동 정의 YAML: `data/definitions/exercises/plank_shoulder_tap.yaml`
+- 운동 정의 YAML: [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml)
 - 피처 의미 매핑: [per_exercise_mapping.md §Plank Shoulder Tap](../per_exercise_mapping.md#plank-shoulder-tap-플랭크-숄더탭)
+
+---
+
+## 분석 파라미터 요약 (Analysis Parameter Summary)
+
+아래 요약은 운동 정의 YAML의 핵심 설정을 해석 관점에서 풀어쓴 것이다. 실행 기준은
+[plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml)이다.
+
+| YAML 블록 | 현재 설정 | 설정 의도 |
+|---|---|---|
+| `classification` | `alternating`, plank closed-chain alternating, primary plane `frontal`, secondary `transverse` | 한 손 지지 perturbation 동안 몸통과 골반 안정성을 보는 anti-rotation 과제로 정의한다. |
+| `landmarks` / `angle_definitions` | wrist/shoulder 중심; hip, ankle, pelvis 보조 | active hand trajectory, 어깨 지지, 골반 회전과 측방 이동을 함께 추적한다. |
+| `rep_segmentation` / `phase_segmentation` | active wrist vertical trajectory; `Lift` / `Tap` / `Return`; starting side로 wrist 결정 | 각 tap을 원자 반복으로 나누고, 손이 들리고 닿고 돌아오는 phase를 분리한다. |
+| `performance_protocol` | 10 left-right pairs; `segmentation_reps_per_count: 2`; `alternating_each_rep` | 피험자 카운트 1회와 segmentation atomic tap 2개를 분리해 저장한다. |
+| `camera_protocol` | `Z2` / `Z8`, `H1`, 200-250 cm | 낮은 전방 대각 view에서 골반 회전, 측방 sway, active hand 궤적을 함께 관찰한다. |
+| `feature_domains` | alignment, symmetry, reach, support width, rhythm, rotation/lateral-shift control | 안정성, 좌우 순서, anti-rotation control을 feature로 남긴다. |
+| `biomechanical_focus` | medial-lateral CoM motion, shoulder/trunk/core/pelvis load regions, load-distribution proxy | 한 손 지지 중 측방 체중 이동과 회전 제어 경향을 본다. |
+| `compensation_candidates` | pelvis/trunk rotation, lateral pelvic shift, hip drop, shoulder collapse, side-order error 등 | anti-rotation 과제의 핵심 보상과 protocol adherence 문제를 함께 검토한다. |
+| `quality_rules` | visible ratio `0.75`, critical ratio `0.85`, max interpolation gap 3 frames | active wrist와 shoulder/hip landmark가 불안정하면 side-order와 안정성 해석을 제한한다. |
 
 ---
 

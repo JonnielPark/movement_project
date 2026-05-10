@@ -1,7 +1,7 @@
 # Lunge Clinical Rationale
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-09  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/clinical/exercises/lunge.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of lunge in this study, how
@@ -12,8 +12,28 @@ a code specification.
 Related documents:
 
 - Performance protocol: [exercise_performance_protocol.md §2-2](../../practical_protocols/exercise_performance_protocol.md#2-2-lunge)
-- Exercise YAML: `data/definitions/exercises/lunge.yaml`
+- Exercise YAML: [lunge.yaml](../../../data/definitions/exercises/lunge.yaml)
 - Feature meaning map: [per_exercise_mapping.md §Lunge](../per_exercise_mapping.md#lunge)
+
+---
+
+## Analysis Parameter Summary
+
+This summary explains the key exercise-YAML settings from an interpretation
+perspective. The execution source of truth is
+[lunge.yaml](../../../data/definitions/exercises/lunge.yaml).
+
+| YAML Block | Current Setting | Setting Intent |
+|---|---|---|
+| `classification` | `alternating`, split-stance closed-chain, primary plane `sagittal` | Define lunge as a unilateral lower-body task with different forward- and rear-limb roles. |
+| `landmarks` / `angle_definitions` | Bilateral hip/knee/ankle centered; shoulder/pelvis lines as support | Compare forward leg, trailing leg, trunk alignment, and pelvic stability within each repetition. |
+| `rep_segmentation` / `phase_segmentation` | `hip_center` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | Use hip-center descent/ascent in split stance to split repetitions and phases. |
+| `performance_protocol` | 10 repetitions; default `same_side_block_then_switch`, block size 5; also allows `alternating_each_rep` | Support the current 5-and-5 acquisition protocol while keeping a future alternating-each-rep variant compatible. |
+| `camera_protocol` | `Z3` / `Z7`, `H2`, 200-250 cm | Prioritize side-view observation of anterior knee travel, rear-limb ROM, and trunk alignment. |
+| `feature_domains` | ROM, symmetry, alignment, support width, left/right timing variability, balance control | Preserve side order and forward/rear limb role differences at the feature level. |
+| `biomechanical_focus` | Vertical + anterior-posterior CoM motion, hip/knee/ankle load regions | Interpret forward-limb load acceptance and rear-limb support strategy from relative motion. |
+| `compensation_candidates` | knee valgus, asymmetric knee/hip flexion, rear hip extension, trunk lean, pelvis drop/shift, etc. | Review compensation candidates that can emerge during unilateral loading and balance control. |
+| `quality_rules` | visible ratio `0.8`, critical ratio `0.9`, max interpolation gap 3 frames | Interpret side-to-side comparison only when lower-limb landmarks and active-side provenance are sufficient. |
 
 ---
 

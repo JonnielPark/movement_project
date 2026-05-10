@@ -1,7 +1,7 @@
 # 런지 상세 해석 배경 (Lunge Clinical Rationale)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-09  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/clinical/exercises/lunge.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 런지가 본 연구에서 어떤 생체역학적 의미를 갖는지, 편측성/교대성 수행을 어떻게
@@ -11,8 +11,27 @@
 관련 문서:
 
 - 수행 프로토콜: [exercise_performance_protocol.md §2-2](../../practical_protocols/exercise_performance_protocol.md#2-2-런지-lunge)
-- 운동 정의 YAML: `data/definitions/exercises/lunge.yaml`
+- 운동 정의 YAML: [lunge.yaml](../../../data/definitions/exercises/lunge.yaml)
 - 피처 의미 매핑: [per_exercise_mapping.md §Lunge](../per_exercise_mapping.md#lunge-런지)
+
+---
+
+## 분석 파라미터 요약 (Analysis Parameter Summary)
+
+아래 요약은 운동 정의 YAML의 핵심 설정을 해석 관점에서 풀어쓴 것이다. 실행 기준은
+[lunge.yaml](../../../data/definitions/exercises/lunge.yaml)이다.
+
+| YAML 블록 | 현재 설정 | 설정 의도 |
+|---|---|---|
+| `classification` | `alternating`, split-stance closed-chain, primary plane `sagittal` | 앞다리와 뒷다리 역할이 다른 편측성 하체 과제로 정의한다. |
+| `landmarks` / `angle_definitions` | bilateral hip/knee/ankle 중심; shoulder/pelvis line 보조 | forward leg, trailing leg, 체간 정렬, 골반 안정성을 같은 반복 안에서 비교한다. |
+| `rep_segmentation` / `phase_segmentation` | `hip_center` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | split-stance에서 골반 중심 하강/상승으로 반복과 phase를 나눈다. |
+| `performance_protocol` | 10 repetitions; 기본 `same_side_block_then_switch`, block size 5; `alternating_each_rep`도 허용 | 현재 취득은 5회 한쪽 후 5회 반대쪽이지만, 향후 매회 교대 런지도 같은 운동군 안에서 지원한다. |
+| `camera_protocol` | `Z3` / `Z7`, `H2`, 200-250 cm | 측면 view에서 앞무릎 전방 이동, 뒷다리 ROM, 체간 정렬을 우선 관찰한다. |
+| `feature_domains` | ROM, symmetry, alignment, support width, left/right timing variability, balance control | 좌우 수행 순서와 앞/뒤 다리 역할 차이를 feature 수준에서 보존한다. |
+| `biomechanical_focus` | vertical + anterior-posterior CoM motion, hip/knee/ankle load regions | 앞다리 부하 수용과 뒷다리 보조 역할의 상대적 움직임을 본다. |
+| `compensation_candidates` | knee valgus, asymmetric knee/hip flexion, rear hip extension, trunk lean, pelvis drop/shift 등 | 편측 부하와 균형 전략에서 반복적으로 나타날 수 있는 보상 후보를 검토한다. |
+| `quality_rules` | visible ratio `0.8`, critical ratio `0.9`, max interpolation gap 3 frames | 양측 하지 landmark와 active-side provenance가 충분할 때 좌우 비교를 해석한다. |
 
 ---
 

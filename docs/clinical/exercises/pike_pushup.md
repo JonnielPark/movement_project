@@ -1,7 +1,7 @@
 # 파이크 푸쉬업 상세 해석 배경 (Pike Push-up Clinical Rationale)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-09  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/clinical/exercises/pike_pushup.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 파이크 푸쉬업이 본 연구에서 어떤 생체역학적 의미를 갖는지, 상체 지지와 역V자 자세를
@@ -11,8 +11,27 @@
 관련 문서:
 
 - 수행 프로토콜: [exercise_performance_protocol.md §2-3](../../practical_protocols/exercise_performance_protocol.md#2-3-파이크-푸쉬업-pike-push-up)
-- 운동 정의 YAML: `data/definitions/exercises/pike_pushup.yaml`
+- 운동 정의 YAML: [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml)
 - 피처 의미 매핑: [per_exercise_mapping.md §Pike Push-up](../per_exercise_mapping.md#pike-push-up-파이크-푸쉬업)
+
+---
+
+## 분석 파라미터 요약 (Analysis Parameter Summary)
+
+아래 요약은 운동 정의 YAML의 핵심 설정을 해석 관점에서 풀어쓴 것이다. 실행 기준은
+[pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml)이다.
+
+| YAML 블록 | 현재 설정 | 설정 의도 |
+|---|---|---|
+| `classification` | `bilateral_symmetric`, inverted closed-chain, primary plane `sagittal` | 역V자 자세에서 양측 상지가 체중을 지지하는 상체 push 과제로 정의한다. |
+| `landmarks` / `angle_definitions` | shoulder, elbow, wrist 중심; hip/head 보조 | 상지 ROM, 머리 하강, hip pike 유지 여부를 함께 추적한다. |
+| `rep_segmentation` / `phase_segmentation` | `nose` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | 머리 하강/상승을 기준으로 반복과 phase를 나누며, nose 불안정 시 head proxy 보조가 필요할 수 있다. |
+| `performance_protocol` | 10 repetitions, side sequence `none`, partial completion 허용 | 난도가 높은 운동이므로 목표 반복 미달을 failure provenance와 함께 기록한다. |
+| `camera_protocol` | `Z3` / `Z7`, `H1`, 200-250 cm | 낮은 측면 view에서 머리 하강, hip drop, inverted-V 유지 여부를 우선 관찰한다. |
+| `feature_domains` | ROM, symmetry, shape, depth, reach, tempo, trunk/com stability | 상체 지지 ROM과 자세 유지, 반복 간 난도/피로 관련 변화를 함께 본다. |
+| `biomechanical_focus` | shoulder/elbow/wrist/trunk load regions, support moment/load-shift proxy | 절대 상지 근력 대신 지지 구조와 상대 부하 경향을 해석한다. |
+| `compensation_candidates` | elbow flare, shoulder asymmetry/collapse, insufficient head descent, head forward shift, hip drop/pike 등 | 상체 지지 과제에서 pose로 관찰 가능한 자세 붕괴와 부분 수행 후보를 우선 검토한다. |
+| `quality_rules` | visible ratio `0.75`, critical ratio `0.9`, max interpolation gap 3 frames | self-occlusion 가능성을 고려하되 핵심 상지/골반 landmark는 높은 신뢰도를 요구한다. |
 
 ---
 

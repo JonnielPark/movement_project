@@ -1,7 +1,7 @@
 # Squat Clinical Rationale
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-09  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/clinical/exercises/squat.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of squat in this study, the
@@ -11,8 +11,28 @@ control factors. It is not a diagnostic standard or a code specification.
 Related documents:
 
 - Performance protocol: [exercise_performance_protocol.md §2-1](../../practical_protocols/exercise_performance_protocol.md#2-1-squat)
-- Exercise YAML: `data/definitions/exercises/squat.yaml`
+- Exercise YAML: [squat.yaml](../../../data/definitions/exercises/squat.yaml)
 - Feature meaning map: [per_exercise_mapping.md §Squat](../per_exercise_mapping.md#squat)
+
+---
+
+## Analysis Parameter Summary
+
+This summary explains the key exercise-YAML settings from an interpretation
+perspective. The execution source of truth is
+[squat.yaml](../../../data/definitions/exercises/squat.yaml).
+
+| YAML Block | Current Setting | Setting Intent |
+|---|---|---|
+| `classification` | `bilateral_symmetric`, standing closed-chain, primary plane `sagittal` | Define squat as a bilateral reference exercise while observing sagittal ROM and frontal-plane alignment. |
+| `landmarks` / `angle_definitions` | Hip, knee, and ankle centered; shoulder/pelvis lines as support | Track lower-limb triple flexion, trunk lean, and pelvic alignment within the same repetition. |
+| `rep_segmentation` / `phase_segmentation` | `hip_center` vertical trajectory; top boundary, bottom split; `Descent` / `Ascent` | Use hip-center vertical motion to split repetitions and descent/ascent phases. |
+| `performance_protocol` | 10 repetitions, side sequence `none`, hands-fixed cue | Treat squat as a non-alternating bilateral task and reduce arm-swing contamination. |
+| `camera_protocol` | `Z2` / `Z8`, `H2`, 200-250 cm | Use a front-oblique view to observe knee tracking and descent depth together. |
+| `feature_domains` | ROM, symmetry, shape, depth, alignment, tempo, stability, compensation | Activate broad spatial/temporal/control features for the reference-exercise role. |
+| `biomechanical_focus` | Vertical CoM motion, hip/knee/ankle load regions, moment-arm/load-shift proxies | Interpret relative lower-limb load-distribution tendencies rather than absolute load. |
+| `compensation_candidates` | knee valgus/varus, asymmetric depth, trunk flexion, pelvic shift, heel lift, etc. | Prioritize common lower-limb compensation candidates that are repeatedly observable from monocular pose. |
+| `quality_rules` | visible ratio `0.8`, critical ratio `0.9`, max interpolation gap 3 frames | Use metrics only when core lower-limb landmarks have sufficient coverage. |
 
 ---
 
