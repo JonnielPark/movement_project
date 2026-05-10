@@ -1,7 +1,7 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.4
+**최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
@@ -143,6 +143,18 @@ PHASE_AWARE_FEATURE_FAMILIES = {
   운동학적(kinetic) 라벨 (eccentric / isometric / concentric)과 혼용해서는 안 된다
 ```
 
+A2 검증 요구:
+
+```text
+phase label이 있는 rep에서 방출되는 모든 phase-level FeatureRecord는 다음을 포함해야 한다:
+    phase                         non-null 기구학적 phase label
+    feature_id suffix             소문자 phase label
+    source_fields                 원래 feature provenance +
+                                  phase_segmentation.reference_landmark,
+                                  phase_segmentation.reference_axis,
+                                  phase_segmentation.split_logic
+```
+
 ## 6. 계층 요약 (Hierarchical Summary)
 
 `summarize_phase_to_rep()`은 구간 단위 레코드로부터 반복 단위 요약 지표를 도출한다(학위논문 §5.5).
@@ -217,21 +229,123 @@ compensation_candidates:
 
 `biomechanical_proxy` 항목은 ⑧이 아닌 ⑨ Biomech Proxy에서 소비된다.
 
-## 10. 다른 단계와의 관계 (Relationship to Other Steps)
+## 10. 피처 레지스트리 커버리지 감사 (Feature Registry Coverage Audit)
+
+A3에서는 YAML이 향후 확장 후보를 포함하더라도, 모든 항목이 이미 점수화된 것처럼
+조용히 오해되지 않도록 명시적인 coverage report를 추가한다.
+
+```python
+@dataclass
+class FeatureRegistryCoverageReport:
+    exercise_id: str
+    connected_feature_domain_entries: dict[str, list[str]]
+    unsupported_feature_domain_entries: list[dict]
+    external_step_feature_domain_entries: list[dict]
+    implemented_compensation_candidates: list[str]
+    unimplemented_compensation_candidates: list[dict]
+```
+
+커버리지 규칙:
+
+```text
+feature_domains.spatial / temporal / control
+    YAML 항목이 구현된 extractor 또는 문서화된 alias와 연결되면 connected로 보고한다.
+    extractor가 없으면 unsupported로 보고한다.
+
+feature_domains.biomechanical_proxy
+    ⑧ extractor 누락으로 취급하지 않는다. 이 항목은 ⑨ Biomech Proxy로 라우팅하며
+    external_step_feature_domain_entries에 기록한다.
+
+compensation_candidates
+    COMPENSATION_RULES에 있는 후보는 implemented로 보고한다. 선언됐지만 등록되지 않은
+    후보는 declared_unimplemented 또는 no_rule_registered 사유와 함께 unimplemented로 보고한다.
+```
+
+이 report는 진단/provenance 출력이다. Unsupported 항목은 feature extraction을 중단시키지 않고,
+자동으로 scoring factor로 승격하지 않는다.
+
+## 11. 분석 방해 패턴 탐지 가능성 감사 (Analysis-Disrupting Pattern Detectability Audit)
+
+A4는 `performance_protocol.analysis_disrupting_patterns`에 대한 두 번째 diagnostic report를
+추가한다. 이 감사는 pose-detectable scoring candidate와 protocol-control 또는
+interpretation-limit factor를 분리하여, 분석 방해 패턴이 조용히 자동 제외나 자동 점수로
+승격되지 않도록 한다.
+
+```python
+@dataclass
+class AnalysisDisruptingPatternDetectabilityReport:
+    exercise_id: str
+    pose_detectable_scoring_candidates: list[dict]
+    acquisition_control_factors: list[dict]
+    interpretation_limitation_factors: list[dict]
+    unknown_patterns: list[dict]
+    all_patterns: list[dict]
+```
+
+`all_patterns`의 각 항목은 다음을 보고한다.
+
+```text
+pattern                       YAML pattern 이름
+classification                pose_detectable_scoring_candidate |
+                              acquisition_control_factor |
+                              interpretation_limitation_factor |
+                              unknown
+required_landmarks            pose 기반 판독에 필요한 landmarks
+view_sensitivity              low | medium | high
+visibility_dependency         low | medium | high
+annotation_fallback           필요한 annotation 또는 metadata fallback
+linked_compensation_candidates 이 pattern이 연결될 수 있는 compensation candidates
+linked_feature_domain_entries 이 pattern이 연결될 수 있는 feature-domain entries
+source_fields                 classification의 provenance fields
+basis                         분류 근거 요약
+```
+
+규칙:
+
+```text
+pose_detectable_scoring_candidate
+    구현된 feature rule과 provenance test가 존재할 때 향후 FeatureRecord/BiomarkerRecord
+    출력으로 연결할 수 있다. 감사 자체가 점수화하지는 않는다.
+
+acquisition_control_factor
+    recording/protocol warning으로 남긴다. report와 figure caption에는 표시할 수 있지만
+    movement-quality score를 직접 바꾸지 않는다.
+
+interpretation_limitation_factor
+    pose data만으로 underlying event를 증명하기 어려운 경우 confidence 또는
+    interpretation note로 남긴다.
+
+unknown
+    명시적으로 분류되기 전까지 warning/provenance로만 남긴다.
+```
+
+이 report는 ⑧ 실행 시 `feature_registry_coverage`와 함께 방출될 수 있다. downstream reporting과
+⑫ simulation planning에는 사용할 수 있지만, pose coordinate를 수정하지 않고 반복을 제외하지도
+않는다.
+
+## 12. 다른 단계와의 관계 (Relationship to Other Steps)
 
 - **⑥ Segmentation** — `phase` 칼럼을 채워 구간 단위 피처 방출을 활성화한다.
   칼럼이 없거나 비어 있으면 반복 단위 레코드만 산출된다(graceful no-op).
 - **⑦ Motion Attribution** — 반복별 `attribution_consistent`와 `attribution_action`을 공급.
   비일관 반복의 가중치 하향/제외는 본 단계에서 피처를 변형하지 않고 바이오마커 계층에서 처리한다.
-- **⑨ Biomech Proxy** — 동일한 정규화 좌표와 YAML 필드를 소비하지만 `BiomechRecord`
-  (CoM, 모멘트 암)을 산출한다. FeatureRecord 출력을 **참조하지 않는다**.
+- **⑨ Biomech Proxy** — 동일한 정규화 좌표와 `feature_domains.biomechanical_proxy` /
+  `biomechanical_focus` 필드를 소비하지만 `BiomechRecord` (CoM, 모멘트 암)을 산출한다.
+  FeatureRecord 출력을 **참조하지 않는다**.
 - **⑩ Biomarker Derivation** — FeatureRecord를 BiomarkerRecord 패스스루로 변환하고,
   반복별 종합 점수(composite score)에 공급한다.
+- **⑫ In-Silico Simulation** — 향후 pose-detectable analysis-disrupting pattern을 named
+  perturbation 후보로 사용할 수 있다. control 또는 interpretation-limit factor는 별도 injector가
+  설계되기 전까지 reporting note로 남긴다.
 
-## 11. 코드 매핑 (Code Mapping)
+## 13. 코드 매핑 (Code Mapping)
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
+                                         FeatureRegistryCoverageReport,
+                                         audit_feature_registry,
+                                         AnalysisDisruptingPatternDetectabilityReport,
+                                         audit_analysis_disrupting_patterns,
                                          summarize_phase_to_rep,
                                          features_to_dataframe,
                                          PHASE_AWARE_FEATURE_FAMILIES
@@ -239,9 +353,14 @@ src/movement/features/spatial.py         compute_rom, compute_symmetry, compute_
 src/movement/features/temporal.py        compute_tempo, compute_variability
 src/movement/features/control.py         compute_stability, compute_compensation
 src/movement/features/compensation.py    COMPENSATION_RULES 레지스트리, 디스패치
+tests/test_features_phase_grouping.py    phase-level feature 방출과 provenance
+tests/test_feature_registry_coverage.py  YAML feature-domain과 compensation coverage
+tests/test_analysis_disrupting_patterns.py
+                                         analysis-disrupting pattern detectability coverage
+tests/test_feature_provenance.py          missing source_fields policy
 ```
 
-## 12. 임상적 의미 참조 (Clinical Meaning Reference)
+## 14. 임상적 의미 참조 (Clinical Meaning Reference)
 
 운동별 피처 × 임상적 의미 매핑:
 
@@ -253,7 +372,7 @@ data/definitions/clinical/feature_meanings.yaml     대시보드 툴팁용 YAML 
 YAML은 `exercise_id → feature_id → {domain, unit, level, phase_suffix, clinical_meaning}` 키 구조다.
 계획된 CDSS 대시보드(Task F)에서 호버 툴팁 provenance 공개를 위해 소비된다.
 
-## 13. 향후 확장 (Planned Extensions)
+## 15. 향후 확장 (Planned Extensions)
 
 - 가시성 가중 ROM / 대칭성 (max/min 이전 저-가시성 프레임 제거)
 - 보상 규칙: `asymmetric_depth`, `foot_external_rotation_proxy`,

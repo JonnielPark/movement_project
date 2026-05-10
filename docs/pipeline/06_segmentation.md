@@ -1,7 +1,7 @@
 # 06. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-05-07
+**문서 버전:** 1.2.2
+**최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑥. 정규화된 관절 움직임을 추적하여 rep 경계와 phase 경계를 반자동으로
@@ -96,7 +96,41 @@ phase_segmentation    확정 rep 내부에서 phase 경계를 추정하고 phase
 이 경우 ⑥은 해당 프레임 또는 프레임 구간을 `SegmentationFailurePoint`로 기록한다.
 실패 지점은 보간하거나 성공으로 간주하지 않는다.
 
-## 6. 분할 실패 지점 기록 (Segmentation Failure Point Record)
+## 6. 성공 / 실패 / 건너뜀 정책 (Success / Failure / Skipped Policy)
+
+반복 경계 분할은 후보 경계가 accepted interval로 변환되고, accepted interval 수가
+`rep_segmentation.minimum_reps`를 만족한 뒤에만 성공으로 간주한다.
+
+```text
+success
+    - 필터링 후 최소 `minimum_reps`개 이상의 accepted interval이 남는다.
+    - 각 accepted interval은 최소 `minimum_rep_length_frames` 이상이다.
+    - accepted frame에는 annotation/manual override가 이미 없는 한
+      segment_type='rep', rep_id, status='success', source='semi_auto'가 기록된다.
+
+failed
+    - 필요한 기준 landmark 또는 axis를 해석할 수 없다.
+    - 경계 후보가 2개 미만이다.
+    - 모든 후보 interval이 너무 짧다.
+    - accepted interval 수가 `minimum_reps`보다 적다.
+    - flat 또는 near-flat trace는 endpoint 삽입으로 boundary frame이 2개 생겼더라도
+      성공으로 승격하지 않는다.
+
+skipped
+    - 운동 정의에 `rep_segmentation` 블록이 없다.
+    - 파이프라인 러너는 dataframe을 변경하지 않고 segmentation report에 skipped reason을 남긴다.
+```
+
+검출된 interval 수가 `minimum_reps`보다 적으면 report는 다음 값을 사용한다.
+
+```text
+status          failed
+reason          insufficient_reps
+pipeline_action wait_for_manual_override
+rep_id          영향을 받는 analysis frame에서 미설정 상태로 유지
+```
+
+## 7. 분할 실패 지점 기록 (Segmentation Failure Point Record)
 
 실패 지점 리포트는 최소한 다음 필드를 가진다.
 
@@ -117,7 +151,7 @@ resolved          bool      수동 개입으로 해결되었는지 여부
 resolution_note   str       nullable
 ```
 
-## 7. 실패 수준별 파이프라인 처리 (Pipeline Handling by Failure Level)
+## 8. 실패 수준별 파이프라인 처리 (Pipeline Handling by Failure Level)
 
 ```text
 rep_boundary 실패
@@ -136,7 +170,7 @@ optional_phase 실패
     - 리포트에는 선택 phase 생략 사유를 남긴다.
 ```
 
-## 8. 수동 개입 정책 (Manual Intervention Policy)
+## 9. 수동 개입 정책 (Manual Intervention Policy)
 
 수동 개입은 실패 지점을 해결하기 위한 경계/라벨 메타데이터 확정이다. 좌표값을 바꾸지 않는다.
 
@@ -148,7 +182,7 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 수동 보정값은 후속 단계의 유일한 확정 라벨로 사용한다. 다만 자동 후보와의 차이, 보정 사유,
 보정자 메모는 리포트에 남겨 provenance를 보존한다.
 
-## 9. 후속 단계 영향 (Downstream Effects)
+## 10. 후속 단계 영향 (Downstream Effects)
 
 ```text
 ⑦ Motion Attribution   확정된 rep_id를 기준으로 활성 측 일관성 판단
@@ -158,7 +192,7 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 ⑪ Visualization        실패 지점과 수동 보정 경계를 시각적으로 표시
 ```
 
-## 10. 현재 범위 (Current Scope)
+## 11. 현재 범위 (Current Scope)
 
 지원 항목:
 
@@ -177,4 +211,37 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 - 실패 지점 검토 없는 완전 자동 분할
 - 좌표값 수정
 - 분할 실패를 임의 보간하여 성공으로 처리하는 정책
+```
+
+## 12. 검증 대상 (Verification Targets)
+
+A2 검증은 다음 동작을 집중 단위 테스트로 고정한다.
+
+```text
+nominal phase split
+    명확한 기구학적 inflection이 1개 있는 확정 rep는 설정된 phase_sequence로 분할되며,
+    PhaseSegmentationReport에는 inflection frame과 phase frame range가 기록된다.
+
+too-short rep
+    `phase_segmentation.minimum_rep_length_frames`보다 짧은 rep에는 phase label을
+    부여하지 않는다. report는 rep_id를 유지하고 rejected reason을 기록한다.
+
+multi-inflection policy
+    inflection 후보가 여러 개일 때 `multi_inflection_policy`는 의도한 후보를
+    결정적으로 선택하거나 rep를 reject한다.
+
+annotation override
+    ② Annotation에서 온 non-null phase label은 보존되며, 반자동 phase splitting이
+    이를 덮어쓰지 않는다.
+
+phase provenance handoff
+    phase label이 있는 rep에서 ⑧이 방출하는 phase-level FeatureRecord는
+    `source_fields`에 `phase_segmentation.*` 항목을 포함해야 한다.
+```
+
+테스트 매핑:
+
+```text
+tests/test_phase_segmentation.py         phase splitting report와 override 동작
+tests/test_features_phase_grouping.py    phase-level FeatureRecord provenance
 ```

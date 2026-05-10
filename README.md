@@ -46,26 +46,26 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 |---|---|---|
 | Pose I/O 및 설정 | `io.py`, `config.py` | CSV 로딩, 랜드마크/연결 정의 |
 | ① Validation | `validation.py` | 구조적 무결성 리포트 |
-| ② Annotation | `annotation.py` | 프레임 단위 메타데이터 병합; 촬영/수행 provenance와 관찰 protocol metadata 보존 |
+| ② Annotation | `annotation.py` | 프레임 단위 메타데이터 병합; 촬영/수행 provenance와 관찰 protocol metadata 보존; performance/failure provenance를 annotation report로 요약 |
 | ③ Exercise Definition | `exercise_definition.py` | YAML 로더 + 검증기 + generic 폴백; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
 | ④ Preprocessing | `preprocessing.py` | 가시성 게이팅, 분절 일관성, 각도 한계, 속도 이상값, 좌·우 swap, 보간, 평활화 |
 | ⑤ Normalization | `normalization.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도 |
 | ⑥ Segmentation | `segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
 | ⑦ Motion Attribution | `motion_attribution.py` | 반복별 활성 사지(active-limb) 일관성; `performance_protocol.side_sequence` 참조; conservative / auto-correct 모드 |
-| ⑧ Feature Extraction | `features/` | ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; `summarize_phase_to_rep()` |
+| ⑧ Feature Extraction | `features/` | ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage와 analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑩ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3) |
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
 | 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 4개 운동 × 5–7개 규칙; 금지 어휘 검증 완료 |
 | 파이프라인 러너 | `pipeline.py` | 단계 ①–⑩ 결선 |
 | 프로토콜 메타데이터 스키마 | `exercise_definition.py`, `annotation.py`, `motion_attribution.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
-| 단위 테스트 | `tests/` | 프로토콜 메타데이터 스키마 대상 테스트 17개 통과. 최근 full run은 71개 중 70개 통과, 현재 Task A/P1에서 다룰 segmentation 정책 실패 1개 존재 |
+| 단위 테스트 | `tests/` | 프로토콜 메타데이터 스키마 대상 테스트 17개 통과. Task A5 performance-provenance reporting 이후 최근 full run 97개 전체 통과 |
 
 ### 부분 완료
 
 | 영역 | 모듈 | 미완 |
 |---|---|---|
-| 기존 파이프라인 검증 | `segmentation.py`, `features/`, reporting records | Phase segmentation 테스트, feature registry coverage, declared-but-unimplemented report, provenance/source-field 정책 (→ Task A) |
+| 기존 파이프라인 검증 | `segmentation.py`, `features/`, reporting records | A1-A5 core verification 조각에서 phase segmentation, feature registry coverage, analysis-disrupting detectability, source-field 정책, performance/failure provenance 소비 검증 완료 (→ Task A) |
 | Motion attribution / robustness 근거 | `motion_attribution.py`, `simulation/` | 구조화된 correction log, false-correction 지표, viewpoint variation, compensation injection, 실험 러너, robustness summary (→ Task B) |
 | ⑪ Visualization | `visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task C) |
 
@@ -73,7 +73,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 
 | 과업 | 산출물 | 학위논문 § |
 |---|---|---|
-| A — 기존 파이프라인 검증 강화 | Phase segmentation 테스트, feature registry coverage, compensation candidate report, provenance/source-field 정책 | 방법 검증 |
+| A — 기존 파이프라인 검증 강화 | Phase segmentation 테스트, feature registry coverage, analysis-disrupting detectability, performance/failure provenance, compensation candidate report, provenance/source-field 정책 | 방법 검증 |
 | B — Motion attribution과 robustness 근거층 | 구조화된 correction log, false-correction 지표, viewpoint/compensation simulation injector, `scripts/run_robustness_experiment.py`, robustness summary | §8 |
 | C — 논문용 reporting visualization | 정적 figure 함수 6개, `save_figure()`, source-field/caption provenance, `outputs/figures/` export | §11 |
 | D — Clinical mapping 통합 | FMS-like mapping coverage 확인, feature availability 연결, 필요 시 traffic-light/severity reporting 통합 | §7.4 |
@@ -227,7 +227,7 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.14 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.19 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |

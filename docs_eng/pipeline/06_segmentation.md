@@ -1,7 +1,7 @@
 # 06. Segmentation
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-05-07
+**Document Version:** 1.2.2
+**Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑥. Tracks normalized joint motion to split rep boundaries and phase
@@ -97,7 +97,43 @@ treated as successful when any of the following are unclear.
 In these cases, ⑥ records the affected frame or frame range as a
 `SegmentationFailurePoint`. Failure points are not interpolated or treated as success.
 
-## 6. Segmentation Failure Point Record
+## 6. Success / Failure / Skipped Policy
+
+Rep-boundary segmentation is considered successful only after candidate boundaries
+are converted into accepted intervals and the accepted interval count satisfies
+`rep_segmentation.minimum_reps`.
+
+```text
+success
+    - At least `minimum_reps` accepted intervals remain after filtering.
+    - Each accepted interval has at least `minimum_rep_length_frames`.
+    - Accepted frames receive segment_type='rep', rep_id, status='success',
+      and source='semi_auto' unless annotation/manual override already supplied labels.
+
+failed
+    - Required reference landmarks or axes cannot be resolved.
+    - Fewer than two boundary candidates are available.
+    - All candidate intervals are too short.
+    - The accepted interval count is lower than `minimum_reps`.
+    - A flat or near-flat trace must not be promoted to success merely because
+      endpoint insertion produced two boundary frames.
+
+skipped
+    - The exercise definition has no `rep_segmentation` block.
+    - The pipeline runner keeps the dataframe unchanged and writes a skipped
+      reason into the segmentation report.
+```
+
+When detected intervals are fewer than `minimum_reps`, the report uses:
+
+```text
+status          failed
+reason          insufficient_reps
+pipeline_action wait_for_manual_override
+rep_id          remains unset for the affected analysis frames
+```
+
+## 7. Segmentation Failure Point Record
 
 The failure-point report has at least the following fields.
 
@@ -118,7 +154,7 @@ resolved          bool      whether manual intervention resolved the failure
 resolution_note   str       nullable
 ```
 
-## 7. Pipeline Handling by Failure Level
+## 8. Pipeline Handling by Failure Level
 
 ```text
 rep_boundary failure
@@ -139,7 +175,7 @@ optional_phase failure
     - The report records why the optional phase was skipped.
 ```
 
-## 8. Manual Intervention Policy
+## 9. Manual Intervention Policy
 
 Manual intervention confirms boundary/label metadata for a failure point. It does not
 change coordinate values.
@@ -153,7 +189,7 @@ Manual corrections become the only confirmed labels used by downstream steps. Th
 difference from the automatic candidate, correction reason, and reviewer note are
 retained in the report to preserve provenance.
 
-## 9. Downstream Effects
+## 10. Downstream Effects
 
 ```text
 ⑦ Motion Attribution   uses confirmed rep_id for active-side consistency
@@ -163,7 +199,7 @@ retained in the report to preserve provenance.
 ⑪ Visualization        shows failure points and manual correction boundaries
 ```
 
-## 10. Current Scope
+## 11. Current Scope
 
 Supported:
 
@@ -182,4 +218,39 @@ Not in scope:
 - Fully unattended segmentation without failure-point review
 - Coordinate edits
 - Treating a segmentation failure as success through arbitrary interpolation
+```
+
+## 12. Verification Targets
+
+A2 verification locks the following behavior with focused unit tests:
+
+```text
+nominal phase split
+    A confirmed rep with one clear kinematic inflection is split into the
+    configured phase_sequence, and PhaseSegmentationReport records the
+    inflection frame and phase frame ranges.
+
+too-short rep
+    A rep shorter than `phase_segmentation.minimum_rep_length_frames` is not
+    assigned phase labels. The report keeps the rep_id and records a rejected
+    reason.
+
+multi-inflection policy
+    When multiple inflection candidates are present, `multi_inflection_policy`
+    deterministically selects the intended candidate or rejects the rep.
+
+annotation override
+    Existing non-null phase labels from ② Annotation are preserved and are not
+    overwritten by semi-automatic phase splitting.
+
+phase provenance handoff
+    ⑧ phase-level FeatureRecords emitted from phase-labelled reps must include
+    `phase_segmentation.*` entries in `source_fields`.
+```
+
+Test mapping:
+
+```text
+tests/test_phase_segmentation.py         phase splitting reports and override behavior
+tests/test_features_phase_grouping.py    phase-level FeatureRecord provenance
 ```

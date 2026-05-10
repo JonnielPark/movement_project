@@ -1,6 +1,6 @@
 # 02. Annotation
 
-**Document Version:** 1.1.3
+**Document Version:** 1.1.4
 **Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
@@ -75,6 +75,47 @@ Observed count/side-sequence columns (`rep_side_sequence`, `side_block_size`,
 `rep_unit`, `protocol_cycle_id`) are compared with ③ `performance_protocol` in
 later reporting and ⑦ Motion Attribution. A mismatch is warning/provenance, not
 automatic frame exclusion.
+
+A5 formalizes how performance/failure provenance is consumed by runner/reporting
+outputs. The frame-level columns above remain the detailed record, and the
+annotation report additionally exposes a set-level summary that downstream
+visualization or interpretation layers can read without scanning the full pose
+dataframe.
+
+```text
+performance_provenance.available                 bool
+performance_provenance.policy                    warning_provenance_only
+performance_provenance.forced_exclusion          false
+performance_provenance.score_penalty_applied     false
+performance_provenance.records                   list[dict]
+performance_provenance.summary                   dict
+performance_provenance.interpretation_confidence_notes list[str]
+```
+
+Each record contains:
+
+```text
+segment_type, set_id, rep_id, start_frame, end_frame
+performance_protocol_status
+actual_rep_count
+failure_point_frame
+failure_rep_id
+failure_reason
+performance_note
+source_fields
+```
+
+Rules:
+
+```text
+- Missing or partial performance metadata does not fail annotation.
+- A low actual repetition count is not a direct movement-quality penalty.
+- A failure point is not a segmentation failure point. It marks where the
+  participant stopped maintaining the protocol task.
+- The default behavior is warning/provenance only. Downstream scoring or figure
+  captions may display the note, but ② does not exclude frames and ⑩ does not
+  penalize scores solely from these metadata fields.
+```
 
 ## 3. Annotation Hierarchy
 
@@ -179,6 +220,8 @@ filming_protocol_status = unknown
 ```
 
 Report records `annotation_provided = False`.
+It also records `performance_provenance.available = False`; no performance
+failure is inferred from the absence of annotation metadata.
 
 ## 7. When Annotation is Provided
 
@@ -214,6 +257,7 @@ Supported:
 - Preserving manually provided phase labels
 - Preserving filming provenance columns (session_id, recording_id, set_index, camera_zone, camera_height_level)
 - Preserving observed protocol metadata (rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id)
+- Summarizing performance/failure provenance into the annotation report
 ```
 
 Not in scope:
@@ -223,5 +267,6 @@ Not in scope:
 - Segmentation failure-point recording
 - Camera-angle correction or coordinate reprojection
 - Forced rejection of data with mismatched filming conditions
+- Automatic scoring penalty from low actual repetition count or failure metadata
 - Coordinate edits
 ```
