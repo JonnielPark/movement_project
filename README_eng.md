@@ -234,7 +234,7 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.11 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.12 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 | 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
@@ -287,6 +287,13 @@ Therefore, all biomechanical proxy metrics in this pipeline are designed and
 produced as body-scale-normalized relative values or angle-based metrics, not
 absolute force, mass, or length units (e.g., `torso_length_ratio`, `degree`,
 `dimensionless_cv`, `dimensionless`).
+
+The current target exercises are limited to structured in-place bodyweight
+exercises. Extending the framework to equipment-based exercises or highly dynamic
+and spatially traveling movements such as jumping, running, or change-of-direction
+tasks would require additional components, including equipment position, external
+load metadata, hand-equipment contact, ground-contact events, flight phases,
+global travel paths, more complex event segmentation, and expanded camera protocols.
 
 This prioritizes a reliable XAI structure that can consistently support
 clinical reasoning under the physical limitations of monocular-camera data,
