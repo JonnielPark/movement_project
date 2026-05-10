@@ -28,6 +28,10 @@ def test_apply_annotation_preserves_filming_and_performance_metadata():
             "failure_rep_id": [1],
             "failure_reason": ["posture_breakdown"],
             "performance_note": ["hip dropped before target count"],
+            "rep_side_sequence": ["left,right,left"],
+            "side_block_size": [pd.NA],
+            "rep_unit": ["tap"],
+            "protocol_cycle_id": [1],
         }
     )
 
@@ -47,9 +51,14 @@ def test_apply_annotation_preserves_filming_and_performance_metadata():
     assert annotated.loc[1, "failure_rep_id"] == 1
     assert annotated.loc[1, "failure_reason"] == "posture_breakdown"
     assert annotated.loc[1, "performance_note"] == "hip dropped before target count"
+    assert annotated.loc[1, "rep_side_sequence"] == "left,right,left"
+    assert pd.isna(annotated.loc[1, "side_block_size"])
+    assert annotated.loc[1, "rep_unit"] == "tap"
+    assert annotated.loc[1, "protocol_cycle_id"] == 1
 
     assert pd.isna(annotated.loc[0, "actual_rep_count"])
     assert pd.isna(annotated.loc[0, "reference_mat_used"])
+    assert pd.isna(annotated.loc[0, "protocol_cycle_id"])
 
 
 def test_load_annotation_csv_normalizes_optional_metadata(tmp_path):
@@ -58,8 +67,9 @@ def test_load_annotation_csv_normalizes_optional_metadata(tmp_path):
         "\n".join(
             [
                 "segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,"
-                "reference_mat_used,actual_rep_count,failure_point_frame,failure_rep_id",
-                "rep,1,1,0,2,true,yes,7,2,1",
+                "reference_mat_used,actual_rep_count,failure_point_frame,failure_rep_id,"
+                "side_block_size,protocol_cycle_id",
+                "rep,1,1,0,2,true,yes,7,2,1,5,3",
             ]
         ),
         encoding="utf-8",
@@ -70,5 +80,7 @@ def test_load_annotation_csv_normalizes_optional_metadata(tmp_path):
     assert str(ann_df["actual_rep_count"].dtype) == "Int64"
     assert str(ann_df["failure_point_frame"].dtype) == "Int64"
     assert str(ann_df["failure_rep_id"].dtype) == "Int64"
+    assert str(ann_df["side_block_size"].dtype) == "Int64"
+    assert str(ann_df["protocol_cycle_id"].dtype) == "Int64"
     assert str(ann_df["reference_mat_used"].dtype) == "boolean"
     assert bool(ann_df.loc[0, "reference_mat_used"]) is True

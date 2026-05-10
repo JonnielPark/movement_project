@@ -199,6 +199,10 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
 
 _PHASE_RATIO_TOLERANCE: float = 0.02
 _GENERIC_ID = "generic"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_CAMERA_ZONES_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.yaml"
+_OUT_OF_ZONE_POLICY = "warn_and_continue"
+_COORDINATE_CORRECTION_POLICY = "none"
 
 
 # ── Dataclasses ───────────────────────────────────────────────────────────────
@@ -361,6 +365,37 @@ class PerformanceProtocolSpec:
     )
     participant_cues: list[str] = field(default_factory=list)
     analysis_disrupting_patterns: list[str] = field(default_factory=list)
+    allowed_side_sequence_modes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CameraProtocolSpec:
+    """
+    Recommended filming-condition metadata for one exercise.
+
+    This preserves camera zone and height recommendations for provenance and
+    interpretation confidence. It must not trigger coordinate correction,
+    reprojection, or forced exclusion; mismatches are warning/reporting signals.
+    """
+
+    recommended_zones: list[str] = field(default_factory=list)
+    recommended_height: str | None = None
+    anchor: str | None = None
+    distance_cm: list[int] = field(default_factory=list)
+    primary_observation_purpose: list[str] = field(default_factory=list)
+    out_of_zone_policy: str = _OUT_OF_ZONE_POLICY
+    coordinate_correction: str = _COORDINATE_CORRECTION_POLICY
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "recommended_zones": self.recommended_zones,
+            "recommended_height": self.recommended_height,
+            "anchor": self.anchor,
+            "distance_cm": self.distance_cm,
+            "primary_observation_purpose": self.primary_observation_purpose,
+            "out_of_zone_policy": self.out_of_zone_policy,
+            "coordinate_correction": self.coordinate_correction,
+        }
 
 
 @dataclass
@@ -406,6 +441,9 @@ class ExerciseDefinition:
     performance_protocol : PerformanceProtocolSpec | None
         Practical participant-facing counting and side-sequence metadata.
         None → no exercise-specific performance protocol was declared.
+    camera_protocol : CameraProtocolSpec | None
+        Recommended filming-condition metadata. None → no exercise-specific
+        camera recommendation was declared.
     """
 
     exercise_id: str
@@ -424,6 +462,7 @@ class ExerciseDefinition:
     rep_segmentation: RepSegmentationSpec | None = None
     phase_segmentation: PhaseSegmentationSpec | None = None
     performance_protocol: PerformanceProtocolSpec | None = None
+    camera_protocol: CameraProtocolSpec | None = None
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -526,6 +565,23 @@ def _check_performance_protocol(raw: dict, exercise_id: str) -> list[str]:
 
     mode = side_sequence.get("mode", "none")
     block_size = side_sequence.get("block_size_counts")
+    allowed_modes = list(pp.get("allowed_side_sequence_modes") or [mode])
+    known_side_modes = _VOCAB["performance_protocol.side_sequence.mode"]
+
+    unknown_allowed_modes = [
+        allowed_mode for allowed_mode in allowed_modes if allowed_mode not in known_side_modes
+    ]
+    if unknown_allowed_modes:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.allowed_side_sequence_modes "
+            f"contains unknown mode(s): {unknown_allowed_modes}"
+        )
+    if mode not in allowed_modes:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.side_sequence.mode '{mode}' "
+            "must be included in performance_protocol.allowed_side_sequence_modes"
+        )
+
     if mode == "same_side_block_then_switch":
         if block_size is None or int(block_size) < 1:
             errors.append(
@@ -533,6 +589,59 @@ def _check_performance_protocol(raw: dict, exercise_id: str) -> list[str]:
                 "block_size_counts must be >= 1 when mode is "
                 "'same_side_block_then_switch'"
             )
+
+    return errors
+
+
+def _load_camera_reference(path: Path = _DEFAULT_CAMERA_ZONES_PATH) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _check_camera_protocol(raw: dict, exercise_id: str) -> list[str]:
+    cp = raw.get("camera_protocol") or {}
+    if not cp:
+        return []
+
+    errors: list[str] = []
+    reference = _load_camera_reference()
+    known_zones = set((reference.get("zones") or {}).keys())
+    known_heights = set((reference.get("height_levels") or {}).keys())
+
+    recommended_zones = list(cp.get("recommended_zones") or [])
+    if known_zones:
+        unknown_zones = [zone for zone in recommended_zones if zone not in known_zones]
+        if unknown_zones:
+            errors.append(
+                f"[{exercise_id}] camera_protocol.recommended_zones contains "
+                f"unknown zone(s): {unknown_zones}"
+            )
+
+    recommended_height = cp.get("recommended_height")
+    if recommended_height is not None and known_heights:
+        if recommended_height not in known_heights:
+            errors.append(
+                f"[{exercise_id}] camera_protocol.recommended_height "
+                f"'{recommended_height}' is not defined in data/camera/camera_zones.yaml"
+            )
+
+    out_of_zone_policy = cp.get("out_of_zone_policy", _OUT_OF_ZONE_POLICY)
+    if out_of_zone_policy != _OUT_OF_ZONE_POLICY:
+        errors.append(
+            f"[{exercise_id}] camera_protocol.out_of_zone_policy must be "
+            f"'{_OUT_OF_ZONE_POLICY}'"
+        )
+
+    coordinate_correction = cp.get(
+        "coordinate_correction", _COORDINATE_CORRECTION_POLICY
+    )
+    if coordinate_correction != _COORDINATE_CORRECTION_POLICY:
+        errors.append(
+            f"[{exercise_id}] camera_protocol.coordinate_correction must be "
+            f"'{_COORDINATE_CORRECTION_POLICY}'"
+        )
 
     return errors
 
@@ -555,8 +664,10 @@ def _check_phase_ratio(raw: dict, exercise_id: str) -> list[str]:
 def _validate(raw: dict) -> tuple[list[str], list[str]]:
     """Return (errors, warnings). Errors block loading; warnings are emitted but do not block."""
     ex_id = raw.get("exercise_id", "<unknown>")
-    errors = _check_required_fields(raw, ex_id) + _check_performance_protocol(
-        raw, ex_id
+    errors = (
+        _check_required_fields(raw, ex_id)
+        + _check_performance_protocol(raw, ex_id)
+        + _check_camera_protocol(raw, ex_id)
     )
     warns = _check_vocabulary(raw, ex_id) + _check_phase_ratio(raw, ex_id)
     return errors, warns
@@ -647,6 +758,29 @@ def _parse_performance_protocol(pp: dict | None) -> PerformanceProtocolSpec | No
         ),
         participant_cues=list(pp.get("participant_cues") or []),
         analysis_disrupting_patterns=list(pp.get("analysis_disrupting_patterns") or []),
+        allowed_side_sequence_modes=list(
+            pp.get("allowed_side_sequence_modes")
+            or [side_sequence.get("mode", "none")]
+        ),
+    )
+
+
+def _parse_camera_protocol(cp: dict | None) -> CameraProtocolSpec | None:
+    """Parse a camera_protocol YAML block into a CameraProtocolSpec."""
+    if not cp:
+        return None
+
+    distance = cp.get("distance_cm") or []
+    return CameraProtocolSpec(
+        recommended_zones=list(cp.get("recommended_zones") or []),
+        recommended_height=cp.get("recommended_height"),
+        anchor=cp.get("anchor"),
+        distance_cm=[int(v) for v in distance],
+        primary_observation_purpose=list(cp.get("primary_observation_purpose") or []),
+        out_of_zone_policy=cp.get("out_of_zone_policy", _OUT_OF_ZONE_POLICY),
+        coordinate_correction=cp.get(
+            "coordinate_correction", _COORDINATE_CORRECTION_POLICY
+        ),
     )
 
 
@@ -719,6 +853,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
         performance_protocol=_parse_performance_protocol(
             raw.get("performance_protocol")
         ),
+        camera_protocol=_parse_camera_protocol(raw.get("camera_protocol")),
     )
 
 

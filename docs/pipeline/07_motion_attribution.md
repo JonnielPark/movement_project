@@ -1,11 +1,12 @@
 # 07. 모션 어트리뷰션 (Motion Attribution)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.1  
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/pipeline/07_motion_attribution.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑦. 각 반복에서 가장 많이 움직인 사지(limb)가 (어노테이션의
-`pattern` / `starting_side`로부터 도출된) 기대 활성 측(active side)과 일치하는지 점검한다.
+파이프라인 단계 ⑦. 각 반복에서 가장 많이 움직인 사지(limb)가 기대 활성 측(active side)과
+일치하는지 점검한다. 기대 활성 측은 `performance_protocol.side_sequence`가 있으면 이를
+먼저 사용하고, 없으면 어노테이션의 `pattern` / `starting_side`로 fallback한다.
 
 좌표를 수정하지 않는다. 반복별 메타데이터 칼럼만 추가한다.
 
@@ -29,7 +30,7 @@ Pose CSV
 ```text
 반복 경계                  어노테이션 (segment_type = rep)에서 도출
 운동 컨텍스트              어노테이션의 exercise_type, pattern, starting_side
-운동 정의                  laterality, primary_joints
+운동 정의                  laterality, primary_joints, performance_protocol.side_sequence
 정규화 좌표                ⑤ Normalization에서
 ```
 
@@ -84,7 +85,8 @@ else:
 
 ## 5. 기대 활성 측 (Expected Active Side)
 
-어노테이션의 `pattern`, `starting_side`에서 도출되며, 운동 정의의 `laterality`와 교차 검증된다.
+우선 `performance_protocol.side_sequence`에서 도출하고, 없으면 어노테이션의 `pattern`,
+`starting_side`에서 도출한다. 이후 운동 정의의 `laterality`와 교차 검증된다.
 
 ```text
 pattern = alternating, starting_side = right:
@@ -94,6 +96,17 @@ pattern = alternating, starting_side = right:
     ...
 
 pattern = alternating, starting_side = left:
+    rep 1 → left
+    rep 2 → right
+    ...
+
+performance_protocol.side_sequence.mode = same_side_block_then_switch,
+block_size_counts = 5, starting_side = right:
+    rep 1-5  → right
+    rep 6-10 → left
+
+performance_protocol.side_sequence.mode = alternating_each_rep,
+starting_side = left:
     rep 1 → left
     rep 2 → right
     ...

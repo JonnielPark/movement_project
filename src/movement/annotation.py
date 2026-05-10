@@ -56,6 +56,10 @@ ANNOTATION_OPTIONAL_COLUMNS: list[str] = [
     "failure_rep_id",
     "failure_reason",
     "performance_note",
+    "rep_side_sequence",
+    "side_block_size",
+    "rep_unit",
+    "protocol_cycle_id",
 ]
 
 VALID_SEGMENT_TYPES: frozenset[str] = frozenset(
@@ -93,6 +97,10 @@ ANNOTATION_OUTPUT_COLUMNS: list[str] = [
     "failure_rep_id",
     "failure_reason",
     "performance_note",
+    "rep_side_sequence",
+    "side_block_size",
+    "rep_unit",
+    "protocol_cycle_id",
 ]
 
 NULLABLE_INT_OUTPUT_COLUMNS: frozenset[str] = frozenset(
@@ -103,6 +111,8 @@ NULLABLE_INT_OUTPUT_COLUMNS: frozenset[str] = frozenset(
         "actual_rep_count",
         "failure_point_frame",
         "failure_rep_id",
+        "side_block_size",
+        "protocol_cycle_id",
     }
 )
 

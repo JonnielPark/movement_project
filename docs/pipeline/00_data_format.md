@@ -1,7 +1,7 @@
 # 00. 데이터 포맷 (Data Format)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.1  
+**최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/pipeline/00_data_format.md`는 동일 버전의 영문 번역본이다.
 
 단안(monocular) 3D 포즈 시계열 데이터의 입력 포맷 명세.
@@ -10,8 +10,12 @@
 
 ## 1. 입력 (Input)
 
-포즈 추정 엔진(예: MediaPipe Pose 33, iPIXEL EXERCITE)에서 내보낸 CSV 파일.
-한 행(row)은 한 프레임에 해당한다.
+포즈 추정 엔진에서 내보낸 CSV 파일. 현재 구현은 MediaPipe-style 33-landmark pose CSV를
+입력 전제로 한다. 즉, 한 행(row)은 한 프레임에 해당하며, `frame` / `timestamp` 칼럼과
+`src/movement/config.py`에 정의된 랜드마크 이름 기반 칼럼을 사용한다.
+
+iPIXEL EXERCITE를 포함한 다른 엔진은 실제 export schema가 확보되기 전까지 future adapter
+대상이다. 현재 파이프라인에 넣기 전에는 이 MediaPipe-style schema로 변환해야 한다.
 
 ## 2. 필수 칼럼 (Required Columns)
 

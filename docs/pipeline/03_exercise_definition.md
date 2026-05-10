@@ -1,7 +1,7 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.6
-**최종 갱신:** 2026-05-09
+**문서 버전:** 1.4.8
+**최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
@@ -19,7 +19,7 @@ Pose CSV + 어노테이션 + 운동 YAML
 → ④ Preprocessing                 (laterality, landmarks, quality_rules 참조)
 → ⑤ Normalization
 → ⑥ Segmentation
-→ ⑦ Motion Attribution            (laterality, primary_joints 참조)
+→ ⑦ Motion Attribution            (laterality, primary_joints, performance_protocol.side_sequence 참조)
 → ⑧ Feature Extraction            (feature_domains, joint_actions 참조)
 → ⑨ Biomech Proxy                 (biomechanical_focus 참조)
 → ⑩ Biomarker Derivation          (compensation_candidates 참조)
@@ -210,6 +210,7 @@ performance_protocol:
     mode: none                   # none | alternating_each_rep | same_side_block_then_switch
     block_size_counts: null      # 예: lunge는 5
     first_side_source: null      # null | annotation.starting_side
+  allowed_side_sequence_modes: [none]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
@@ -231,6 +232,8 @@ segmentation_reps_per_count   프로토콜 1회에 대응되는 세그멘테이�
 side_sequence.mode            프로토콜 수준의 기대 좌우 순서
 block_size_counts             블록 기반 전환에서 한쪽을 유지하는 횟수
 first_side_source             첫 수행 측을 선언하는 위치
+allowed_side_sequence_modes   이 운동/프로토콜 계열에서 허용 가능한 좌우 순서 variant;
+                               side_sequence.mode는 본 연구에서 선택한 수행 프로토콜
 allow_partial_completion      목표 횟수 미만 수행을 메타데이터와 함께 수용할지 여부
 recommended_sets              실전 취득 권장 세트 수; 자동 반복 배수는 아님
 analysis_disrupting_patterns  분석 중 관찰/기록할 수행 패턴 후보; 자동 제외 규칙 아님
@@ -249,6 +252,7 @@ performance_protocol:
     mode: same_side_block_then_switch
     block_size_counts: 5
     first_side_source: annotation.starting_side
+  allowed_side_sequence_modes: [same_side_block_then_switch, alternating_each_rep]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
@@ -263,14 +267,17 @@ performance_protocol:
     mode: alternating_each_rep
     block_size_counts: null
     first_side_source: annotation.starting_side
+  allowed_side_sequence_modes: [alternating_each_rep]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
 ```
 
 현재 구현은 ③ Exercise Definition에서 이 메타데이터를 파싱하고 검증한다.
-⑦ Motion Attribution은 아직 기존 `pattern` / `starting_side` 동작을 사용하며,
-블록 기반 좌우 순서 강제는 후속 구현 단계로 둔다.
+⑦ Motion Attribution은 `performance_protocol.side_sequence`를 먼저 읽고, 프로토콜 규칙이
+선언되지 않은 경우에만 annotation의 `pattern` / `starting_side` 동작으로 fallback한다.
+`allowed_side_sequence_modes`는 프로토콜 설계 필드이다. 이 필드는 해당 운동에서 허용 가능한
+variant를 기록하지만, 런타임 attribution에서 선택된 `side_sequence.mode`를 덮어쓰지 않는다.
 
 수행 프로토콜의 카운트, 좌우 순서, 완료 규칙처럼 운동 정의에 고정되어야 하는 취득 규칙은
 `performance_protocol`에 둔다. 실제 촬영에서 발생한 결과(`actual_rep_count`,
@@ -441,6 +448,11 @@ camera_protocol:
 ```
 
 공통 zone/height 정의는 `data/camera/camera_zones.yaml`을 참조한다.
+현재 구현은 이 블록을 `CameraProtocolSpec`으로 파싱하고, `recommended_zones`와
+`recommended_height`를 공통 camera YAML에 대해 검증하며,
+`out_of_zone_policy: warn_and_continue`를 강제한다. 런타임에서 camera zone 또는 height
+level이 권장 조건과 맞지 않으면 warning/provenance로만 보고한다. 좌표 보정, 재투영,
+강제 제외는 수행하지 않는다.
 자세한 촬영 원칙은 [camera_protocol.md](../practical_protocols/camera_protocol.md)를 참조한다.
 피험자 안내 문구와 분석을 방해하는 수행 패턴은
 [exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md)를 참조한다.
@@ -550,6 +562,7 @@ performance_protocol:
     mode: none
     block_size_counts: null
     first_side_source: null
+  allowed_side_sequence_modes: [none]
   completion:
     allow_partial_completion: false
     recommended_sets: 3

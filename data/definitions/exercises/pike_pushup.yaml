@@ -84,6 +84,7 @@ performance_protocol:
     mode: none
     block_size_counts: null
     first_side_source: null
+  allowed_side_sequence_modes: [none]
   completion:
     allow_partial_completion: true
     recommended_sets: 3
