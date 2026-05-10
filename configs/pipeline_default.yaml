@@ -114,6 +114,18 @@ biomarker:
   enabled: false
   emit_provenance: true       # attach source_fields to all biomarkers
   unit: torso_length_ratio
+  # Default preserves 0-100 scoring. If changed, Z-score deductions and the
+  # dynamic floor are linearly scaled to this output range.
+  score_bounds:
+    min: 0.0
+    max: 100.0
+  # Relative units are normalized at runtime. Equal defaults keep the current
+  # validation pass neutral; adjust later for exercise-specific scoring studies.
+  domain_weights:
+    spatial: 1.0
+    temporal: 1.0
+    control: 1.0
+    biomech: 1.0
 
 # ── Output ────────────────────────────────────────────────────────────────────
 output:

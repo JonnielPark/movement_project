@@ -56,7 +56,7 @@ Stage activation is controlled by the `enabled` flags in
 | ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
 | ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, composite domain score, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
 | Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
@@ -234,7 +234,7 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.12 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.14 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 | 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |

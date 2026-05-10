@@ -1,7 +1,7 @@
 # 10. Biomarker Scoring
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩. Integrates ⑧ feature extraction and ⑨ biomechanical proxy
@@ -11,7 +11,7 @@ quality score.
 Two record types are emitted:
 1. **`BiomarkerRecord`** — pass-through individual metrics with `source_fields`
    provenance, suitable for table-style reporting.
-2. **`BiomarkerScoreRecord`** — per-rep composite score (0–100) with
+2. **`BiomarkerScoreRecord`** — per-rep composite score (default 0–100) with
    per-domain sub-scores, dynamic floor, and per-feature deduction audit.
 
 Corresponds to dissertation §7. Scores are anchored to a synthetic-normal
@@ -99,23 +99,25 @@ class BiomarkerScoreRecord:
     exercise_id:        str
     definition_version: str
     rep_id:             int | None
-    domain_scores:      dict[str, float]  # 0–100 per domain
+    domain_scores:      dict[str, float]  # configured score scale per domain
     floor_applied:      dict[str, bool]
     deductions:         list[dict]        # per-feature audit
     final_score:        float             # weighted composite
     source_fields:      list[str]
+    domain_weights:     dict[str, float]  # normalized weights used for final_score
+    score_bounds:       dict[str, float]  # {'min': 0.0, 'max': 100.0} by default
 ```
 
-## 4. Domain Weights
+## 4. Domain Weights and Score Bounds
 
-Hard-coded in `scoring.DOMAIN_WEIGHTS`:
+The current validation policy uses **equal relative weights** across score domains.
+Weights are parameterized as relative units and normalized at runtime:
 
 ```text
-spatial   40 %     form completeness (ROM, symmetry, shape)
-temporal  30 %     pacing and consistency
-control   20 %     stability and compensation
-                   (intentionally low so adherence is not over-penalized)
-biomech   10 %     relative load-distribution tendency
+spatial   1.0 → 25 %     form completeness (ROM, symmetry, shape)
+temporal  1.0 → 25 %     pacing and consistency
+control   1.0 → 25 %     stability and compensation
+biomech   1.0 → 25 %     relative load-distribution tendency
 ```
 
 Composite formula:
@@ -123,6 +125,32 @@ Composite formula:
 ```text
 final_score = Σ_d  W_d · domain_score_d
 ```
+
+The default relative units are stored in `configs/pipeline_default.yaml`:
+
+```yaml
+biomarker:
+  score_bounds:
+    min: 0.0
+    max: 100.0
+  domain_weights:
+    spatial: 1.0
+    temporal: 1.0
+    control: 1.0
+    biomech: 1.0
+```
+
+For the current study phase, equal weights are used to avoid adding unsupported
+clinical priority assumptions. Future sensitivity analyses can vary these values
+by exercise or reporting scenario. Setting a domain to `0.0` excludes it from the
+final composite while still allowing its domain score and deduction audit to be
+reported.
+
+The score scale is also parameterized through `score_bounds`. The default
+`min: 0.0`, `max: 100.0` preserves the current 0–100 reporting convention. If a
+different display or validation scale is required later, the same Z-score
+deduction logic is linearly scaled to the configured range rather than replacing
+the scoring method.
 
 Domain assignment is by `feature_id` / `metric_id` prefix:
 
@@ -142,10 +170,11 @@ For each feature `i` in domain `d`:
            STD_ABS_FLOOR   = 0.01
 
 Z_i      = ( value_i − μ_i ) / σ_eff_i
-w_i      = 1 / n_features_in_domain          (equal within-domain weighting)
-deduct_i = w_i · | Z_i |
+score_span = score_max − score_min
+w_i        = 1 / n_features_in_domain          (equal within-domain weighting)
+deduct_i   = (score_span / 100) · w_i · | Z_i |
 
-raw_score_d   = max( 0, 100 − Σ_i deduct_i )
+raw_score_d   = max( score_min, score_max − Σ_i deduct_i )
 domain_d      = max( floor_dynamic, raw_score_d )
 ```
 
@@ -160,13 +189,15 @@ pelvic shift in a clean squat). A 1 % torso-length deviation thus yields
 mandatory_ROM_ratio = mean(  min( ROM_i / ROM_baseline_i,  1.0 )  )
                       over primary-joint ROM features in the rep
 
-floor_dynamic = 50 · clamp( mandatory_ROM_ratio,  0.0,  1.0 )
+floor_dynamic = score_min + 0.50 · score_span · clamp( mandatory_ROM_ratio,  0.0,  1.0 )
 ```
 
 Rationale: a rep that achieves the required ROM should not be punished into
 the floor merely because of compensation movements. The floor preserves a
 half-credit for completing the movement, even if many control deductions
 apply.
+
+Default 0–100 scale:
 
 ```text
 ROM achievement    floor      maximum penalty
@@ -235,6 +266,8 @@ biomarker_records, score_records = derive_biomarkers(
     exercise_definition,
     definition_version=exercise_definition.version,
     baseline_path=None,    # default: data/reference/baseline_zscore.json
+    domain_weights=None,   # default: equal relative weights
+    score_bounds=None,     # default: {'min': 0.0, 'max': 100.0}
 )
 ```
 
@@ -283,6 +316,8 @@ src/movement/biomarker/__init__.py     BiomarkerRecord, from_feature_record,
                                        from_biomech_record, derive_biomarkers,
                                        derive_interpretations
 src/movement/biomarker/scoring.py      BiomarkerScoreRecord, DOMAIN_WEIGHTS,
+                                       normalize_domain_weights,
+                                       normalize_score_bounds,
                                        load_baseline, save_baseline,
                                        build_baseline_from_records,
                                        derive_biomarkers
@@ -295,6 +330,10 @@ data/definitions/interpretation_rules/pike_pushup.yaml
 data/definitions/interpretation_rules/plank_shoulder_tap.yaml
 scripts/compute_baseline.py            generates data/reference/baseline_zscore.json
 data/reference/baseline_zscore.json    synthetic-normal μ, σ per feature_id
+configs/pipeline_default.yaml          biomarker.domain_weights default relative units,
+                                       biomarker.score_bounds default 0–100 scale
+tests/test_biomarker_scoring_weights.py  score-domain weight normalization,
+                                          score-bound normalization, and final score
 tests/test_interpretation.py           20 tests: rule loader, 3 scenarios,
                                         edge cases
 ```
@@ -302,4 +341,13 @@ tests/test_interpretation.py           20 tests: rule loader, 3 scenarios,
 ## 13. Planned Extensions
 
 - Per-phase scoring (`Descent`-only, `Ascent`-only sub-scores), driven by
-  the phase-aware Fea
+  the phase-aware FeatureRecord family
+- Exercise-specific domain-weight profiles after sensitivity analysis; current
+  implementation supports parameterized weights, but the default remains equal.
+- Population-level baseline replacement using real cohort data, while preserving
+  the synthetic baseline as fallback
+- Confidence intervals for `final_score` from feature-level z variance
+- Set-level `BiomarkerTrendRecord` for within-set slope aggregation and fatigue
+  signatures
+- Backward-compatible migration when an exercise YAML version changes during
+  baseline development

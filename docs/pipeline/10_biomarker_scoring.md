@@ -1,7 +1,7 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
@@ -11,7 +11,7 @@
 1. **`BiomarkerRecord`** — `source_fields` provenance를 갖춘 패스스루 개별 지표.
    표 형식 보고에 적합.
 2. **`BiomarkerScoreRecord`** — 도메인별 서브 스코어, 동적 하한(dynamic floor),
-   피처별 감점 감사(audit)를 포함한 반복별 종합 점수(0–100).
+   피처별 감점 감사(audit)를 포함한 반복별 종합 점수(기본 0–100).
 
 학위논문 §7에 해당. 점수는 합성 정상 베이스라인(synthetic-normal baseline)에 고정되며,
 임상 임계값이 **아니므로** 진단 결과로 보고되어서는 안 된다.
@@ -95,23 +95,25 @@ class BiomarkerScoreRecord:
     exercise_id:        str
     definition_version: str
     rep_id:             int | None
-    domain_scores:      dict[str, float]  # 도메인별 0–100
+    domain_scores:      dict[str, float]  # 도메인별 설정 점수 척도
     floor_applied:      dict[str, bool]
     deductions:         list[dict]        # 피처별 감사
     final_score:        float             # 가중 종합
     source_fields:      list[str]
+    domain_weights:     dict[str, float]  # final_score에 사용된 정규화 가중치
+    score_bounds:       dict[str, float]  # 기본값 {'min': 0.0, 'max': 100.0}
 ```
 
-## 4. 도메인 가중치 (Domain Weights)
+## 4. 도메인 가중치와 점수 범위 (Domain Weights and Score Bounds)
 
-`scoring.DOMAIN_WEIGHTS`에 하드코딩됨:
+현재 검증 정책은 score domain 사이에 **동일 상대 가중치**를 사용한다. 가중치는 상대 단위로
+입력하고 런타임에서 합이 1이 되도록 정규화한다:
 
 ```text
-spatial   40 %     폼 완성도 (ROM, 대칭, 형태)
-temporal  30 %     속도 조절과 일관성
-control   20 %     안정성과 보상
-                   (수행자가 과도하게 감점되지 않도록 의도적으로 낮춤)
-biomech   10 %     상대적 부하 분포 경향
+spatial   1.0 → 25 %     폼 완성도 (ROM, 대칭, 형태)
+temporal  1.0 → 25 %     속도 조절과 일관성
+control   1.0 → 25 %     안정성과 보상
+biomech   1.0 → 25 %     상대적 부하 분포 경향
 ```
 
 종합 공식:
@@ -119,6 +121,28 @@ biomech   10 %     상대적 부하 분포 경향
 ```text
 final_score = Σ_d  W_d · domain_score_d
 ```
+
+기본 상대 단위는 `configs/pipeline_default.yaml`에 둔다:
+
+```yaml
+biomarker:
+  score_bounds:
+    min: 0.0
+    max: 100.0
+  domain_weights:
+    spatial: 1.0
+    temporal: 1.0
+    control: 1.0
+    biomech: 1.0
+```
+
+현재 연구 단계에서는 임상적 우선순위 가정을 임의로 추가하지 않기 위해 동일 가중을 사용한다.
+향후 민감도 분석에서는 운동별 또는 보고 목적별로 값을 조정할 수 있다. 특정 domain을 `0.0`으로
+두면 최종 종합 점수에서는 제외되지만, 해당 domain score와 감점 감사는 계속 보고할 수 있다.
+
+점수 척도 역시 `score_bounds`로 파라미터화한다. 기본값 `min: 0.0`, `max: 100.0`은 현재의
+0–100 보고 규칙을 그대로 유지한다. 향후 다른 표시 척도나 검증 척도가 필요해지면, 점수화
+방법을 바꾸는 것이 아니라 같은 Z-score 감점 로직을 설정된 범위에 선형 스케일링한다.
 
 도메인 할당은 `feature_id` / `metric_id` 접두어로 결정된다:
 
@@ -138,10 +162,11 @@ control.*    → control      biomech.*    → biomech
            STD_ABS_FLOOR   = 0.01
 
 Z_i      = ( value_i − μ_i ) / σ_eff_i
-w_i      = 1 / n_features_in_domain          (도메인 내 균등 가중)
-deduct_i = w_i · | Z_i |
+score_span = score_max − score_min
+w_i        = 1 / n_features_in_domain          (도메인 내 균등 가중)
+deduct_i   = (score_span / 100) · w_i · | Z_i |
 
-raw_score_d   = max( 0, 100 − Σ_i deduct_i )
+raw_score_d   = max( score_min, score_max − Σ_i deduct_i )
 domain_d      = max( floor_dynamic, raw_score_d )
 ```
 
@@ -155,11 +180,13 @@ domain_d      = max( floor_dynamic, raw_score_d )
 mandatory_ROM_ratio = mean(  min( ROM_i / ROM_baseline_i,  1.0 )  )
                       반복 내 주요 관절 ROM 피처에 대해
 
-floor_dynamic = 50 · clamp( mandatory_ROM_ratio,  0.0,  1.0 )
+floor_dynamic = score_min + 0.50 · score_span · clamp( mandatory_ROM_ratio,  0.0,  1.0 )
 ```
 
 근거: 요구되는 ROM을 달성한 반복은 단지 보상 움직임 때문에 하한까지 처벌받아서는 안 된다.
 하한은 많은 control 감점이 적용되더라도 동작을 완수한 것에 대한 절반 점수를 보존한다.
+
+기본 0–100 척도:
 
 ```text
 ROM 달성률         하한       최대 감점
@@ -226,6 +253,8 @@ biomarker_records, score_records = derive_biomarkers(
     exercise_definition,
     definition_version=exercise_definition.version,
     baseline_path=None,    # 기본값: data/reference/baseline_zscore.json
+    domain_weights=None,   # 기본값: 동일 상대 가중
+    score_bounds=None,     # 기본값: {'min': 0.0, 'max': 100.0}
 )
 ```
 
@@ -272,6 +301,8 @@ src/movement/biomarker/__init__.py     BiomarkerRecord, from_feature_record,
                                        from_biomech_record, derive_biomarkers,
                                        derive_interpretations
 src/movement/biomarker/scoring.py      BiomarkerScoreRecord, DOMAIN_WEIGHTS,
+                                       normalize_domain_weights,
+                                       normalize_score_bounds,
                                        load_baseline, save_baseline,
                                        build_baseline_from_records,
                                        derive_biomarkers
@@ -284,6 +315,10 @@ data/definitions/interpretation_rules/pike_pushup.yaml
 data/definitions/interpretation_rules/plank_shoulder_tap.yaml
 scripts/compute_baseline.py            data/reference/baseline_zscore.json 생성
 data/reference/baseline_zscore.json    feature_id별 합성 정상 μ, σ
+configs/pipeline_default.yaml          biomarker.domain_weights 기본 상대 단위,
+                                       biomarker.score_bounds 기본 0–100 척도
+tests/test_biomarker_scoring_weights.py  score-domain 가중치 정규화,
+                                        score-bound 정규화와 final score
 tests/test_interpretation.py           20건: 규칙 로더, 3개 시나리오, 엣지 케이스
 ```
 
@@ -293,7 +328,7 @@ tests/test_interpretation.py           20건: 규칙 로더, 3개 시나리오, 
   패밀리로 구동
 - 인구 단위 베이스라인 교체 (실제 코호트 데이터), 합성 베이스라인을 폴백으로 보존
 - 피처별 z 분산으로부터 `final_score`별 신뢰 구간
-- 운동별 설정 가능한 도메인 가중치 (예: `plank_shoulder_tap`에서 control을 30 %로 상향);
-  현재 구현은 프로젝트 전역 상수
+- 민감도 분석 이후 운동별 domain-weight profile 정의; 현재 구현은 parameterized weights를
+  지원하지만 기본값은 동일 가중으로 둔다.
 - 세트 단위 추세 `BiomarkerTrendRecord` (세트 내 반복 간 집계 slope, 피로 시그니처)
 - YAML 버전이 베이스라인 도중에 변경될 때의 하위 호환 마이그레이션

@@ -6,32 +6,36 @@ data/reference/baseline_zscore.json. Scores are relative to the baseline
 and do not represent clinical thresholds.
 
 Domain weights:
-    spatial  40 %  — form completeness (ROM, symmetry, shape)
-    temporal 30 %  — pacing and consistency
-    control  20 %  — stability and compensation (intentionally low weight
-                       to avoid penalising compensation too harshly and
-                       preserve user adherence)
-    biomech  10 %  — relative load-distribution tendency
+    Defaults are equal across score domains for the current validation pass.
+    Relative weights can be overridden by config or caller input, then are
+    normalized to sum to 1.0 before computing the final score.
+
+Score bounds:
+    Defaults preserve 0–100 scoring. Custom bounds linearly scale the same
+    Z-score deduction method instead of changing the scoring logic.
 
 Dynamic floor (per domain):
-    floor_dynamic = 50 × clamp(mandatory_ROM_ratio, 0.0, 1.0)
+    floor_dynamic =
+        score_min + 0.50 × score_span × clamp(mandatory_ROM_ratio, 0.0, 1.0)
     No domain score may fall below this floor due to compensation deductions.
     Example: achieving 80 % of expected ROM → floor = 40 pts.
 
 Score formula (per domain d):
-    Score_d = max(floor_dynamic, 100 − Σ_i w_i · |Z_i|)
+    Score_d =
+        max(floor_dynamic, score_max − Σ_i (score_span / 100) · w_i · |Z_i|)
 
     where w_i = 1 / n_features_in_domain (equal within-domain weight),
     Z_i = (value_i − μ_i) / σ_i against the synthetic-normal baseline.
 
 Composite:
     Score_final = Σ_d W_d · Score_d,
-    W = { spatial: 0.4, temporal: 0.3, control: 0.2, biomech: 0.1 }
+    W defaults to equal normalized weights across score domains.
 """
 from __future__ import annotations
 
 import json
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -46,12 +50,20 @@ if TYPE_CHECKING:
 
 # Project root: src/movement/biomarker/scoring.py → 4 levels up
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_SCORE_DOMAIN_ORDER: tuple[str, ...] = ("spatial", "temporal", "control", "biomech")
 
 DOMAIN_WEIGHTS: dict[str, float] = {
-    "spatial":  0.40,
-    "temporal": 0.30,
-    "control":  0.20,
-    "biomech":  0.10,
+    "spatial":  0.25,
+    "temporal": 0.25,
+    "control":  0.25,
+    "biomech":  0.25,
+}
+DEFAULT_SCORE_BOUNDS: dict[str, float] = {
+    "min": 0.0,
+    "max": 100.0,
+}
+_DEFAULT_DOMAIN_WEIGHT_UNITS: dict[str, float] = {
+    domain: 1.0 for domain in _SCORE_DOMAIN_ORDER
 }
 
 # Minimum σ applied at Z-score computation time (not stored in baseline):
@@ -61,6 +73,76 @@ DOMAIN_WEIGHTS: dict[str, float] = {
 # so a 1 % torso-length deviation yields Z ≈ 1 rather than Z → ∞).
 _STD_FLOOR_RATIO: float = 0.10
 _STD_ABS_FLOOR: float = 0.01
+
+
+def normalize_domain_weights(
+    domain_weights: Mapping[str, float] | None = None,
+) -> dict[str, float]:
+    """Return normalized score-domain weights.
+
+    Supplied weights are relative units, not percentages. Missing domains keep
+    the default unit weight, and a domain can be excluded by setting it to 0.
+    Unknown domains are ignored with a warning.
+    """
+    weights = dict(_DEFAULT_DOMAIN_WEIGHT_UNITS)
+
+    if domain_weights:
+        for domain, value in domain_weights.items():
+            if domain not in weights:
+                warnings.warn(
+                    f"[biomarker] Ignoring unknown score domain weight '{domain}'.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
+            weight = float(value)
+            if weight < 0:
+                raise ValueError(
+                    f"Score domain weight for '{domain}' must be >= 0; got {weight}."
+                )
+            weights[domain] = weight
+
+    total = sum(weights.values())
+    if total <= 0:
+        raise ValueError("At least one score domain weight must be positive.")
+
+    return {domain: weights[domain] / total for domain in _SCORE_DOMAIN_ORDER}
+
+
+def normalize_score_bounds(
+    score_bounds: Mapping[str, float] | None = None,
+) -> dict[str, float]:
+    """Return validated score bounds.
+
+    The default preserves the current 0–100 scale. Custom bounds change the
+    reporting scale and linearly scale deductions and dynamic floors.
+    """
+    bounds = dict(DEFAULT_SCORE_BOUNDS)
+
+    if score_bounds:
+        for name, value in score_bounds.items():
+            if name not in bounds:
+                warnings.warn(
+                    f"[biomarker] Ignoring unknown score bound '{name}'.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
+            bounds[name] = float(value)
+
+    score_min = bounds["min"]
+    score_max = bounds["max"]
+    if not np.isfinite(score_min) or not np.isfinite(score_max):
+        raise ValueError("Score bounds must be finite numbers.")
+    if score_min < 0:
+        raise ValueError(f"Score lower bound must be >= 0; got {score_min}.")
+    if score_max <= score_min:
+        raise ValueError(
+            "Score upper bound must be greater than lower bound; "
+            f"got min={score_min}, max={score_max}."
+        )
+
+    return {"min": score_min, "max": score_max}
 
 
 # ── Output dataclass ──────────────────────────────────────────────────────────
@@ -80,8 +162,10 @@ class BiomarkerScoreRecord:
     deductions         : per-feature audit list
                          [{'feature_id', 'domain', 'value', 'baseline_mean',
                            'baseline_std', 'z', 'w', 'deduction'}, ...]
-    final_score        : weighted composite, 0–100
+    final_score        : weighted composite on the configured score scale
     source_fields      : exercise definition fields that drove the score
+    domain_weights     : normalized domain weights used for final_score
+    score_bounds       : score scale used for domain_scores and final_score
     """
     score_id: str
     exercise_id: str
@@ -92,6 +176,12 @@ class BiomarkerScoreRecord:
     deductions: list[dict[str, Any]]
     final_score: float
     source_fields: list[str] = field(default_factory=list)
+    domain_weights: dict[str, float] = field(
+        default_factory=lambda: dict(DOMAIN_WEIGHTS)
+    )
+    score_bounds: dict[str, float] = field(
+        default_factory=lambda: dict(DEFAULT_SCORE_BOUNDS)
+    )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -104,6 +194,8 @@ class BiomarkerScoreRecord:
             "final_score":        self.final_score,
             "deductions":         self.deductions,
             "source_fields":      self.source_fields,
+            "domain_weights":     self.domain_weights,
+            "score_bounds":       self.score_bounds,
         }
 
 
@@ -234,10 +326,11 @@ def _derive_domain_score(
     records: list[Any],
     baseline: dict[str, dict[str, float]],
     floor_dynamic: float,
+    score_bounds: dict[str, float],
 ) -> tuple[float, bool, list[dict[str, Any]]]:
     """Compute one domain score via the Z-score deduction formula.
 
-    Score = max(floor_dynamic, 100 − Σ_i w_i · |Z_i|)
+    Score = max(floor_dynamic, score_max − Σ_i scaled_deduction_i)
     Equal within-domain weights: w_i = 1 / n.
 
     Returns
@@ -246,10 +339,12 @@ def _derive_domain_score(
     """
     valid = [r for r in records if _record_id(r) in baseline]
     if not valid:
-        return 100.0, False, []
+        return score_bounds["max"], False, []
 
     n = len(valid)
     w_i = 1.0 / n
+    score_span = score_bounds["max"] - score_bounds["min"]
+    deduction_scale = score_span / 100.0
     deductions: list[dict[str, Any]] = []
     total_deduction = 0.0
 
@@ -262,19 +357,21 @@ def _derive_domain_score(
             _STD_ABS_FLOOR,
         )
         z = (float(r.value) - mu) / sigma
-        d = w_i * abs(z)
+        d = deduction_scale * w_i * abs(z)
         total_deduction += d
-        deductions.append({
-            "feature_id":     rid,
-            "value":          round(float(r.value), 4),
-            "baseline_mean":  round(mu, 4),
-            "baseline_std":   round(sigma, 4),
-            "z":              round(z, 3),
-            "w":              round(w_i, 4),
-            "deduction":      round(d, 4),
-        })
+        deductions.append(
+            {
+                "feature_id": rid,
+                "value": round(float(r.value), 4),
+                "baseline_mean": round(mu, 4),
+                "baseline_std": round(sigma, 4),
+                "z": round(z, 3),
+                "w": round(w_i, 4),
+                "deduction": round(d, 4),
+            }
+        )
 
-    raw_score = max(0.0, 100.0 - total_deduction)
+    raw_score = max(score_bounds["min"], score_bounds["max"] - total_deduction)
     final_score = max(floor_dynamic, raw_score)
     floor_applied = raw_score < floor_dynamic
 
@@ -288,9 +385,11 @@ def _score_one_rep(
     definition_version: str,
     rep_id: int | None,
     baseline: dict[str, dict[str, float]],
+    domain_weights: dict[str, float],
+    score_bounds: dict[str, float],
 ) -> BiomarkerScoreRecord:
     """Compute BiomarkerScoreRecord for one rep (or the full sequence)."""
-    domain_records: dict[str, list] = {d: [] for d in DOMAIN_WEIGHTS}
+    domain_records: dict[str, list] = {d: [] for d in _SCORE_DOMAIN_ORDER}
 
     for r in feat_rep:
         d = _classify_domain(_record_id(r))
@@ -302,15 +401,21 @@ def _score_one_rep(
             domain_records[d].append(r)
 
     rom_ratio = _mandatory_rom_ratio(feat_rep, exercise_definition, baseline)
-    floor_dynamic = 50.0 * max(0.0, min(1.0, rom_ratio))
+    score_span = score_bounds["max"] - score_bounds["min"]
+    floor_dynamic = score_bounds["min"] + 0.50 * score_span * max(
+        0.0, min(1.0, rom_ratio)
+    )
 
     domain_scores: dict[str, float] = {}
     floor_applied: dict[str, bool] = {}
     all_deductions: list[dict[str, Any]] = []
 
-    for domain in DOMAIN_WEIGHTS:
+    for domain in _SCORE_DOMAIN_ORDER:
         score_d, floor_d, ded_d = _derive_domain_score(
-            domain_records[domain], baseline, floor_dynamic,
+            domain_records[domain],
+            baseline,
+            floor_dynamic,
+            score_bounds,
         )
         domain_scores[domain] = score_d
         floor_applied[domain] = floor_d
@@ -318,7 +423,9 @@ def _score_one_rep(
             item["domain"] = domain
         all_deductions.extend(ded_d)
 
-    final_score = sum(DOMAIN_WEIGHTS[d] * domain_scores[d] for d in DOMAIN_WEIGHTS)
+    final_score = sum(
+        domain_weights[d] * domain_scores[d] for d in _SCORE_DOMAIN_ORDER
+    )
 
     return BiomarkerScoreRecord(
         score_id="rep_quality_score",
@@ -330,6 +437,8 @@ def _score_one_rep(
         deductions=all_deductions,
         final_score=round(final_score, 2),
         source_fields=["feature_domains", "biomechanical_focus", "quality_rules"],
+        domain_weights=domain_weights,
+        score_bounds=score_bounds,
     )
 
 
@@ -342,6 +451,8 @@ def derive_biomarkers(
     definition_version: str,
     *,
     baseline_path: Path | str | None = None,
+    domain_weights: Mapping[str, float] | None = None,
+    score_bounds: Mapping[str, float] | None = None,
 ) -> tuple[list[Any], list[BiomarkerScoreRecord]]:
     """Main entry point for ⑩ Biomarker Derivation.
 
@@ -361,6 +472,10 @@ def derive_biomarkers(
     definition_version : exercise YAML version (exercise_def.version)
     baseline_path      : path to baseline JSON.
                          None → data/reference/baseline_zscore.json
+    domain_weights     : optional relative score-domain weights.
+                         Defaults to equal normalized weights across domains.
+    score_bounds       : optional score scale, e.g. {"min": 0, "max": 100}.
+                         Defaults to 0–100.
 
     Returns
     -------
@@ -397,6 +512,9 @@ def derive_biomarkers(
         )
         return biomarker_records, []
 
+    normalized_domain_weights = normalize_domain_weights(domain_weights)
+    normalized_score_bounds = normalize_score_bounds(score_bounds)
+
     rep_ids: set[int] = set()
     for r in feat_records:
         if r.rep_id is not None:
@@ -409,17 +527,33 @@ def derive_biomarkers(
 
     if rep_ids:
         for rep_id in sorted(rep_ids):
-            feat_rep    = [r for r in feat_records    if r.rep_id == rep_id]
+            feat_rep = [r for r in feat_records if r.rep_id == rep_id]
             biomech_rep = [r for r in biomech_records if r.rep_id == rep_id]
-            score_records.append(_score_one_rep(
-                feat_rep, biomech_rep, exercise_definition,
-                definition_version, rep_id, baseline,
-            ))
+            score_records.append(
+                _score_one_rep(
+                    feat_rep,
+                    biomech_rep,
+                    exercise_definition,
+                    definition_version,
+                    rep_id,
+                    baseline,
+                    normalized_domain_weights,
+                    normalized_score_bounds,
+                )
+            )
     else:
-        score_records.append(_score_one_rep(
-            feat_records, biomech_records, exercise_definition,
-            definition_version, None, baseline,
-        ))
+        score_records.append(
+            _score_one_rep(
+                feat_records,
+                biomech_records,
+                exercise_definition,
+                definition_version,
+                None,
+                baseline,
+                normalized_domain_weights,
+                normalized_score_bounds,
+            )
+        )
 
     return biomarker_records, score_records
 
@@ -427,6 +561,9 @@ def derive_biomarkers(
 __all__ = [
     "BiomarkerScoreRecord",
     "DOMAIN_WEIGHTS",
+    "DEFAULT_SCORE_BOUNDS",
+    "normalize_domain_weights",
+    "normalize_score_bounds",
     "build_baseline_from_records",
     "save_baseline",
     "load_baseline",
