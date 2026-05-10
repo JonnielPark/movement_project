@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.11
+**Document Version:** 1.4.12
 **Last Updated:** 2026-05-10
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,7 +14,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.11 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.12 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
@@ -61,6 +61,18 @@ can change muscle moment arms and recruitment strategies; therefore, active side
 relative load shift, moment-arm proxy, and compensatory movement are treated as
 interpretable tendencies derived from observable motion, not direct evidence of
 activation in a specific muscle.
+
+The current priority scope is structured in-place bodyweight exercise. Squat, lunge,
+pike push-up, and plank shoulder tap are suitable for comparing rep-level
+joint-/segment-level motion from monocular 3D pose without equipment tracking or
+large spatial travel. In contrast, equipment-based exercises with dumbbells, bands,
+or barbells would require additional records for equipment position, external load
+metadata, hand-equipment contact, and resistance direction. Highly dynamic or
+spatially traveling tasks such as jumping, running, or change-of-direction movements
+would require ground-contact events, flight phases, global travel paths, tracking
+continuity, more complex event segmentation, and expanded camera protocols. The
+current results should therefore be interpreted as engineering feasibility and
+robustness evidence within this scope.
 
 ---
 

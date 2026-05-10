@@ -227,7 +227,7 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.11 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.12 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -266,6 +266,11 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 대신, 단일 비전(monocular vision) 기반 원격 모니터링 환경에서도 범용적으로 추적 가능한 **'신체 분절 간의 상대적 부하 전이(relative load shift)'** 및 **'운동 사슬(kinetic chain)의 붕괴 패턴'**을 정량화하여, 시스템의 **공학적 실현 가능성과 강건성(robustness)을 검증**하는 데 집중한다.
 
 따라서 본 파이프라인의 모든 생체역학적 프록시 지표는 절대적 힘·질량·길이 단위가 아니라, 사용자 신체 척도로 정규화한 상대값 또는 각도 기반 지표로 설계 및 산출된다 (예: `torso_length_ratio`, `degree`, `dimensionless_cv`, `dimensionless` 등).
+
+현재 대상 운동은 비기구 기반의 제자리 반복 운동(structured in-place bodyweight exercises)으로
+한정한다. 기구를 사용하는 운동이나 점프, 달리기, 방향전환처럼 고동적 또는 공간 이동이 큰
+운동으로 확장하려면 기구 위치, 외부 부하 metadata, 손-기구 접촉, 지면 접촉 이벤트, 공중
+phase, 전역 이동 경로, 더 복잡한 event segmentation과 camera protocol이 추가로 필요하다.
 
 이는 임상적 효능(clinical efficacy)의 직접 증명 이전에, 단안 카메라 환경의 물리적 한계를 우회하여 의료진의 임상적 추론을 일관되게 지원할 수 있는 신뢰성 있는 XAI 구조를 우선적으로 확보하기 위함이다.
 

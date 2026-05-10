@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.11
+**문서 버전:** 1.4.12
 **최종 갱신:** 2026-05-10
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.11 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.12 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -56,6 +56,14 @@
 달라질 수 있으므로, 본 연구의 활성 측, 상대 부하 전이, moment-arm proxy, 보상 움직임은
 특정 근육 활성의 직접 증거가 아니라 관찰 가능한 움직임에서 유도한 해석 가능한 경향성으로
 다룬다.
+
+현재 파이프라인의 우선 적용 범위는 비기구 기반의 제자리 반복 운동이다. 스쿼트, 런지,
+파이크 푸쉬업, 플랭크 숄더탭은 외부 기구나 넓은 공간 이동 추적 없이도 단안 3D pose에서
+반복 단위 관절·분절 움직임을 비교하기에 적합하다. 반대로 덤벨, 밴드, 바벨 같은 기구 사용
+운동은 기구 위치, 외부 부하 metadata, 손-기구 접촉 상태, 저항 방향을 추가로 기록해야 한다.
+점프, 달리기, 방향전환처럼 고동적이거나 공간 이동이 큰 운동은 지면 접촉 이벤트, 공중 phase,
+전역 이동 경로, tracking continuity, 더 복잡한 event segmentation 및 camera protocol 확장이
+필요하다. 따라서 현재 결과는 이 범위 안에서의 공학적 타당성과 강건성 검증으로 해석한다.
 
 ---
 
