@@ -254,6 +254,8 @@ class BiomarkerConfig:
     enabled: bool = False
     emit_provenance: bool = True
     unit: str = "torso_length_ratio"
+    domain_weights: dict[str, float] | None = None
+    score_bounds: dict[str, float] | None = None
 
 
 # backward-compatibility alias
@@ -434,6 +436,8 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=bm.get("enabled", False),
             emit_provenance=bool(bm.get("emit_provenance", True)),
             unit=bm.get("unit", "torso_length_ratio"),
+            domain_weights=bm.get("domain_weights"),
+            score_bounds=bm.get("score_bounds"),
         ),
         output=OutputConfig(
             save_processed=out.get("save_processed", False),
@@ -686,6 +690,8 @@ def run_pipeline(
                 biomech_records=biomech_records,
                 exercise_definition=exercise_def,
                 definition_version=def_version,
+                domain_weights=config.biomarker.domain_weights,
+                score_bounds=config.biomarker.score_bounds,
             )
             report["biomarker"] = [b.as_dict() for b in biomarker_records]
             if score_records:

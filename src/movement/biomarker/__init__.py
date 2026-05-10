@@ -113,6 +113,8 @@ def derive_biomarkers(
     definition_version: str,
     *,
     baseline_path=None,
+    domain_weights=None,
+    score_bounds=None,
 ):
     """Convenience re-export of biomarker.scoring.derive_biomarkers.
 
@@ -126,6 +128,8 @@ def derive_biomarkers(
         exercise_definition,
         definition_version,
         baseline_path=baseline_path,
+        domain_weights=domain_weights,
+        score_bounds=score_bounds,
     )
 
 

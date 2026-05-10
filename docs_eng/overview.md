@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.12
+**Document Version:** 1.4.14
 **Last Updated:** 2026-05-10
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,7 +14,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.12 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.14 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
@@ -28,7 +28,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
@@ -135,7 +135,7 @@ Output
     Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
-    Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, 0–100)
+    Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, default 0–100 configurable scale)
     Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
     Segmentation report — SegmentationReport list, one per rep
     Segmentation failure point records — SegmentationFailurePoint list for frames/ranges needing manual intervention
@@ -278,7 +278,7 @@ See [05_normalization.md](pipeline/05_normalization.md).
   [done]  Moment arm proxy — knee / hip sagittal plane, rep-level + visibility weighting
   [done]  extract_rep_biomech() orchestrator wired into pipeline ⑨
   [done]  Biomarker record conversion (FeatureRecord / BiomechRecord → BiomarkerRecord)
-  [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, composite domain score (0–100)
+  [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, configurable score bounds, composite domain score
   [done]  derive_biomarkers() entry point wired into pipeline ⑩
   [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
   [in progress]  Segmentation (⑥) — `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase splitting; manual intervention on failure

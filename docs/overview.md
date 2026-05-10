@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.12
+**문서 버전:** 1.4.14
 **최종 갱신:** 2026-05-10
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.12 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.14 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -28,7 +28,7 @@
 | 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
@@ -125,7 +125,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     Phase summary       — summarize_phase_to_rep() 계층 집계 (예: Descent/Ascent ROM 비율)
     생체역학 프록시 테이블 — BiomechRecord 목록, 반복 단위, 가시성(visibility) 가중
     바이오마커 기록 목록 — BiomarkerRecord (개별 지표 패스스루)
-    바이오마커 점수 목록 — BiomarkerScoreRecord (반복별 Z-score 종합, 0–100)
+    바이오마커 점수 목록 — BiomarkerScoreRecord (반복별 Z-score 종합, 기본 0–100의 조정 가능 척도)
     해석 기록 목록      — InterpretationRecord (반복별 YAML 규칙 기반 서술 라벨)
     세그멘테이션 리포트 — SegmentationReport 목록, 반복당 1개
     분할 실패 지점 기록 — SegmentationFailurePoint 목록, 수동 개입 필요 프레임/구간
@@ -264,7 +264,7 @@ optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coars
   [완료]  모멘트 암 프록시 — 무릎/엉덩이 시상면, 반복 단위 + 가시성 가중
   [완료]  extract_rep_biomech() 오케스트레이터를 파이프라인 ⑨에 결선
   [완료]  바이오마커 레코드 변환 (FeatureRecord / BiomechRecord → BiomarkerRecord)
-  [완료]  BiomarkerScoreRecord — Z-score 감점, 동적 하한(dynamic floor), 도메인 종합 점수 (0–100)
+  [완료]  BiomarkerScoreRecord — Z-score 감점, 동적 하한(dynamic floor), 조정 가능 점수 범위, 도메인 종합 점수
   [완료]  derive_biomarkers() 진입점을 파이프라인 ⑩에 결선
   [완료]  합성 정상 베이스라인 (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
   [진행]  Segmentation (⑥) — `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 분할; 실패 시 수동 개입

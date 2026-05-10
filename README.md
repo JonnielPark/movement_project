@@ -54,7 +54,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | ⑦ Motion Attribution | `motion_attribution.py` | 반복별 활성 사지(active-limb) 일관성; `performance_protocol.side_sequence` 참조; conservative / auto-correct 모드 |
 | ⑧ Feature Extraction | `features/` | ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑩ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 도메인 종합 점수 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3) |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3) |
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
 | 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 4개 운동 × 5–7개 규칙; 금지 어휘 검증 완료 |
 | 파이프라인 러너 | `pipeline.py` | 단계 ①–⑩ 결선 |
@@ -227,7 +227,7 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.12 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.14 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
