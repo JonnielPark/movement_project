@@ -1,7 +1,7 @@
 # 02. Annotation
 
-**Document Version:** 1.1.2
-**Last Updated:** 2026-05-09
+**Document Version:** 1.1.3
+**Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
 Pipeline step ②. Merges segment metadata from a user-prepared annotation CSV into
@@ -55,6 +55,10 @@ failure_point_frame Int64     nullable; frame where the performance failure poin
 failure_rep_id      Int64     nullable; rep_id where performance failure is first observed
 failure_reason      str       nullable; posture_breakdown | inconsistent_rom | side_order_error | pain_or_risk | participant_stop | unknown
 performance_note    str       nullable; free-text note about performance quality or stop reason
+rep_side_sequence   str       nullable; observed side order, e.g., right,left,right,left or same_side_block_then_switch
+side_block_size     Int64     nullable; observed same-side block size when applicable
+rep_unit            str       nullable; observed segmented unit, e.g., repetition | tap
+protocol_cycle_id   Int64     nullable; participant-facing protocol-cycle id for grouped atomic reps
 ```
 
 `exercise_type` drives ③ exercise definition loading.
@@ -67,6 +71,10 @@ in reports or visualization.
 Performance provenance columns record what actually happened during acquisition:
 target-count completion, performance failure point, and stop reason. They do not
 diagnose strength or fatigue and are not automatic exclusion rules.
+Observed count/side-sequence columns (`rep_side_sequence`, `side_block_size`,
+`rep_unit`, `protocol_cycle_id`) are compared with ③ `performance_protocol` in
+later reporting and ⑦ Motion Attribution. A mismatch is warning/provenance, not
+automatic frame exclusion.
 
 ## 3. Annotation Hierarchy
 
@@ -104,7 +112,8 @@ exercise_type, pattern, starting_side, phase, note,
 session_id, recording_id, set_index,
 camera_zone, camera_height_level, reference_mat_used, filming_protocol_status,
 performance_protocol_status, actual_rep_count, failure_point_frame,
-failure_rep_id, failure_reason, performance_note
+failure_rep_id, failure_reason, performance_note,
+rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id
 ```
 
 ### Example: single set, 3 reps
@@ -204,6 +213,7 @@ Supported:
 - Exercise context columns (exercise_type, pattern, starting_side)
 - Preserving manually provided phase labels
 - Preserving filming provenance columns (session_id, recording_id, set_index, camera_zone, camera_height_level)
+- Preserving observed protocol metadata (rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id)
 ```
 
 Not in scope:

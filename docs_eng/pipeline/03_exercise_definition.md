@@ -1,7 +1,7 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.6
-**Last Updated:** 2026-05-09
+**Document Version:** 1.4.8
+**Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③. Loads exercise YAML files from `data/definitions/exercises/`.
@@ -20,7 +20,7 @@ Pose CSV + annotation + exercise YAML
 → ④ Preprocessing                 (reads laterality, landmarks, quality_rules)
 → ⑤ Normalization
 → ⑥ Segmentation
-→ ⑦ Motion Attribution            (reads laterality, primary_joints)
+→ ⑦ Motion Attribution            (reads laterality, primary_joints, performance_protocol.side_sequence)
 → ⑧ Feature Extraction            (reads feature_domains, joint_actions)
 → ⑨ Biomech Proxy                 (reads biomechanical_focus)
 → ⑩ Biomarker Derivation          (reads compensation_candidates)
@@ -212,6 +212,7 @@ performance_protocol:
     mode: none                   # none | alternating_each_rep | same_side_block_then_switch
     block_size_counts: null      # e.g., lunge: 5
     first_side_source: null      # null | annotation.starting_side
+  allowed_side_sequence_modes: [none]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
@@ -233,6 +234,8 @@ segmentation_reps_per_count   how many segmented atomic reps correspond to one p
 side_sequence.mode            expected left/right order at the protocol level
 block_size_counts             count size before side switching, if block-based
 first_side_source             where the first side is declared
+allowed_side_sequence_modes   side-sequence variants allowed for this exercise/protocol family;
+                               side_sequence.mode is the selected study protocol
 allow_partial_completion      whether fewer than target_count can be accepted with metadata
 recommended_sets              practical acquisition recommendation, not an automatic multiplier
 analysis_disrupting_patterns  performance-pattern candidates to observe/record; not automatic exclusion rules
@@ -251,6 +254,7 @@ performance_protocol:
     mode: same_side_block_then_switch
     block_size_counts: 5
     first_side_source: annotation.starting_side
+  allowed_side_sequence_modes: [same_side_block_then_switch, alternating_each_rep]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
@@ -265,14 +269,18 @@ performance_protocol:
     mode: alternating_each_rep
     block_size_counts: null
     first_side_source: annotation.starting_side
+  allowed_side_sequence_modes: [alternating_each_rep]
   completion:
     allow_partial_completion: false
     recommended_sets: 3
 ```
 
 Current implementation parses and validates this metadata in ③ Exercise Definition.
-⑦ Motion Attribution still uses the existing `pattern` / `starting_side` behavior;
-block-based side-sequence enforcement is a later implementation step.
+⑦ Motion Attribution reads `performance_protocol.side_sequence` first, then falls
+back to annotation `pattern` / `starting_side` when no protocol rule is declared.
+`allowed_side_sequence_modes` is a protocol-design field: it records acceptable
+variants for the exercise, but does not override the selected `side_sequence.mode`
+during runtime attribution.
 
 Acquisition rules that are fixed by the performance protocol, such as count unit,
 side sequence, and completion policy, belong in `performance_protocol`. What
@@ -448,6 +456,11 @@ camera_protocol:
 ```
 
 Shared zone/height definitions are stored in `data/camera/camera_zones.yaml`.
+Current implementation parses this block into `CameraProtocolSpec`, validates
+`recommended_zones` and `recommended_height` against the shared camera YAML, and
+enforces `out_of_zone_policy: warn_and_continue`. Runtime camera-zone or
+height-level mismatches are reported as warning/provenance only: no coordinate
+correction, no reprojection, and no forced exclusion.
 For the full filming principle, see
 [camera_protocol.md](../practical_protocols/camera_protocol.md). For
 participant-facing exercise cues and analysis-disrupting performance patterns, see
@@ -558,6 +571,7 @@ performance_protocol:
     mode: none
     block_size_counts: null
     first_side_source: null
+  allowed_side_sequence_modes: [none]
   completion:
     allow_partial_completion: false
     recommended_sets: 3

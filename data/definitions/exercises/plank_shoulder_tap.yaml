@@ -88,6 +88,7 @@ performance_protocol:
     mode: alternating_each_rep
     block_size_counts: null
     first_side_source: annotation.starting_side
+  allowed_side_sequence_modes: [alternating_each_rep]
   completion:
     allow_partial_completion: false
     recommended_sets: 3

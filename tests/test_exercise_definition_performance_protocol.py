@@ -18,6 +18,10 @@ def test_lunge_loads_same_side_block_performance_protocol():
     assert protocol.side_sequence.mode == "same_side_block_then_switch"
     assert protocol.side_sequence.block_size_counts == 5
     assert protocol.side_sequence.first_side_source == "annotation.starting_side"
+    assert protocol.allowed_side_sequence_modes == [
+        "same_side_block_then_switch",
+        "alternating_each_rep",
+    ]
 
 
 def test_plank_shoulder_tap_loads_left_right_pair_counting():
@@ -30,6 +34,7 @@ def test_plank_shoulder_tap_loads_left_right_pair_counting():
     assert protocol.counting.count_unit == "left_right_pair"
     assert protocol.counting.segmentation_reps_per_count == 2
     assert protocol.side_sequence.mode == "alternating_each_rep"
+    assert protocol.allowed_side_sequence_modes == ["alternating_each_rep"]
     assert "excessive_pelvic_rotation" in protocol.analysis_disrupting_patterns
 
 
@@ -39,6 +44,7 @@ def test_pike_pushup_allows_partial_completion_metadata():
     protocol = definition.performance_protocol
 
     assert protocol is not None
+    assert protocol.allowed_side_sequence_modes == ["none"]
     assert protocol.completion.allow_partial_completion is True
     assert protocol.completion.recommended_sets == 3
 
@@ -48,6 +54,8 @@ def test_target_exercises_recommend_three_validation_sets():
         definition = load_exercise_definition(exercise_id, DEFINITIONS_DIR)
 
         assert definition.performance_protocol is not None
+        protocol = definition.performance_protocol
+        assert protocol.side_sequence.mode in protocol.allowed_side_sequence_modes
         assert definition.performance_protocol.completion.recommended_sets == 3
 
 
@@ -96,4 +104,90 @@ performance_protocol:
     )
 
     with pytest.raises(ValueError, match="block_size_counts"):
+        load_exercise_definition("bad", tmp_path)
+
+
+def test_allowed_side_sequence_modes_reject_unknown_mode(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(
+        """
+exercise_id: bad
+display_name: Bad
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: alternating
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: alternating_each_rep
+    block_size_counts: null
+  allowed_side_sequence_modes: [alternating_each_rep, zigzag]
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="allowed_side_sequence_modes"):
+        load_exercise_definition("bad", tmp_path)
+
+
+def test_selected_side_sequence_mode_must_be_allowed(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(
+        """
+exercise_id: bad
+display_name: Bad
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: alternating
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: alternating_each_rep
+    block_size_counts: null
+  allowed_side_sequence_modes: [none]
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 1
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="side_sequence.mode"):
         load_exercise_definition("bad", tmp_path)

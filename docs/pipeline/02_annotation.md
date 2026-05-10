@@ -1,7 +1,7 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.1.2
-**최종 갱신:** 2026-05-09
+**문서 버전:** 1.1.3
+**최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ②. 사용자가 준비한 어노테이션 CSV의 구간(segment) 메타데이터를 포즈
@@ -55,6 +55,10 @@ failure_point_frame Int64     nullable; 수행 실패 지점 또는 중단 지�
 failure_rep_id      Int64     nullable; 수행 실패가 처음 확인된 rep_id
 failure_reason      str       nullable; posture_breakdown | inconsistent_rom | side_order_error | pain_or_risk | participant_stop | unknown
 performance_note    str       nullable; 수행 품질 또는 중단 사유에 대한 자유 기록
+rep_side_sequence   str       nullable; 실제 관찰된 좌우 순서, 예: right,left,right,left 또는 same_side_block_then_switch
+side_block_size     Int64     nullable; 해당될 경우 실제 관찰된 같은 측 블록 크기
+rep_unit            str       nullable; 관찰된 세그먼트 단위, 예: repetition | tap
+protocol_cycle_id   Int64     nullable; 원자 반복을 묶는 피험자 안내 기준 protocol cycle id
 ```
 
 `exercise_type`은 ③ 운동 정의 로딩을 구동한다.
@@ -65,6 +69,9 @@ performance_note    str       nullable; 수행 품질 또는 중단 사유에 �
 조건과의 일치 여부는 결과 리포트나 시각화에서 경고 정보로 표시한다.
 수행 provenance 칼럼은 실제 촬영에서 목표 횟수, 수행 실패 지점, 중단 사유가 어떻게 나타났는지
 기록하기 위한 값이다. 이 값은 근력·피로를 진단하지 않으며, 자동 제외 규칙으로 사용하지 않는다.
+관찰된 count/side-sequence 칼럼(`rep_side_sequence`, `side_block_size`, `rep_unit`,
+`protocol_cycle_id`)은 이후 report와 ⑦ Motion Attribution에서 ③ `performance_protocol`과
+비교한다. 불일치는 자동 프레임 제외가 아니라 warning/provenance로 남긴다.
 
 ## 3. 어노테이션 계층 (Annotation Hierarchy)
 
@@ -102,7 +109,8 @@ exercise_type, pattern, starting_side, phase, note,
 session_id, recording_id, set_index,
 camera_zone, camera_height_level, reference_mat_used, filming_protocol_status,
 performance_protocol_status, actual_rep_count, failure_point_frame,
-failure_rep_id, failure_reason, performance_note
+failure_rep_id, failure_reason, performance_note,
+rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id
 ```
 
 ### 예: 단일 세트, 3 반복
@@ -202,6 +210,7 @@ filming_protocol_status = unknown
 - 운동 컨텍스트 칼럼 (exercise_type, pattern, starting_side)
 - 수동으로 제공된 phase 라벨 보존
 - 촬영 provenance 칼럼 보존 (session_id, recording_id, set_index, camera_zone, camera_height_level)
+- 관찰된 protocol metadata 보존 (rep_side_sequence, side_block_size, rep_unit, protocol_cycle_id)
 ```
 
 범위 외 항목:

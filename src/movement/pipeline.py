@@ -18,6 +18,7 @@ Each step is toggled via the enabled flag in configs/pipeline_default.yaml.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,74 @@ def _resolve_path(p: str | Path) -> Path:
     """Return absolute paths unchanged; resolve relative paths from project root."""
     p = Path(p)
     return p if p.is_absolute() else _PROJECT_ROOT / p
+
+
+def _unique_non_null_strings(df: pd.DataFrame, column: str) -> list[str]:
+    if column not in df.columns:
+        return []
+    return [
+        str(value)
+        for value in df[column].dropna().unique().tolist()
+        if str(value).strip()
+    ]
+
+
+def _evaluate_camera_protocol(
+    df: pd.DataFrame,
+    exercise_definition: Any,
+) -> dict[str, Any]:
+    """Compare observed filming metadata with the exercise camera protocol."""
+    protocol = getattr(exercise_definition, "camera_protocol", None)
+    if protocol is None:
+        return {
+            "available": False,
+            "warnings": [],
+            "forced_exclusion": False,
+            "coordinate_correction": "none",
+        }
+
+    observed_zones = _unique_non_null_strings(df, "camera_zone")
+    observed_heights = _unique_non_null_strings(df, "camera_height_level")
+    recommended_zones = list(protocol.recommended_zones)
+    recommended_height = protocol.recommended_height
+
+    zone_values = [zone for zone in observed_zones if zone != "unknown"]
+    height_values = [height for height in observed_heights if height != "unknown"]
+    zone_mismatches = [
+        zone for zone in zone_values if zone not in set(recommended_zones)
+    ]
+    height_mismatches = [
+        height for height in height_values if height != recommended_height
+    ]
+
+    warning_messages: list[str] = []
+    if zone_mismatches:
+        warning_messages.append(
+            "camera_zone outside recommended_zones: "
+            f"observed={zone_mismatches}, recommended={recommended_zones}"
+        )
+    if height_mismatches:
+        warning_messages.append(
+            "camera_height_level outside recommended_height: "
+            f"observed={height_mismatches}, recommended={recommended_height}"
+        )
+
+    for message in warning_messages:
+        warnings.warn(f"[Step ③] {message}", stacklevel=2)
+
+    return {
+        "available": True,
+        "recommended_zones": recommended_zones,
+        "observed_zones": observed_zones,
+        "zone_match": None if not zone_values else len(zone_mismatches) == 0,
+        "recommended_height": recommended_height,
+        "observed_height_levels": observed_heights,
+        "height_match": None if not height_values else len(height_mismatches) == 0,
+        "out_of_zone_policy": protocol.out_of_zone_policy,
+        "coordinate_correction": protocol.coordinate_correction,
+        "forced_exclusion": False,
+        "warnings": warning_messages,
+    }
 
 
 # ── Per-step config dataclasses ───────────────────────────────────────────────
@@ -461,6 +530,12 @@ def run_pipeline(
             "laterality": exercise_def.classification.get("laterality"),
             "primary_plane": exercise_def.classification.get("primary_plane"),
             "compensation_candidates": exercise_def.compensation_candidates,
+            "camera_protocol": (
+                exercise_def.camera_protocol.as_dict()
+                if exercise_def.camera_protocol is not None
+                else None
+            ),
+            "filming_condition": _evaluate_camera_protocol(df, exercise_def),
         }
 
     # ── ④ Preprocessing ───────────────────────────────────────────────────────

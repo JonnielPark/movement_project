@@ -88,6 +88,9 @@ class AttributionReport:
     num_bilateral: int = 0
     thresholds: dict[str, float] = field(default_factory=dict)
     landmark_pairs_used: list[tuple[str, str]] = field(default_factory=list)
+    performance_side_sequence: dict[str, Any] | None = None
+    expected_side_source: str | None = None
+    side_sequence_warnings: list[dict[str, Any]] = field(default_factory=list)
     mode: str = "conservative"
     skipped: bool = False
     skip_reason: str | None = None
@@ -107,6 +110,9 @@ class AttributionReport:
             "num_bilateral": self.num_bilateral,
             "thresholds": self.thresholds,
             "landmark_pairs_used": [list(p) for p in self.landmark_pairs_used],
+            "performance_side_sequence": self.performance_side_sequence,
+            "expected_side_source": self.expected_side_source,
+            "side_sequence_warnings": self.side_sequence_warnings,
             "mode": self.mode,
             "skipped": self.skipped,
             "skip_reason": self.skip_reason,
@@ -149,7 +155,50 @@ def _select_landmark_pairs(
     return pairs if pairs else _DEFAULT_SWAP_PAIRS
 
 
-def _expected_active(
+def _other_side(side: str) -> str:
+    return "left" if side == "right" else "right"
+
+
+def _expected_active_from_protocol(
+    rep_number: int,
+    starting_side: str | None,
+    laterality: str,
+    performance_protocol: Any | None,
+) -> str | None:
+    """Derive expected active side from performance_protocol.side_sequence."""
+    if laterality == "unilateral_left":
+        return "left"
+    if laterality == "unilateral_right":
+        return "right"
+
+    if performance_protocol is None:
+        return None
+
+    side_sequence = getattr(performance_protocol, "side_sequence", None)
+    if side_sequence is None:
+        return None
+
+    mode = getattr(side_sequence, "mode", "none")
+    if mode == "none":
+        return None
+    if starting_side not in ("left", "right"):
+        return None
+
+    if mode == "alternating_each_rep":
+        sides = ["left", "right"] if starting_side == "left" else ["right", "left"]
+        return sides[(rep_number - 1) % 2]
+
+    if mode == "same_side_block_then_switch":
+        block_size = getattr(side_sequence, "block_size_counts", None)
+        if block_size is None or int(block_size) < 1:
+            return None
+        block_index = (rep_number - 1) // int(block_size)
+        return starting_side if block_index % 2 == 0 else _other_side(starting_side)
+
+    return None
+
+
+def _expected_active_from_annotation(
     rep_number: int,
     pattern: str | None,
     starting_side: str | None,
@@ -168,6 +217,55 @@ def _expected_active(
         # starting_side unknown → return None (will be inferred from first rep)
         return None
 
+    return None
+
+
+def _requires_starting_side(
+    pattern: str | None,
+    laterality: str,
+    performance_protocol: Any | None,
+) -> bool:
+    if laterality in ("unilateral_left", "unilateral_right"):
+        return False
+    side_sequence = (
+        getattr(performance_protocol, "side_sequence", None)
+        if performance_protocol is not None
+        else None
+    )
+    mode = getattr(side_sequence, "mode", "none") if side_sequence is not None else "none"
+    return mode in {"alternating_each_rep", "same_side_block_then_switch"} or pattern == "alternating"
+
+
+def _performance_side_sequence_dict(performance_protocol: Any | None) -> dict[str, Any] | None:
+    if performance_protocol is None:
+        return None
+    side_sequence = getattr(performance_protocol, "side_sequence", None)
+    if side_sequence is None:
+        return None
+    return {
+        "mode": getattr(side_sequence, "mode", "none"),
+        "block_size_counts": getattr(side_sequence, "block_size_counts", None),
+        "first_side_source": getattr(side_sequence, "first_side_source", None),
+    }
+
+
+def _observed_side_for_rep(df_rep: pd.DataFrame, rep_index_zero: int) -> str | None:
+    if "rep_side_sequence" not in df_rep.columns:
+        return None
+    values = [
+        str(value).strip()
+        for value in df_rep["rep_side_sequence"].dropna().unique().tolist()
+        if str(value).strip()
+    ]
+    if not values:
+        return None
+    value = values[0]
+    if value in ("left", "right"):
+        return value
+    if "," in value:
+        sequence = [item.strip() for item in value.split(",") if item.strip()]
+        if rep_index_zero < len(sequence) and sequence[rep_index_zero] in ("left", "right"):
+            return sequence[rep_index_zero]
     return None
 
 
@@ -300,6 +398,10 @@ def attribute_motion(
     report.exercise_type = exercise_type
     report.pattern = pattern
     report.starting_side = starting_side
+    performance_protocol = getattr(exercise_definition, "performance_protocol", None)
+    report.performance_side_sequence = _performance_side_sequence_dict(
+        performance_protocol
+    )
     report.thresholds = {
         "τ_active": thresholds.active,
         "τ_ambiguous": thresholds.ambiguous,
@@ -329,13 +431,49 @@ def attribute_motion(
 
         # expected active side
         use_starting = starting_side if starting_side else inferred_starting_side
-        expected = _expected_active(rep_num_one, pattern, use_starting, laterality)
+        expected = _expected_active_from_protocol(
+            rep_num_one,
+            use_starting,
+            laterality,
+            performance_protocol,
+        )
+        expected_source = (
+            "performance_protocol.side_sequence"
+            if expected is not None
+            else "annotation.pattern"
+        )
+        if expected is None:
+            expected = _expected_active_from_annotation(
+                rep_num_one,
+                pattern,
+                use_starting,
+                laterality,
+            )
 
-        # infer starting_side from first rep when alternating + unknown
-        if rep_num_zero == 0 and pattern == "alternating" and use_starting is None:
+        # infer starting_side from first rep when a side-sequence rule needs it.
+        if (
+            rep_num_zero == 0
+            and use_starting is None
+            and _requires_starting_side(pattern, laterality, performance_protocol)
+        ):
             if detected in ("left", "right"):
                 inferred_starting_side = detected
             expected = detected  # first rep: treat detected side as expected
+            expected_source = "inferred_starting_side"
+
+        if report.expected_side_source is None and expected_source:
+            report.expected_side_source = expected_source
+
+        observed_side = _observed_side_for_rep(df_rep, rep_num_zero)
+        if observed_side is not None and expected is not None and observed_side != expected:
+            report.side_sequence_warnings.append(
+                {
+                    "rep_id": int(rep_id),
+                    "observed": observed_side,
+                    "expected": expected,
+                    "policy": "warning_only",
+                }
+            )
 
         # consistency judgement
         if detected in ("ambiguous", "bilateral"):

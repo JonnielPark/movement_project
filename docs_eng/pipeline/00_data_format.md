@@ -1,7 +1,7 @@
 # 00. Data Format
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.1  
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/pipeline/00_data_format.md` is the same-version Korean source.
 
 Input format specification for monocular 3D pose time series data.
@@ -10,8 +10,13 @@ Input format specification for monocular 3D pose time series data.
 
 ## 1. Input
 
-CSV file exported from a pose estimation engine (e.g., MediaPipe Pose 33, iPIXEL EXERCITE).
-One row per frame.
+CSV file exported from a pose estimation engine. The current implementation assumes
+a MediaPipe-style 33-landmark pose CSV: one row per frame, `frame` / `timestamp`
+columns, and landmark columns named from `src/movement/config.py`.
+
+Other engines, including iPIXEL EXERCITE, are future adapters until their actual
+export schema is available. They should be converted into this MediaPipe-style
+schema before entering the current pipeline.
 
 ## 2. Required Columns
 

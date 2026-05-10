@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.7
-**최종 갱신:** 2026-05-09
+**문서 버전:** 1.4.8
+**최종 갱신:** 2026-05-10
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -18,14 +18,14 @@
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.1 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
-| 1.0.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
+| 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.2 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.6 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.1.3 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.4.8 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.0.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
+| 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.0.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
@@ -157,6 +157,8 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 exercise_type      어떤 운동 YAML을 로드할지 식별 (③)
 pattern            bilateral | alternating
 starting_side      교대 운동에서 첫 활성 측 (⑦)
+rep_side_sequence  protocol/provenance 비교를 위한 관찰 좌우 순서
+protocol_cycle_id  원자 반복을 피험자 안내 기준 protocol cycle로 묶는 id
 ```
 
 [02_annotation.md](pipeline/02_annotation.md) 참조.

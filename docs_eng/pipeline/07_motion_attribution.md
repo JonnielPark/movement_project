@@ -1,11 +1,13 @@
 # 07. Motion Attribution
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.1  
+**Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/pipeline/07_motion_attribution.md` is the same-version Korean source.
 
 Pipeline step ⑦. Checks whether the limb that moved most in each rep matches the
-expected active side (from annotation `pattern` / `starting_side`).
+expected active side. The expected side is derived from
+`performance_protocol.side_sequence` when available, then falls back to annotation
+`pattern` / `starting_side`.
 
 Does not modify coordinates. Adds per-rep metadata columns only.
 
@@ -29,7 +31,7 @@ Required inputs:
 ```text
 rep boundaries            from annotation (segment_type = rep)
 exercise context          exercise_type, pattern, starting_side from annotation
-exercise definition       laterality, primary_joints
+exercise definition       laterality, primary_joints, performance_protocol.side_sequence
 normalized coordinates    from ⑤ normalization
 ```
 
@@ -87,8 +89,9 @@ else:
 
 ## 5. Expected Active Side
 
-Derived from `pattern` and `starting_side` in annotation, cross-checked against
-`laterality` in the exercise definition.
+Derived first from `performance_protocol.side_sequence`, then from `pattern` and
+`starting_side` in annotation, cross-checked against `laterality` in the exercise
+definition.
 
 ```text
 pattern = alternating, starting_side = right:
@@ -98,6 +101,17 @@ pattern = alternating, starting_side = right:
     ...
 
 pattern = alternating, starting_side = left:
+    rep 1 → left
+    rep 2 → right
+    ...
+
+performance_protocol.side_sequence.mode = same_side_block_then_switch,
+block_size_counts = 5, starting_side = right:
+    rep 1-5  → right
+    rep 6-10 → left
+
+performance_protocol.side_sequence.mode = alternating_each_rep,
+starting_side = left:
     rep 1 → left
     rep 2 → right
     ...
