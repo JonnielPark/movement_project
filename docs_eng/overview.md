@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.8
+**Document Version:** 1.4.10
 **Last Updated:** 2026-05-10
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -13,8 +13,8 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.3 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.7 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.10 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.1 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
@@ -31,6 +31,36 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+
+---
+
+## Analytical Scope and Interpretation Principle
+
+This study takes monocular 3D pose time series as input and tracks joint-center and
+body-segment motion over time. The input consists of pose CSV files, optional
+annotation, recording metadata, and exercise-definition YAML; these data are shared
+through the same `ExerciseDefinition` object and per-stage reports across the
+pipeline.
+
+The analytical principle is not to reconstruct absolute force or absolute torque,
+but to derive body-scale-normalized joint angles, segment trajectories, left/right
+symmetry, CoM stability, moment-arm proxies, relative load-shift tendencies, and
+compensatory movement candidates at the rep and phase levels. This converts
+movements observable in a monocular-camera setting into biomechanically interpretable
+features and digital biomarkers.
+
+The outputs therefore include rep-level and phase-level feature tables,
+biomechanical-proxy tables, biomarker scores, interpretation-rule narrative labels,
+and provenance-aware reports and figures. These outputs provide structured
+quantitative information for reviewing movement quality, left/right consistency,
+relative load distribution, and compensatory strategies.
+
+Muscle-recruitment interpretation is kept within this joint-/segment-level
+principle. Joint angle, stance, external load, movement speed, and individual anatomy
+can change muscle moment arms and recruitment strategies; therefore, active side,
+relative load shift, moment-arm proxy, and compensatory movement are treated as
+interpretable tendencies derived from observable motion, not direct evidence of
+activation in a specific muscle.
 
 ---
 
