@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.4.3
-**Last Updated:** 2026-05-09
+**Document Version:** 1.4.4
+**Last Updated:** 2026-05-10
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -20,6 +20,7 @@ could change the research scope.
 | Biomechanical proxy | A biomechanical surrogate that can be computed from monocular pose data. It does not directly estimate actual force, mass, or absolute torque. |
 | Relative load distribution tendency | A relative tendency showing how load shifts across joints or body segments. Outputs do not use absolute units such as `N`, `N·m`, or `kg`. |
 | Moment-arm proxy | A normalized distance between a joint center and a reference line of action. It is used to interpret relative load distribution, not to compute absolute torque. |
+| Muscle-specific activation / target-muscle recruitment | Electrical activation, force contribution, or selective recruitment of an individual muscle. This study does not infer it directly from monocular pose. Outputs may describe joint-/segment-level tendencies, active side, or compensatory movement, but they are not direct evidence of a specific muscle's activation. |
 | Synthetic-normal baseline | Per-metric reference statistics from a normal-condition synthetic pipeline run. This is a reference distribution for Z-score computation, not a clinical normal/abnormal label. |
 | Movement quality score | A per-rep composite score (0–100) computed through Z-score deductions against the synthetic-normal baseline. It is not a clinical diagnostic score. |
 

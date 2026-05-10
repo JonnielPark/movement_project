@@ -226,8 +226,8 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.3 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.8 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.4 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.10 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
 | 1.2.3 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.1 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -257,6 +257,11 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 ## 연구 범위 (Scope)
 
 본 프로젝트는 고가의 생체역학 장비가 요구되는 **'관절 부하의 절대적 정량화(absolute quantification, 예: N, N·m, kg)'를 목적으로 하지 않는다**.
+
+또한 특정 근육의 활성도나 타겟 근육 동원을 직접 판정하지 않는다. 관절 각도, 지지 자세,
+외부 부하, 수행 속도, 개인 해부학적 차이에 따라 근육 동원 전략은 달라질 수 있으므로, 본
+파이프라인의 활성 측, 상대 부하 전이, moment-arm proxy, 보상 움직임은 특정 근육 활성의
+직접 증거가 아니라 관절·분절 수준의 경향성으로 해석한다.
 
 대신, 단일 비전(monocular vision) 기반 원격 모니터링 환경에서도 범용적으로 추적 가능한 **'신체 분절 간의 상대적 부하 전이(relative load shift)'** 및 **'운동 사슬(kinetic chain)의 붕괴 패턴'**을 정량화하여, 시스템의 **공학적 실현 가능성과 강건성(robustness)을 검증**하는 데 집중한다.
 

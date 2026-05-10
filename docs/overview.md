@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.8
+**문서 버전:** 1.4.10
 **최종 갱신:** 2026-05-10
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -13,8 +13,8 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.3 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.7 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.10 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.1 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -31,6 +31,31 @@
 | 1.0.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+
+---
+
+## 분석 범위와 해석 원리 (Analytical Scope and Interpretation Principle)
+
+본 연구는 단안 3D pose 시계열을 입력으로 받아 관절 중심과 신체 분절의 움직임을 시간축에서
+추적한다. 입력 데이터는 pose CSV, 선택적 annotation, recording metadata, 운동 정의 YAML로
+구성되며, 이 정보는 동일한 `ExerciseDefinition` 객체와 단계별 report를 통해 파이프라인
+전반에서 공유된다.
+
+분석 원리는 절대 힘이나 절대 토크를 복원하는 것이 아니라, 개인 신체 척도로 정규화된 관절
+각도, 분절 궤적, 좌우 대칭성, CoM 안정성, moment-arm proxy, 상대 부하 전이, 보상 움직임
+후보를 반복(rep) 및 구간(phase) 단위로 산출하는 것이다. 이를 통해 단안 카메라 환경에서도
+관찰 가능한 움직임을 생체역학적으로 해석 가능한 feature와 digital biomarker로 변환한다.
+
+따라서 결과물은 반복별/구간별 feature table, biomechanical proxy table, biomarker score,
+해석 규칙 기반 narrative label, provenance가 포함된 report와 figure로 구성된다. 이 결과는
+의료진 또는 연구자가 동작 품질, 좌우 수행 일관성, 상대 부하 분포, 보상 전략을 검토할 수
+있도록 구조화된 정량 정보를 제공한다.
+
+근육 동원과 관련된 해석은 이 원리 안에서 관절·분절 수준으로 제한한다. 관절 각도, 지지
+자세, 외부 부하, 수행 속도, 개인 해부학적 차이에 따라 근육의 moment arm과 동원 전략은
+달라질 수 있으므로, 본 연구의 활성 측, 상대 부하 전이, moment-arm proxy, 보상 움직임은
+특정 근육 활성의 직접 증거가 아니라 관찰 가능한 움직임에서 유도한 해석 가능한 경향성으로
+다룬다.
 
 ---
 
