@@ -40,7 +40,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-05-10)
+## Implementation Status (2026-05-11)
 
 ### Complete
 
@@ -54,38 +54,39 @@ Stage activation is controlled by the `enabled` flags in
 | ⑤ Normalization | `normalization.py` | Hip-center translation + median torso-length scale |
 | ⑥ Segmentation | `segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
 | ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
-| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
+| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
 | Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
 | Protocol metadata schema | `exercise_definition.py`, `annotation.py`, `motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
-| Unit tests | `tests/` | Protocol-metadata schema targeted tests pass 17 cases; latest full run passes 97/97 after Task A5 performance-provenance reporting |
+| Task A verification pass | `segmentation.py`, `features/`, reporting records, `tests/` | A1-A6 complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
+| Unit tests | `tests/` | Protocol-metadata schema targeted tests pass 17 cases; latest full run passes 99/99 after Task A6 compensation-availability audit |
 
 ### Partial
 
 | Area | Module | Remaining Work |
 |---|---|---|
-| Existing pipeline verification | `segmentation.py`, `features/`, reporting records | A1-A5 core verification slices cover phase segmentation, feature registry coverage, analysis-disrupting detectability, source-field policy, and performance/failure provenance consumption (→ Task A) |
-| Motion attribution / robustness evidence | `motion_attribution.py`, `simulation/` | Structured correction log, false-correction metrics, viewpoint variation, compensation injection, experiment runner, robustness summaries (→ Task B) |
-| ⑪ Visualization | `visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task C) |
+| Motion attribution evidence | `motion_attribution.py` | Structured correction log, false-correction metrics, and ambiguous-repetition reporting (→ Task B) |
+| Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
+| ⑪ Visualization | `visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
 
 ### Plan (Before Defense)
 
 | Task | Deliverable | Dissertation § |
 |---|---|---|
-| A — Existing pipeline verification | Phase segmentation tests, feature registry coverage, analysis-disrupting detectability, performance/failure provenance, compensation candidate reports, provenance/source-field policy | Method verification |
-| B — Motion attribution and robustness backbone | Structured correction log, false-correction metrics, viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, robustness summaries | §8 |
-| C — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
-| D — Clinical mapping integration | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting | §7.4 |
-| E — Maintenance and repository hygiene | Focused test runs, full `pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
-| F — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if pilot filming shows repeated occlusion, left/right swap, or landmark jitter | Conditional after Task A/C |
+| B — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
+| C — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
+| D — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
+| E — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
+| F — Maintenance and repository hygiene | Focused test runs, full `pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
+| G — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if pilot filming shows repeated occlusion, left/right swap, or landmark jitter | Conditional after Tasks B-D |
 
-Task letters follow the current priority order in
-`docs_eng/code_revision_plan.md`. Dashboard / Phantom 3D work is deferred behind
-the Task D gate and is not an active implementation task unless selected as a
-dissertation output.
+Task A is complete for the current four-exercise scope. Remaining task letters
+follow the current priority order in `docs_eng/code_revision_plan.md`. Dashboard /
+Phantom 3D work is deferred behind the Task E gate and is not an active
+implementation task unless selected as a dissertation output.
 
 ---
 
@@ -234,7 +235,7 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.19 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.21 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
 | 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |

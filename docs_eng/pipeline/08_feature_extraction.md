@@ -1,6 +1,6 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.0.4
+**Document Version:** 1.0.5
 **Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
@@ -248,6 +248,7 @@ class FeatureRegistryCoverageReport:
     external_step_feature_domain_entries: list[dict]
     implemented_compensation_candidates: list[str]
     unimplemented_compensation_candidates: list[dict]
+    compensation_candidate_availability: list[dict]
 ```
 
 Coverage rules:
@@ -269,6 +270,49 @@ compensation_candidates
 
 This report is diagnostic/provenance output. Unsupported entries do not crash
 feature extraction and are not automatically promoted to scoring factors.
+
+A6 adds a per-exercise compensation-candidate availability matrix. This matrix is
+the canonical current-state view for candidate implementation status; it does not
+create new metrics by itself.
+
+```text
+candidate                    YAML candidate name
+availability_status          implemented_rule |
+                             declared_unimplemented |
+                             deferred_feature_design |
+                             no_rule_registered
+emits_feature                true when COMPENSATION_RULES has a dispatch rule
+report_reason                implemented_rule | declared_unimplemented |
+                             deferred_feature_design | no_rule_registered
+source_fields                provenance fields such as
+                             compensation_candidates.<candidate>
+                             feature_domains.control.compensation
+next_action                  concise implementation or documentation action
+```
+
+Status meanings:
+
+```text
+implemented_rule
+    A rule exists in COMPENSATION_RULES and can emit control.compensation.* records
+    when the required landmarks are present.
+
+declared_unimplemented
+    The candidate is accepted as YAML vocabulary and intentionally tracked in
+    `_UNIMPLEMENTED`, but no feature rule is active yet.
+
+deferred_feature_design
+    The candidate is meaningful for the exercise but requires a separate feature
+    definition, visibility policy, role-based side logic, or validation fixture
+    before it should become a score factor.
+
+no_rule_registered
+    The candidate is declared in YAML but has not yet been assigned to one of the
+    explicit statuses above. It must stay visible in reports.
+```
+
+For the current A6 pass, this matrix is used to resolve the squat and pike push-up
+candidate review notes in `docs_eng/code_revision_plan.md`.
 
 ## 11. Analysis-Disrupting Pattern Detectability Audit
 
@@ -365,7 +409,8 @@ src/movement/features/temporal.py        compute_tempo, compute_variability
 src/movement/features/control.py         compute_stability, compute_compensation
 src/movement/features/compensation.py    COMPENSATION_RULES registry, dispatch
 tests/test_features_phase_grouping.py    phase-level feature emission and provenance
-tests/test_feature_registry_coverage.py  YAML feature-domain and compensation coverage
+tests/test_feature_registry_coverage.py  YAML feature-domain, compensation coverage,
+                                         and candidate availability
 tests/test_analysis_disrupting_patterns.py
                                          analysis-disrupting pattern detectability coverage
 tests/test_feature_provenance.py          missing source_fields policy

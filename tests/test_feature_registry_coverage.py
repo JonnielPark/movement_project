@@ -22,6 +22,12 @@ def _minimal_pose_df():
     )
 
 
+def _availability_by_candidate(report):
+    return {
+        item["candidate"]: item for item in report.compensation_candidate_availability
+    }
+
+
 def test_feature_registry_audit_reports_connected_and_unsupported_yaml_entries():
     exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
 
@@ -78,6 +84,45 @@ def test_feature_registry_audit_reports_compensation_candidate_coverage():
     } in report.unimplemented_compensation_candidates
 
 
+def test_squat_compensation_candidate_availability_matrix():
+    exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
+
+    report = audit_feature_registry(exercise)
+    availability = _availability_by_candidate(report)
+
+    assert availability["knee_valgus"]["availability_status"] == "implemented_rule"
+    assert availability["knee_valgus"]["emits_feature"] is True
+    assert availability["knee_valgus"]["source_fields"] == [
+        "compensation_candidates.knee_valgus",
+        "feature_domains.control.compensation",
+    ]
+    assert availability["asymmetric_depth"]["availability_status"] == (
+        "declared_unimplemented"
+    )
+    assert availability["tempo_instability"]["availability_status"] == (
+        "declared_unimplemented"
+    )
+
+
+def test_pike_pushup_deferred_compensation_candidates_remain_reported():
+    exercise = load_exercise_definition("pike_pushup", _DEFINITIONS_DIR)
+
+    report = audit_feature_registry(exercise)
+    availability = _availability_by_candidate(report)
+
+    assert availability["elbow_flare"]["availability_status"] == (
+        "deferred_feature_design"
+    )
+    assert availability["elbow_flare"]["emits_feature"] is False
+    assert availability["insufficient_head_descent"]["availability_status"] == (
+        "deferred_feature_design"
+    )
+    assert availability["tempo_instability"]["availability_status"] == (
+        "declared_unimplemented"
+    )
+    assert set(availability) == set(exercise.compensation_candidates)
+
+
 def test_pipeline_reports_feature_registry_coverage_when_features_run():
     config = PipelineConfig()
     config.validation.enabled = False
@@ -101,3 +146,14 @@ def test_pipeline_reports_feature_registry_coverage_when_features_run():
         "candidate": "asymmetric_depth",
         "reason": "declared_unimplemented",
     } in coverage["unimplemented_compensation_candidates"]
+    assert {
+        "candidate": "asymmetric_depth",
+        "availability_status": "declared_unimplemented",
+        "emits_feature": False,
+        "report_reason": "declared_unimplemented",
+        "source_fields": [
+            "compensation_candidates.asymmetric_depth",
+            "feature_domains.control.compensation",
+        ],
+        "next_action": "implement_rule_or_keep_as_explicit_unimplemented_candidate",
+    } in coverage["compensation_candidate_availability"]
