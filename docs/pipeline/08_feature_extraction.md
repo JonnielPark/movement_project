@@ -1,6 +1,6 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.0.4
+**문서 버전:** 1.0.5
 **최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
@@ -243,6 +243,7 @@ class FeatureRegistryCoverageReport:
     external_step_feature_domain_entries: list[dict]
     implemented_compensation_candidates: list[str]
     unimplemented_compensation_candidates: list[dict]
+    compensation_candidate_availability: list[dict]
 ```
 
 커버리지 규칙:
@@ -263,6 +264,47 @@ compensation_candidates
 
 이 report는 진단/provenance 출력이다. Unsupported 항목은 feature extraction을 중단시키지 않고,
 자동으로 scoring factor로 승격하지 않는다.
+
+A6는 운동별 compensation-candidate availability matrix를 추가한다. 이 matrix는 candidate 구현
+상태에 대한 현재 기준표이며, 그 자체로 새 metric을 만들지는 않는다.
+
+```text
+candidate                    YAML candidate 이름
+availability_status          implemented_rule |
+                             declared_unimplemented |
+                             deferred_feature_design |
+                             no_rule_registered
+emits_feature                COMPENSATION_RULES dispatch rule이 있으면 true
+report_reason                implemented_rule | declared_unimplemented |
+                             deferred_feature_design | no_rule_registered
+source_fields                provenance fields 예:
+                             compensation_candidates.<candidate>
+                             feature_domains.control.compensation
+next_action                  구현 또는 문서화 다음 행동 요약
+```
+
+상태 의미:
+
+```text
+implemented_rule
+    COMPENSATION_RULES에 rule이 있고, 필요한 landmark가 있으면
+    control.compensation.* record를 방출할 수 있다.
+
+declared_unimplemented
+    YAML vocabulary로 수용되어 `_UNIMPLEMENTED`에 의도적으로 추적되지만,
+    아직 active feature rule은 없다.
+
+deferred_feature_design
+    운동 해석상 의미 있는 후보지만 score factor가 되려면 별도 feature 정의,
+    visibility policy, role-based side logic, validation fixture가 먼저 필요하다.
+
+no_rule_registered
+    YAML에는 선언됐지만 아직 위의 명시적 상태 중 하나로 배정되지 않은 후보.
+    report에서 계속 보이게 유지한다.
+```
+
+현재 A6 pass에서는 이 matrix로 `docs/code_revision_plan.md`의 스쿼트와 파이크 푸쉬업 candidate
+review 메모를 해결한다.
 
 ## 11. 분석 방해 패턴 탐지 가능성 감사 (Analysis-Disrupting Pattern Detectability Audit)
 
@@ -354,7 +396,8 @@ src/movement/features/temporal.py        compute_tempo, compute_variability
 src/movement/features/control.py         compute_stability, compute_compensation
 src/movement/features/compensation.py    COMPENSATION_RULES 레지스트리, 디스패치
 tests/test_features_phase_grouping.py    phase-level feature 방출과 provenance
-tests/test_feature_registry_coverage.py  YAML feature-domain과 compensation coverage
+tests/test_feature_registry_coverage.py  YAML feature-domain, compensation coverage,
+                                         candidate availability
 tests/test_analysis_disrupting_patterns.py
                                          analysis-disrupting pattern detectability coverage
 tests/test_feature_provenance.py          missing source_fields policy

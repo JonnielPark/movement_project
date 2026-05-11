@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.19
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.4.21
+**최종 갱신:** 2026-05-11
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.19 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.21 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
@@ -26,7 +26,7 @@
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.2 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.4 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.5 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
@@ -122,7 +122,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     rep_id             — 반자동 또는 수동 확정 반복 ID
     phase 칼럼          — 'Descent' | 'Ascent' | 'Turnaround_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature 테이블      — FeatureRecord 목록, 반복 단위(phase=None) + 구간 단위(phase=str)
-    Feature audit reports — feature-registry coverage + analysis-disrupting pattern detectability
+    Feature audit reports — feature-registry coverage + compensation availability + analysis-disrupting pattern detectability
     Phase summary       — summarize_phase_to_rep() 계층 집계 (예: Descent/Ascent ROM 비율)
     생체역학 프록시 테이블 — BiomechRecord 목록, 반복 단위, 가시성(visibility) 가중
     바이오마커 기록 목록 — BiomarkerRecord (개별 지표 패스스루)
@@ -147,7 +147,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage와 analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
@@ -269,16 +269,20 @@ optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coars
   [완료]  BiomarkerScoreRecord — Z-score 감점, 동적 하한(dynamic floor), 조정 가능 점수 범위, 도메인 종합 점수
   [완료]  derive_biomarkers() 진입점을 파이프라인 ⑩에 결선
   [완료]  합성 정상 베이스라인 (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [진행]  Segmentation (⑥) — `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 분할; 실패 시 수동 개입
-  [계획]  Exercise YAML의 `phases` 정의를 반자동 phase 라벨 및 구간 단위 피처와 연결
+  [완료]  Segmentation (⑥) — `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 분할; 실패 시 수동 개입
+  [완료]  Exercise YAML의 `phases` 정의를 반자동 phase 라벨 및 구간 단위 피처와 연결
   [완료]  FeatureRecord.phase 필드; extract_rep_features()가 반복 단위 + 구간 단위 레코드 방출
   [완료]  summarize_phase_to_rep() 계층 집계기 (Descent/Ascent ROM 비율)
   [완료]  Load-shift OLS — biomech/load_shift.py의 compute_load_shift(); 지표 biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); ≥ 3 반복 필요; test_biomech_load_shift.py (17건)
   [완료]  YAML 기반 해석 규칙 — biomarker/interpretation.py의 derive_interpretations(); 4개 운동 규칙 파일 (data/definitions/interpretation_rules/); InterpretationRecord; test_interpretation.py (20건)
   [완료]  임상 피처 매핑 — docs/clinical/per_exercise_mapping.md (§5.5/§5.6) + data/definitions/clinical/feature_meanings.yaml (대시보드 툴팁용 YAML 미러)
+  [완료]  Task A 파이프라인 검증 pass — A1-A6에서 segmentation 정책, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance를 검증
 
-2027.02 – 2027.05  강건성 시뮬레이션 및 평가
+2027.02 – 2027.05  강건성 시뮬레이션, reporting, 논문 산출물
   [부분]  시뮬레이션 조건 인젝터(injector) — 노이즈, 가려짐, ROM 제한, 속도 스파이크
-  강건성 실험 러너 스크립트 (scripts/run_robustness_experiment.py)
-  바이오마커 출력의 단조성(monotonicity) / 반응성(responsiveness) / 특이도(specificity) 분석
+  [다음]  Task B — 구조화된 motion-attribution correction log와 false-correction 지표
+  [계획]  Task C — viewpoint/compensation simulation injector, robustness experiment runner, long-format output, summary report
+  [계획]  Task D — 논문용 정적 reporting figure와 save_figure()
+  [계획]  Task E — clinical mapping 통합과 dashboard 결정 게이트
+  [조건부]  Task G — 파일럿 촬영 근거가 있을 때 visibility-aware scoring fallback
 ```

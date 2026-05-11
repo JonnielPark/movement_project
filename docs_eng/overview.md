@@ -1,7 +1,7 @@
 # Overview
 
-**Document Version:** 1.4.19
-**Last Updated:** 2026-05-10
+**Document Version:** 1.4.21
+**Last Updated:** 2026-05-11
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
@@ -14,7 +14,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.19 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.21 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
@@ -26,7 +26,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 1.2.2 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.4 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.5 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
@@ -132,7 +132,7 @@ Output
     rep_id              — semi-automatically or manually confirmed repetition ID
     phase column        — 'Descent' | 'Ascent' | 'Turnaround_Hold' | 'Lift' | 'Tap' | 'Return' | NA
     Feature table       — FeatureRecord list, rep-level (phase=None) + phase-level (phase=str)
-    Feature audit reports — feature-registry coverage + analysis-disrupting pattern detectability
+    Feature audit reports — feature-registry coverage + compensation availability + analysis-disrupting pattern detectability
     Phase summary       — summarize_phase_to_rep() hierarchical aggregates (e.g., Descent/Ascent ROM ratio)
     Biomechanical proxy table — BiomechRecord list, rep-level, visibility-weighted
     Biomarker record list — BiomarkerRecord (individual metric pass-through)
@@ -157,7 +157,7 @@ Output
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
@@ -283,9 +283,20 @@ See [05_normalization.md](pipeline/05_normalization.md).
   [done]  BiomarkerScoreRecord — Z-score deduction, dynamic floor, configurable score bounds, composite domain score
   [done]  derive_biomarkers() entry point wired into pipeline ⑩
   [done]  Synthetic-normal baseline (data/reference/baseline_zscore.json, scripts/compute_baseline.py)
-  [in progress]  Segmentation (⑥) — `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase splitting; manual intervention on failure
-  [planned]  Exercise YAML `phases` definitions connected to semi-automatic phase labels and phase-level features
+  [done]  Segmentation (⑥) — `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase splitting; manual intervention on failure
+  [done]  Exercise YAML `phases` definitions connected to semi-automatic phase labels and phase-level features
   [done]  FeatureRecord.phase field; extract_rep_features() emits rep-level + phase-level records
   [done]  summarize_phase_to_rep() hierarchical aggregator (Descent/Ascent ROM ratio)
   [done]  Load-shift OLS — compute_load_shift() in biomech/load_shift.py; metric biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); requires ≥ 3 reps; test_biomech_load_shift.py (17 tests)
-  [done] 
+  [done]  YAML-based interpretation rules — derive_interpretations() in biomarker/interpretation.py; four exercise rule files; InterpretationRecord; test_interpretation.py (20 tests)
+  [done]  Clinical feature mapping — docs/clinical/per_exercise_mapping.md (§5.5/§5.6) + data/definitions/clinical/feature_meanings.yaml
+  [done]  Task A pipeline verification pass — A1-A6 cover segmentation policy, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance.
+
+2027.02 – 2027.05  Robustness simulation, reporting, and dissertation outputs
+  [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike
+  [next]  Task B — structured motion-attribution correction log and false-correction metrics
+  [planned]  Task C — viewpoint/compensation simulation injectors, robustness experiment runner, long-format outputs, summary reports
+  [planned]  Task D — dissertation-grade static reporting figures and save_figure()
+  [planned]  Task E — clinical mapping integration and dashboard decision gate
+  [conditional]  Task G — visibility-aware scoring fallback after pilot filming evidence
+```

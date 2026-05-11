@@ -18,6 +18,7 @@ Coordinate convention : (T, J, 3) = (frame, joint_index, xyz).
 Column convention     : <landmark>_norm_x/y/z (normalized coordinates).
 Unit convention       : torso_length_ratio (dimensionless) or degree.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -42,6 +43,7 @@ class FeatureRecord:
     note          : optional interpretation note
     phase         : kinematic phase label (None = rep-level; 'Descent' etc. = phase-level)
     """
+
     feature_id: str
     exercise_id: str
     rep_id: int | None
@@ -64,9 +66,7 @@ class FeatureRegistryCoverageReport:
     """Coverage audit for YAML-declared feature and compensation entries."""
 
     exercise_id: str
-    connected_feature_domain_entries: dict[str, list[str]] = field(
-        default_factory=dict
-    )
+    connected_feature_domain_entries: dict[str, list[str]] = field(default_factory=dict)
     unsupported_feature_domain_entries: list[dict[str, Any]] = field(
         default_factory=list
     )
@@ -75,6 +75,9 @@ class FeatureRegistryCoverageReport:
     )
     implemented_compensation_candidates: list[str] = field(default_factory=list)
     unimplemented_compensation_candidates: list[dict[str, Any]] = field(
+        default_factory=list
+    )
+    compensation_candidate_availability: list[dict[str, Any]] = field(
         default_factory=list
     )
 
@@ -86,6 +89,7 @@ class FeatureRegistryCoverageReport:
             "external_step_feature_domain_entries": self.external_step_feature_domain_entries,
             "implemented_compensation_candidates": self.implemented_compensation_candidates,
             "unimplemented_compensation_candidates": self.unimplemented_compensation_candidates,
+            "compensation_candidate_availability": self.compensation_candidate_availability,
         }
 
 
@@ -120,12 +124,14 @@ class AnalysisDisruptingPatternDetectabilityReport:
 # is populated.  control.compensation is rep-level only because compensation
 # candidates span the full rep trajectory (crossing phase boundaries).
 
-PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset({
-    "spatial.rom",
-    "spatial.shape",
-    "temporal.tempo",
-    "control.stability",
-})
+PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset(
+    {
+        "spatial.rom",
+        "spatial.shape",
+        "temporal.tempo",
+        "control.stability",
+    }
+)
 
 _FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
     "spatial": {
@@ -148,6 +154,33 @@ _FEATURE_DOMAIN_EXTERNAL_STEPS: dict[str, str] = {
     "biomechanical_proxy": "09_biomechanical_proxy",
 }
 
+_DEFERRED_COMPENSATION_FEATURE_DESIGN: frozenset[str] = frozenset(
+    {
+        "asymmetric_knee_flexion",
+        "asymmetric_hip_flexion",
+        "insufficient_rear_hip_extension",
+        "lateral_trunk_lean",
+        "pelvis_drop",
+        "unstable_step_width",
+        "elbow_flare",
+        "elbow_asymmetry",
+        "shoulder_asymmetry",
+        "shoulder_collapse",
+        "shoulder_elevation_compensation",
+        "scapular_instability_proxy",
+        "insufficient_head_descent",
+        "head_forward_shift",
+        "hip_drop",
+        "hip_pike",
+        "trunk_rotation",
+        "excessive_com_lateral_shift",
+        "excessive_com_variability",
+        "left_right_timing_variability",
+        "phase_timing_asymmetry",
+        "movement_discontinuity",
+    }
+)
+
 _POSE_DETECTABLE_SCORING_CANDIDATE = "pose_detectable_scoring_candidate"
 _ACQUISITION_CONTROL_FACTOR = "acquisition_control_factor"
 _INTERPRETATION_LIMITATION_FACTOR = "interpretation_limitation_factor"
@@ -156,7 +189,12 @@ _UNKNOWN_PATTERN = "unknown"
 _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     "arm_swing": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
-        "required_landmarks": ["left_shoulder", "right_shoulder", "left_wrist", "right_wrist"],
+        "required_landmarks": [
+            "left_shoulder",
+            "right_shoulder",
+            "left_wrist",
+            "right_wrist",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "medium",
         "annotation_fallback": "annotation.note or video_review",
@@ -213,18 +251,29 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "view_sensitivity": "medium",
         "visibility_dependency": "medium",
         "annotation_fallback": "rep_segmentation.report",
-        "linked_compensation_candidates": ["asymmetric_depth", "insufficient_head_descent"],
+        "linked_compensation_candidates": [
+            "asymmetric_depth",
+            "insufficient_head_descent",
+        ],
         "linked_feature_domain_entries": ["spatial.depth_proxy", "spatial.rom"],
         "basis": "Depth variation is pose-detectable when rep boundaries and reference landmarks are stable.",
     },
     "excessive_trunk_flexion": {
         "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
-        "required_landmarks": ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+        "required_landmarks": [
+            "left_shoulder",
+            "right_shoulder",
+            "left_hip",
+            "right_hip",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "medium",
         "annotation_fallback": None,
         "linked_compensation_candidates": ["excessive_trunk_flexion"],
-        "linked_feature_domain_entries": ["control.compensation", "spatial.posture_angle"],
+        "linked_feature_domain_entries": [
+            "control.compensation",
+            "spatial.posture_angle",
+        ],
         "basis": "Trunk lean from the shoulder-center to hip-center vector is already feature-compatible.",
     },
     "inconsistent_step_length": {
@@ -239,7 +288,12 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "camera_side_change": {
         "classification": _INTERPRETATION_LIMITATION_FACTOR,
-        "required_landmarks": ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+        "required_landmarks": [
+            "left_shoulder",
+            "right_shoulder",
+            "left_hip",
+            "right_hip",
+        ],
         "view_sensitivity": "high",
         "visibility_dependency": "medium",
         "annotation_fallback": "recording_metadata.camera_zone or annotation.note",
@@ -249,17 +303,31 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "hip_drop_to_pushup": {
         "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
-        "required_landmarks": ["left_hip", "right_hip", "left_shoulder", "right_shoulder"],
+        "required_landmarks": [
+            "left_hip",
+            "right_hip",
+            "left_shoulder",
+            "right_shoulder",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "medium",
         "annotation_fallback": "failure_reason",
         "linked_compensation_candidates": ["hip_drop"],
-        "linked_feature_domain_entries": ["control.trunk_stability", "spatial.depth_proxy"],
+        "linked_feature_domain_entries": [
+            "control.trunk_stability",
+            "spatial.depth_proxy",
+        ],
         "basis": "Hip-height collapse changes the pike geometry and is observable from hip/shoulder landmarks.",
     },
     "head_forward_shift": {
         "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
-        "required_landmarks": ["nose", "left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "required_landmarks": [
+            "nose",
+            "left_wrist",
+            "right_wrist",
+            "left_shoulder",
+            "right_shoulder",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "high",
         "annotation_fallback": "head_proxy note when nose is unstable",
@@ -269,7 +337,14 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "elbow_flare": {
         "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
-        "required_landmarks": ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist"],
+        "required_landmarks": [
+            "left_shoulder",
+            "right_shoulder",
+            "left_elbow",
+            "right_elbow",
+            "left_wrist",
+            "right_wrist",
+        ],
         "view_sensitivity": "high",
         "visibility_dependency": "high",
         "annotation_fallback": None,
@@ -279,7 +354,12 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "hand_foot_repositioning": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
-        "required_landmarks": ["left_wrist", "right_wrist", "left_ankle", "right_ankle"],
+        "required_landmarks": [
+            "left_wrist",
+            "right_wrist",
+            "left_ankle",
+            "right_ankle",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
@@ -294,7 +374,10 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "visibility_dependency": "medium",
         "annotation_fallback": None,
         "linked_compensation_candidates": ["pelvis_rotation", "trunk_rotation"],
-        "linked_feature_domain_entries": ["control.compensation", "control.rotation_control"],
+        "linked_feature_domain_entries": [
+            "control.compensation",
+            "control.rotation_control",
+        ],
         "basis": "Left-right hip depth asymmetry is a pose-based transverse-plane rotation proxy.",
     },
     "hip_height_drift": {
@@ -304,12 +387,20 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "visibility_dependency": "medium",
         "annotation_fallback": "set-level trend note",
         "linked_compensation_candidates": ["hip_drop", "hip_pike"],
-        "linked_feature_domain_entries": ["control.trunk_stability", "control.stability"],
+        "linked_feature_domain_entries": [
+            "control.trunk_stability",
+            "control.stability",
+        ],
         "basis": "Set-level hip-center vertical drift is visible when hip landmarks remain stable.",
     },
     "base_of_support_shift": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
-        "required_landmarks": ["left_wrist", "right_wrist", "left_ankle", "right_ankle"],
+        "required_landmarks": [
+            "left_wrist",
+            "right_wrist",
+            "left_ankle",
+            "right_ankle",
+        ],
         "view_sensitivity": "medium",
         "visibility_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
@@ -319,7 +410,12 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "side_order_error": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
-        "required_landmarks": ["left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "required_landmarks": [
+            "left_wrist",
+            "right_wrist",
+            "left_shoulder",
+            "right_shoulder",
+        ],
         "view_sensitivity": "low",
         "visibility_dependency": "medium",
         "annotation_fallback": "annotation.starting_side and performance_protocol.side_sequence",
@@ -329,7 +425,12 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "missed_shoulder_tap": {
         "classification": _INTERPRETATION_LIMITATION_FACTOR,
-        "required_landmarks": ["left_wrist", "right_wrist", "left_shoulder", "right_shoulder"],
+        "required_landmarks": [
+            "left_wrist",
+            "right_wrist",
+            "left_shoulder",
+            "right_shoulder",
+        ],
         "view_sensitivity": "high",
         "visibility_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
@@ -338,6 +439,42 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "basis": "Wrist proximity can suggest a missed tap, but true shoulder contact is not proven by pose alone.",
     },
 }
+
+
+def _compensation_candidate_availability(
+    candidate: str,
+    *,
+    has_rule: bool,
+    declared_unimplemented: bool,
+    deferred_feature_design: bool,
+    control_compensation_enabled: bool,
+) -> dict[str, Any]:
+    """Return one availability-matrix row for a YAML compensation candidate."""
+    if has_rule:
+        status = "implemented_rule"
+        next_action = "available_for_feature_extraction"
+    elif declared_unimplemented:
+        status = "declared_unimplemented"
+        next_action = "implement_rule_or_keep_as_explicit_unimplemented_candidate"
+    elif deferred_feature_design:
+        status = "deferred_feature_design"
+        next_action = "define_feature_rule_visibility_policy_and_test_fixture"
+    else:
+        status = "no_rule_registered"
+        next_action = "register_rule_or_mark_as_deferred_feature_design"
+
+    source_fields = [f"compensation_candidates.{candidate}"]
+    if control_compensation_enabled:
+        source_fields.append("feature_domains.control.compensation")
+
+    return {
+        "candidate": candidate,
+        "availability_status": status,
+        "emits_feature": has_rule,
+        "report_reason": status,
+        "source_fields": source_fields,
+        "next_action": next_action,
+    }
 
 
 def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageReport:
@@ -376,7 +513,12 @@ def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageR
                 }
             )
 
-    for candidate in list(getattr(exercise_definition, "compensation_candidates", []) or []):
+    control_entries = set(getattr(feature_domains, "control", []) or [])
+    control_compensation_enabled = "compensation" in control_entries
+
+    for candidate in list(
+        getattr(exercise_definition, "compensation_candidates", []) or []
+    ):
         if candidate in COMPENSATION_RULES:
             report.implemented_compensation_candidates.append(candidate)
         else:
@@ -391,6 +533,17 @@ def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageR
                     "reason": reason,
                 }
             )
+        report.compensation_candidate_availability.append(
+            _compensation_candidate_availability(
+                candidate,
+                has_rule=candidate in COMPENSATION_RULES,
+                declared_unimplemented=candidate in _UNIMPLEMENTED,
+                deferred_feature_design=(
+                    candidate in _DEFERRED_COMPENSATION_FEATURE_DESIGN
+                ),
+                control_compensation_enabled=control_compensation_enabled,
+            )
+        )
 
     return report
 
@@ -433,9 +586,7 @@ def audit_analysis_disrupting_patterns(
                 "classification": spec["classification"],
                 "required_landmarks": list(spec.get("required_landmarks", [])),
                 "view_sensitivity": spec.get("view_sensitivity", "unknown"),
-                "visibility_dependency": spec.get(
-                    "visibility_dependency", "unknown"
-                ),
+                "visibility_dependency": spec.get("visibility_dependency", "unknown"),
                 "annotation_fallback": spec.get("annotation_fallback"),
                 "linked_compensation_candidates": linked_candidates,
                 "declared_linked_compensation_candidates": [
@@ -527,52 +678,60 @@ def _emit_phase_level(
     records: list[FeatureRecord] = []
 
     for rec in compute_rom(df_phase, exercise_definition, rep_id=rep_id):
-        records.append(FeatureRecord(
-            feature_id=rec.feature_id + phase_suffix,
-            exercise_id=rec.exercise_id,
-            rep_id=rep_id,
-            value=rec.value,
-            unit=rec.unit,
-            source_fields=rec.source_fields + ps_fields,
-            note=rec.note,
-            phase=phase_label,
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=rec.feature_id + phase_suffix,
+                exercise_id=rec.exercise_id,
+                rep_id=rep_id,
+                value=rec.value,
+                unit=rec.unit,
+                source_fields=rec.source_fields + ps_fields,
+                note=rec.note,
+                phase=phase_label,
+            )
+        )
 
     for rec in compute_shape(df_phase, exercise_definition, rep_id=rep_id):
-        records.append(FeatureRecord(
-            feature_id=rec.feature_id + phase_suffix,
-            exercise_id=rec.exercise_id,
-            rep_id=rep_id,
-            value=rec.value,
-            unit=rec.unit,
-            source_fields=rec.source_fields + ps_fields,
-            note=rec.note,
-            phase=phase_label,
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=rec.feature_id + phase_suffix,
+                exercise_id=rec.exercise_id,
+                rep_id=rep_id,
+                value=rec.value,
+                unit=rec.unit,
+                source_fields=rec.source_fields + ps_fields,
+                note=rec.note,
+                phase=phase_label,
+            )
+        )
 
     for rec in compute_stability(df_phase, exercise_definition, rep_id=rep_id):
-        records.append(FeatureRecord(
-            feature_id=rec.feature_id + phase_suffix,
-            exercise_id=rec.exercise_id,
-            rep_id=rep_id,
-            value=rec.value,
-            unit=rec.unit,
-            source_fields=rec.source_fields + ps_fields,
-            note=rec.note,
-            phase=phase_label,
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=rec.feature_id + phase_suffix,
+                exercise_id=rec.exercise_id,
+                rep_id=rep_id,
+                value=rec.value,
+                unit=rec.unit,
+                source_fields=rec.source_fields + ps_fields,
+                note=rec.note,
+                phase=phase_label,
+            )
+        )
 
     for rec in compute_tempo(df_phase, exercise_definition, rep_id=rep_id):
-        records.append(FeatureRecord(
-            feature_id=rec.feature_id + phase_suffix,
-            exercise_id=rec.exercise_id,
-            rep_id=rep_id,
-            value=rec.value,
-            unit=rec.unit,
-            source_fields=rec.source_fields + ps_fields,
-            note=rec.note,
-            phase=phase_label,
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=rec.feature_id + phase_suffix,
+                exercise_id=rec.exercise_id,
+                rep_id=rep_id,
+                value=rec.value,
+                unit=rec.unit,
+                source_fields=rec.source_fields + ps_fields,
+                note=rec.note,
+                phase=phase_label,
+            )
+        )
 
     return records
 
@@ -653,7 +812,11 @@ def extract_rep_features(
         records += compute_variability(df, exercise_definition)
     else:
         # No rep annotation: sequence-level fallback
-        from movement.features.spatial import compute_rom, compute_shape, compute_symmetry
+        from movement.features.spatial import (
+            compute_rom,
+            compute_shape,
+            compute_symmetry,
+        )
         from movement.features.control import compute_compensation, compute_stability
 
         records += compute_rom(df, exercise_definition)
@@ -705,32 +868,42 @@ def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecor
         group = list(group_iter)
 
         # Descent vs Ascent mean ROM ratio
-        descent_rom = [r.value for r in group if r.phase == "Descent" and "spatial.rom" in r.feature_id]
-        ascent_rom = [r.value for r in group if r.phase == "Ascent" and "spatial.rom" in r.feature_id]
+        descent_rom = [
+            r.value
+            for r in group
+            if r.phase == "Descent" and "spatial.rom" in r.feature_id
+        ]
+        ascent_rom = [
+            r.value
+            for r in group
+            if r.phase == "Ascent" and "spatial.rom" in r.feature_id
+        ]
 
         if descent_rom and ascent_rom:
             mean_d = sum(descent_rom) / len(descent_rom)
             mean_a = sum(ascent_rom) / len(ascent_rom)
             ratio = mean_d / mean_a if mean_a > 0 else 1.0
-            ps_fields = [r.source_fields for r in group if r.phase in ("Descent", "Ascent")]
-            merged_fields = list(dict.fromkeys(
-                f for sf in ps_fields for f in sf
-            ))
+            ps_fields = [
+                r.source_fields for r in group if r.phase in ("Descent", "Ascent")
+            ]
+            merged_fields = list(dict.fromkeys(f for sf in ps_fields for f in sf))
             if not merged_fields:
                 merged_fields = ["phase_segmentation.phase_sequence"]
-            summary.append(FeatureRecord(
-                feature_id="spatial.phase_rom_ratio.descent_ascent",
-                exercise_id=ex_id,
-                rep_id=rep_id,
-                value=round(ratio, 4),
-                unit="dimensionless",
-                source_fields=merged_fields,
-                note=(
-                    "Ratio of mean Descent ROM to mean Ascent ROM per rep. "
-                    "Values > 1 indicate larger descent range of motion."
-                ),
-                phase=None,
-            ))
+            summary.append(
+                FeatureRecord(
+                    feature_id="spatial.phase_rom_ratio.descent_ascent",
+                    exercise_id=ex_id,
+                    rep_id=rep_id,
+                    value=round(ratio, 4),
+                    unit="dimensionless",
+                    source_fields=merged_fields,
+                    note=(
+                        "Ratio of mean Descent ROM to mean Ascent ROM per rep. "
+                        "Values > 1 indicate larger descent range of motion."
+                    ),
+                    phase=None,
+                )
+            )
 
     return summary
 
@@ -746,21 +919,29 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
     import pandas as pd
 
     if not records:
-        return pd.DataFrame(columns=[
-            "feature_id", "exercise_id", "rep_id", "phase",
-            "value", "unit", "source_fields", "note",
-        ])
+        return pd.DataFrame(
+            columns=[
+                "feature_id",
+                "exercise_id",
+                "rep_id",
+                "phase",
+                "value",
+                "unit",
+                "source_fields",
+                "note",
+            ]
+        )
 
     rows = [
         {
-            "feature_id":    r.feature_id,
-            "exercise_id":   r.exercise_id,
-            "rep_id":        r.rep_id,
-            "phase":         r.phase,
-            "value":         r.value,
-            "unit":          r.unit,
+            "feature_id": r.feature_id,
+            "exercise_id": r.exercise_id,
+            "rep_id": r.rep_id,
+            "phase": r.phase,
+            "value": r.value,
+            "unit": r.unit,
             "source_fields": "|".join(r.source_fields),
-            "note":          r.note,
+            "note": r.note,
         }
         for r in records
     ]
