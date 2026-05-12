@@ -75,6 +75,10 @@ _SWAP_PAIRS: list[tuple[str, str]] = [
     ("left_ankle", "right_ankle"),
 ]
 
+_SIDE_OR_OBLIQUE_ZONES = {"Z2", "Z3", "Z4", "Z6", "Z7", "Z8"}
+_FRONTAL_ZONES = {"Z1", "Z5"}
+_AVAILABILITY_STATES = {"assessed", "low_confidence", "not_assessed"}
+
 
 # ── Pure coordinate helpers ───────────────────────────────────────────────────
 
@@ -323,6 +327,11 @@ def _find_false_runs(arr: np.ndarray) -> list[tuple[int, int]]:
     return runs
 
 
+def _find_true_runs(arr: np.ndarray) -> list[tuple[int, int]]:
+    """Return (start, end) inclusive index pairs for contiguous True runs."""
+    return _find_false_runs(~arr.astype(bool))
+
+
 def _run_interpolation(
     df: pd.DataFrame,
     present: list[str],
@@ -388,6 +397,413 @@ def _run_smoothing(
     return applied
 
 
+# ── Far-side observation confidence ──────────────────────────────────────────
+
+
+def _unique_strings(df: pd.DataFrame, column: str) -> list[str]:
+    if column not in df.columns:
+        return []
+    values = df[column].dropna().astype(str)
+    return sorted({value for value in values if value})
+
+
+def _supports_camera_side_inference(zones: list[str]) -> bool:
+    """Return whether camera-side inference is meaningful for the observed zones."""
+    if not zones:
+        return True
+    zone_set = set(zones)
+    if zone_set and zone_set.issubset(_FRONTAL_ZONES):
+        return False
+    return bool(zone_set & _SIDE_OR_OBLIQUE_ZONES)
+
+
+def _landmark_visibility(
+    df: pd.DataFrame,
+    landmark: str,
+    threshold: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    vis_col = f"{landmark}_visibility"
+    if vis_col not in df.columns:
+        visibility = np.ones(len(df), dtype=float)
+    else:
+        visibility = df[vis_col].astype(float).to_numpy()
+        visibility = np.where(np.isfinite(visibility), visibility, 0.0)
+    low_visibility = visibility < threshold
+    return visibility, low_visibility
+
+
+def _landmark_jitter_score(
+    df: pd.DataFrame,
+    landmark: str,
+    *,
+    torso_scale: float,
+    fps: float,
+    velocity_threshold: float,
+    acceleration_threshold: float,
+    visibility_threshold: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    coords = _xyz(df, landmark)
+    scale = max(float(torso_scale), 1e-9)
+    safe_fps = max(float(fps), 1.0)
+
+    disp = np.linalg.norm(np.diff(coords, axis=0), axis=1)
+    velocity = np.concatenate([[0.0], disp * safe_fps / scale])
+
+    if len(coords) >= 3:
+        accel_vec = coords[2:] - 2.0 * coords[1:-1] + coords[:-2]
+        accel = np.concatenate(
+            [[0.0, 0.0], np.linalg.norm(accel_vec, axis=1) * safe_fps**2 / scale]
+        )
+    else:
+        accel = np.zeros(len(df), dtype=float)
+
+    visibility, low_visibility = _landmark_visibility(
+        df, landmark, visibility_threshold
+    )
+    visibility_penalty = np.where(
+        low_visibility,
+        (visibility_threshold - visibility) / max(visibility_threshold, 1e-9),
+        0.0,
+    )
+
+    score = np.maximum.reduce(
+        [
+            velocity / max(velocity_threshold, 1e-9),
+            accel / max(acceleration_threshold, 1e-9),
+            visibility_penalty,
+        ]
+    )
+    return score, low_visibility
+
+
+def _assign_pair_camera_side(
+    df: pd.DataFrame,
+    left: str,
+    right: str,
+    *,
+    depth_axis: str,
+    near_depth_sign: str,
+    min_depth_offset: float,
+    allow_inference: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    left_side = np.full(len(df), "unknown", dtype=object)
+    right_side = np.full(len(df), "unknown", dtype=object)
+    left_col = f"{left}_{depth_axis}"
+    right_col = f"{right}_{depth_axis}"
+    if not allow_inference or left_col not in df.columns or right_col not in df.columns:
+        return left_side, right_side
+
+    left_depth = df[left_col].astype(float).to_numpy()
+    right_depth = df[right_col].astype(float).to_numpy()
+    finite = np.isfinite(left_depth) & np.isfinite(right_depth)
+
+    if near_depth_sign == "positive":
+        left_near = finite & (left_depth > right_depth + min_depth_offset)
+        right_near = finite & (right_depth > left_depth + min_depth_offset)
+    else:
+        left_near = finite & (left_depth + min_depth_offset < right_depth)
+        right_near = finite & (right_depth + min_depth_offset < left_depth)
+
+    left_side[left_near] = "near_side"
+    right_side[left_near] = "far_side"
+    left_side[right_near] = "far_side"
+    right_side[right_near] = "near_side"
+    return left_side, right_side
+
+
+def _interpolate_or_smooth_unstable_frames(
+    df: pd.DataFrame,
+    landmark: str,
+    unstable: np.ndarray,
+    *,
+    max_gap: int,
+    smoothing_method: str,
+    smoothing_window_size: int,
+) -> tuple[int, int, int]:
+    num_interpolated_gaps = 0
+    num_unresolved_gaps = 0
+    num_smoothed_values = 0
+
+    if not bool(unstable.any()):
+        return num_interpolated_gaps, num_unresolved_gaps, num_smoothed_values
+
+    for start, end in _find_true_runs(unstable):
+        gap = end - start + 1
+        has_left = start > 0 and not unstable[start - 1]
+        has_right = end < len(df) - 1 and not unstable[end + 1]
+        if gap <= max_gap and has_left and has_right:
+            left_row = df.index[start - 1]
+            right_row = df.index[end + 1]
+            can_interpolate = True
+            for ax in ("x", "y", "z"):
+                col = f"{landmark}_{ax}"
+                can_interpolate &= col in df.columns
+                if can_interpolate:
+                    can_interpolate &= np.isfinite(float(df.at[left_row, col]))
+                    can_interpolate &= np.isfinite(float(df.at[right_row, col]))
+            if can_interpolate:
+                for ax in ("x", "y", "z"):
+                    col = f"{landmark}_{ax}"
+                    v0 = float(df.at[left_row, col])
+                    v1 = float(df.at[right_row, col])
+                    for offset in range(gap):
+                        alpha = (offset + 1) / (gap + 1)
+                        df.at[df.index[start + offset], col] = v0 + alpha * (v1 - v0)
+                num_interpolated_gaps += 1
+                continue
+
+        num_unresolved_gaps += 1
+        run_mask = np.zeros(len(df), dtype=bool)
+        run_mask[start : end + 1] = True
+        for ax in ("x", "y", "z"):
+            col = f"{landmark}_{ax}"
+            if col not in df.columns:
+                continue
+            values = df[col].astype(float)
+            if smoothing_method == "rolling_median":
+                smoothed = values.rolling(
+                    smoothing_window_size,
+                    center=True,
+                    min_periods=1,
+                ).median()
+            elif smoothing_method == "moving_average":
+                smoothed = values.rolling(
+                    smoothing_window_size,
+                    center=True,
+                    min_periods=1,
+                ).mean()
+            else:
+                continue
+            df.loc[df.index[run_mask], col] = smoothed.loc[df.index[run_mask]].values
+            num_smoothed_values += int(run_mask.sum())
+
+    return num_interpolated_gaps, num_unresolved_gaps, num_smoothed_values
+
+
+def _view_metric_reliability_for_zones(
+    exercise_definition: "ExerciseDefinition | None",
+    zones: list[str],
+    metric_keys: list[str],
+) -> str | None:
+    if exercise_definition is None:
+        return None
+    view_map = getattr(exercise_definition, "view_metric_reliability", {}) or {}
+    zone_map = view_map.get("zones") or {}
+    for zone in zones:
+        values = zone_map.get(zone) or {}
+        for metric_key in metric_keys:
+            reliability = values.get(metric_key)
+            if reliability in {"high", "moderate", "low", "not_assessed"}:
+                return str(reliability)
+    return None
+
+
+def _feature_availability_summary(
+    *,
+    laterality: str,
+    zones: list[str],
+    num_high_jitter_far_side: int,
+    exercise_definition: "ExerciseDefinition | None",
+) -> dict[str, Any]:
+    low_confidence: list[str] = []
+    not_assessed: list[str] = []
+    reasons: dict[str, list[str]] = {}
+
+    is_bilateral = laterality == "bilateral_symmetric"
+    metric_keys = (
+        ["bilateral_symmetry", "side_to_side_comparison"]
+        if is_bilateral
+        else ["side_to_side_comparison", "frontal_alignment"]
+    )
+    reliability = _view_metric_reliability_for_zones(
+        exercise_definition, zones, metric_keys
+    )
+
+    if reliability == "not_assessed":
+        not_assessed.append("spatial.symmetry.*")
+        reasons.setdefault("spatial.symmetry.*", []).append(
+            "view_metric_reliability_not_assessed"
+        )
+    elif reliability == "low":
+        low_confidence.append("spatial.symmetry.*")
+        reasons.setdefault("spatial.symmetry.*", []).append(
+            "view_metric_reliability_low"
+        )
+    elif is_bilateral and zones and set(zones).issubset({"Z3", "Z7"}):
+        low_confidence.append("spatial.symmetry.*")
+        reasons.setdefault("spatial.symmetry.*", []).append(
+            "side_view_low_left_right_reliability"
+        )
+
+    if num_high_jitter_far_side > 0:
+        low_confidence.append("spatial.symmetry.*")
+        reasons.setdefault("spatial.symmetry.*", []).append("far_side_jitter_present")
+
+    low_confidence = sorted(set(low_confidence))
+    not_assessed = sorted(set(not_assessed))
+    return {
+        "symmetry_gate_ready": not low_confidence and not not_assessed,
+        "low_confidence_feature_families": low_confidence,
+        "not_assessed_feature_families": not_assessed,
+        "view_metric_reliability": reliability,
+        "reasons": reasons,
+    }
+
+
+def _run_far_side_stabilization(
+    df: pd.DataFrame,
+    present: list[str],
+    present_set: set[str],
+    mask: np.ndarray,
+    *,
+    torso_scale: float,
+    fps: float,
+    laterality: str,
+    exercise_definition: "ExerciseDefinition | None",
+    config: Any,
+    swap_corrected: np.ndarray,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str]]:
+    far_cfg = getattr(config, "far_side_stabilization", None)
+    if far_cfg is None or not far_cfg.enabled:
+        return None, None, []
+
+    zones = _unique_strings(df, "camera_zone")
+    allow_inference = bool(
+        far_cfg.camera_side_inference
+    ) and _supports_camera_side_inference(zones)
+    velocity_threshold = (
+        float(far_cfg.jitter_threshold_torso_per_sec)
+        if far_cfg.jitter_threshold_torso_per_sec is not None
+        else float(config.reliability.velocity_threshold_torso_per_sec)
+    )
+    acceleration_threshold = (
+        float(far_cfg.acceleration_threshold_torso_per_sec2)
+        if far_cfg.acceleration_threshold_torso_per_sec2 is not None
+        else velocity_threshold * max(float(fps), 1.0)
+    )
+    min_depth_offset = float(far_cfg.min_depth_offset_torso) * max(torso_scale, 1e-9)
+
+    landmark_side: dict[str, np.ndarray] = {
+        lm: np.full(len(df), "unknown", dtype=object) for lm in present
+    }
+    for left, right in _SWAP_PAIRS:
+        if left not in present_set or right not in present_set:
+            continue
+        left_side, right_side = _assign_pair_camera_side(
+            df,
+            left,
+            right,
+            depth_axis=far_cfg.depth_axis,
+            near_depth_sign=far_cfg.near_depth_sign,
+            min_depth_offset=min_depth_offset,
+            allow_inference=allow_inference,
+        )
+        landmark_side[left] = left_side
+        landmark_side[right] = right_side
+
+    applied_columns: list[str] = []
+    num_near = 0
+    num_far = 0
+    num_unknown = 0
+    num_high_jitter_far = 0
+    num_far_gaps_interpolated = 0
+    num_far_gaps_unresolved = 0
+    num_far_values_smoothed = 0
+    frame_low_confidence = np.zeros(len(df), dtype=bool)
+    present_index = {lm: idx for idx, lm in enumerate(present)}
+
+    for landmark in present:
+        side = landmark_side[landmark]
+        score, low_visibility = _landmark_jitter_score(
+            df,
+            landmark,
+            torso_scale=torso_scale,
+            fps=fps,
+            velocity_threshold=velocity_threshold,
+            acceleration_threshold=acceleration_threshold,
+            visibility_threshold=float(far_cfg.visibility_threshold),
+        )
+        lm_mask = mask[:, present_index[landmark]]
+        score = np.maximum(score, np.where(lm_mask, 0.0, 1.0))
+        score = np.maximum(score, np.where(swap_corrected, 1.0, 0.0))
+        unstable_far = (side == "far_side") & (
+            (score >= 1.0) | low_visibility | ~lm_mask
+        )
+
+        (
+            interpolated,
+            unresolved,
+            smoothed,
+        ) = _interpolate_or_smooth_unstable_frames(
+            df,
+            landmark,
+            unstable_far,
+            max_gap=int(far_cfg.max_gap_frames),
+            smoothing_method=far_cfg.smoothing_method,
+            smoothing_window_size=int(far_cfg.smoothing_window_size),
+        )
+
+        confidence_note = np.full(len(df), "", dtype=object)
+        confidence_note[unstable_far] = "far_side_low_confidence"
+        if interpolated:
+            confidence_note[unstable_far] = "far_side_stabilized"
+
+        df[f"{landmark}_camera_side"] = side
+        df[f"{landmark}_jitter_score"] = score
+        df[f"{landmark}_confidence_note"] = confidence_note
+        applied_columns.extend(
+            [
+                f"{landmark}_camera_side",
+                f"{landmark}_jitter_score",
+                f"{landmark}_confidence_note",
+            ]
+        )
+
+        num_near += int(np.sum(side == "near_side"))
+        num_far += int(np.sum(side == "far_side"))
+        num_unknown += int(np.sum(side == "unknown"))
+        num_high_jitter_far += int(np.sum(unstable_far))
+        num_far_gaps_interpolated += interpolated
+        num_far_gaps_unresolved += unresolved
+        num_far_values_smoothed += smoothed
+        frame_low_confidence |= unstable_far
+
+    df["preprocessing_confidence"] = np.where(
+        frame_low_confidence,
+        "low_confidence",
+        "assessed",
+    )
+    applied_columns.append("preprocessing_confidence")
+
+    summary = {
+        "enabled": True,
+        "camera_side_inference": {
+            "enabled": bool(far_cfg.camera_side_inference),
+            "observed_zones": zones,
+            "allow_inference": allow_inference,
+            "depth_axis": far_cfg.depth_axis,
+            "near_depth_sign": far_cfg.near_depth_sign,
+            "min_depth_offset_torso": float(far_cfg.min_depth_offset_torso),
+        },
+        "num_near_side_landmark_frames": num_near,
+        "num_far_side_landmark_frames": num_far,
+        "num_unknown_side_landmark_frames": num_unknown,
+        "num_high_jitter_far_side_landmark_frames": num_high_jitter_far,
+        "num_far_side_gaps_interpolated": num_far_gaps_interpolated,
+        "num_far_side_gaps_unresolved": num_far_gaps_unresolved,
+        "num_far_side_values_smoothed": num_far_values_smoothed,
+        "velocity_threshold_torso_per_sec": velocity_threshold,
+        "acceleration_threshold_torso_per_sec2": acceleration_threshold,
+    }
+    availability = _feature_availability_summary(
+        laterality=laterality,
+        zones=zones,
+        num_high_jitter_far_side=num_high_jitter_far,
+        exercise_definition=exercise_definition,
+    )
+    return summary, availability, applied_columns
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 
@@ -416,8 +832,12 @@ def preprocess_pose_dataframe(
     pre_df : pd.DataFrame
         Input columns plus:
           <landmark>_reliable  (bool, per landmark per frame)
+          <landmark>_camera_side / _jitter_score / _confidence_note
+                                (when far_side_stabilization is enabled)
           preprocessing_valid  (bool, frame-level summary)
           preprocessing_note   (str,  reason string when swap applied)
+          preprocessing_confidence
+                                (when far_side_stabilization is enabled)
           swap_corrected       (bool, frame-level)
     pre_report : dict[str, Any]
     """
@@ -505,6 +925,23 @@ def preprocess_pose_dataframe(
         )
         frame_reliable = mask.all(axis=1)  # recompute after gaps resolved
 
+    (
+        far_side_summary,
+        feature_availability_summary,
+        far_side_applied_columns,
+    ) = _run_far_side_stabilization(
+        pre_df,
+        present,
+        present_set,
+        mask,
+        torso_scale=torso_scale,
+        fps=fps,
+        laterality=laterality,
+        exercise_definition=exercise_definition,
+        config=config,
+        swap_corrected=swap_corrected,
+    )
+
     # ── Smoothing ─────────────────────────────────────────────────────────────
     smoothing_applied: list[str] = []
     if config.smoothing.enabled:
@@ -565,10 +1002,13 @@ def preprocess_pose_dataframe(
             "window_size": config.smoothing.window_size,
             "applied_columns": smoothing_applied,
         },
+        "far_side_stabilization_summary": far_side_summary,
+        "feature_availability_summary": feature_availability_summary,
         "num_invalid_frames": num_invalid_frames,
         "applied_columns": (
             [f"{lm}_reliable" for lm in present]
             + ["preprocessing_valid", "preprocessing_note", "swap_corrected"]
+            + far_side_applied_columns
         ),
     }
 

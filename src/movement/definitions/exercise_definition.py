@@ -465,6 +465,9 @@ class ExerciseDefinition:
     camera_protocol : CameraProtocolSpec | None
         Recommended filming-condition metadata. None → no exercise-specific
         camera recommendation was declared.
+    view_metric_reliability : dict[str, Any]
+        Per-camera-zone metric reliability prior. It is used for confidence and
+        feature-availability reporting, not for coordinate correction.
     """
 
     exercise_id: str
@@ -484,6 +487,7 @@ class ExerciseDefinition:
     phase_segmentation: PhaseSegmentationSpec | None = None
     performance_protocol: PerformanceProtocolSpec | None = None
     camera_protocol: CameraProtocolSpec | None = None
+    view_metric_reliability: dict[str, Any] = field(default_factory=dict)
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -971,6 +975,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             raw.get("performance_protocol")
         ),
         camera_protocol=_parse_camera_protocol(raw.get("camera_protocol")),
+        view_metric_reliability=dict(raw.get("view_metric_reliability") or {}),
     )
 
 

@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.13
+**문서 버전:** 1.4.14
 **최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -518,10 +518,11 @@ level이 권장 조건과 맞지 않으면 warning/provenance로만 보고한다
 ### view_metric_reliability
 
 `view_metric_reliability`는 각 camera zone이 각 metric family를 얼마나 잘 뒷받침하는지 기록하는
-계획된 운동 정의 블록이다. 좌표 보정 규칙이 아니며, 데이터를 거부하지 않는다. ⑧ Feature
-Extraction, ⑩ Biomarker Derivation, ⑪ Visualization이 사용할 reliability prior를 제공하여,
-피처 값은 계산되더라도 해당 view가 해석을 뒷받침하지 않으면 `low_confidence` 또는
-`not_assessed`로 표시할 수 있게 한다.
+운동 정의 블록이다. 현재 loader는 이를 `ExerciseDefinition.view_metric_reliability`로 보존한다.
+좌표 보정 규칙이 아니며, 데이터를 거부하지 않는다. ④ Preprocessing, ⑧ Feature Extraction,
+⑩ Biomarker Derivation, ⑪ Visualization이 사용할 reliability prior를 제공하여, 피처 값은
+계산되더라도 해당 view가 해석을 뒷받침하지 않으면 `low_confidence` 또는 `not_assessed`로
+표시할 수 있게 한다.
 
 reliability 값은 다음처럼 해석한다.
 

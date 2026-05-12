@@ -1,6 +1,6 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.4.9
+**문서 버전:** 1.5.0
 **최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
@@ -54,6 +54,8 @@
 | 가시성 기반 신뢰도 가중 (Visibility-based confidence weighting) | 생체역학 프록시 계산에서 주요 랜드마크 가시성을 프레임 가중치로 사용하는 방식. 낮은 가시성 프레임은 지표 계산 영향이 줄거나 제외된다. |
 | 시점-지표 신뢰도 (View-metric reliability) | 특정 camera zone이 특정 metric family를 얼마나 잘 뒷받침하는지 나타내는 운동 정의 수준의 prior. 좌표 보정이나 landmark 품질과 분리되며, `high`, `moderate`, `low`, `not_assessed` 같은 값으로 보고와 scoring eligibility를 안내한다. |
 | 피처 산출 가능성 (Feature availability) | landmark coverage, geometry plausibility, swap risk, view-metric reliability를 확인한 뒤, 계산 가능한 값이 scoring에 들어갈 수 있는지 결정하는 피처별 판정. 숫자값을 계산할 수 있다는 사실과 구분한다. |
+| 카메라 근측/원측 (Near-side / far-side) | 카메라 기준 visibility context. `Near-side`는 카메라에 더 가까운 landmark 또는 body side, `far-side`는 카메라에서 더 먼 쪽을 뜻한다. 해부학적 품질 라벨이 아니라 관측 신뢰도 판단에 사용한다. |
+| 원측 jitter (Far-side jitter) | 카메라에서 먼 쪽 landmark의 불안정성. visibility drop, velocity/acceleration spike, segment-length inconsistency, swap risk로 요약한다. 보상 움직임 지표가 아니라 data-confidence signal이다. |
 
 ---
 

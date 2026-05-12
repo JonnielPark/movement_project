@@ -1,7 +1,7 @@
 # 04. Preprocessing
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.1.1
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/pipeline/04_preprocessing.md` is the same-version Korean source.
 
 Pipeline step ④. Corrects data quality issues in monocular pose data before normalization.
@@ -9,6 +9,11 @@ Returns a corrected copy of the dataframe; does not modify the input.
 
 Corrects data quality issues only — does not alter movement quality patterns
 (compensation movements, squat depth, etc.).
+
+Current implementation covers reliability masks, label-only L/R swap correction,
+short-gap interpolation, optional smoothing, and optional visibility-aware
+far-side stabilization with feature-availability hooks for side-view or
+near-side-view recordings.
 
 ---
 
@@ -73,6 +78,8 @@ landmarks.critical_landmarks
 classification.laterality
 quality_rules.minimum_visible_landmark_ratio
 quality_rules.max_interpolation_gap_frames
+camera_protocol.recommended_zones
+view_metric_reliability
 ```
 
 ## 4. Outputs
@@ -88,6 +95,17 @@ Output columns (added, not replacing originals):
 preprocessing_valid    bool    frame-level overall reliability
 preprocessing_note     str     reason if unreliable
 swap_corrected         bool    whether L/R label swap was applied
+```
+
+Task B report/metadata outputs (do not replace coordinates unless explicitly
+stabilized by policy):
+
+```text
+<landmark>_camera_side       near_side | far_side | unknown
+<landmark>_jitter_score      normalized landmark jitter score
+<landmark>_confidence_note   landmark-level observation confidence note
+preprocessing_confidence     frame-level confidence note for downstream stages
+feature_availability_summary report-level feature scoring eligibility context
 ```
 
 ## 5. Reliability Detection
@@ -228,7 +246,135 @@ preprocessing:
     window_size: 3
 ```
 
-## 9. Kalman Filter (future)
+## 9. Task B Extension: Visibility-Aware Far-Side Stabilization
+
+This optional implementation addresses the case where the recording view is side
+or near-side, and the side farther from the camera has lower visibility, higher
+jitter, or higher L/R swap risk. It is not canonicalization and does not try to
+make the skeleton symmetric.
+
+### 9-1. Near-Side / Far-Side Inference
+
+The preprocessing layer estimates camera-side context per landmark or side:
+
+```text
+near_side    landmark/body side closer to the camera in the observed pose
+far_side     landmark/body side farther from the camera in the observed pose
+unknown      insufficient evidence; do not apply side-specific stabilization
+```
+
+Inference may use:
+
+```text
+camera_zone from annotation or recording metadata
+left/right depth coordinate relative to hip_center or body center
+visibility difference between paired landmarks
+temporal continuity of the side assignment
+exercise laterality and active/support role when available
+```
+
+If camera-side inference is unstable, the result remains `unknown`. Unknown is a
+confidence state, not a movement-quality penalty.
+
+### 9-2. Far-Side Jitter Score
+
+The jitter score is a reliability metric, not a biomechanical score. It
+summarizes whether a landmark is likely to be an unstable monocular estimate:
+
+```text
+velocity_spike_ratio
+acceleration_spike_ratio
+visibility_drop_ratio
+segment_length_inconsistency
+left_right_swap_risk
+```
+
+The score should be normalized to body scale where possible. It is reported per
+landmark or per paired side and consumed later by feature-availability gates.
+
+### 9-3. Stabilization Policy
+
+Far-side stabilization is conservative:
+
+```text
+Allowed:
+    stronger smoothing only for low-visibility + high-jitter landmarks
+    interpolation of short low-confidence gaps
+    confidence/report metadata for unresolved long gaps
+
+Not allowed:
+    forcing far-side landmarks to match near-side landmarks
+    removing true knee valgus, pelvic shift, trunk lean, or asymmetry
+    converting far-side unreliability directly into a poor movement-quality score
+```
+
+Segment-length plausibility may be used as a guardrail, but it must not force a
+fixed template. Long gaps or unstable side assignments remain `low_confidence` or
+`not_assessed`.
+
+### 9-4. Feature-Availability Hooks
+
+④ Preprocessing should provide downstream stages with the context needed to decide
+whether a feature can enter scoring:
+
+```text
+bilateral_landmark_coverage
+near_far_side_context
+far_side_jitter_score
+left_right_swap_risk
+segment_length_plausibility
+view_reliability from exercise definition
+```
+
+For `spatial.symmetry.*`, availability is `assessed` only when both sides have
+sufficient coverage, plausible segment lengths, low swap risk, acceptable far-side
+jitter, and a camera view that supports left-right interpretation. Otherwise the
+feature may be `low_confidence` or `not_assessed`.
+
+Configuration block:
+
+```yaml
+preprocessing:
+  far_side_stabilization:
+    enabled: false
+    camera_side_inference: true
+    visibility_threshold: 0.6
+    jitter_threshold_torso_per_sec: null
+    acceleration_threshold_torso_per_sec2: null
+    max_gap_frames: 3
+    smoothing_method: rolling_median
+    smoothing_window_size: 3
+    mark_long_gaps_low_confidence: true
+    depth_axis: z
+    near_depth_sign: negative
+    min_depth_offset_torso: 0.05
+```
+
+Report fields:
+
+```python
+{
+    "far_side_stabilization_summary": {
+        "enabled": bool,
+        "camera_side_inference": dict,
+        "num_near_side_landmark_frames": int,
+        "num_far_side_landmark_frames": int,
+        "num_unknown_side_landmark_frames": int,
+        "num_high_jitter_far_side_landmark_frames": int,
+        "num_far_side_gaps_interpolated": int,
+        "num_far_side_gaps_unresolved": int,
+        "num_far_side_values_smoothed": int,
+    },
+    "feature_availability_summary": {
+        "symmetry_gate_ready": bool,
+        "low_confidence_feature_families": list,
+        "not_assessed_feature_families": list,
+        "reasons": dict,
+    },
+}
+```
+
+## 10. Kalman Filter (future)
 
 Kalman filtering is available as a YAML option but disabled by default.
 Enable only after the baseline (visibility gating + anatomical checks + interpolation +
@@ -242,18 +388,18 @@ preprocessing:
     measurement_noise: 0.1
 ```
 
-## 10. Laterality Branch Summary
+## 11. Laterality Branch Summary
 
 ```text
-laterality               visibility  segment  ROM  velocity  L/R swap  smoothing
-──────────────────────   ──────────  ───────  ───  ────────  ────────  ─────────
-bilateral_symmetric      enabled     enabled  on   enabled   skip      optional
-alternating              enabled     enabled  on   enabled   enabled   optional
-unilateral_*             enabled     enabled  on   enabled   enabled   optional
-generic fallback         enabled     enabled  on   enabled   skip      optional
+laterality               visibility  segment  ROM  velocity  L/R swap  far-side  smoothing
+──────────────────────   ──────────  ───────  ───  ────────  ────────  ────────  ─────────
+bilateral_symmetric      enabled     enabled  on   enabled   skip      view-gated optional
+alternating              enabled     enabled  on   enabled   enabled   role-aware optional
+unilateral_*             enabled     enabled  on   enabled   enabled   role-aware optional
+generic fallback         enabled     enabled  on   enabled   skip      skip      optional
 ```
 
-## 11. Invalid Frame Marking
+## 12. Invalid Frame Marking
 
 Frames are never silently deleted. Quality metadata columns are added:
 
@@ -266,7 +412,7 @@ swap_corrected = True         L/R labels were exchanged
 Exact frame exclusion at feature extraction time is determined by annotation rules
 and feature step logic.
 
-## 12. Preprocessing Report
+## 13. Preprocessing Report
 
 ```python
 {
@@ -301,17 +447,19 @@ and feature step logic.
         "window_size": int,
         "applied_columns": list,
     },
+    "far_side_stabilization_summary": dict | None,
+    "feature_availability_summary": dict | None,
     "num_invalid_frames": int,
     "applied_columns": list,
 }
 ```
 
-## 13. Planned Extensions
+## 14. Planned Extensions
 
 - Visibility-weighted interpolation
 - Reliability-weighted smoothing
 - Hampel filter (outlier-robust smoothing)
 - One-Euro filter (low-latency jitter-aware smoothing)
 - Per-exercise velocity threshold tuning
-- Per-landmark reliability rules (e.g., foot landmarks in occluded reps)
+- Per-landmark reliability rules beyond the Task B far-side policy
 - Before/after correction visualization

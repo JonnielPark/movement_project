@@ -83,7 +83,7 @@ Stage activation is controlled by the `enabled` flags in
 | D — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
 | E — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
 | F — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
-| G — Maintenance and repository hygiene | Focused test runs, full `pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
+| G — Maintenance and repository hygiene | Focused test runs, full `python -m pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
 | H — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after Tasks C-E |
 
 Dashboard / Phantom 3D work is deferred behind the Task F gate and is not an active
@@ -213,7 +213,7 @@ for score in score_records:
 ## Tests
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
 ---

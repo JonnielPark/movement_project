@@ -172,12 +172,31 @@ class SmoothingConfig:
 
 
 @dataclass
+class FarSideStabilizationConfig:
+    enabled: bool = False
+    camera_side_inference: bool = True
+    visibility_threshold: float = 0.6
+    jitter_threshold_torso_per_sec: float | None = None
+    acceleration_threshold_torso_per_sec2: float | None = None
+    max_gap_frames: int = 3
+    smoothing_method: str = "rolling_median"
+    smoothing_window_size: int = 3
+    mark_long_gaps_low_confidence: bool = True
+    depth_axis: str = "z"
+    near_depth_sign: str = "negative"
+    min_depth_offset_torso: float = 0.05
+
+
+@dataclass
 class PreprocessingConfig:
     enabled: bool = False
     reliability: ReliabilityConfig = field(default_factory=ReliabilityConfig)
     swap_detection: SwapDetectionConfig = field(default_factory=SwapDetectionConfig)
     interpolation: InterpolationConfig = field(default_factory=InterpolationConfig)
     smoothing: SmoothingConfig = field(default_factory=SmoothingConfig)
+    far_side_stabilization: FarSideStabilizationConfig = field(
+        default_factory=FarSideStabilizationConfig
+    )
     kalman_filter: KalmanConfig = field(default_factory=KalmanConfig)
 
 
@@ -383,6 +402,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sw = pre.get("swap_detection", {})
     itp = pre.get("interpolation", {})
     sm = pre.get("smoothing", {})
+    fss = pre.get("far_side_stabilization", {})
     kal = pre.get("kalman_filter", {})
     nor = raw.get("normalization", {})
     can = nor.get("canonicalization", {})
@@ -454,6 +474,30 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 enabled=bool(sm.get("enabled", False)),
                 method=sm.get("method", "rolling_median"),
                 window_size=int(sm.get("window_size", 3)),
+            ),
+            far_side_stabilization=FarSideStabilizationConfig(
+                enabled=bool(fss.get("enabled", False)),
+                camera_side_inference=bool(fss.get("camera_side_inference", True)),
+                visibility_threshold=float(fss.get("visibility_threshold", 0.6)),
+                jitter_threshold_torso_per_sec=(
+                    None
+                    if fss.get("jitter_threshold_torso_per_sec") is None
+                    else float(fss.get("jitter_threshold_torso_per_sec"))
+                ),
+                acceleration_threshold_torso_per_sec2=(
+                    None
+                    if fss.get("acceleration_threshold_torso_per_sec2") is None
+                    else float(fss.get("acceleration_threshold_torso_per_sec2"))
+                ),
+                max_gap_frames=int(fss.get("max_gap_frames", 3)),
+                smoothing_method=fss.get("smoothing_method", "rolling_median"),
+                smoothing_window_size=int(fss.get("smoothing_window_size", 3)),
+                mark_long_gaps_low_confidence=bool(
+                    fss.get("mark_long_gaps_low_confidence", True)
+                ),
+                depth_axis=fss.get("depth_axis", "z"),
+                near_depth_sign=fss.get("near_depth_sign", "negative"),
+                min_depth_offset_torso=float(fss.get("min_depth_offset_torso", 0.05)),
             ),
             kalman_filter=KalmanConfig(
                 enabled=bool(kal.get("enabled", False)),

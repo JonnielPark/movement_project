@@ -216,6 +216,45 @@ camera_protocol:
   out_of_zone_policy: warn_and_continue
   coordinate_correction: none
 
+view_metric_reliability:
+  structure: bilateral_symmetric
+  zones:
+    Z1:
+      bilateral_symmetry: high
+      frontal_alignment: high
+      sagittal_rom: low
+      depth: low
+      trunk_flexion: low
+      heel_lift: low
+    Z2:
+      bilateral_symmetry: moderate
+      frontal_alignment: high
+      sagittal_rom: moderate
+      depth: moderate
+      trunk_flexion: moderate
+      heel_lift: moderate
+    Z3:
+      sagittal_rom: high
+      depth: high
+      trunk_flexion: high
+      heel_lift: moderate
+      bilateral_symmetry: low
+      frontal_alignment: low
+    Z7:
+      sagittal_rom: high
+      depth: high
+      trunk_flexion: high
+      heel_lift: moderate
+      bilateral_symmetry: low
+      frontal_alignment: low
+    Z8:
+      bilateral_symmetry: moderate
+      frontal_alignment: high
+      sagittal_rom: moderate
+      depth: moderate
+      trunk_flexion: moderate
+      heel_lift: moderate
+
 quality_rules:
   minimum_visible_landmark_ratio: 0.8
   minimum_critical_landmark_ratio: 0.9
