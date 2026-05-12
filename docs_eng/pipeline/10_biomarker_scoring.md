@@ -1,12 +1,13 @@
 # 10. Biomarker Scoring
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10
+**Document Version:** 1.0.4
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩. Integrates ⑧ feature extraction and ⑨ biomechanical proxy
 output into interpretable digital biomarkers and a per-rep composite movement
-quality score.
+quality score. Observation reliability and coordinate-correction magnitude are
+interpreted as separate confidence/provenance information.
 
 Two record types are emitted:
 1. **`BiomarkerRecord`** — pass-through individual metrics with `source_fields`
@@ -55,6 +56,7 @@ Allowed:
     Dynamic floor proportional to mandatory-ROM achievement
     Per-feature deduction audit list with z, weight, deduction
     Pass-through provenance from FeatureRecord / BiomechRecord
+    Data confidence and correction reports displayed separately from the score
 
 Not allowed:
     Clinical thresholds for "normal" vs "abnormal"
@@ -62,6 +64,7 @@ Not allowed:
     Hard-coded mean / std (must come from baseline file)
     Disease-prediction outputs
     Single-number summary without per-domain transparency
+    Directly converting large coordinate corrections into movement-quality penalties
 ```
 
 ## 3. Two-Stage Output
@@ -159,6 +162,32 @@ spatial.*    → spatial      temporal.*   → temporal
 control.*    → control      biomech.*    → biomech
 other        → ignored
 ```
+
+### 4-1. Separation Between Movement Quality Score and Data Confidence
+
+Monocular-pose canonicalization is not physical 3D reconstruction. It moves a pose
+with reasonably consistent observation bias into a coordinate representation where
+joint movement patterns can be evaluated. Therefore, the `movement_quality_score`
+computed from canonicalized or normalized coordinates is separate from
+`data_confidence`, which summarizes raw-pose quality and correction magnitude.
+
+```text
+movement_quality_score
+    Movement-pattern score computed from canonical or normalized coordinates.
+
+data_confidence
+    Observation/correction reliability summary, including visibility, jitter,
+    left/right swap risk, canonicalization correction magnitude, and residual after fit.
+
+correction_report
+    Provenance for which priors were used and how much correction was applied.
+```
+
+A large correction magnitude does not automatically imply poor movement quality.
+When camera artifacts are large but landmark tracking and joint-change patterns
+remain stable, the movement-quality score may be high while data confidence is
+moderate or low. Conversely, low data confidence should trigger interpretive caution
+or withholding rather than silently becoming a movement-quality penalty.
 
 ## 5. Z-Score Deduction Formula
 

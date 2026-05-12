@@ -21,6 +21,7 @@ Implemented rules:
 Not yet implemented (candidates accepted by YAML, no rule registered):
     asymmetric_depth, foot_external_rotation_proxy, tempo_instability
 """
+
 from __future__ import annotations
 
 import warnings
@@ -33,6 +34,7 @@ from movement.features import FeatureRecord
 
 
 # ── Coordinate helpers ────────────────────────────────────────────────────────
+
 
 def _get_norm_xyz(df: pd.DataFrame, landmark: str) -> np.ndarray:
     """Return (T, 3) float array for landmark. Prefers _norm_ columns."""
@@ -61,8 +63,8 @@ def _frontal_knee_deviation(df: pd.DataFrame, side: str) -> np.ndarray:
     knee_xz = knee[:, [0, 2]]
     ankle_xz = ankle[:, [0, 2]]
 
-    line_vec = ankle_xz - hip_xz   # hip → ankle
-    knee_vec = knee_xz - hip_xz    # hip → knee
+    line_vec = ankle_xz - hip_xz  # hip → ankle
+    knee_vec = knee_xz - hip_xz  # hip → knee
 
     # 2D signed cross product (perpendicular distance × |line_vec|)
     cross = line_vec[:, 0] * knee_vec[:, 1] - line_vec[:, 1] * knee_vec[:, 0]
@@ -75,6 +77,7 @@ def _frontal_knee_deviation(df: pd.DataFrame, side: str) -> np.ndarray:
 
 
 # ── Rule functions ─────────────────────────────────────────────────────────────
+
 
 def _rule_knee_valgus(
     df: pd.DataFrame, ex_id: str, rep_id: int | None
@@ -94,15 +97,17 @@ def _rule_knee_valgus(
         if np.all(np.isnan(valgus_index)):
             continue
         peak = float(np.nanpercentile(valgus_index, 95))
-        records.append(FeatureRecord(
-            feature_id=f"control.compensation.knee_valgus.{side}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(peak, 4),
-            unit="torso_length_ratio",
-            source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
-            note="frontal-plane medial knee deviation; positive = valgus (inward collapse)",
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"control.compensation.knee_valgus.{side}",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(peak, 4),
+                unit="torso_length_ratio",
+                source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
+                note="frontal-plane medial knee deviation; positive = valgus (inward collapse)",
+            )
+        )
     return records
 
 
@@ -123,15 +128,17 @@ def _rule_knee_varus(
         if np.all(np.isnan(varus_index)):
             continue
         peak = float(np.nanpercentile(varus_index, 95))
-        records.append(FeatureRecord(
-            feature_id=f"control.compensation.knee_varus.{side}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(peak, 4),
-            unit="torso_length_ratio",
-            source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
-            note="frontal-plane lateral knee deviation; positive = varus (outward bow)",
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"control.compensation.knee_varus.{side}",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(peak, 4),
+                unit="torso_length_ratio",
+                source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
+                note="frontal-plane lateral knee deviation; positive = varus (outward bow)",
+            )
+        )
     return records
 
 
@@ -155,15 +162,17 @@ def _rule_lateral_pelvic_shift(
     deviation = np.abs(pelvis_x - baseline_x)
     peak = float(np.nanpercentile(deviation, 95))
 
-    return [FeatureRecord(
-        feature_id="control.compensation.lateral_pelvic_shift",
-        exercise_id=ex_id,
-        rep_id=rep_id,
-        value=round(peak, 4),
-        unit="torso_length_ratio",
-        source_fields=["left_hip", "right_hip"],
-        note="peak lateral pelvis displacement from rep-mean baseline",
-    )]
+    return [
+        FeatureRecord(
+            feature_id="control.compensation.lateral_pelvic_shift",
+            exercise_id=ex_id,
+            rep_id=rep_id,
+            value=round(peak, 4),
+            unit="torso_length_ratio",
+            source_fields=["left_hip", "right_hip"],
+            note="peak lateral pelvis displacement from rep-mean baseline",
+        )
+    ]
 
 
 def _rule_excessive_trunk_flexion(
@@ -197,15 +206,17 @@ def _rule_excessive_trunk_flexion(
 
     peak = float(np.nanpercentile(angle_deg, 95))
 
-    return [FeatureRecord(
-        feature_id="control.compensation.excessive_trunk_flexion",
-        exercise_id=ex_id,
-        rep_id=rep_id,
-        value=round(peak, 2),
-        unit="degree",
-        source_fields=["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
-        note="peak trunk lean from vertical (z-axis); larger = more forward lean",
-    )]
+    return [
+        FeatureRecord(
+            feature_id="control.compensation.excessive_trunk_flexion",
+            exercise_id=ex_id,
+            rep_id=rep_id,
+            value=round(peak, 2),
+            unit="degree",
+            source_fields=["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+            note="peak trunk lean from vertical (z-axis); larger = more forward lean",
+        )
+    ]
 
 
 def _rule_heel_lift(
@@ -229,15 +240,17 @@ def _rule_heel_lift(
         lift = heel_z - min_z
         peak = float(np.nanpercentile(lift, 95))
 
-        records.append(FeatureRecord(
-            feature_id=f"control.compensation.heel_lift.{side}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(peak, 4),
-            unit="torso_length_ratio",
-            source_fields=[f"{side}_heel"],
-            note="peak heel elevation above rep-minimum; non-zero = heel-lift compensation",
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"control.compensation.heel_lift.{side}",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(peak, 4),
+                unit="torso_length_ratio",
+                source_fields=[f"{side}_heel"],
+                note="peak heel elevation above rep-minimum; non-zero = heel-lift compensation",
+            )
+        )
     return records
 
 
@@ -260,15 +273,17 @@ def _rule_pelvic_rotation(
     depth_diff = np.abs(left_hip[:, 1] - right_hip[:, 1])
     peak = float(np.nanpercentile(depth_diff, 95))
 
-    return [FeatureRecord(
-        feature_id="control.compensation.pelvic_rotation",
-        exercise_id=ex_id,
-        rep_id=rep_id,
-        value=round(peak, 4),
-        unit="torso_length_ratio",
-        source_fields=["left_hip", "right_hip"],
-        note="peak left-right hip depth asymmetry; proxy for transverse-plane pelvic rotation",
-    )]
+    return [
+        FeatureRecord(
+            feature_id="control.compensation.pelvic_rotation",
+            exercise_id=ex_id,
+            rep_id=rep_id,
+            value=round(peak, 4),
+            unit="torso_length_ratio",
+            source_fields=["left_hip", "right_hip"],
+            note="peak left-right hip depth asymmetry; proxy for transverse-plane pelvic rotation",
+        )
+    ]
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────

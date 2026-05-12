@@ -11,6 +11,7 @@ Monocular 2D approximation:
 
 Output unit: torso_length_ratio (absolute units are forbidden).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ import pandas as pd
 from movement.biomech import BiomechRecord
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
@@ -60,7 +61,9 @@ def _point_to_line_dist_2d(
     ab = b - a
     ab_norm = np.linalg.norm(ab, axis=1, keepdims=True)
     safe = ab_norm[:, 0] > 1e-9
-    ab_unit = np.where(safe[:, np.newaxis], ab / np.where(ab_norm > 1e-9, ab_norm, 1.0), 0.0)
+    ab_unit = np.where(
+        safe[:, np.newaxis], ab / np.where(ab_norm > 1e-9, ab_norm, 1.0), 0.0
+    )
 
     ap = p - a
     proj = np.einsum("ij,ij->i", ap, ab_unit)
@@ -131,25 +134,27 @@ def compute_moment_arms(
     def _append(metric_id: str, dist: np.ndarray, note: str) -> None:
         dist_valid = dist[valid_mask] if vis_applied else dist
         median_dist = float(np.nanmedian(dist_valid))
-        records.append(BiomechRecord(
-            metric_id=metric_id,
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(median_dist, 4),
-            unit="torso_length_ratio",
-            source_fields=source_fields,
-            note=note,
-            visibility_weight_applied=vis_applied,
-            n_frames_used=n_used,
-            n_frames_excluded_low_visibility=n_excluded,
-        ))
+        records.append(
+            BiomechRecord(
+                metric_id=metric_id,
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(median_dist, 4),
+                unit="torso_length_ratio",
+                source_fields=source_fields,
+                note=note,
+                visibility_weight_applied=vis_applied,
+                n_frames_used=n_used,
+                n_frames_excluded_low_visibility=n_excluded,
+            )
+        )
 
     # ── knee moment arm (sagittal plane xz) ──────────────────────────────────
     if any("knee" in r for r in load_regions):
         for side in ("left", "right"):
             try:
                 ankle = _norm_xyz(df, f"{side}_ankle")
-                knee  = _norm_xyz(df, f"{side}_knee")
+                knee = _norm_xyz(df, f"{side}_knee")
             except KeyError:
                 continue
             dist = _point_to_line_dist_2d(com_xyz, ankle, knee, plane="xz")
@@ -164,7 +169,7 @@ def compute_moment_arms(
         for side in ("left", "right"):
             try:
                 knee = _norm_xyz(df, f"{side}_knee")
-                hip  = _norm_xyz(df, f"{side}_hip")
+                hip = _norm_xyz(df, f"{side}_hip")
             except KeyError:
                 continue
             dist = _point_to_line_dist_2d(com_xyz, knee, hip, plane="xz")

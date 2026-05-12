@@ -1,39 +1,50 @@
 """
 Pipeline Runner
 
-Runs the analysis steps in order:
+Documented analysis stages:
     ① validation             structural integrity check
     ② annotation             frame-level segment metadata
     ③ exercise_definition    biomechanical property object loading
     ④ preprocessing          monocular data quality correction
     ⑤ normalization          body-relative coordinate normalization
-    ⑥ segmentation          semi-automatic rep splitting + intra-rep phase splitting
+       canonicalization optional analysis-space alignment
+    ⑥ segmentation           semi-automatic rep splitting + intra-rep phase splitting
     ⑦ motion_attribution     per-rep active-side consistency
     ⑧ features               spatial / temporal / control feature extraction
     ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
     ⑩ biomarker              interpretable digital biomarkers with provenance
 
-Each step is toggled via the enabled flag in configs/pipeline_default.yaml.
+The current runner supports implemented stages ①–⑩; optional canonicalization
+remains disabled unless explicitly enabled.
 """
 
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import yaml
 
-from movement.config import (
+from movement.core.config import (
     LANDMARKS,
     make_coordinate_columns,
     make_required_columns,
     make_visibility_columns,
 )
-from movement.normalization import normalize_pose_by_hip_torso
-from movement.validation import run_basic_validation
+from movement.stages.normalization import normalize_pose_by_hip_torso
+from movement.stages.validation import run_basic_validation
+from movement.stages.canonicalization import (
+    BodyAxisAlignmentConfig,
+    CanonicalizationConfig,
+    CanonicalizationDataConfidenceConfig,
+    MovementPlaneAlignmentConfig,
+    ProtocolHeightLateralWidthAlignmentConfig,
+    apply_canonicalization,
+)
+from movement.stages.floor_reference import FloorReferenceConfig
 
 # Project root: src/movement/pipeline.py → up 3 levels
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -178,6 +189,24 @@ class NormalizationConfig:
 
 
 @dataclass
+class FloorRelativeCorrectionConfig:
+    enabled: bool = False
+    method: str = "support_contact_plane"
+    coordinate_mode: str = "norm"
+    vertical_axis: str = "y"
+    support_landmarks: list[str] = field(default_factory=list)
+    diagnostic_landmarks: list[str] = field(default_factory=list)
+    visibility_threshold: float = 0.7
+    stability_window_frames: int = 5
+    max_anchor_residual_torso: float = 0.08
+    correction_transform: str = "rigid_rotation"
+    camera_pitch_deg: float = 0.0
+    camera_roll_deg: float = 0.0
+    correction_strength: float = 1.0
+    max_correction_torso: float = 0.25
+
+
+@dataclass
 class AnnotationConfig:
     enabled: bool = False
     path: str | None = None
@@ -285,6 +314,12 @@ class PipelineConfig:
     )
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
     normalization: NormalizationConfig = field(default_factory=NormalizationConfig)
+    canonicalization: CanonicalizationConfig = field(
+        default_factory=CanonicalizationConfig
+    )
+    floor_relative_correction: FloorRelativeCorrectionConfig = field(
+        default_factory=FloorRelativeCorrectionConfig
+    )
     rep_segmentation: RepSegmentationConfig = field(
         default_factory=RepSegmentationConfig
     )
@@ -303,6 +338,37 @@ class PipelineConfig:
 # ── Config loader ─────────────────────────────────────────────────────────────
 
 
+def _protocol_height_lateral_width_alignment_config(
+    raw: dict[str, Any],
+) -> ProtocolHeightLateralWidthAlignmentConfig:
+    kwargs: dict[str, Any] = {
+        "enabled": bool(raw.get("enabled", False)),
+        "method": raw.get("method", "height_anchor_lateral_width"),
+        "observed_height_level": raw.get("observed_height_level"),
+        "observed_height_column": raw.get(
+            "observed_height_column",
+            "camera_height_level",
+        ),
+        "recommended_height_level": raw.get("recommended_height_level"),
+        "require_height_match": bool(raw.get("require_height_match", True)),
+        "near_depth_sign": raw.get("near_depth_sign", "negative"),
+        "correction_mode": raw.get("correction_mode", "near_side_attenuation"),
+        "correction_strength": float(raw.get("correction_strength", 0.3)),
+        "max_scale_change": float(raw.get("max_scale_change", 0.20)),
+        "max_correction_torso": float(raw.get("max_correction_torso", 0.15)),
+        "min_depth_offset_torso": float(raw.get("min_depth_offset_torso", 0.05)),
+        "visibility_threshold": float(raw.get("visibility_threshold", 0.6)),
+        "apply_to_landmarks": list(raw.get("apply_to_landmarks", []) or []),
+        "preserve_anchor_landmarks": bool(raw.get("preserve_anchor_landmarks", True)),
+    }
+    if "height_anchor_map" in raw:
+        kwargs["height_anchor_map"] = {
+            str(key): list(value or [])
+            for key, value in (raw.get("height_anchor_map") or {}).items()
+        }
+    return ProtocolHeightLateralWidthAlignmentConfig(**kwargs)
+
+
 def load_pipeline_config(path: Path | str) -> PipelineConfig:
     """Load a PipelineConfig from a YAML file."""
     with open(path, encoding="utf-8") as f:
@@ -319,6 +385,16 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sm = pre.get("smoothing", {})
     kal = pre.get("kalman_filter", {})
     nor = raw.get("normalization", {})
+    can = nor.get("canonicalization", {})
+    can_conf = can.get("data_confidence", {})
+    can_support = can.get("support_plane_alignment", {})
+    can_movement = can.get("movement_plane_alignment", {})
+    can_protocol_height = can.get("protocol_height_lateral_width_alignment", {}) or {}
+    can_body = can.get("body_axis_alignment", {})
+    # floor_relative_correction belongs to the normalization family in YAML. The top-level key remains
+    # a backward-compatible fallback for older local configs.
+    frc = nor.get("floor_relative_correction", raw.get("floor_relative_correction", {}))
+    support_alias = can_support or frc
     rsg = raw.get("rep_segmentation", {})
     psg = raw.get("phase_segmentation", {})
     ma = raw.get("motion_attribution", {})
@@ -389,6 +465,96 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=nor.get("enabled", True),
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
+        ),
+        canonicalization=CanonicalizationConfig(
+            enabled=bool(can.get("enabled", False)),
+            coordinate_mode=can.get("coordinate_mode", "norm"),
+            output_prefix=can.get("output_prefix", "canon"),
+            report_only=bool(can.get("report_only", True)),
+            downstream_coordinate_mode=can.get("downstream_coordinate_mode", "norm"),
+            data_confidence=CanonicalizationDataConfidenceConfig(
+                emit=bool(can_conf.get("emit", True)),
+                correction_magnitude_warn_torso=float(
+                    can_conf.get("correction_magnitude_warn_torso", 0.15)
+                ),
+                correction_magnitude_fail_torso=float(
+                    can_conf.get("correction_magnitude_fail_torso", 0.30)
+                ),
+                residual_warn_torso=float(can_conf.get("residual_warn_torso", 0.08)),
+            ),
+            support_plane_alignment=FloorReferenceConfig(
+                enabled=bool(support_alias.get("enabled", False)),
+                method=support_alias.get("method", "support_contact_plane"),
+                coordinate_mode=can.get(
+                    "coordinate_mode",
+                    support_alias.get("coordinate_mode", "norm"),
+                ),
+                vertical_axis=support_alias.get("vertical_axis", "y"),
+                support_landmarks=list(
+                    support_alias.get("support_landmarks", []) or []
+                ),
+                diagnostic_landmarks=list(
+                    support_alias.get("diagnostic_landmarks", []) or []
+                ),
+                visibility_threshold=float(
+                    support_alias.get("visibility_threshold", 0.7)
+                ),
+                stability_window_frames=int(
+                    support_alias.get("stability_window_frames", 5)
+                ),
+                max_anchor_residual_torso=float(
+                    support_alias.get("max_anchor_residual_torso", 0.08)
+                ),
+                correction_transform=support_alias.get(
+                    "correction_transform", "rigid_rotation"
+                ),
+                camera_pitch_deg=float(support_alias.get("camera_pitch_deg", 0.0)),
+                camera_roll_deg=float(support_alias.get("camera_roll_deg", 0.0)),
+                correction_strength=float(
+                    support_alias.get("correction_strength", 1.0)
+                ),
+                max_correction_torso=float(
+                    support_alias.get("max_correction_torso", 0.25)
+                ),
+            ),
+            movement_plane_alignment=MovementPlaneAlignmentConfig(
+                enabled=bool(can_movement.get("enabled", False)),
+                method=can_movement.get("method", "principal_motion_plane"),
+                fit_landmarks=list(can_movement.get("fit_landmarks", []) or []),
+                minimum_visible_landmark_ratio=float(
+                    can_movement.get("minimum_visible_landmark_ratio", 0.7)
+                ),
+                correction_strength=float(can_movement.get("correction_strength", 0.5)),
+                max_rotation_deg=float(can_movement.get("max_rotation_deg", 20.0)),
+                preserve_out_of_plane_residual=bool(
+                    can_movement.get("preserve_out_of_plane_residual", True)
+                ),
+            ),
+            protocol_height_lateral_width_alignment=(
+                _protocol_height_lateral_width_alignment_config(can_protocol_height)
+            ),
+            body_axis_alignment=BodyAxisAlignmentConfig(
+                enabled=bool(can_body.get("enabled", False)),
+                method=can_body.get("method", "pelvis_shoulder_axis"),
+                correction_strength=float(can_body.get("correction_strength", 0.5)),
+                max_rotation_deg=float(can_body.get("max_rotation_deg", 15.0)),
+            ),
+        ),
+        floor_relative_correction=FloorRelativeCorrectionConfig(
+            enabled=bool(frc.get("enabled", False)),
+            method=frc.get("method", "support_contact_plane"),
+            coordinate_mode=frc.get("coordinate_mode", "norm"),
+            vertical_axis=frc.get("vertical_axis", "y"),
+            support_landmarks=list(frc.get("support_landmarks", []) or []),
+            diagnostic_landmarks=list(frc.get("diagnostic_landmarks", []) or []),
+            visibility_threshold=float(frc.get("visibility_threshold", 0.7)),
+            stability_window_frames=int(frc.get("stability_window_frames", 5)),
+            max_anchor_residual_torso=float(frc.get("max_anchor_residual_torso", 0.08)),
+            correction_transform=frc.get("correction_transform", "rigid_rotation"),
+            camera_pitch_deg=float(frc.get("camera_pitch_deg", 0.0)),
+            camera_roll_deg=float(frc.get("camera_roll_deg", 0.0)),
+            correction_strength=float(frc.get("correction_strength", 1.0)),
+            max_correction_torso=float(frc.get("max_correction_torso", 0.25)),
         ),
         rep_segmentation=RepSegmentationConfig(
             enabled=rsg.get("enabled", False),
@@ -499,7 +665,7 @@ def run_pipeline(
 
     # ── ② Annotation ─────────────────────────────────────────────────────────
     if config.annotation.enabled:
-        from movement.annotation import apply_annotation
+        from movement.stages.annotation import apply_annotation
 
         df, ann_report = apply_annotation(df, ann_df)
         report["annotation"] = ann_report
@@ -507,7 +673,7 @@ def run_pipeline(
     # ── ③ Exercise Definition Loading ────────────────────────────────────────
     if config.exercise_definition.enabled:
         import warnings as _warnings
-        from movement.exercise_definition import load_exercise_definition
+        from movement.definitions.exercise_definition import load_exercise_definition
 
         ex_id = config.exercise_definition.exercise_id
         if ex_id is None and "exercise_type" in df.columns:
@@ -544,7 +710,7 @@ def run_pipeline(
 
     # ── ④ Preprocessing ───────────────────────────────────────────────────────
     if config.preprocessing.enabled:
-        from movement.preprocessing import preprocess_pose_dataframe
+        from movement.stages.preprocessing import preprocess_pose_dataframe
 
         df, pre_report = preprocess_pose_dataframe(
             df=df,
@@ -563,12 +729,98 @@ def run_pipeline(
         )
         report["normalization"] = norm_report
 
-    # ── ⑥ Rep Segmentation ───────────────────────────────────────────────────
+    # ── ⑤ Optional Canonicalization ──────────────────────────────────────────
+    if config.canonicalization.enabled:
+        canonicalization_config = config.canonicalization
+        protocol_height_config = (
+            canonicalization_config.protocol_height_lateral_width_alignment
+        )
+        protocol = getattr(exercise_def, "camera_protocol", None)
+        recommended_height = (
+            getattr(protocol, "recommended_height", None)
+            if protocol is not None
+            else None
+        )
+        if (
+            protocol_height_config.enabled
+            and protocol_height_config.recommended_height_level is None
+            and recommended_height
+        ):
+            canonicalization_config = replace(
+                canonicalization_config,
+                protocol_height_lateral_width_alignment=replace(
+                    protocol_height_config,
+                    recommended_height_level=recommended_height,
+                ),
+            )
+
+        df, canonicalization_report = apply_canonicalization(
+            df=df,
+            landmarks=landmarks,
+            config=canonicalization_config,
+        )
+        report["canonicalization"] = canonicalization_report
+        report.setdefault("normalization", {})[
+            "canonicalization_report"
+        ] = canonicalization_report
+
+        if (
+            not canonicalization_config.report_only
+            and canonicalization_config.downstream_coordinate_mode == "canon"
+        ):
+            warnings.warn(
+                "[Step ⑤] downstream_coordinate_mode='canon' is recorded but "
+                "downstream stages still read their documented normalized "
+                "coordinate inputs in this implementation pass.",
+                stacklevel=2,
+            )
+
+    # ── ⑤ Legacy Normalization Filter: Floor-Relative Correction ─────────────
+    if not config.canonicalization.enabled and config.floor_relative_correction.enabled:
+        from movement.stages.floor_reference import (
+            FloorReferenceConfig,
+            apply_floor_relative_correction,
+        )
+
+        floor_config = FloorReferenceConfig(
+            enabled=True,
+            method=config.floor_relative_correction.method,
+            coordinate_mode=config.floor_relative_correction.coordinate_mode,
+            vertical_axis=config.floor_relative_correction.vertical_axis,
+            support_landmarks=config.floor_relative_correction.support_landmarks,
+            diagnostic_landmarks=(
+                config.floor_relative_correction.diagnostic_landmarks
+            ),
+            visibility_threshold=(
+                config.floor_relative_correction.visibility_threshold
+            ),
+            stability_window_frames=(
+                config.floor_relative_correction.stability_window_frames
+            ),
+            max_anchor_residual_torso=(
+                config.floor_relative_correction.max_anchor_residual_torso
+            ),
+            correction_transform=config.floor_relative_correction.correction_transform,
+            camera_pitch_deg=config.floor_relative_correction.camera_pitch_deg,
+            camera_roll_deg=config.floor_relative_correction.camera_roll_deg,
+            correction_strength=(config.floor_relative_correction.correction_strength),
+            max_correction_torso=(
+                config.floor_relative_correction.max_correction_torso
+            ),
+        )
+        df, floor_report = apply_floor_relative_correction(
+            df=df,
+            landmarks=landmarks,
+            config=floor_config,
+        )
+        report["floor_relative_correction"] = floor_report.as_dict()
+
+    # ── ⑥ Segmentation: Rep Boundaries ───────────────────────────────────────
     if config.rep_segmentation.enabled:
         if exercise_def is None:
             print("[Step ⑥] Rep Segmentation: exercise_def not available — skipped.")
         else:
-            from movement.segmentation import segment_reps
+            from movement.stages.segmentation import segment_reps
 
             df, rep_report = segment_reps(
                 df,
@@ -582,7 +834,7 @@ def run_pipeline(
                     f"'{exercise_def.exercise_id}' has no rep_segmentation block — skipped."
                 )
 
-    # ── ⑥ Phase Segmentation ─────────────────────────────────────────────────
+    # ── ⑥ Segmentation: Intra-Rep Phases ─────────────────────────────────────
     if config.phase_segmentation.enabled:
         if exercise_def is None:
             print("[Step ⑥] Phase Segmentation: exercise_def not available — skipped.")
@@ -598,7 +850,7 @@ def run_pipeline(
             if not _has_reps:
                 print("[Step ⑥] Phase Segmentation: no rep frames found — skipped.")
             else:
-                from movement.segmentation import segment_phases
+                from movement.stages.segmentation import segment_phases
 
                 df, phase_reports = segment_phases(
                     df,
@@ -611,7 +863,10 @@ def run_pipeline(
 
     # ── ⑦ Motion Attribution ─────────────────────────────────────────────────
     if config.motion_attribution.enabled:
-        from movement.motion_attribution import AttributionThresholds, attribute_motion
+        from movement.stages.motion_attribution import (
+            AttributionThresholds,
+            attribute_motion,
+        )
 
         thresholds = AttributionThresholds(
             active=config.motion_attribution.tau_active,

@@ -25,8 +25,8 @@ Pose CSV  +  annotation CSV  +  exercise definition YAML
 ②  Annotation           frame-level segment metadata (`phase` column reserved)
 ③  Exercise Definition  biomechanical property object loading
 ④  Preprocessing        monocular data quality correction
-⑤  Normalization        body-relative coordinate normalization
-⑥  Segmentation        semi-automatic rep/phase splitting from joint-motion tracking
+⑤  Normalization        body-relative coordinate normalization + optional canonicalization
+⑥  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
 ⑦  Motion Attribution   per-rep active-side consistency
 ⑧  Feature Extraction   spatial / temporal / control features, rep and phase level
 ⑨  Biomech Proxy        CoM, moment arms, load-shift trend
@@ -40,52 +40,53 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-05-11)
+## Implementation Status (2026-05-12)
 
 ### Complete
 
 | Area | Module / File | Notes |
 |---|---|---|
-| Pose I/O and config | `io.py`, `config.py` | CSV loading, landmark / connection definitions |
-| ① Validation | `validation.py` | Structural integrity report |
-| ② Annotation | `annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved; performance/failure provenance summarized in the annotation report |
-| ③ Exercise Definition | `exercise_definition.py` | YAML loader + validator + generic fallback; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
-| ④ Preprocessing | `preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
-| ⑤ Normalization | `normalization.py` | Hip-center translation + median torso-length scale |
-| ⑥ Segmentation | `segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
-| ⑦ Motion Attribution | `motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
+| Pose I/O and config | `core/io.py`, `core/config.py` | CSV loading, landmark / connection definitions |
+| ① Validation | `stages/validation.py` | Structural integrity report |
+| ② Annotation | `stages/annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved; performance/failure provenance summarized in the annotation report |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | YAML loader + validator + generic fallback; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
+| ④ Preprocessing | `stages/preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
+| ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py` | Hip-center translation + median torso-length scale; optional `canonicalization` reduces consistent monocular-observation bias into an analysis coordinate space (raw/norm/canon); current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
+| ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
+| ⑦ Motion Attribution | `stages/motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
 | ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
 | ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3) |
-| Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
+| Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
-| Pipeline runner | `pipeline.py` | Stages ①-⑩ connected |
-| Protocol metadata schema | `exercise_definition.py`, `annotation.py`, `motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
-| Task A verification pass | `segmentation.py`, `features/`, reporting records, `tests/` | A1-A6 complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
-| Unit tests | `tests/` | Protocol-metadata schema targeted tests pass 17 cases; latest full run passes 99/99 after Task A6 compensation-availability audit |
+| Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑩ connected; optional `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
+| Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
+| Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
+| Unit tests | `tests/` | Protocol/prescription metadata targeted tests pass 18 cases; latest full run passes 113/113 |
 
 ### Partial
 
 | Area | Module | Remaining Work |
 |---|---|---|
-| Motion attribution evidence | `motion_attribution.py` | Structured correction log, false-correction metrics, and ambiguous-repetition reporting (→ Task B) |
-| Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
-| ⑪ Visualization | `visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
+| Far-side preprocessing evidence | `stages/preprocessing.py` | Side-view far-side landmark jitter stabilization, feature availability, data-confidence hook (→ Task B) |
+| Motion attribution evidence | `stages/motion_attribution.py` | Structured correction log, false-correction metrics, and ambiguous-repetition reporting (→ Task C) |
+| Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task D) |
+| ⑪ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task E) |
 
 ### Plan (Before Defense)
 
 | Task | Deliverable | Dissertation § |
 |---|---|---|
-| B — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
-| C — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
-| D — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
-| E — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
-| F — Maintenance and repository hygiene | Focused test runs, full `pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
-| G — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if pilot filming shows repeated occlusion, left/right swap, or landmark jitter | Conditional after Tasks B-D |
+| A — Analysis-space canonicalization | raw/norm/canon coordinate families, support-plane + movement-plane priors, correction report, data-confidence separation, notebook 04/15 raw/norm/canon review | §6-§8 |
+| B — Visibility-aware far-side preprocessing | Side-view far-side landmark jitter stabilization, near/far-side inference, feature availability, data-confidence hook, notebook 07 review | §6-§8 |
+| C — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
+| D — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
+| E — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
+| F — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
+| G — Maintenance and repository hygiene | Focused test runs, full `pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
+| H — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after Tasks C-E |
 
-Task A is complete for the current four-exercise scope. Remaining task letters
-follow the current priority order in `docs_eng/code_revision_plan.md`. Dashboard /
-Phantom 3D work is deferred behind the Task E gate and is not an active
+Dashboard / Phantom 3D work is deferred behind the Task F gate and is not an active
 implementation task unless selected as a dissertation output.
 
 ---
@@ -118,14 +119,12 @@ movement_project/
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
-│   └── code_revision_plan.md        # implementation plan before defense (.gitignore)
-├── notebook/                        # exploratory notebooks (00-13; 14-18 planned)
+├── notebook/                        # exploratory notebooks (00-16)
 ├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
 │   ├── test_biomech_load_shift.py   # ⑨ load-shift slope sign + guards (17 cases)
 │   └── test_interpretation.py       # ⑩ rule loader + 3 scenarios (20 cases)
 └── src/movement/
-    ├── annotation.py
     ├── biomech/
     │   ├── __init__.py              # BiomechRecord · extract_rep_biomech()
     │   ├── anthropometry.py
@@ -136,25 +135,36 @@ movement_project/
     │   ├── __init__.py
     │   ├── interpretation.py        # §7.3 YAML rule engine → InterpretationRecord
     │   └── scoring.py               # BiomarkerScoreRecord · Z-score · dynamic floor
-    ├── config.py
-    ├── exercise_definition.py
+    ├── core/
+    │   ├── config.py                # LANDMARKS, CONNECTIONS, column helpers
+    │   ├── io.py                    # pose CSV loading
+    │   └── utils.py                 # low-level pose/plot utilities
+    ├── definitions/
+    │   ├── clinical.py              # FMS-like mapping helpers
+    │   └── exercise_definition.py   # YAML loader + schema dataclasses
     ├── features/
     │   ├── __init__.py              # extract_rep_features() · FeatureRecord
     │   ├── compensation.py          # COMPENSATION_RULES registry
     │   ├── control.py
     │   ├── spatial.py
     │   └── temporal.py
-    ├── io.py
-    ├── motion_attribution.py
-    ├── normalization.py
     ├── pipeline.py
-    ├── preprocessing.py
-    ├── segmentation.py
+    ├── reporting/
+    │   └── visualization.py
     ├── simulation/
-    ├── utils.py
-    ├── validation.py
-    └── visualization.py
+    └── stages/
+        ├── annotation.py
+        ├── floor_reference.py
+        ├── motion_attribution.py
+        ├── normalization.py
+        ├── preprocessing.py
+        ├── segmentation.py
+        └── validation.py
 ```
+
+Existing public import paths such as `movement.io`, `movement.validation`, and
+`movement.normalization` remain available as compatibility aliases. New
+implementation files should prefer the internal folder structure above.
 
 ---
 
@@ -234,11 +244,11 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.4 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.21 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
-| 1.2.3 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.4.7 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.31 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.2.7 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.0.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.0.3 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 
 ---
 

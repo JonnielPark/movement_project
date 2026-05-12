@@ -1,6 +1,6 @@
 # 07. 모션 어트리뷰션 (Motion Attribution)
 
-**문서 버전:** 1.0.1  
+**문서 버전:** 1.0.2
 **최종 갱신:** 2026-05-10  
 **영문 동기화:** `docs_eng/pipeline/07_motion_attribution.md`는 동일 버전의 영문 번역본이다.
 
@@ -203,7 +203,7 @@ motion_attribution:
 
 ## 11. ⑧ 피처 추출과의 관계 (Relationship to Feature Extraction)
 
-⑧은 어트리뷰션 메타데이터를 사용해 피처를 올바른 측에 할당한다:
+⑧ 피처 추출은 어트리뷰션 메타데이터를 사용해 피처를 올바른 측에 할당한다:
 
 ```text
 attribution_consistent == True

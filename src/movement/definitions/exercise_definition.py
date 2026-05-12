@@ -173,6 +173,13 @@ _VOCAB: dict[str, frozenset[str]] = {
             "hold_seconds",
         }
     ),
+    "performance_protocol.prescription.count_unit": frozenset(
+        {
+            "repetition",
+            "left_right_pair",
+            "hold_seconds",
+        }
+    ),
     "performance_protocol.side_sequence.mode": frozenset(
         {
             "none",
@@ -199,7 +206,7 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
 
 _PHASE_RATIO_TOLERANCE: float = 0.02
 _GENERIC_ID = "generic"
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_CAMERA_ZONES_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.yaml"
 _OUT_OF_ZONE_POLICY = "warn_and_continue"
 _COORDINATE_CORRECTION_POLICY = "none"
@@ -321,11 +328,22 @@ class QualityRules:
 
 @dataclass
 class PerformanceCountingSpec:
-    """Participant-facing counting rule for the practical performance protocol."""
+    """Backward-compatible participant-facing counting rule mirror."""
 
     target_count: int = 10
     count_unit: str = "repetition"
     segmentation_reps_per_count: int = 1
+
+
+@dataclass
+class PerformancePrescriptionSpec:
+    """Planned acquisition prescription for one exercise protocol."""
+
+    target_sets: int = 1
+    target_count_per_set: int = 10
+    count_unit: str = "repetition"
+    segmentation_reps_per_count: int = 1
+    rest_between_sets_s: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -350,12 +368,15 @@ class PerformanceProtocolSpec:
     """
     Practical exercise-performance protocol metadata.
 
-    Separates participant-facing count rules from `rep_segmentation`, so one
-    protocol count may correspond to one or more segmented atomic repetitions.
-    This preserves the biomechanical meaning of protocol execution without
-    forcing segmentation to use the same unit.
+    Separates planned acquisition prescription and participant-facing count rules
+    from `rep_segmentation`, so one protocol count may correspond to one or more
+    segmented atomic repetitions. This preserves the biomechanical meaning of
+    protocol execution without forcing segmentation to use the same unit.
     """
 
+    prescription: PerformancePrescriptionSpec = field(
+        default_factory=PerformancePrescriptionSpec
+    )
     counting: PerformanceCountingSpec = field(default_factory=PerformanceCountingSpec)
     side_sequence: PerformanceSideSequenceSpec = field(
         default_factory=PerformanceSideSequenceSpec
@@ -481,6 +502,7 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
     ps = raw.get("phase_segmentation") or {}
     pp = raw.get("performance_protocol") or {}
     pc = pp.get("counting") or {}
+    prescription = pp.get("prescription") or {}
     pss = pp.get("side_sequence") or {}
 
     checks = [
@@ -503,6 +525,10 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
         (
             "performance_protocol.counting.count_unit",
             pc.get("count_unit") if pp else None,
+        ),
+        (
+            "performance_protocol.prescription.count_unit",
+            prescription.get("count_unit") if pp else None,
         ),
         (
             "performance_protocol.side_sequence.mode",
@@ -540,23 +566,87 @@ def _check_performance_protocol(raw: dict, exercise_id: str) -> list[str]:
         return []
 
     errors: list[str] = []
+    prescription = pp.get("prescription") or {}
     counting = pp.get("counting") or {}
     side_sequence = pp.get("side_sequence") or {}
     completion = pp.get("completion") or {}
 
-    target_count = int(counting.get("target_count", 10))
-    segmentation_reps_per_count = int(counting.get("segmentation_reps_per_count", 1))
-    recommended_sets = int(completion.get("recommended_sets", 1))
+    target_sets = int(
+        prescription.get("target_sets", completion.get("recommended_sets", 1))
+    )
+    target_count_per_set = int(
+        prescription.get("target_count_per_set", counting.get("target_count", 10))
+    )
+    segmentation_reps_per_count = int(
+        prescription.get(
+            "segmentation_reps_per_count",
+            counting.get("segmentation_reps_per_count", 1),
+        )
+    )
+    rest_between_sets = list(prescription.get("rest_between_sets_s") or [])
 
-    if target_count < 1:
+    if target_sets < 1:
         errors.append(
-            f"[{exercise_id}] performance_protocol.counting.target_count must be >= 1"
+            f"[{exercise_id}] performance_protocol.prescription.target_sets "
+            "must be >= 1"
+        )
+    if target_count_per_set < 1:
+        errors.append(
+            f"[{exercise_id}] performance_protocol.prescription."
+            "target_count_per_set must be >= 1"
         )
     if segmentation_reps_per_count < 1:
         errors.append(
-            f"[{exercise_id}] performance_protocol.counting."
+            f"[{exercise_id}] performance_protocol.prescription."
             "segmentation_reps_per_count must be >= 1"
         )
+
+    if "target_count_per_set" in prescription and "target_count" in counting:
+        if int(prescription["target_count_per_set"]) != int(counting["target_count"]):
+            errors.append(
+                f"[{exercise_id}] performance_protocol.counting.target_count "
+                "must mirror performance_protocol.prescription.target_count_per_set"
+            )
+    if "count_unit" in prescription and "count_unit" in counting:
+        if prescription["count_unit"] != counting["count_unit"]:
+            errors.append(
+                f"[{exercise_id}] performance_protocol.counting.count_unit "
+                "must mirror performance_protocol.prescription.count_unit"
+            )
+    if (
+        "segmentation_reps_per_count" in prescription
+        and "segmentation_reps_per_count" in counting
+    ):
+        if int(prescription["segmentation_reps_per_count"]) != int(
+            counting["segmentation_reps_per_count"]
+        ):
+            errors.append(
+                f"[{exercise_id}] performance_protocol.counting."
+                "segmentation_reps_per_count must mirror "
+                "performance_protocol.prescription.segmentation_reps_per_count"
+            )
+    if "target_sets" in prescription and "recommended_sets" in completion:
+        if int(prescription["target_sets"]) != int(completion["recommended_sets"]):
+            errors.append(
+                f"[{exercise_id}] performance_protocol.completion.recommended_sets "
+                "must mirror performance_protocol.prescription.target_sets"
+            )
+
+    if rest_between_sets:
+        if len(rest_between_sets) != 2:
+            errors.append(
+                f"[{exercise_id}] performance_protocol.prescription."
+                "rest_between_sets_s must contain [min_seconds, max_seconds]"
+            )
+        else:
+            min_rest, max_rest = int(rest_between_sets[0]), int(rest_between_sets[1])
+            if min_rest < 0 or max_rest < 0 or min_rest > max_rest:
+                errors.append(
+                    f"[{exercise_id}] performance_protocol.prescription."
+                    "rest_between_sets_s must be a non-negative ascending range"
+                )
+
+    recommended_sets = int(completion.get("recommended_sets", target_sets))
     if recommended_sets < 1:
         errors.append(
             f"[{exercise_id}] performance_protocol.completion.recommended_sets "
@@ -569,7 +659,9 @@ def _check_performance_protocol(raw: dict, exercise_id: str) -> list[str]:
     known_side_modes = _VOCAB["performance_protocol.side_sequence.mode"]
 
     unknown_allowed_modes = [
-        allowed_mode for allowed_mode in allowed_modes if allowed_mode not in known_side_modes
+        allowed_mode
+        for allowed_mode in allowed_modes
+        if allowed_mode not in known_side_modes
     ]
     if unknown_allowed_modes:
         errors.append(
@@ -732,17 +824,43 @@ def _parse_performance_protocol(pp: dict | None) -> PerformanceProtocolSpec | No
     if not pp:
         return None
 
+    prescription = pp.get("prescription") or {}
     counting = pp.get("counting") or {}
     side_sequence = pp.get("side_sequence") or {}
     completion = pp.get("completion") or {}
     block_size = side_sequence.get("block_size_counts")
+    target_sets = int(
+        prescription.get("target_sets", completion.get("recommended_sets", 1))
+    )
+    target_count_per_set = int(
+        prescription.get("target_count_per_set", counting.get("target_count", 10))
+    )
+    count_unit = prescription.get(
+        "count_unit",
+        counting.get("count_unit", "repetition"),
+    )
+    segmentation_reps_per_count = int(
+        prescription.get(
+            "segmentation_reps_per_count",
+            counting.get("segmentation_reps_per_count", 1),
+        )
+    )
 
     return PerformanceProtocolSpec(
+        prescription=PerformancePrescriptionSpec(
+            target_sets=target_sets,
+            target_count_per_set=target_count_per_set,
+            count_unit=count_unit,
+            segmentation_reps_per_count=segmentation_reps_per_count,
+            rest_between_sets_s=[
+                int(v) for v in list(prescription.get("rest_between_sets_s") or [])
+            ],
+        ),
         counting=PerformanceCountingSpec(
-            target_count=int(counting.get("target_count", 10)),
-            count_unit=counting.get("count_unit", "repetition"),
+            target_count=int(counting.get("target_count", target_count_per_set)),
+            count_unit=counting.get("count_unit", count_unit),
             segmentation_reps_per_count=int(
-                counting.get("segmentation_reps_per_count", 1)
+                counting.get("segmentation_reps_per_count", segmentation_reps_per_count)
             ),
         ),
         side_sequence=PerformanceSideSequenceSpec(
@@ -754,13 +872,12 @@ def _parse_performance_protocol(pp: dict | None) -> PerformanceProtocolSpec | No
             allow_partial_completion=bool(
                 completion.get("allow_partial_completion", False)
             ),
-            recommended_sets=int(completion.get("recommended_sets", 1)),
+            recommended_sets=int(completion.get("recommended_sets", target_sets)),
         ),
         participant_cues=list(pp.get("participant_cues") or []),
         analysis_disrupting_patterns=list(pp.get("analysis_disrupting_patterns") or []),
         allowed_side_sequence_modes=list(
-            pp.get("allowed_side_sequence_modes")
-            or [side_sequence.get("mode", "none")]
+            pp.get("allowed_side_sequence_modes") or [side_sequence.get("mode", "none")]
         ),
     )
 

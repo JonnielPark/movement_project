@@ -1,7 +1,7 @@
 # Per-Exercise Feature × Clinical Meaning Mapping
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.2
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/clinical/per_exercise_mapping.md` is the same-version Korean source.
 
 **Dissertation §5.5 / §5.6.** Active features for all four validation exercises, with unit and
@@ -10,7 +10,7 @@ biomechanical interpretation.
 - Terminology: [`docs/terminology.md`](../terminology.md)
 - Feature extraction code: [`src/movement/features/`](../../src/movement/features/)
 - YAML mirror (dashboard tooltips): [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml)
-- Forbidden-vocabulary rules: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) Principle 4
+- Forbidden-vocabulary rules: clinical language-use principles in [`docs/terminology.md`](../terminology.md)
 
 ---
 
@@ -29,6 +29,14 @@ Compensation features are rep-level only because candidate rules operate on the 
 
 Only **implemented** compensation rules are listed. Exercise-YAML candidates without a
 matching entry in `COMPENSATION_RULES` produce a `UserWarning` at runtime and are omitted here.
+
+All `spatial.symmetry.*` meanings assume that the symmetry feature has passed the
+feature-availability gate described in `08_feature_extraction.md`. In side-view
+or near-side-view monocular recordings, a rotated frontal rendering is not direct
+frontal evidence. If bilateral landmark reliability, view compatibility, or
+depth-sensitive stability is insufficient, the symmetry feature should be reported
+as `low_confidence` or `not_assessed` rather than interpreted as poor movement
+quality.
 
 ---
 

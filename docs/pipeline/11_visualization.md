@@ -1,7 +1,7 @@
 # 11. 시각화 (Visualization)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.3
+**최종 갱신:** 2026-05-11
 **영문 동기화:** `docs_eng/pipeline/11_visualization.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑪. ①–⑩ 러너 외부에서 독립적으로 호출된다. 진단 검사 및 임상의 대상
@@ -90,12 +90,16 @@ fig.show()
 ```text
 "raw"   <landmark>_x/y/z 칼럼
 "norm"  <landmark>_norm_x/y/z 칼럼 (⑤ Normalization 필요)
+"floor" <landmark>_floor_x/y/z 칼럼 (선택 floor-relative 정규화 필터 필요)
 ```
+
+`"floor"` mode는 선택 floor-relative 정규화 필터의 출력 칼럼을 렌더링한다. 하위 분석에
+floor 좌표를 쓰기 전 04번과 15번 노트북에서 먼저 검토한다.
 
 ### 4-2. create_pose_comparison_animation
 
-두 좌표 모드를 한 애니메이션에 오버레이한다 (파랑 = raw, 빨강 = normalized).
-⑤ 정규화 디버깅에 사용된다.
+두 좌표 모드를 한 애니메이션에 오버레이한다 (파랑 = 첫 번째 mode, 빨강 = 두 번째 mode).
+⑤ 정규화와 선택 floor-relative 필터 디버깅에 사용된다.
 
 ```python
 from movement.visualization import create_pose_comparison_animation
@@ -112,8 +116,8 @@ fig.show()
 
 ## 5. 계획된 함수 (Planned Functions)
 
-이 함수들은 stub으로 존재한다(`NotImplementedError` 발생); 학위논문 Task B의 잔여
-산출물이다 (`code_revision_plan.md` 참조).
+이 함수들은 stub으로 존재한다(`NotImplementedError` 발생); 학위논문 reporting figure의 잔여
+산출물이다.
 
 ### 5-1. plot_reliability_overlay
 
@@ -258,7 +262,7 @@ notebook/15_visualization_demo.ipynb           계획 — Task B 5종 차트 전
 ## 8. 코드 매핑 (Code Mapping)
 
 ```text
-src/movement/visualization.py        create_pose_animation,
+src/movement/reporting/visualization.py  create_pose_animation,
                                      create_pose_comparison_animation,
                                      plot_reliability_overlay (stub),
                                      plot_joint_angle_timeseries (stub),
@@ -266,7 +270,7 @@ src/movement/visualization.py        create_pose_animation,
                                      plot_attribution_chart (stub),
                                      plot_biomarker_radar (stub),
                                      ... (계획된 5-5 ~ 5-10)
-src/movement/utils.py                get_frame_data, compute_plot_ranges,
+src/movement/core/utils.py           get_frame_data, compute_plot_ranges,
                                      validate_landmark_columns
 ```
 

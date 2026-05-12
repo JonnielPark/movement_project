@@ -1,7 +1,7 @@
 # Lunge Clinical Rationale
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.0.3
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/clinical/exercises/lunge.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of lunge in this study, how
@@ -101,6 +101,14 @@ Side views help anterior knee travel and trunk alignment, but can weaken
 frontal-plane knee valgus or pelvis-drop observation. Frontal or front-oblique
 views help left-right alignment but weaken sagittal ROM and rear-limb interpretation.
 
+For lunge, metric reliability must be role-based. A raw left/right comparison is
+not enough because the same anatomical side may be the forward leg in one block
+and the trailing leg in another. Feature interpretation should preserve
+`forward_leg`, `trailing_leg`, `active_side`, `support_side`, and the camera-facing
+near/far-side context. If one side is consistently farther from the camera or has
+lower visibility during a side-view block, side-to-side comparison should be
+marked low-confidence rather than treated as a unilateral movement deficit.
+
 ---
 
 ## 6. Recommended View Interpretation
@@ -123,6 +131,14 @@ features may be used. If occlusion repeatedly appears, those features should be
 reported as unavailable or low-confidence rather than scored as poor movement. This
 defensive logic is an optional extension to consider after pilot filming, not a
 default requirement.
+
+The planned `view_metric_reliability` map should therefore assign high reliability
+to different metric families depending on the zone: side views support anterior
+knee travel, forward/rear limb sagittal ROM, rear-hip extension, trunk flexion,
+and step length; frontal views support step width, side order, pelvis drop/shift,
+lateral trunk lean, and frontal knee alignment; oblique views provide a mixed but
+less pure read. These confidence states should be displayed beside features rather
+than converted directly into movement-quality penalties.
 
 ---
 

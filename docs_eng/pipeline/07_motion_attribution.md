@@ -1,6 +1,6 @@
 # 07. Motion Attribution
 
-**Document Version:** 1.0.1  
+**Document Version:** 1.0.2
 **Last Updated:** 2026-05-10  
 **Korean Sync:** `docs/pipeline/07_motion_attribution.md` is the same-version Korean source.
 
@@ -210,7 +210,7 @@ catching higher-level consistency issues that ④ misses.
 
 ## 11. Relationship to ⑧ Feature Extraction
 
-⑧ uses the attribution metadata to assign features to the correct side:
+⑧ Feature Extraction uses the attribution metadata to assign features to the correct side:
 
 ```text
 attribution_consistent == True

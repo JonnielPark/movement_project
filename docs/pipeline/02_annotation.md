@@ -1,6 +1,6 @@
 # 02. 어노테이션 (Annotation)
 
-**문서 버전:** 1.1.4
+**문서 버전:** 1.1.5
 **최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/02_annotation.md`는 동일 버전의 영문 번역본이다.
 
@@ -109,7 +109,7 @@ source_fields
 - 수행 실패 지점은 segmentation failure point가 아니다. 이는 피험자가 protocol task를
   더 이상 유지하지 못하기 시작한 위치를 기록하는 표지다.
 - 기본 동작은 warning/provenance only이다. downstream scoring 또는 figure caption에서
-  note를 표시할 수 있지만, ②는 프레임을 제외하지 않고 ⑩은 이 metadata만으로 점수를 감점하지 않는다.
+  note를 표시할 수 있지만, ②는 프레임을 제외하지 않고 ⑥은 이 metadata만으로 점수를 감점하지 않는다.
 ```
 
 ## 3. 어노테이션 계층 (Annotation Hierarchy)

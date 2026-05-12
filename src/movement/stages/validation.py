@@ -9,6 +9,7 @@ Note: "validation" here means data integrity checking only.
 
 Pipeline position: first step; guarantees input quality for all downstream steps.
 """
+
 from __future__ import annotations
 
 import pandas as pd
@@ -54,11 +55,7 @@ def validate_frame_continuity(
     expected = list(range(frames[0], frames[-1] + 1))
     missing_frames = sorted(set(expected) - set(frames))
     duplicated_frames = (
-        df[frame_col][df[frame_col].duplicated()]
-        .dropna()
-        .astype(int)
-        .unique()
-        .tolist()
+        df[frame_col][df[frame_col].duplicated()].dropna().astype(int).unique().tolist()
     )
 
     return {

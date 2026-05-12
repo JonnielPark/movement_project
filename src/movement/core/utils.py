@@ -24,8 +24,10 @@ def get_coord_columns(landmark: str, coord_mode: str = "raw") -> list[str]:
     coord_mode : str
         Coordinate mode.
 
-        - "raw"  -> <landmark>_x, <landmark>_y, <landmark>_z
-        - "norm" -> <landmark>_norm_x, <landmark>_norm_y, <landmark>_norm_z
+        - "raw"   -> <landmark>_x, <landmark>_y, <landmark>_z
+        - "norm"  -> <landmark>_norm_x, <landmark>_norm_y, <landmark>_norm_z
+        - "floor" -> <landmark>_floor_x, <landmark>_floor_y, <landmark>_floor_z
+        - "canon" -> <landmark>_canon_x, <landmark>_canon_y, <landmark>_canon_z
 
     Returns
     -------
@@ -46,9 +48,23 @@ def get_coord_columns(landmark: str, coord_mode: str = "raw") -> list[str]:
             f"{landmark}_norm_z",
         ]
 
+    if coord_mode == "floor":
+        return [
+            f"{landmark}_floor_x",
+            f"{landmark}_floor_y",
+            f"{landmark}_floor_z",
+        ]
+
+    if coord_mode == "canon":
+        return [
+            f"{landmark}_canon_x",
+            f"{landmark}_canon_y",
+            f"{landmark}_canon_z",
+        ]
+
     raise ValueError(
         f"Unsupported coord_mode: {coord_mode}. "
-        "Use 'raw' or 'norm'."
+        "Use 'raw', 'norm', 'floor', or 'canon'."
     )
 
 
@@ -68,7 +84,7 @@ def validate_landmark_columns(
     landmarks : list[str]
         Landmark names.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
     require_visibility : bool
         If True, also check <landmark>_visibility columns.
 
@@ -85,10 +101,7 @@ def validate_landmark_columns(
         if require_visibility:
             required_cols.append(f"{lm}_visibility")
 
-    missing_cols = [
-        col for col in required_cols
-        if col not in df.columns
-    ]
+    missing_cols = [col for col in required_cols if col not in df.columns]
 
     return missing_cols
 
@@ -104,7 +117,7 @@ def get_joint(row, joint_name: str, coord_mode: str = "raw") -> np.ndarray:
     joint_name : str
         Landmark name.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
 
     Returns
     -------
@@ -116,11 +129,14 @@ def get_joint(row, joint_name: str, coord_mode: str = "raw") -> np.ndarray:
         coord_mode=coord_mode,
     )
 
-    return np.array([
-        row[x_col],
-        row[y_col],
-        row[z_col],
-    ], dtype=float)
+    return np.array(
+        [
+            row[x_col],
+            row[y_col],
+            row[z_col],
+        ],
+        dtype=float,
+    )
 
 
 def get_plot_coord(
@@ -153,7 +169,7 @@ def get_plot_coord(
     joint_name : str
         Landmark name.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
 
     Returns
     -------
@@ -166,11 +182,14 @@ def get_plot_coord(
         coord_mode=coord_mode,
     )
 
-    return np.array([
-        raw[0],
-        raw[2],
-        -raw[1],
-    ], dtype=float)
+    return np.array(
+        [
+            raw[0],
+            raw[2],
+            -raw[1],
+        ],
+        dtype=float,
+    )
 
 
 def get_frame_data(
@@ -192,7 +211,7 @@ def get_frame_data(
     connections : list[tuple[str, str]]
         Skeleton connections.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
     show_text : bool
         If True, show landmark names.
 
@@ -270,7 +289,7 @@ def compute_plot_ranges(
     padding : float
         Extra margin around min/max values.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
 
     Returns
     -------

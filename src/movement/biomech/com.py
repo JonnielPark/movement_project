@@ -6,6 +6,7 @@ Output : whole-body CoM position (T, 3) and a list of BiomechRecord.
 
 Absolute units (kg, m) are not used. All distances are in torso_length_ratio.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -21,7 +22,7 @@ from movement.biomech.anthropometry import (
 )
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 def compute_visibility_weights(
@@ -52,15 +53,13 @@ def compute_visibility_weights(
     """
     T = len(df)
     vis_cols = [
-        f"{lm}_visibility"
-        for lm in primary_joints
-        if f"{lm}_visibility" in df.columns
+        f"{lm}_visibility" for lm in primary_joints if f"{lm}_visibility" in df.columns
     ]
     if not vis_cols:
         return np.ones(T, dtype=float)
 
     vis_matrix = df[vis_cols].values.astype(float)  # (T, n_joints)
-    mean_vis = np.nanmean(vis_matrix, axis=1)        # (T,)
+    mean_vis = np.nanmean(vis_matrix, axis=1)  # (T,)
 
     weights = mean_vis.copy()
     weights[mean_vis < min_visibility_ratio] = 0.0
@@ -193,19 +192,23 @@ def compute_com_metrics(
     x_vals = com_valid[:, 0]
     valid_x = x_vals[~np.isnan(x_vals)]
     if len(valid_x) > 0:
-        records.append(_record(
-            "biomech.com.range_x",
-            round(float(np.max(valid_x) - np.min(valid_x)), 4),
-        ))
+        records.append(
+            _record(
+                "biomech.com.range_x",
+                round(float(np.max(valid_x) - np.min(valid_x)), 4),
+            )
+        )
 
     # vertical range (z = height)
     z_vals = com_valid[:, 2]
     valid_z = z_vals[~np.isnan(z_vals)]
     if len(valid_z) > 0:
-        records.append(_record(
-            "biomech.com.range_z",
-            round(float(np.max(valid_z) - np.min(valid_z)), 4),
-        ))
+        records.append(
+            _record(
+                "biomech.com.range_z",
+                round(float(np.max(valid_z) - np.min(valid_z)), 4),
+            )
+        )
 
     # trajectory arc length (valid frames only — excludes low-visibility gaps)
     path = float(np.nansum(np.linalg.norm(np.diff(com_valid, axis=0), axis=1)))

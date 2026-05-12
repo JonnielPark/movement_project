@@ -11,10 +11,11 @@ Activation by laterality:
     alternating          → per-rep attribution
     unilateral_*         → declared side is the expected active side
 
-Pipeline position: after ⑥ phase segmentation, before ⑧ feature extraction.
+Pipeline position: after ⑥ segmentation, before ⑧ feature extraction.
 Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
 Column convention: <landmark>_norm_x/y/z (normalized coordinates).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -24,27 +25,29 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 # ── Paired landmark list for L/R motion energy ────────────────────────────────
 
 _DEFAULT_SWAP_PAIRS: list[tuple[str, str]] = [
     ("left_shoulder", "right_shoulder"),
-    ("left_elbow",    "right_elbow"),
-    ("left_wrist",    "right_wrist"),
-    ("left_hip",      "right_hip"),
-    ("left_knee",     "right_knee"),
-    ("left_ankle",    "right_ankle"),
+    ("left_elbow", "right_elbow"),
+    ("left_wrist", "right_wrist"),
+    ("left_hip", "right_hip"),
+    ("left_knee", "right_knee"),
+    ("left_ankle", "right_ankle"),
 ]
 
 # Laterality values that make this module applicable
-_APPLICABLE_LATERALITIES = frozenset({
-    "alternating",
-    "unilateral_left",
-    "unilateral_right",
-    "unilateral_unspecified",
-})
+_APPLICABLE_LATERALITIES = frozenset(
+    {
+        "alternating",
+        "unilateral_left",
+        "unilateral_right",
+        "unilateral_unspecified",
+    }
+)
 
 # Output column names
 _ATTR_COLS = [
@@ -58,6 +61,7 @@ _ATTR_COLS = [
 
 # ── Config dataclass ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class AttributionThresholds:
     """Decision thresholds (τ) for active-limb attribution.
@@ -66,12 +70,14 @@ class AttributionThresholds:
     ambiguous  : τ_ambiguous < motion_share ≤ τ_active → ambiguous
     swap       : confidence > τ_swap required for 'swap' action (auto_correct mode)
     """
+
     active: float = 0.70
     ambiguous: float = 0.55
     swap: float = 0.85
 
 
 # ── Report dataclass ──────────────────────────────────────────────────────────
+
 
 @dataclass
 class AttributionReport:
@@ -120,6 +126,7 @@ class AttributionReport:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
     """(T, 3) normalized coordinates; falls back to raw if norm columns absent."""
@@ -232,11 +239,18 @@ def _requires_starting_side(
         if performance_protocol is not None
         else None
     )
-    mode = getattr(side_sequence, "mode", "none") if side_sequence is not None else "none"
-    return mode in {"alternating_each_rep", "same_side_block_then_switch"} or pattern == "alternating"
+    mode = (
+        getattr(side_sequence, "mode", "none") if side_sequence is not None else "none"
+    )
+    return (
+        mode in {"alternating_each_rep", "same_side_block_then_switch"}
+        or pattern == "alternating"
+    )
 
 
-def _performance_side_sequence_dict(performance_protocol: Any | None) -> dict[str, Any] | None:
+def _performance_side_sequence_dict(
+    performance_protocol: Any | None,
+) -> dict[str, Any] | None:
     if performance_protocol is None:
         return None
     side_sequence = getattr(performance_protocol, "side_sequence", None)
@@ -264,7 +278,10 @@ def _observed_side_for_rep(df_rep: pd.DataFrame, rep_index_zero: int) -> str | N
         return value
     if "," in value:
         sequence = [item.strip() for item in value.split(",") if item.strip()]
-        if rep_index_zero < len(sequence) and sequence[rep_index_zero] in ("left", "right"):
+        if rep_index_zero < len(sequence) and sequence[rep_index_zero] in (
+            "left",
+            "right",
+        ):
             return sequence[rep_index_zero]
     return None
 
@@ -324,6 +341,7 @@ def _detect_active(
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def attribute_motion(
     df: pd.DataFrame,
@@ -391,9 +409,21 @@ def attribute_motion(
         return df, report
 
     # ── Common context ────────────────────────────────────────────────────────
-    pattern = df["pattern"].dropna().iloc[0] if "pattern" in df.columns and not df["pattern"].dropna().empty else None
-    starting_side = df["starting_side"].dropna().iloc[0] if "starting_side" in df.columns and not df["starting_side"].dropna().empty else None
-    exercise_type = df["exercise_type"].dropna().iloc[0] if "exercise_type" in df.columns and not df["exercise_type"].dropna().empty else None
+    pattern = (
+        df["pattern"].dropna().iloc[0]
+        if "pattern" in df.columns and not df["pattern"].dropna().empty
+        else None
+    )
+    starting_side = (
+        df["starting_side"].dropna().iloc[0]
+        if "starting_side" in df.columns and not df["starting_side"].dropna().empty
+        else None
+    )
+    exercise_type = (
+        df["exercise_type"].dropna().iloc[0]
+        if "exercise_type" in df.columns and not df["exercise_type"].dropna().empty
+        else None
+    )
 
     report.exercise_type = exercise_type
     report.pattern = pattern
@@ -465,7 +495,11 @@ def attribute_motion(
             report.expected_side_source = expected_source
 
         observed_side = _observed_side_for_rep(df_rep, rep_num_zero)
-        if observed_side is not None and expected is not None and observed_side != expected:
+        if (
+            observed_side is not None
+            and expected is not None
+            and observed_side != expected
+        ):
             report.side_sequence_warnings.append(
                 {
                     "rep_id": int(rep_id),
@@ -479,8 +513,8 @@ def attribute_motion(
         if detected in ("ambiguous", "bilateral"):
             consistent = None
             action = "flag"
-            report.num_ambiguous += (1 if detected == "ambiguous" else 0)
-            report.num_bilateral += (1 if detected == "bilateral" else 0)
+            report.num_ambiguous += 1 if detected == "ambiguous" else 0
+            report.num_bilateral += 1 if detected == "bilateral" else 0
         elif expected is None:
             consistent = None
             action = "flag"

@@ -16,6 +16,7 @@ Coordinate convention : (T, J, 3) = (frame, joint_index, xyz).
 Column convention     : <landmark>_norm_x/y/z (normalized coordinates).
 Unit restriction      : all outputs in torso_length_ratio; absolute units are a bug.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,7 +24,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 @dataclass
@@ -43,6 +44,7 @@ class BiomechRecord:
     n_frames_used                    : number of frames included in the computation
     n_frames_excluded_low_visibility : frames excluded due to low visibility
     """
+
     metric_id: str
     exercise_id: str
     rep_id: int | None
@@ -113,7 +115,9 @@ def extract_rep_biomech(
         rep_ids = sorted(df.loc[rep_mask, "rep_id"].dropna().unique())
 
     primary_joints: list[str] = exercise_definition.landmarks.primary_joints or []
-    min_vis_ratio: float = exercise_definition.quality_rules.minimum_visible_landmark_ratio
+    min_vis_ratio: float = (
+        exercise_definition.quality_rules.minimum_visible_landmark_ratio
+    )
 
     def _weights_for(df_slice: "pd.DataFrame"):
         if not use_visibility_weight or not primary_joints:
@@ -128,7 +132,9 @@ def extract_rep_biomech(
             df_rep = df.loc[mask]
             rid = int(rep_id)
             w = _weights_for(df_rep)
-            records += compute_com_metrics(df_rep, exercise_definition, rep_id=rid, weights=w)
+            records += compute_com_metrics(
+                df_rep, exercise_definition, rep_id=rid, weights=w
+            )
             ma = compute_moment_arms(df_rep, exercise_definition, rep_id=rid, weights=w)
             records += ma
             moment_arm_records += ma
@@ -136,6 +142,7 @@ def extract_rep_biomech(
         # Load-shift trend: requires ≥ 3 reps (slope is unreliable on fewer)
         if len(rep_ids) >= 3:
             from movement.biomech.load_shift import compute_load_shift
+
             records += compute_load_shift(moment_arm_records)
     else:
         w = _weights_for(df)

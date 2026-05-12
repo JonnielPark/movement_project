@@ -5,7 +5,7 @@ Computes spatial, temporal, and control domain features from normalized pose dat
 Each feature is returned as a FeatureRecord with (value, unit, source_fields)
 so that downstream biomarker derivation (⑩) can trace provenance.
 
-When the `phase` column is populated by ⑥ Phase Segmentation, features are
+When the `phase` column is populated by ⑥ Segmentation, features are
 emitted at both rep-level (phase=None) and phase-level (phase='Descent', etc.),
 enabling the hierarchical analysis structure described in dissertation §5.5.
 
@@ -746,7 +746,7 @@ def extract_rep_features(
     Rep boundaries are read from annotation columns (segment_type, rep_id).
     When annotation columns are absent, all features are computed sequence-level.
 
-    When the `phase` column is populated by ⑥ Phase Segmentation, features
+    When the `phase` column is populated by ⑥ Segmentation, features
     in PHASE_AWARE_FEATURE_FAMILIES are also emitted for each (rep_id, phase)
     segment.  The rep-level records (phase=None) are always emitted regardless.
 

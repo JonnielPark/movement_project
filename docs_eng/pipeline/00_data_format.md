@@ -12,7 +12,7 @@ Input format specification for monocular 3D pose time series data.
 
 CSV file exported from a pose estimation engine. The current implementation assumes
 a MediaPipe-style 33-landmark pose CSV: one row per frame, `frame` / `timestamp`
-columns, and landmark columns named from `src/movement/config.py`.
+columns, and landmark columns named from `src/movement/core/config.py`.
 
 Other engines, including iPIXEL EXERCITE, are future adapters until their actual
 export schema is available. They should be converted into this MediaPipe-style
@@ -46,7 +46,7 @@ left_knee_y
 left_knee_z
 ```
 
-Landmark names are defined in [src/movement/config.py](../../src/movement/config.py).
+Landmark names are defined in [src/movement/core/config.py](../../src/movement/core/config.py).
 Naming convention: `left_*` / `right_*` prefixes for bilateral landmarks.
 
 ## 4. Visibility Columns (optional, recommended)
@@ -76,7 +76,7 @@ Sample file: `data/pose/sample/mediapipe_squat_synthetic.csv`
 2. Each landmark has x, y, z columns.
 3. frame values are sortable.
 4. timestamp values are monotonically increasing.
-5. Landmark names match the definitions in src/movement/config.py.
+5. Landmark names match the definitions in src/movement/core/config.py.
 ```
 
 Violations are reported by ① validation (see [01_validation.md](01_validation.md)).

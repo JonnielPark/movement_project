@@ -1,7 +1,7 @@
 # 런지 상세 해석 배경 (Lunge Clinical Rationale)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10  
+**문서 버전:** 1.0.3
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/clinical/exercises/lunge.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 런지가 본 연구에서 어떤 생체역학적 의미를 갖는지, 편측성/교대성 수행을 어떻게
@@ -98,6 +98,13 @@ attribution으로 구분해야 한다.
 약하게 보일 수 있다. 반대로 정면 또는 전방 대각 view는 좌우 정렬에 유리하지만, 시상면 ROM과
 뒷다리 움직임 해석이 약해질 수 있다.
 
+런지에서는 metric reliability를 역할 기반으로 해석해야 한다. 단순 anatomical left/right 비교만으로는
+충분하지 않다. 같은 해부학적 측이 한 블록에서는 forward leg이고 다른 블록에서는 trailing leg일 수
+있기 때문이다. 피처 해석은 `forward_leg`, `trailing_leg`, `active_side`, `support_side`, 그리고
+카메라 기준 near/far-side 맥락을 함께 보존해야 한다. 측면 촬영 블록에서 한쪽이 지속적으로
+카메라에서 멀거나 visibility가 낮다면, side-to-side 비교는 단측 결손으로 처리하지 않고
+low-confidence로 표시한다.
+
 ---
 
 ## 6. 권장 view 해석
@@ -116,6 +123,13 @@ view상 불리하면 confidence note 또는 해석 제한 요인으로 남긴다
 반대로 가려짐이 반복되면 해당 feature를 나쁜 점수로 처리하지 않고 unavailable 또는
 low-confidence로 남기는 것이 적절하다. 이 방어 로직은 기본 요구사항이 아니라 파일럿 촬영 후
 필요성이 확인될 때 적용할 optional 확장으로 둔다.
+
+따라서 계획된 `view_metric_reliability` map은 zone에 따라 서로 다른 metric family에 high reliability를
+부여해야 한다. 측면 view는 무릎 전방 이동, 앞/뒤 다리 시상면 ROM, rear-hip extension,
+체간 굴곡, 보폭을 잘 뒷받침한다. 정면 view는 step width, 좌우 순서, pelvis drop/shift,
+lateral trunk lean, 관상면 무릎 정렬을 더 잘 뒷받침한다. 대각 view는 혼합 정보를 주지만
+순수 시상면 또는 순수 관상면 판독보다는 덜 정밀할 수 있다. 이 confidence 상태는 feature 옆에
+표시되어야 하며 movement-quality penalty로 바로 변환하지 않는다.
 
 ---
 

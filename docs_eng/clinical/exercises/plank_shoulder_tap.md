@@ -1,7 +1,7 @@
 # Plank Shoulder Tap Clinical Rationale
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.0.3
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/clinical/exercises/plank_shoulder_tap.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of plank shoulder tap in this
@@ -101,6 +101,14 @@ Hand and foot shifts can reflect real base-of-support changes or landmark jitter
 They are better recorded as base-of-support warnings and interpretation-confidence
 notes than used as automatic exclusion rules.
 
+Because plank shoulder tap is an alternating task, reliability should follow the
+active/support role of each tap rather than raw anatomical left/right alone. A
+feature may be computed from the active wrist or support shoulder while still
+receiving low view reliability if the active hand overlaps the trunk, the support
+arm is occluded, or the camera zone weakens rotation versus lateral-shift
+interpretation. In those cases, the metric should be reported as low-confidence
+or not assessed rather than converted directly into a poor movement-quality score.
+
 ---
 
 ## 6. Recommended View Interpretation
@@ -120,6 +128,14 @@ and rotation-control interpretation.
 Patterns such as missed shoulder tap depend on true contact, which is difficult to
 confirm from pose alone. They should be handled conservatively as annotation notes,
 protocol warnings, or interpretation limitations rather than direct scoring factors.
+
+The planned `view_metric_reliability` map should therefore treat low front-oblique
+views as the main compromise: higher reliability for pelvic rotation, lateral
+pelvic shift, active-hand trajectory, and side order; lower reliability for true
+hand-shoulder contact and any feature hidden by wrist/trunk overlap. Pure frontal
+views raise lateral-shift and side-order confidence but weaken depth rotation;
+pure side views can raise hip-height confidence while weakening active-hand
+segmentation.
 
 ---
 

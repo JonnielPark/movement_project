@@ -1,11 +1,12 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.0.4
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
 바이오마커와 반복별 종합 동작 품질 점수(composite movement quality score)로 통합한다.
+관측 데이터 신뢰도와 좌표 보정량은 점수와 분리된 confidence/provenance 정보로 해석한다.
 
 두 종류의 레코드가 산출된다:
 1. **`BiomarkerRecord`** — `source_fields` provenance를 갖춘 패스스루 개별 지표.
@@ -53,6 +54,7 @@ baseline JSON         data/reference/baseline_zscore.json
     의무 ROM 달성에 비례하는 동적 하한
     z, weight, deduction을 포함한 피처별 감점 감사 목록
     FeatureRecord / BiomechRecord로부터의 provenance 패스스루
+    data confidence와 correction report를 점수와 분리해 표시
 
 불허:
     "정상" vs "비정상"의 임상 임계값
@@ -60,6 +62,7 @@ baseline JSON         data/reference/baseline_zscore.json
     하드코딩된 mean / std (반드시 베이스라인 파일에서)
     질병 예측 출력
     도메인별 투명성 없는 단일 숫자 요약
+    큰 좌표 보정량을 운동 품질 감점으로 직접 치환
 ```
 
 ## 3. 2단계 출력 (Two-Stage Output)
@@ -151,6 +154,29 @@ spatial.*    → spatial      temporal.*   → temporal
 control.*    → control      biomech.*    → biomech
 기타          → 무시
 ```
+
+### 4-1. 동작 품질 점수와 데이터 신뢰도의 분리
+
+단안 pose의 canonicalization은 실제 3D 복원이 아니라, 일관된 관찰 편향을 줄여 관절 움직임
+패턴을 평가 가능한 좌표계로 옮기는 과정이다. 따라서 canonicalized pose에서 계산한
+`movement_quality_score`와, raw pose 품질 및 보정량을 요약하는 `data_confidence`는 분리한다.
+
+```text
+movement_quality_score
+    canonical 또는 normalized 좌표에서 계산한 운동 패턴 점수.
+
+data_confidence
+    visibility, jitter, 좌우 swap 위험, canonicalization correction magnitude,
+    residual after fit 같은 관측/보정 신뢰도 요약.
+
+correction_report
+    어떤 prior를 사용했고 얼마나 보정했는지에 대한 provenance.
+```
+
+보정량이 크다고 해서 동작 품질이 자동으로 낮다는 뜻은 아니다. 카메라 artifact가 크지만 landmark
+추적과 관절 변화량이 안정적이면 동작 품질 점수는 높고 data confidence는 중간 또는 낮음으로
+보고될 수 있다. 반대로 data confidence가 낮은 경우에는 점수 자체를 해석 보류하거나
+confidence note를 함께 표시한다.
 
 ## 5. Z-Score 감점 공식 (Z-Score Deduction Formula)
 

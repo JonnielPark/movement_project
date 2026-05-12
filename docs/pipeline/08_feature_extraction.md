@@ -1,7 +1,7 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.0.5
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.0.9
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
@@ -71,6 +71,52 @@ spatial.rom.<joint>             반복별 끼인각 max − min                 
 spatial.symmetry.<joint>        | ROM_left − ROM_right | / mean         (dimensionless_cv)
 spatial.shape.arc_length.<lm>   주요 관절 궤적 길이                       (torso_length_ratio)
 ```
+
+#### 시점 의존 대칭성 산출 가능성 (View-Dependent Symmetry Availability)
+
+`spatial.symmetry.*`는 좌우 ROM 차이를 계산할 수 있다는 이유만으로 항상 유효한 동작 품질
+감점 근거로 해석하지 않는다. 단안 촬영에서는 양측 대칭성 피처가 먼저 availability gate를
+통과해야 한다. 이는 특히 측면에 가까운 스쿼트 촬영에서 중요하다. 단안 3D skeleton을 정면으로
+돌려본 화면은 실제 정면 관찰이 아니라 depth 추정 결과를 회전한 것이므로, 좌우 불균형처럼
+보이는 패턴이 카메라가 직접 관찰한 움직임이 아닐 수 있다.
+
+의도하는 availability 상태는 다음과 같다.
+
+```text
+assessed
+    양측 landmark visibility/coverage가 충분하고, 분절 길이가 말이 되며,
+    좌우 swap 위험이 낮고, 촬영 view가 해당 좌우 해석을 뒷받침한다.
+
+low_confidence
+    값은 계산할 수 있지만 visibility, far-side jitter, depth-dependent
+    canonicalization correction, viewpoint mismatch 때문에 해석 note로만 적합하다.
+
+not_assessed
+    계산값이 해석 가능한 움직임 비대칭보다 관측 artifact를 주로 반영할 가능성이 크다.
+    movement-quality score에 넣지 않는다.
+```
+
+측면 또는 측면에 가까운 스쿼트에서는 주 점수화 대상을 하강 깊이, hip/knee/ankle ROM,
+체간 기울기, heel lift, hip-center 궤적 안정성, tempo, smoothness 같은 시상면 및 중심선
+피처로 둔다. 좌우 symmetry는 양측이 availability gate를 통과할 때만 방출한다. 측면 애니메이션은
+안정적으로 보이는데 3D skeleton을 정면으로 돌렸을 때 좌우 균형이 크게 무너져 보인다면, 실제
+정면 또는 전방 대각 view가 그 비대칭을 확인하기 전까지 depth inference limitation으로 처리한다.
+
+동일한 원칙은 운동 정의의 `view_metric_reliability`로 일반화한다. Feature extraction은 피처를
+계산하되, view reliability를 별도로 보고할 수 있다.
+
+```text
+computed_value      source field가 있을 때 산출된 FeatureRecord 수치
+view_reliability   high | moderate | low | not_assessed
+availability       assessed | low_confidence | not_assessed
+```
+
+양측 대칭 운동에서는 reliability map을 주로 관상면 가시성과 시상면 가시성의 tradeoff로 정리한다.
+편측 또는 교대 운동에서는 `forward_leg`, `trailing_leg`, `active_side`, `support_side` 같은 역할
+기준으로 정리한다. 따라서 측면 런지는 forward-leg 시상면 ROM과 rear-limb extension에는
+high-confidence일 수 있지만 knee valgus나 pelvis drop에는 low-confidence일 수 있다. 정면 런지는
+step width와 pelvis drop을 잘 보여주지만 무릎 전방 이동과 rear-hip extension은 low-confidence가
+될 수 있다.
 
 ### 3-2. 시간(Temporal) 피처
 
@@ -265,8 +311,8 @@ compensation_candidates
 이 report는 진단/provenance 출력이다. Unsupported 항목은 feature extraction을 중단시키지 않고,
 자동으로 scoring factor로 승격하지 않는다.
 
-A6는 운동별 compensation-candidate availability matrix를 추가한다. 이 matrix는 candidate 구현
-상태에 대한 현재 기준표이며, 그 자체로 새 metric을 만들지는 않는다.
+운동별 compensation-candidate availability matrix는 candidate 구현 상태에 대한 현재 기준표이며,
+그 자체로 새 metric을 만들지는 않는다.
 
 ```text
 candidate                    YAML candidate 이름
@@ -303,12 +349,12 @@ no_rule_registered
     report에서 계속 보이게 유지한다.
 ```
 
-현재 A6 pass에서는 이 matrix로 `docs/code_revision_plan.md`의 스쿼트와 파이크 푸쉬업 candidate
-review 메모를 해결한다.
+이 matrix는 스쿼트와 파이크 푸쉬업처럼 아직 점수화 규칙으로 승격되지 않은 후보도 report에
+보이게 유지하기 위해 사용한다.
 
 ## 11. 분석 방해 패턴 탐지 가능성 감사 (Analysis-Disrupting Pattern Detectability Audit)
 
-A4는 `performance_protocol.analysis_disrupting_patterns`에 대한 두 번째 diagnostic report를
+`performance_protocol.analysis_disrupting_patterns`에 대한 두 번째 diagnostic report를
 추가한다. 이 감사는 pose-detectable scoring candidate와 protocol-control 또는
 interpretation-limit factor를 분리하여, 분석 방해 패턴이 조용히 자동 제외나 자동 점수로
 승격되지 않도록 한다.

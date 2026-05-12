@@ -1,7 +1,7 @@
 # 운동별 피처 × 임상적 의미 매핑 (Per-Exercise Feature × Clinical Meaning Mapping)
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.2
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/clinical/per_exercise_mapping.md`는 동일 버전의 영문 번역본이다.
 
 **학위논문 §5.5 / §5.6.** 4개 검증 운동 전체의 활성 피처와 단위, 생체역학적 해석.
@@ -9,7 +9,7 @@
 - 용어집: [`docs/terminology.md`](../terminology.md)
 - 피처 추출 코드: [`src/movement/features/`](../../src/movement/features/)
 - YAML 미러 (대시보드 툴팁): [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml)
-- 금지 어휘 규칙: [`docs/code_revision_plan.md §0`](../code_revision_plan.md) 원칙 4
+- 금지 어휘 규칙: [`docs/terminology.md`](../terminology.md)의 임상 표현 사용 원칙
 
 ---
 
@@ -28,6 +28,12 @@
 
 **구현된** 보상 규칙만 나열한다. 운동 YAML의 후보 중 `COMPENSATION_RULES`에 매칭 항목이
 없는 것은 런타임에 `UserWarning`을 발생시키며 본 표에서 생략된다.
+
+모든 `spatial.symmetry.*` 의미는 `08_feature_extraction.md`의 feature-availability gate를
+통과했다는 전제에서만 해석한다. 측면 또는 측면에 가까운 단안 촬영에서는 정면으로 돌려본
+3D 렌더링이 실제 정면 관찰 근거가 아니다. bilateral landmark 신뢰도, view compatibility,
+depth-sensitive stability가 충분하지 않으면 symmetry feature는 나쁜 movement quality로
+해석하지 않고 `low_confidence` 또는 `not_assessed`로 보고한다.
 
 ---
 

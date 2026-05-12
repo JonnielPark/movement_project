@@ -1,5 +1,5 @@
 """
-⑧ Control Features
+⑥ Control Features
 
 Computes CoM (Center of Mass) horizontal displacement stability and
 compensation movement candidate metrics.
@@ -10,6 +10,7 @@ Unit convention:
 
 Input: normalized pose dataframe (norm columns) and ExerciseDefinition.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,7 +21,7 @@ import pandas as pd
 from movement.features import FeatureRecord
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
@@ -38,7 +39,7 @@ def compute_stability(
     """Compute CoM horizontal displacement stability.
 
     CoM approximation: standard deviation of hip_center(norm) horizontal coordinates.
-    (To be replaced by com.py estimate once ⑨ biomech proxy is implemented.)
+    (To be replaced by com.py estimate once ⑨ biomech proxy is used here.)
 
     Unit: torso_length_ratio. Smaller values indicate greater stability.
     """
@@ -63,7 +64,10 @@ def compute_stability(
             rep_id=rep_id,
             value=round(std_x, 4),
             unit="torso_length_ratio",
-            source_fields=["biomechanical_focus.stability_requirement", "feature_domains.control"],
+            source_fields=[
+                "biomechanical_focus.stability_requirement",
+                "feature_domains.control",
+            ],
         ),
         FeatureRecord(
             feature_id="control.stability.hip_center_z_std",
@@ -71,7 +75,10 @@ def compute_stability(
             rep_id=rep_id,
             value=round(std_z, 4),
             unit="torso_length_ratio",
-            source_fields=["biomechanical_focus.stability_requirement", "feature_domains.control"],
+            source_fields=[
+                "biomechanical_focus.stability_requirement",
+                "feature_domains.control",
+            ],
         ),
     ]
 

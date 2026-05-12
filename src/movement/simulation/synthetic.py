@@ -12,6 +12,7 @@ Units:
     velocity spike size : torso_length_ratio
     ROM restriction     : degree
 """
+
 from __future__ import annotations
 
 import warnings
@@ -22,6 +23,7 @@ import pandas as pd
 
 
 # ── Internal helpers ─────────────────────────────────────────────────────────
+
 
 def _xyz_cols(lm: str) -> list[str]:
     return [f"{lm}_x", f"{lm}_y", f"{lm}_z"]
@@ -46,6 +48,7 @@ def _get_torso_scale(df: pd.DataFrame) -> float:
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
+
 
 def add_gaussian_noise(
     df: pd.DataFrame,
@@ -77,8 +80,12 @@ def add_gaussian_noise(
     sigma_raw = sigma_torso_ratio * scale
 
     if landmarks is None:
-        coord_cols = [c for c in df.columns if c.endswith(("_x", "_y", "_z"))
-                      and not c.startswith(("left_norm", "right_norm"))]
+        coord_cols = [
+            c
+            for c in df.columns
+            if c.endswith(("_x", "_y", "_z"))
+            and not c.startswith(("left_norm", "right_norm"))
+        ]
     else:
         coord_cols = [c for lm in landmarks for c in _xyz_cols(lm) if c in df.columns]
 
@@ -304,6 +311,7 @@ def restrict_rom(
 
 # ── Synthetic squat data generation (merged from generate_synthetic_squat.py) ─
 
+
 def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     """Generate synthetic squat pose CSV files.
 
@@ -320,7 +328,7 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     import csv as _csv
     from pathlib import Path as _Path
 
-    from movement.generate_synthetic_squat import (
+    from movement.simulation.generate_synthetic_squat import (
         BOTTOM_DELTAS,
         LANDMARKS,
         STANDING_POSE,
@@ -332,10 +340,10 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     rng = np.random.default_rng(seed=seed)
 
     SEGMENTS = [
-        ("baseline",    0,  14, False, 1, None),
-        ("rep",        15,  59, True,  1, 1),
-        ("transition", 60,  74, False, None, None),
-        ("rep",        75, 119, True,  1, 2),
+        ("baseline", 0, 14, False, 1, None),
+        ("rep", 15, 59, True, 1, 1),
+        ("transition", 60, 74, False, None, None),
+        ("rep", 75, 119, True, 1, 2),
     ]
     n_frames = SEGMENTS[-1][2] + 1
 
@@ -363,20 +371,35 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     ann_path = out_dir / "mediapipe_squat_synthetic_annotation.csv"
     with ann_path.open("w", newline="", encoding="utf-8") as f:
         writer = _csv.writer(f)
-        writer.writerow(["segment_type", "set_id", "rep_id", "start_frame",
-                          "end_frame", "use_for_analysis", "exercise_type",
-                          "pattern", "note"])
+        writer.writerow(
+            [
+                "segment_type",
+                "set_id",
+                "rep_id",
+                "start_frame",
+                "end_frame",
+                "use_for_analysis",
+                "exercise_type",
+                "pattern",
+                "note",
+            ]
+        )
         for kind, start, end, use, set_id, rep_id in SEGMENTS:
             note = {
-                "baseline":   "standing posture before movement",
-                "rep":        f"descent and ascent cycle {rep_id}",
+                "baseline": "standing posture before movement",
+                "rep": f"descent and ascent cycle {rep_id}",
                 "transition": "brief pause between reps",
             }.get(kind, "")
-            writer.writerow([
-                kind,
-                set_id if set_id is not None else "",
-                rep_id if rep_id is not None else "",
-                start, end,
-                "true" if use else "false",
-                "squat", "bilateral", note,
-            ])
+            writer.writerow(
+                [
+                    kind,
+                    set_id if set_id is not None else "",
+                    rep_id if rep_id is not None else "",
+                    start,
+                    end,
+                    "true" if use else "false",
+                    "squat",
+                    "bilateral",
+                    note,
+                ]
+            )

@@ -1,7 +1,7 @@
 # 플랭크 숄더탭 상세 해석 배경 (Plank Shoulder Tap Clinical Rationale)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10  
+**문서 버전:** 1.0.3
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/clinical/exercises/plank_shoulder_tap.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 플랭크 숄더탭이 본 연구에서 어떤 생체역학적 의미를 갖는지, anti-rotation 과제를
@@ -97,6 +97,12 @@ active wrist가 몸통 또는 반대쪽 어깨와 겹치면 tap 접촉 여부를
 exclusion보다 recording note, base-of-support warning, interpretation confidence note로 남기는
 방향이 적절하다.
 
+플랭크 숄더탭은 교대 과제이므로 reliability는 단순 anatomical left/right가 아니라 각 tap의
+active/support 역할을 따라가야 한다. active wrist나 support shoulder에서 피처를 계산할 수 있더라도,
+active hand가 몸통과 겹치거나 support arm이 가려지거나 camera zone이 rotation과 lateral-shift
+해석 중 한쪽을 약하게 만들면 view reliability는 낮게 표시해야 한다. 이 경우 metric은 나쁜
+movement-quality score로 바로 바꾸지 않고 low-confidence 또는 not assessed로 보고한다.
+
 ---
 
 ## 6. 권장 view 해석
@@ -113,6 +119,12 @@ active wrist가 몸통과 겹치기 쉬워 tap segmentation과 좌우 순서 해
 
 missed shoulder tap처럼 실제 접촉 여부가 중요한 항목은 pose만으로 확정하기 어렵다. 이 경우
 점수화보다 annotation note, protocol warning, 해석 제한 요인으로 남기는 것이 보수적이다.
+
+따라서 계획된 `view_metric_reliability` map은 낮은 전방 대각 view를 핵심 절충안으로 다룬다.
+이 view는 pelvic rotation, lateral pelvic shift, active-hand trajectory, side order에는 더 높은
+reliability를 줄 수 있지만, 실제 손-어깨 접촉이나 wrist/trunk overlap에 가려지는 피처는 낮게
+본다. 순수 정면 view는 lateral shift와 side order confidence를 높이지만 depth rotation을 약화하고,
+순수 측면 view는 hip-height confidence를 높일 수 있으나 active-hand segmentation을 약화할 수 있다.
 
 ---
 
