@@ -1,13 +1,17 @@
 # 04. 전처리 (Preprocessing)
 
-**문서 버전:** 1.0.1
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.1.1
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/pipeline/04_preprocessing.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ④. 정규화 이전에 단안 포즈 데이터의 품질 이슈를 보정한다.
 보정된 데이터프레임 사본을 반환하며, 입력은 수정하지 않는다.
 
 데이터 품질 이슈만 보정하며, 동작 품질 패턴(보상 움직임, 스쿼트 깊이 등)은 변경하지 않는다.
+
+현재 구현은 reliability mask, 라벨만 교환하는 L/R swap 보정, 짧은 gap 보간, 선택적 smoothing,
+그리고 측면 또는 측면에 가까운 촬영을 위한 선택적 visibility-aware far-side stabilization과
+feature-availability hook을 포함한다.
 
 ---
 
@@ -72,6 +76,8 @@ landmarks.critical_landmarks
 classification.laterality
 quality_rules.minimum_visible_landmark_ratio
 quality_rules.max_interpolation_gap_frames
+camera_protocol.recommended_zones
+view_metric_reliability
 ```
 
 ## 4. 출력 (Outputs)
@@ -87,6 +93,16 @@ pre_df, pre_report = preprocess_pose_dataframe(df, landmarks, exercise_definitio
 preprocessing_valid    bool    프레임 단위 종합 신뢰도
 preprocessing_note     str     비신뢰 사유
 swap_corrected         bool    좌·우 라벨 스왑 보정 여부
+```
+
+Task B 리포트/메타데이터 출력(정책상 안정화된 경우를 제외하고 좌표를 대체하지 않음):
+
+```text
+<landmark>_camera_side       near_side | far_side | unknown
+<landmark>_jitter_score      정규화된 landmark jitter score
+<landmark>_confidence_note   landmark-level observation confidence note
+preprocessing_confidence     후속 단계용 frame-level confidence note
+feature_availability_summary feature scoring 가능 여부를 담는 report-level context
 ```
 
 ## 5. 신뢰도 검출 (Reliability Detection)
@@ -226,7 +242,131 @@ preprocessing:
     window_size: 3
 ```
 
-## 9. 칼만 필터 (Kalman Filter, 향후)
+## 9. Task B 확장: Visibility-Aware Far-Side Stabilization
+
+이 선택 구현은 촬영 view가 측면 또는 측면에 가깝고, 카메라에서 먼 쪽 landmark가 낮은
+visibility, 높은 jitter, 높은 L/R swap 위험을 보이는 상황을 다룬다. 이는 canonicalization이
+아니며, skeleton을 대칭으로 맞추려는 절차도 아니다.
+
+### 9-1. Near-Side / Far-Side 추정
+
+전처리 단계는 landmark 또는 body side 단위의 camera-side context를 추정한다.
+
+```text
+near_side    관찰 pose에서 카메라에 더 가까운 landmark/body side
+far_side     관찰 pose에서 카메라에서 더 먼 landmark/body side
+unknown      근거 부족; side-specific stabilization을 적용하지 않음
+```
+
+추정에는 다음 정보를 사용할 수 있다.
+
+```text
+annotation 또는 recording metadata의 camera_zone
+hip_center 또는 body center 대비 좌/우 depth 좌표
+paired landmark 사이의 visibility 차이
+side assignment의 시간적 연속성
+가능한 경우 exercise laterality와 active/support role
+```
+
+camera-side 추정이 불안정하면 결과는 `unknown`으로 남긴다. unknown은 confidence state이지,
+movement-quality penalty가 아니다.
+
+### 9-2. Far-Side Jitter Score
+
+Jitter score는 reliability metric이지 생체역학 점수가 아니다. 특정 landmark가 불안정한
+단안 추정값일 가능성을 요약한다.
+
+```text
+velocity_spike_ratio
+acceleration_spike_ratio
+visibility_drop_ratio
+segment_length_inconsistency
+left_right_swap_risk
+```
+
+가능하면 body scale로 정규화한다. 이 값은 landmark별 또는 paired side별로 보고하고,
+후속 feature-availability gate에서 사용한다.
+
+### 9-3. 안정화 정책
+
+Far-side stabilization은 보수적으로 적용한다.
+
+```text
+허용:
+    낮은 visibility + 높은 jitter landmark에 한한 강화 smoothing
+    짧은 low-confidence gap 보간
+    해결되지 않은 긴 gap에 대한 confidence/report metadata
+
+불허:
+    far-side landmark를 near-side landmark에 강제로 맞추기
+    실제 knee valgus, pelvic shift, trunk lean, asymmetry 제거
+    far-side 불안정성을 곧바로 나쁜 movement-quality score로 변환
+```
+
+분절 길이 plausibility는 guardrail로 사용할 수 있지만, 고정 template을 강제해서는 안 된다.
+긴 gap 또는 불안정한 side assignment는 `low_confidence` 또는 `not_assessed`로 남긴다.
+
+### 9-4. Feature-Availability Hook
+
+④ 전처리는 후속 단계가 feature의 scoring 투입 가능 여부를 판단할 수 있도록 다음 context를 제공해야 한다.
+
+```text
+bilateral_landmark_coverage
+near_far_side_context
+far_side_jitter_score
+left_right_swap_risk
+segment_length_plausibility
+운동 정의의 view_reliability
+```
+
+`spatial.symmetry.*`는 양측 landmark coverage, 분절 길이 plausibility, 낮은 swap risk,
+허용 가능한 far-side jitter, 좌우 해석을 뒷받침하는 camera view를 모두 만족할 때만
+`assessed`가 된다. 그렇지 않으면 `low_confidence` 또는 `not_assessed`가 될 수 있다.
+
+설정 블록:
+
+```yaml
+preprocessing:
+  far_side_stabilization:
+    enabled: false
+    camera_side_inference: true
+    visibility_threshold: 0.6
+    jitter_threshold_torso_per_sec: null
+    acceleration_threshold_torso_per_sec2: null
+    max_gap_frames: 3
+    smoothing_method: rolling_median
+    smoothing_window_size: 3
+    mark_long_gaps_low_confidence: true
+    depth_axis: z
+    near_depth_sign: negative
+    min_depth_offset_torso: 0.05
+```
+
+리포트 필드:
+
+```python
+{
+    "far_side_stabilization_summary": {
+        "enabled": bool,
+        "camera_side_inference": dict,
+        "num_near_side_landmark_frames": int,
+        "num_far_side_landmark_frames": int,
+        "num_unknown_side_landmark_frames": int,
+        "num_high_jitter_far_side_landmark_frames": int,
+        "num_far_side_gaps_interpolated": int,
+        "num_far_side_gaps_unresolved": int,
+        "num_far_side_values_smoothed": int,
+    },
+    "feature_availability_summary": {
+        "symmetry_gate_ready": bool,
+        "low_confidence_feature_families": list,
+        "not_assessed_feature_families": list,
+        "reasons": dict,
+    },
+}
+```
+
+## 10. 칼만 필터 (Kalman Filter, 향후)
 
 칼만 필터는 YAML 옵션으로 제공되지만 기본적으로 비활성화되어 있다.
 베이스라인(가시성 게이팅 + 해부학적 점검 + 보간 + rolling median)이 충분히 특성화된 후에만 활성화한다.
@@ -239,18 +379,18 @@ preprocessing:
     measurement_noise: 0.1
 ```
 
-## 10. Laterality 분기 요약 (Laterality Branch Summary)
+## 11. Laterality 분기 요약 (Laterality Branch Summary)
 
 ```text
-laterality               visibility  segment  ROM  velocity  L/R swap  smoothing
-──────────────────────   ──────────  ───────  ───  ────────  ────────  ─────────
-bilateral_symmetric      enabled     enabled  on   enabled   skip      optional
-alternating              enabled     enabled  on   enabled   enabled   optional
-unilateral_*             enabled     enabled  on   enabled   enabled   optional
-generic 폴백              enabled     enabled  on   enabled   skip      optional
+laterality               visibility  segment  ROM  velocity  L/R swap  far-side  smoothing
+──────────────────────   ──────────  ───────  ───  ────────  ────────  ────────  ─────────
+bilateral_symmetric      enabled     enabled  on   enabled   skip      view-gated optional
+alternating              enabled     enabled  on   enabled   enabled   role-aware optional
+unilateral_*             enabled     enabled  on   enabled   enabled   role-aware optional
+generic 폴백              enabled     enabled  on   enabled   skip      skip      optional
 ```
 
-## 11. 무효 프레임 표시 (Invalid Frame Marking)
+## 12. 무효 프레임 표시 (Invalid Frame Marking)
 
 프레임은 절대 조용히 삭제되지 않는다. 품질 메타데이터 칼럼이 추가된다:
 
@@ -262,7 +402,7 @@ swap_corrected = True         좌·우 라벨이 교환됨
 
 피처 추출 단계에서의 정확한 프레임 제외는 어노테이션 규칙과 피처 단계 로직이 결정한다.
 
-## 12. 전처리 리포트 (Preprocessing Report)
+## 13. 전처리 리포트 (Preprocessing Report)
 
 ```python
 {
@@ -297,17 +437,19 @@ swap_corrected = True         좌·우 라벨이 교환됨
         "window_size": int,
         "applied_columns": list,
     },
+    "far_side_stabilization_summary": dict | None,
+    "feature_availability_summary": dict | None,
     "num_invalid_frames": int,
     "applied_columns": list,
 }
 ```
 
-## 13. 향후 확장 (Planned Extensions)
+## 14. 향후 확장 (Planned Extensions)
 
 - 가시성 가중 보간(visibility-weighted interpolation)
 - 신뢰도 가중 평활화
 - Hampel 필터 (이상값 강건 평활화)
 - One-Euro 필터 (저지연 jitter 인지 평활화)
 - 운동별 속도 임계값 튜닝
-- 랜드마크별 신뢰도 규칙 (예: 가려진 반복에서의 발 랜드마크)
+- Task B far-side 정책을 넘어서는 landmark별 reliability rule
 - 보정 전·후 시각화

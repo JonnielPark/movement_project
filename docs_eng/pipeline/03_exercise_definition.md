@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.13
+**Document Version:** 1.4.14
 **Last Updated:** 2026-05-12
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -530,12 +530,13 @@ participant-facing exercise cues and analysis-disrupting performance patterns, s
 
 ### view_metric_reliability
 
-`view_metric_reliability` is a planned exercise-definition block that records how
-well each camera zone supports each metric family. It is not a coordinate-correction
-rule and does not reject data. It supplies a prior for ⑧ Feature Extraction, ⑩
-Biomarker Derivation, and ⑪ Visualization so a feature can be computed but still
-marked `low_confidence` or `not_assessed` when the view does not support the
-interpretation.
+`view_metric_reliability` is an exercise-definition block that records how well
+each camera zone supports each metric family. The current loader preserves it as
+`ExerciseDefinition.view_metric_reliability`. It is not a coordinate-correction
+rule and does not reject data. It supplies a prior for ④ Preprocessing,
+⑧ Feature Extraction, ⑩ Biomarker Derivation, and ⑪ Visualization so a feature
+can be computed but still marked `low_confidence` or `not_assessed` when the view
+does not support the interpretation.
 
 Reliability values:
 

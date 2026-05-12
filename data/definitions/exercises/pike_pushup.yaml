@@ -223,6 +223,36 @@ camera_protocol:
   out_of_zone_policy: warn_and_continue
   coordinate_correction: none
 
+view_metric_reliability:
+  structure: bilateral_symmetric
+  zones:
+    Z2:
+      upper_limb_symmetry: moderate
+      frontal_alignment: moderate
+      sagittal_rom: moderate
+      depth: moderate
+      hip_position: moderate
+    Z3:
+      sagittal_rom: high
+      depth: high
+      hip_position: high
+      trunk_hip_alignment: high
+      upper_limb_symmetry: low
+      frontal_alignment: low
+    Z7:
+      sagittal_rom: high
+      depth: high
+      hip_position: high
+      trunk_hip_alignment: high
+      upper_limb_symmetry: low
+      frontal_alignment: low
+    Z8:
+      upper_limb_symmetry: moderate
+      frontal_alignment: moderate
+      sagittal_rom: moderate
+      depth: moderate
+      hip_position: moderate
+
 quality_rules:
   minimum_visible_landmark_ratio: 0.75
   minimum_critical_landmark_ratio: 0.9

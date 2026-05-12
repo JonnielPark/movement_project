@@ -224,6 +224,39 @@ camera_protocol:
   out_of_zone_policy: warn_and_continue
   coordinate_correction: none
 
+view_metric_reliability:
+  structure: unilateral_or_alternating
+  role_labels: [forward_leg, trailing_leg, active_side, support_side]
+  zones:
+    Z1:
+      side_order: high
+      step_width: high
+      frontal_alignment: high
+      pelvis_drop_or_shift: high
+      side_to_side_comparison: moderate
+      forward_limb_sagittal_rom: low
+      rear_limb_extension: low
+      anterior_knee_travel: low
+      trunk_flexion: low
+    Z3:
+      forward_limb_sagittal_rom: high
+      rear_limb_extension: high
+      anterior_knee_travel: high
+      trunk_flexion: high
+      step_length: high
+      frontal_alignment: low
+      pelvis_drop_or_shift: low
+      side_to_side_comparison: low
+    Z7:
+      forward_limb_sagittal_rom: high
+      rear_limb_extension: high
+      anterior_knee_travel: high
+      trunk_flexion: high
+      step_length: high
+      frontal_alignment: low
+      pelvis_drop_or_shift: low
+      side_to_side_comparison: low
+
 quality_rules:
   minimum_visible_landmark_ratio: 0.8
   minimum_critical_landmark_ratio: 0.9

@@ -1,6 +1,6 @@
 # Terminology
 
-**Document Version:** 1.4.9
+**Document Version:** 1.5.0
 **Last Updated:** 2026-05-12
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
@@ -55,6 +55,8 @@ appear in an output, treat it as a documentation or code error.
 | Visibility-based confidence weighting | A biomechanical-proxy weighting scheme that uses key-landmark visibility as frame weights. Low-visibility frames have reduced influence or are excluded from metric computation. |
 | View-metric reliability | An exercise-definition prior describing how well a camera zone supports a metric family. It is separate from coordinate correction and landmark quality; values such as `high`, `moderate`, `low`, and `not_assessed` guide reporting and scoring eligibility. |
 | Feature availability | A per-feature decision on whether a computable value may enter scoring after checking landmark coverage, geometry plausibility, swap risk, and view-metric reliability. It is distinct from merely being able to calculate a numeric value. |
+| Near-side / far-side | A camera-relative visibility context. `Near-side` means the landmark or body side closer to the camera; `far-side` means the side farther from the camera. It is used for observation confidence, not as an anatomical quality label. |
+| Far-side jitter | Instability of landmarks on the camera-far side, summarized from visibility drops, velocity/acceleration spikes, segment-length inconsistency, or swap risk. It is a data-confidence signal, not a compensatory-movement metric. |
 
 ---
 

@@ -81,7 +81,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | D — Robustness simulation and experiment runner | viewpoint/compensation simulation injector, `scripts/run_robustness_experiment.py`, long-format output, robustness summary | §8 |
 | E — 논문용 reporting visualization | 정적 figure 함수 6개, `save_figure()`, source-field/caption provenance, `outputs/figures/` export | §11 |
 | F — Clinical mapping 통합과 dashboard 결정 게이트 | FMS-like mapping coverage 확인, feature availability 연결, 필요 시 traffic-light/severity reporting 통합, dashboard 결정 게이트 | §7.4 |
-| G — 유지보수와 저장소 정리 | 집중 변경 후 targeted test, 인계 전 full `pytest`, cache/build 정리, 안정화된 README 개발 명령 | 개발 위생 |
+| G — 유지보수와 저장소 정리 | 집중 변경 후 targeted test, 인계 전 full `python -m pytest`, cache/build 정리, 안정화된 README 개발 명령 | 개발 위생 |
 | H — 선택 확장: visibility-aware scoring fallback | 전처리 이후에도 occlusion, left/right swap, landmark jitter가 반복될 경우 feature availability policy와 confidence note 추가 | Task C-E 이후 조건부 |
 
 Dashboard / Phantom 3D 작업은 Task F의 결정 게이트 뒤로 보류하며, 사용자가 학위논문 구현
@@ -209,7 +209,7 @@ for score in score_records:
 ## 테스트 (Tests)
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
 ---
