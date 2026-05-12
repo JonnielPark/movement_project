@@ -13,7 +13,8 @@ Raw coordinates are preserved. Normalized coordinates are added as new columns:
     <landmark>_norm_y
     <landmark>_norm_z
 
-Pipeline position: after ④ preprocessing, before ⑥ phase segmentation.
+Pipeline position: after ④ preprocessing, before optional floor-relative normalization filter
+and ⑥ segmentation.
 """
 
 from typing import Any, Dict, List, Tuple
@@ -114,7 +115,7 @@ def compute_distance_between_prefixes(
     dy = result["{}_y".format(prefix_a)] - result["{}_y".format(prefix_b)]
     dz = result["{}_z".format(prefix_a)] - result["{}_z".format(prefix_b)]
 
-    result[output_col] = np.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+    result[output_col] = np.sqrt(dx**2 + dy**2 + dz**2)
 
     return result
 
@@ -178,17 +179,11 @@ def compute_sequence_median_scale(
         - <= min_scale
     """
     if torso_length_col not in df.columns:
-        raise ValueError(
-            "Missing torso length column: {}".format(torso_length_col)
-        )
+        raise ValueError("Missing torso length column: {}".format(torso_length_col))
 
     torso = df[torso_length_col].astype(float)
 
-    valid_mask = (
-        torso.notna()
-        & np.isfinite(torso)
-        & (torso > min_scale)
-    )
+    valid_mask = torso.notna() & np.isfinite(torso) & (torso > min_scale)
 
     valid_torso = torso[valid_mask]
 
@@ -298,9 +293,7 @@ def normalize_pose_by_hip_torso(
         "num_frames": int(len(df)),
         "num_normalized_landmarks": int(len(landmarks)),
         "normalized_columns": [
-            col
-            for landmark in landmarks
-            for col in _norm_coord_cols(landmark)
+            col for landmark in landmarks for col in _norm_coord_cols(landmark)
         ],
     }
 
@@ -343,15 +336,9 @@ def check_normalization_result(
             "missing_columns": missing,
         }
 
-    hip_center_norm_x = (
-        norm_df["left_hip_norm_x"] + norm_df["right_hip_norm_x"]
-    ) / 2.0
-    hip_center_norm_y = (
-        norm_df["left_hip_norm_y"] + norm_df["right_hip_norm_y"]
-    ) / 2.0
-    hip_center_norm_z = (
-        norm_df["left_hip_norm_z"] + norm_df["right_hip_norm_z"]
-    ) / 2.0
+    hip_center_norm_x = (norm_df["left_hip_norm_x"] + norm_df["right_hip_norm_x"]) / 2.0
+    hip_center_norm_y = (norm_df["left_hip_norm_y"] + norm_df["right_hip_norm_y"]) / 2.0
+    hip_center_norm_z = (norm_df["left_hip_norm_z"] + norm_df["right_hip_norm_z"]) / 2.0
 
     shoulder_center_norm_x = (
         norm_df["left_shoulder_norm_x"] + norm_df["right_shoulder_norm_x"]
@@ -367,7 +354,7 @@ def check_normalization_result(
     dy = shoulder_center_norm_y - hip_center_norm_y
     dz = shoulder_center_norm_z - hip_center_norm_z
 
-    norm_torso_length = np.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+    norm_torso_length = np.sqrt(dx**2 + dy**2 + dz**2)
 
     max_abs_hip_center = float(
         pd.concat(
@@ -377,15 +364,16 @@ def check_normalization_result(
                 hip_center_norm_z.abs(),
             ],
             axis=1,
-        ).max().max()
+        )
+        .max()
+        .max()
     )
 
     median_norm_torso_length = float(norm_torso_length.median())
 
     return {
         "passed": bool(
-            max_abs_hip_center < 1e-9
-            and abs(median_norm_torso_length - 1.0) < 1e-6
+            max_abs_hip_center < 1e-9 and abs(median_norm_torso_length - 1.0) < 1e-6
         ),
         "max_abs_hip_center": max_abs_hip_center,
         "median_normalized_torso_length": median_norm_torso_length,

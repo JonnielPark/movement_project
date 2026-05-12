@@ -31,6 +31,7 @@ Composite:
     Score_final = Σ_d W_d · Score_d,
     W defaults to equal normalized weights across score domains.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from movement.biomech import BiomechRecord
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
     from movement.features import FeatureRecord
 
 
@@ -53,10 +54,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _SCORE_DOMAIN_ORDER: tuple[str, ...] = ("spatial", "temporal", "control", "biomech")
 
 DOMAIN_WEIGHTS: dict[str, float] = {
-    "spatial":  0.25,
+    "spatial": 0.25,
     "temporal": 0.25,
-    "control":  0.25,
-    "biomech":  0.25,
+    "control": 0.25,
+    "biomech": 0.25,
 }
 DEFAULT_SCORE_BOUNDS: dict[str, float] = {
     "min": 0.0,
@@ -147,6 +148,7 @@ def normalize_score_bounds(
 
 # ── Output dataclass ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class BiomarkerScoreRecord:
     """Composite movement quality score for one rep (or full sequence).
@@ -167,6 +169,7 @@ class BiomarkerScoreRecord:
     domain_weights     : normalized domain weights used for final_score
     score_bounds       : score scale used for domain_scores and final_score
     """
+
     score_id: str
     exercise_id: str
     definition_version: str
@@ -185,21 +188,22 @@ class BiomarkerScoreRecord:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "score_id":           self.score_id,
-            "exercise_id":        self.exercise_id,
+            "score_id": self.score_id,
+            "exercise_id": self.exercise_id,
             "definition_version": self.definition_version,
-            "rep_id":             self.rep_id,
-            "domain_scores":      self.domain_scores,
-            "floor_applied":      self.floor_applied,
-            "final_score":        self.final_score,
-            "deductions":         self.deductions,
-            "source_fields":      self.source_fields,
-            "domain_weights":     self.domain_weights,
-            "score_bounds":       self.score_bounds,
+            "rep_id": self.rep_id,
+            "domain_scores": self.domain_scores,
+            "floor_applied": self.floor_applied,
+            "final_score": self.final_score,
+            "deductions": self.deductions,
+            "source_fields": self.source_fields,
+            "domain_weights": self.domain_weights,
+            "score_bounds": self.score_bounds,
         }
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _record_id(r: Any) -> str:
     return getattr(r, "feature_id", None) or getattr(r, "metric_id", "") or ""
@@ -207,10 +211,10 @@ def _record_id(r: Any) -> str:
 
 def _classify_domain(record_id: str) -> str:
     for prefix, domain in (
-        ("spatial.",  "spatial"),
+        ("spatial.", "spatial"),
         ("temporal.", "temporal"),
-        ("control.",  "control"),
-        ("biomech.",  "biomech"),
+        ("control.", "control"),
+        ("biomech.", "biomech"),
     ):
         if record_id.startswith(prefix):
             return domain
@@ -218,6 +222,7 @@ def _classify_domain(record_id: str) -> str:
 
 
 # ── Baseline I/O ──────────────────────────────────────────────────────────────
+
 
 def load_baseline(
     path: Path | str,
@@ -291,6 +296,7 @@ def build_baseline_from_records(
 
 
 # ── Scoring engine ────────────────────────────────────────────────────────────
+
 
 def _mandatory_rom_ratio(
     feat_records: list["FeatureRecord"],
@@ -423,9 +429,7 @@ def _score_one_rep(
             item["domain"] = domain
         all_deductions.extend(ded_d)
 
-    final_score = sum(
-        domain_weights[d] * domain_scores[d] for d in _SCORE_DOMAIN_ORDER
-    )
+    final_score = sum(domain_weights[d] * domain_scores[d] for d in _SCORE_DOMAIN_ORDER)
 
     return BiomarkerScoreRecord(
         score_id="rep_quality_score",
@@ -443,6 +447,7 @@ def _score_one_rep(
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
+
 
 def derive_biomarkers(
     feat_records: list["FeatureRecord"],

@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.4.4
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.4.9
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -21,7 +21,8 @@
 | 모멘트 암 프록시 (Moment-arm proxy) | 관절 중심과 기준 작용선 사이의 정규화 거리. 절대 토크 계산이 아니라 상대 부하 분포를 해석하기 위한 단순화 지표로 사용한다. |
 | 근육별 활성도 / 타겟 근육 동원 (Muscle-specific activation / target-muscle recruitment) | 특정 근육의 전기적 활성, 힘 기여도, 또는 선택적 동원을 뜻한다. 본 연구는 이를 단안 pose에서 직접 추정하지 않는다. 산출물은 관절·분절 수준의 경향, 활성 측, 보상 움직임을 설명할 수 있지만 특정 근육 활성의 직접 증거로 해석하지 않는다. |
 | 합성 정상 베이스라인 (Synthetic-normal baseline) | 정상 조건의 합성 파이프라인 실행에서 얻은 지표별 기준 통계. 임상적 정상/비정상 라벨이 아니라 Z-score 계산용 참조 분포다. |
-| 동작 품질 점수 (Movement quality score) | 합성 정상 베이스라인 대비 Z-score 감점 방식으로 계산하는 반복(rep) 단위 종합 점수(0–100). 임상 진단 점수가 아니다. |
+| 동작 품질 점수 (Movement quality score) | 합성 정상 베이스라인 대비 Z-score 감점 방식으로 계산하는 반복(rep) 단위 종합 점수(0–100). 임상 진단 점수가 아니며, 관측 데이터 신뢰도와 분리해 해석한다. |
+| 데이터 신뢰도 (Data confidence) | landmark visibility, 좌우 swap 위험, 보정량, canonicalization residual처럼 입력 관측과 좌표 표준화의 신뢰성을 나타내는 별도 provenance/summary. 움직임 품질 점수 자체가 아니며, 점수를 깎는 직접 penalty로 쓰지 않는다. |
 
 모든 생체역학 출력은 상대 지표다. 절대 힘·질량·토크 단위가 출력에 등장하면 문서 또는 코드
 오류로 간주한다.
@@ -51,10 +52,25 @@
 | 검증 (Validation) | 입력 포즈 데이터의 구조적·형식적 무결성 점검. 강건성 평가와 구분하며, 데이터를 수정하지 않는다. |
 | 강건성 평가 (Robustness evaluation) | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등을 주입한 합성 조건에서 지표 반응성과 일관성을 확인하는 평가. 입력 무결성 검증과 다르다. |
 | 가시성 기반 신뢰도 가중 (Visibility-based confidence weighting) | 생체역학 프록시 계산에서 주요 랜드마크 가시성을 프레임 가중치로 사용하는 방식. 낮은 가시성 프레임은 지표 계산 영향이 줄거나 제외된다. |
+| 시점-지표 신뢰도 (View-metric reliability) | 특정 camera zone이 특정 metric family를 얼마나 잘 뒷받침하는지 나타내는 운동 정의 수준의 prior. 좌표 보정이나 landmark 품질과 분리되며, `high`, `moderate`, `low`, `not_assessed` 같은 값으로 보고와 scoring eligibility를 안내한다. |
+| 피처 산출 가능성 (Feature availability) | landmark coverage, geometry plausibility, swap risk, view-metric reliability를 확인한 뒤, 계산 가능한 값이 scoring에 들어갈 수 있는지 결정하는 피처별 판정. 숫자값을 계산할 수 있다는 사실과 구분한다. |
 
 ---
 
-## 4. 임상 표현 사용 원칙 (Clinical Language Use)
+## 4. 좌표 보정 용어 (Coordinate-Correction Terms)
+
+| 용어 | 본 연구에서의 고정 의미 |
+|---|---|
+| 분석 좌표 표준화 (Analysis-space canonicalization) | 단안 pose가 실제 3D 공간과 다르게 삐뚤어진 경우에도, 일관된 관찰 편향을 줄여 운동 패턴 평가에 적합한 canonical analysis space로 재표현하는 ⑤ 정규화 내부의 선택 층. 좋은 동작으로 맞추는 template fitting이나 절대 3D 복원이 아니다. |
+| 표준 분석 좌표계 (Canonical analysis space) | 골반 중심, 몸통 길이, 운동별 주 운동 평면, 지지면 prior 등을 이용해 정의하는 분석용 좌표계. 해부학적 절대 좌표나 calibrated world coordinate가 아니라, 관절의 상대 궤적과 시간적 변화량을 비교하기 위한 좌표 표현이다. |
+| Pseudo-floor reference | 실제 바닥의 물리적 위치가 아니라, 단안 pose 좌표계 안에서 접지 랜드마크로 추정한 apparent floor 기준. 카메라 캘리브레이션이나 절대 3D 복원이 아니다. |
+| 바닥 기준 보정 (Floor-relative correction) | 정적 접지 운동에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
+| 접지 랜드마크 (Support-contact landmark) | 스쿼트의 발, 플랭크의 손/발처럼 운동 정의상 바닥 또는 지지면과 접촉한다고 기대되는 랜드마크. 실제 보상 움직임을 지울 위험이 있으므로, 항상 고정 anchor로 쓰지 않고 visibility와 안정성 조건을 통과한 경우에만 pseudo-floor 추정에 사용한다. |
+| 프로토콜 높이 기반 좌우폭 정렬 (Protocol-height lateral-width alignment) | 관찰된 카메라 높이가 운동별 촬영 프로토콜과 맞는지 먼저 확인한 뒤, 해당 height level에 맞는 신체 anchor를 사용해 depth-dependent lateral-width bias를 완화하는 review-only canonicalization prior. H1은 지지/발목 높이 anchor, H2는 골반/hip-center anchor, H3는 어깨선 anchor를 사용한다. 렌즈 캘리브레이션, perspective reprojection, template fitting이 아니다. |
+
+---
+
+## 5. 임상 표현 사용 원칙 (Clinical Language Use)
 
 본 연구는 임상적 해석을 배제하지 않는다. 다만 실제 임상시험, 환자군 대상 검증, 진단 성능
 평가를 수행한 연구가 아니므로, 표현은 **임상적 해석 가능성**과 **의료진 판단 보조**의

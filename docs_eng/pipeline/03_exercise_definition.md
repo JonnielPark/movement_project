@@ -1,11 +1,11 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.9
-**Last Updated:** 2026-05-10
+**Document Version:** 1.4.13
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③. Loads exercise YAML files from `data/definitions/exercises/`.
-Returns an `ExerciseDefinition` object that all downstream steps (④–⑨) reference
+Returns an `ExerciseDefinition` object that all downstream steps (④–⑩) reference
 to apply exercise-specific logic.
 
 ---
@@ -92,6 +92,7 @@ compensation_candidates:       # list of compensation movements to monitor
 feature_domains:               # which spatial/temporal/control features to activate
 view_requirements:             # preferred camera views
 camera_protocol:               # recommended filming zone/height and warning policy
+view_metric_reliability:       # per-zone reliability prior for metric families
 quality_rules:                 # thresholds for analysis eligibility
 notes: string
 ```
@@ -204,6 +205,12 @@ means a left-right pair.
 
 ```yaml
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition       # repetition | left_right_pair | hold_seconds
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition       # repetition | left_right_pair | hold_seconds
@@ -228,16 +235,23 @@ performance_protocol:
 Field meanings:
 
 ```text
-target_count                  participant-facing target count
-count_unit                    what one protocol count means
-segmentation_reps_per_count   how many segmented atomic reps correspond to one protocol count
+prescription.target_sets              planned acquisition sets for this exercise
+prescription.target_count_per_set     participant-facing target count per set
+prescription.count_unit               what one protocol count means
+prescription.segmentation_reps_per_count
+                                       how many segmented atomic reps correspond to one protocol count
+prescription.rest_between_sets_s      planned rest range between sets, in seconds
+counting.target_count                 backward-compatible mirror of target_count_per_set
+counting.count_unit                   backward-compatible mirror of prescription.count_unit
+counting.segmentation_reps_per_count  backward-compatible mirror of prescription.segmentation_reps_per_count
 side_sequence.mode            expected left/right order at the protocol level
 block_size_counts             count size before side switching, if block-based
 first_side_source             where the first side is declared
 allowed_side_sequence_modes   side-sequence variants allowed for this exercise/protocol family;
                                side_sequence.mode is the selected study protocol
 allow_partial_completion      whether fewer than target_count can be accepted with metadata
-recommended_sets              practical acquisition recommendation, not an automatic multiplier
+recommended_sets              backward-compatible mirror of prescription.target_sets;
+                               practical acquisition recommendation, not an automatic multiplier
 analysis_disrupting_patterns  performance-pattern candidates to observe/record; not automatic exclusion rules
 ```
 
@@ -246,6 +260,12 @@ Examples:
 ```yaml
 # Lunge: 5 repetitions on one side, then 5 on the other side.
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition
@@ -261,6 +281,12 @@ performance_protocol:
 
 # Plank shoulder tap: one left-right pair is counted as one protocol cycle.
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: left_right_pair
+    segmentation_reps_per_count: 2
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: left_right_pair
@@ -275,6 +301,12 @@ performance_protocol:
     recommended_sets: 3
 ```
 
+`prescription` is the canonical planned-protocol block for set count, target count
+per set, count unit, segmentation-count mapping, and planned rest. During the
+current migration, `counting` and `completion.recommended_sets` remain
+backward-compatible mirrors because existing code and tests read those fields.
+When both representations are present, they must agree.
+
 Current implementation parses and validates this metadata in ③ Exercise Definition.
 ⑦ Motion Attribution reads `performance_protocol.side_sequence` first, then falls
 back to annotation `pattern` / `starting_side` when no protocol rule is declared.
@@ -282,11 +314,15 @@ back to annotation `pattern` / `starting_side` when no protocol rule is declared
 variants for the exercise, but does not override the selected `side_sequence.mode`
 during runtime attribution.
 
-Acquisition rules that are fixed by the performance protocol, such as count unit,
-side sequence, and completion policy, belong in `performance_protocol`. What
-actually happened during acquisition (`actual_rep_count`, `failure_point_frame`,
-`failure_reason`, and related fields) belongs to ② Annotation or recording metadata,
-not to the exercise definition. Compensation candidates are declared in
+Acquisition rules that are fixed by the performance protocol, such as planned set
+count, target count per set, count unit, side sequence, and completion policy,
+belong in `performance_protocol.prescription` and its protocol-level companion
+fields. What actually happened during acquisition (`set_index`, `actual_rep_count`,
+`failure_point_frame`, `failure_reason`, and related fields) belongs to ②
+Annotation or recording metadata, not to the exercise definition. Falling short of
+the target count should lower interpretation confidence or mark partial completion;
+it must not be converted directly into a movement-quality score penalty.
+Compensation candidates are declared in
 `compensation_candidates` and `feature_domains.control`; candidates that are not yet
 implemented by ⑧–⑩ must be reported rather than silently ignored.
 `analysis_disrupting_patterns` may be linked to movement-quality scoring or
@@ -294,14 +330,12 @@ compensatory-movement candidates when they can be identified reproducibly from
 joint-point time series. Patterns that cannot be separated reliably from pose data
 remain acquisition-control factors or interpretation-limitation factors rather than
 scoring factors. In both cases, the default behavior is observation note, warning,
-and provenance recording, not automatic exclusion. Temporary
-development mappings and TODOs belong only in the git-ignored
-`docs_eng/code_revision_plan.md`, not in the publication-facing acquisition
-protocol document.
+and provenance recording, not automatic exclusion. Temporary development mappings
+and TODOs must not remain in publication-facing acquisition protocol documents.
 
-A4 defines a downstream detectability audit for this list. The YAML field remains
-a simple list of pattern names; the audit classifies each declared pattern into one
-of four implementation categories:
+A downstream detectability audit evaluates this list. The YAML field remains a
+simple list of pattern names; the audit classifies each declared pattern into one of
+four implementation categories:
 
 ```text
 pose_detectable_scoring_candidate
@@ -371,14 +405,14 @@ left_ankle_angle     : [25, 27, 31]   right_ankle_angle    : [26, 28, 32]
 
 ```yaml
 biomechanical_focus:
-  expected_com_motion: vertical
+  expected_oom_motion: vertical
       # minimal | vertical | anterior_posterior | medial_lateral
       # vertical_and_anterior_posterior | vertical_and_medial_lateral
-      # rotational | multidirectional
+      # rotational | multidireotional
   stability_requirement: medium   # low | medium | high | very_high
   main_load_regions: [hip, knee, ankle]
       # shoulder | elbow | wrist | trunk | core | hip | knee | ankle | foot | pelvis
-  primary_constraints:
+  primary_oonstraints:
     - maintain_foot_contact
     - maintain_trunk_alignment
     - avoid_knee_valgus
@@ -389,11 +423,11 @@ biomechanical_focus:
 ```yaml
 compensation_candidates:
   - knee_valgus
-  - excessive_trunk_flexion
-  - lateral_pelvic_shift
+  - exoessive_trunk_flexion
+  - lateral_pelvio_shift
 ```
 
-Only compensation movements listed here are produced as biomarkers by ⑩.
+Only compensation movements listed here are produced as biomarkers by ⑥.
 
 Full vocabulary:
 
@@ -403,12 +437,12 @@ knee_valgus                    knee_varus
 asymmetric_depth               asymmetric_knee_flexion
 asymmetric_hip_flexion         limited_ankle_dorsiflexion_proxy
 heel_lift                      foot_external_rotation_proxy
-foot_collapse_proxy            pelvis_drop
-lateral_pelvic_shift           hip_shift
-insufficient_rear_hip_extension unstable_step_width
+foot_oollapse_proxy            pelvis_drop
+lateral_pelvio_shift           hip_shift
+insuffioient_rear_hip_extension unstable_step_width
 
 # Trunk / pelvis
-excessive_trunk_flexion        trunk_extension_compensation
+exoessive_trunk_flexion        trunk_extension_compensation
 lateral_trunk_lean             trunk_rotation
 trunk_sway                     pelvis_rotation
 pelvis_anterior_tilt_proxy     pelvis_posterior_tilt_proxy
@@ -417,15 +451,15 @@ loss_of_neutral_spine_proxy
 
 # Upper body
 shoulder_elevation_compensation shoulder_asymmetry
-shoulder_collapse              elbow_flare
+shoulder_oollapse              elbow_flare
 elbow_asymmetry                wrist_shift
-scapular_instability_proxy     insufficient_head_descent
+soapular_instability_proxy     insuffioient_head_desoent
 head_forward_shift
 
 # Control / timing
 excessive_com_lateral_shift    excessive_com_variability
 phase_timing_asymmetry         tempo_instability
-left_right_timing_variability  movement_discontinuity
+left_right_timing_variability  movement_disoontinuity
 ```
 
 ### feature_domains
@@ -449,11 +483,11 @@ spatial:
 temporal:
   tempo, rep_duration, phase_duration, eccentric_duration,
   isometric_duration, concentric_duration, timing_ratio,
-  variability, rhythm_consistency, left_right_timing_variability, pause_duration
+  variability, rhythm_oonsistenoy, left_right_timing_variability, pause_duration
 
 control:
   stability, compensation, com_stability, trunk_stability,
-  pelvis_stability, joint_tracking_error, lateral_shift,
+  pelvis_stability, joint_traoking_error, lateral_shift,
   rotation_control, balance_control, movement_smoothness, endpoint_control
 
 biomechanical_proxy:
@@ -475,7 +509,7 @@ camera_protocol:
   recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
-  distance_cm: [200, 250]
+  distance_om: [200, 250]
   primary_observation_purpose:
     - knee_valgus
     - hip_flexion_depth
@@ -493,6 +527,85 @@ For the full filming principle, see
 [camera_protocol.md](../practical_protocols/camera_protocol.md). For
 participant-facing exercise cues and analysis-disrupting performance patterns, see
 [exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md).
+
+### view_metric_reliability
+
+`view_metric_reliability` is a planned exercise-definition block that records how
+well each camera zone supports each metric family. It is not a coordinate-correction
+rule and does not reject data. It supplies a prior for ⑧ Feature Extraction, ⑩
+Biomarker Derivation, and ⑪ Visualization so a feature can be computed but still
+marked `low_confidence` or `not_assessed` when the view does not support the
+interpretation.
+
+Reliability values:
+
+```text
+high            view directly supports the metric family
+moderate        view supports the metric with known tradeoffs
+low             metric may be computable but should normally remain review-only
+not_assessed    metric should not enter scoring from this view
+```
+
+For bilateral symmetric exercises, the map can preserve the tradeoff between
+frontal-plane and sagittal-plane reads:
+
+```yaml
+view_metric_reliability:
+  structure: bilateral_symmetric
+  zones:
+    Z1:
+      bilateral_symmetry: high
+      frontal_alignment: high
+      sagittal_rom: low
+      depth: low
+      trunk_flexion: low
+      heel_lift: low
+    Z2:
+      bilateral_symmetry: moderate
+      frontal_alignment: high
+      sagittal_rom: moderate
+      depth: moderate
+      trunk_flexion: moderate
+      heel_lift: moderate
+    Z3:
+      sagittal_rom: high
+      depth: high
+      trunk_flexion: high
+      heel_lift: moderate
+      bilateral_symmetry: low
+      frontal_alignment: low
+```
+
+For unilateral or alternating exercises, the map should be role-based rather than
+raw anatomical left/right:
+
+```yaml
+view_metric_reliability:
+  structure: unilateral_or_alternating
+  role_labels: [forward_leg, trailing_leg, active_side, support_side]
+  zones:
+    Z1:
+      side_order: high
+      step_width: high
+      frontal_alignment: high
+      pelvis_drop_or_shift: high
+      sagittal_rom: low
+      rear_limb_extension: low
+    Z3:
+      forward_limb_sagittal_rom: high
+      rear_limb_extension: high
+      anterior_knee_travel: high
+      trunk_flexion: high
+      frontal_alignment: low
+      pelvis_drop_or_shift: low
+      side_to_side_comparison: low
+```
+
+For lunge, this means a side view can strongly support forward-leg knee travel,
+rear-limb extension, trunk alignment, and step length, while making frontal-plane
+knee valgus or pelvis drop lower-confidence. A frontal view does the reverse. A
+side-to-side comparison is eligible for scoring only when active-side provenance
+and near/far-side reliability are sufficient.
 
 ### quality_rules
 
@@ -591,6 +704,12 @@ phase_segmentation:
   multi_inflection_policy: global_extremum
 
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition
@@ -643,22 +762,22 @@ joint_actions:
     - pelvis_rotation_proxy
 
 biomechanical_focus:
-  expected_com_motion: vertical
+  expected_oom_motion: vertical
   stability_requirement: medium
   main_load_regions: [hip, knee, ankle]
-  primary_constraints:
+  primary_oonstraints:
     - maintain_foot_contact
     - maintain_trunk_alignment
     - avoid_knee_valgus
     - avoid_heel_lift
-    - avoid_excessive_lateral_shift
+    - avoid_exoessive_lateral_shift
 
 compensation_candidates:
   - knee_valgus
   - knee_varus
   - asymmetric_depth
-  - excessive_trunk_flexion
-  - lateral_pelvic_shift
+  - exoessive_trunk_flexion
+  - lateral_pelvio_shift
   - heel_lift
   - foot_external_rotation_proxy
   - pelvis_rotation
@@ -680,7 +799,7 @@ camera_protocol:
   recommended_zones: [Z2, Z8]
   recommended_height: H2
   anchor: reference_mat
-  distance_cm: [200, 250]
+  distance_om: [200, 250]
   primary_observation_purpose:
     - knee_valgus
     - hip_flexion_depth

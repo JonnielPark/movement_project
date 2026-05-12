@@ -18,13 +18,19 @@ Planned (raise NotImplementedError):
 Coordinate modes:
     coord_mode="raw"  : <landmark>_x/y/z
     coord_mode="norm" : <landmark>_norm_x/y/z
+    coord_mode="floor": <landmark>_floor_x/y/z
+    coord_mode="canon": <landmark>_canon_x/y/z
 """
 
 from __future__ import annotations
 
 import plotly.graph_objects as go
 
-from .utils import get_frame_data, compute_plot_ranges, validate_landmark_columns
+from movement.core.utils import (
+    compute_plot_ranges,
+    get_frame_data,
+    validate_landmark_columns,
+)
 
 
 def create_pose_animation(
@@ -53,8 +59,10 @@ def create_pose_animation(
     coord_mode : str
         Coordinate mode.
 
-        - "raw"  : use raw pose coordinates
-        - "norm" : use normalized pose coordinates
+        - "raw"   : use raw pose coordinates
+        - "norm"  : use normalized pose coordinates
+        - "floor" : use floor-relative corrected coordinates
+        - "canon" : use canonicalized analysis coordinates
 
     frame_duration : int
         Frame duration in milliseconds. Smaller value means faster playback.
@@ -77,10 +85,10 @@ def create_pose_animation(
     if df.empty:
         raise ValueError("Input dataframe is empty.")
 
-    if coord_mode not in ["raw", "norm"]:
+    if coord_mode not in ["raw", "norm", "floor", "canon"]:
         raise ValueError(
             f"Unsupported coord_mode: {coord_mode}. "
-            "Use 'raw' or 'norm'."
+            "Use 'raw', 'norm', 'floor', or 'canon'."
         )
 
     missing_cols = validate_landmark_columns(
@@ -129,56 +137,60 @@ def create_pose_animation(
         for i in range(len(df))
     ]
 
-    sliders = [{
-        "active": 0,
-        "currentvalue": {"prefix": "Frame: "},
-        "pad": {"t": 50},
-        "steps": [
-            {
-                "args": [
-                    [str(i)],
-                    {"frame": {"duration": 0, "redraw": True}},
-                ],
-                "label": str(i),
-                "method": "animate",
-            }
-            for i in range(len(df))
-        ],
-    }]
+    sliders = [
+        {
+            "active": 0,
+            "currentvalue": {"prefix": "Frame: "},
+            "pad": {"t": 50},
+            "steps": [
+                {
+                    "args": [
+                        [str(i)],
+                        {"frame": {"duration": 0, "redraw": True}},
+                    ],
+                    "label": str(i),
+                    "method": "animate",
+                }
+                for i in range(len(df))
+            ],
+        }
+    ]
 
-    updatemenus = [{
-        "type": "buttons",
-        "showactive": False,
-        "buttons": [
-            {
-                "label": "Play",
-                "method": "animate",
-                "args": [
-                    None,
-                    {
-                        "frame": {
-                            "duration": frame_duration,
-                            "redraw": True,
+    updatemenus = [
+        {
+            "type": "buttons",
+            "showactive": False,
+            "buttons": [
+                {
+                    "label": "Play",
+                    "method": "animate",
+                    "args": [
+                        None,
+                        {
+                            "frame": {
+                                "duration": frame_duration,
+                                "redraw": True,
+                            },
+                            "transition": {"duration": 0},
+                            "fromcurrent": True,
+                            "mode": "immediate",
                         },
-                        "transition": {"duration": 0},
-                        "fromcurrent": True,
-                        "mode": "immediate",
-                    },
-                ],
-            },
-            {
-                "label": "Pause",
-                "method": "animate",
-                "args": [
-                    [None],
-                    {
-                        "frame": {"duration": 0, "redraw": False},
-                        "mode": "immediate",
-                    },
-                ],
-            },
-        ],
-    }]
+                    ],
+                },
+                {
+                    "label": "Pause",
+                    "method": "animate",
+                    "args": [
+                        [None],
+                        {
+                            "frame": {"duration": 0, "redraw": False},
+                            "mode": "immediate",
+                        },
+                    ],
+                },
+            ],
+        }
+    ]
 
     fig.update_layout(
         title=title,
@@ -199,6 +211,7 @@ def create_pose_animation(
 
 
 # ── Planned visualization functions (not yet implemented) ────────────────────────
+
 
 def plot_reliability_overlay(
     df,
@@ -222,7 +235,7 @@ def plot_reliability_overlay(
     reliability_col : str
         Column name for the per-landmark reliability flag.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
     frame_duration : int
     height : int
     width : int
@@ -257,7 +270,7 @@ def plot_joint_angle_timeseries(
     rep_ranges : list[tuple[int, int]], optional
         (start_frame, end_frame) pairs to shade as reps.
     coord_mode : str
-        "raw" or "norm".
+        "raw", "norm", "floor", or "canon".
     height : int
     width : int
 
@@ -350,6 +363,7 @@ def plot_biomarker_radar(
     """
     raise NotImplementedError("plot_biomarker_radar is not yet implemented.")
 
+
 def create_pose_comparison_animation(
     df,
     landmarks: list[str],
@@ -381,6 +395,8 @@ def create_pose_comparison_animation(
 
         Example:
             ("raw", "norm")
+            ("norm", "floor")
+            ("norm", "canon")
 
     names : tuple[str, str]
         Display names for each coordinate mode.
@@ -415,10 +431,10 @@ def create_pose_comparison_animation(
     name_a, name_b = names
 
     for mode in coord_modes:
-        if mode not in ["raw", "norm"]:
+        if mode not in ["raw", "norm", "floor", "canon"]:
             raise ValueError(
                 f"Unsupported coord_mode: {mode}. "
-                "Use 'raw' or 'norm'."
+                "Use 'raw', 'norm', 'floor', or 'canon'."
             )
 
         missing_cols = validate_landmark_columns(
@@ -429,9 +445,7 @@ def create_pose_comparison_animation(
         )
 
         if missing_cols:
-            raise ValueError(
-                f"Missing columns for coord_mode='{mode}': {missing_cols}"
-            )
+            raise ValueError(f"Missing columns for coord_mode='{mode}': {missing_cols}")
 
     def _get_overlay_frame(row):
         traces_a = get_frame_data(
@@ -492,9 +506,7 @@ def create_pose_comparison_animation(
         max(z_range_a[1], z_range_b[1]),
     ]
 
-    fig = go.Figure(
-        data=_get_overlay_frame(df.iloc[0])
-    )
+    fig = go.Figure(data=_get_overlay_frame(df.iloc[0]))
 
     fig.frames = [
         go.Frame(
@@ -504,56 +516,60 @@ def create_pose_comparison_animation(
         for i in range(len(df))
     ]
 
-    sliders = [{
-        "active": 0,
-        "currentvalue": {"prefix": "Frame: "},
-        "pad": {"t": 50},
-        "steps": [
-            {
-                "args": [
-                    [str(i)],
-                    {"frame": {"duration": 0, "redraw": True}},
-                ],
-                "label": str(i),
-                "method": "animate",
-            }
-            for i in range(len(df))
-        ],
-    }]
+    sliders = [
+        {
+            "active": 0,
+            "currentvalue": {"prefix": "Frame: "},
+            "pad": {"t": 50},
+            "steps": [
+                {
+                    "args": [
+                        [str(i)],
+                        {"frame": {"duration": 0, "redraw": True}},
+                    ],
+                    "label": str(i),
+                    "method": "animate",
+                }
+                for i in range(len(df))
+            ],
+        }
+    ]
 
-    updatemenus = [{
-        "type": "buttons",
-        "showactive": False,
-        "buttons": [
-            {
-                "label": "Play",
-                "method": "animate",
-                "args": [
-                    None,
-                    {
-                        "frame": {
-                            "duration": frame_duration,
-                            "redraw": True,
+    updatemenus = [
+        {
+            "type": "buttons",
+            "showactive": False,
+            "buttons": [
+                {
+                    "label": "Play",
+                    "method": "animate",
+                    "args": [
+                        None,
+                        {
+                            "frame": {
+                                "duration": frame_duration,
+                                "redraw": True,
+                            },
+                            "transition": {"duration": 0},
+                            "fromcurrent": True,
+                            "mode": "immediate",
                         },
-                        "transition": {"duration": 0},
-                        "fromcurrent": True,
-                        "mode": "immediate",
-                    },
-                ],
-            },
-            {
-                "label": "Pause",
-                "method": "animate",
-                "args": [
-                    [None],
-                    {
-                        "frame": {"duration": 0, "redraw": False},
-                        "mode": "immediate",
-                    },
-                ],
-            },
-        ],
-    }]
+                    ],
+                },
+                {
+                    "label": "Pause",
+                    "method": "animate",
+                    "args": [
+                        [None],
+                        {
+                            "frame": {"duration": 0, "redraw": False},
+                            "mode": "immediate",
+                        },
+                    ],
+                },
+            ],
+        }
+    ]
 
     fig.update_layout(
         title=title,

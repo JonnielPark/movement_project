@@ -1,7 +1,7 @@
 # Overview
 
-**Document Version:** 1.4.21
-**Last Updated:** 2026-05-11
+**Document Version:** 1.4.31
+**Last Updated:** 2026-05-12
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
@@ -13,24 +13,24 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.4 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.21 | [overview.md](overview.md) | Overall pipeline overview |
-| 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.4.7 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.31 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.2.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.0.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
-| 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.4 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.9 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
-| 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
-| 1.2.2 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.5 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
-| 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+| 1.0.1 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
+| 1.1.5 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.4.12 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.0.1 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
+| 1.2.5 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, including optional canonicalization schema |
+| 1.2.3 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.0.2 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
+| 1.0.7 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.1 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.0.4 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.0.3 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.0.1 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
 
@@ -118,7 +118,8 @@ Steps
     ③  Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
     ④  Preprocessing        reliability detection, swap correction, interpolation, smoothing
     ⑤  Normalization        hip-center translation + median torso-length scale
-    ⑥  Segmentation        semi-automatic rep/phase splitting from joint-motion tracking
+        canonicalization    optional analysis-space alignment (raw/norm preserved)
+    ⑥  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
     ⑦  Motion Attribution   per-rep active-side consistency check
     ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level) + audit reports
     ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
@@ -139,6 +140,7 @@ Output
     Biomarker score list — BiomarkerScoreRecord (per-rep Z-score composite, default 0–100 configurable scale)
     Interpretation record list — InterpretationRecord (YAML-rule narrative labels per rep)
     Performance provenance report — actual_rep_count / failure-point metadata for confidence notes
+    Canonicalization report — optional coordinate-alignment priors, correction magnitude, confidence notes
     Segmentation report — SegmentationReport list, one per rep
     Segmentation failure point records — SegmentationFailurePoint list for frames/ranges needing manual intervention
     Visualization figures
@@ -154,12 +156,12 @@ Output
 | ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
 | ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as definition metadata for filming recommendations and warning policy. | ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
-| ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
+| ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. When needed, optional `canonicalization` attenuates consistent monocular-observation bias using support-plane, movement-plane, or body-axis priors. The current floor-relative correction is treated as a support-plane prior, and raw/norm/canon coordinate families remain separate. | Normalized DataFrame; optional canonical coordinate columns, correction diagnostics, data-confidence/correction report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
 | ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
-| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
 | ⑫ Simulation | Normal or reference sequence, injector settings | Injects conditions such as noise, occlusion, ROM restriction, and velocity spikes, then evaluates metric responsiveness. | synthetic dataset, robustness report |
 
@@ -252,6 +254,21 @@ All downstream features and biomarkers are expressed in `torso_length_ratio` uni
 
 See [05_normalization.md](pipeline/05_normalization.md).
 
+The raw skeleton from monocular pose can look distorted relative to physical 3D.
+This study does not try to fix that through full 3D reconstruction. Instead, when
+the same landmarks consistently track the same body parts and the observation
+bias is reasonably stable within a sequence, the pipeline evaluates relative joint
+trajectories and temporal change.
+
+Therefore, ⑤ Normalization may include optional `canonicalization`. This layer
+preserves raw/norm coordinates while using support-plane, movement-plane, and
+body-axis priors to align the observed coordinate system into a canonical analysis
+space. The current `floor_relative_correction` is treated as a support-plane prior;
+it must not fit the pose to a good-movement template or erase true compensatory
+movement.
+
+See [05_normalization.md](pipeline/05_normalization.md).
+
 ---
 
 ## 8. Development Roadmap
@@ -275,7 +292,7 @@ See [05_normalization.md](pipeline/05_normalization.md).
   [done]  Compensation rule engine — COMPENSATION_RULES registry (knee_valgus, knee_varus, lateral_pelvic_shift, excessive_trunk_flexion, heel_lift, pelvis_rotation)
   Visualization: reliability overlay, joint angle time series, step result charts
 
-2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑨–⑩)
+2026.10 – 2027.01  Biomechanical proxy modeling and biomarker derivation (⑧–⑩)
   [done]  CoM trajectory metrics — rep-level (range_x, range_z, path_length) + visibility weighting
   [done]  Moment arm proxy — knee / hip sagittal plane, rep-level + visibility weighting
   [done]  extract_rep_biomech() orchestrator wired into pipeline ⑨
@@ -290,13 +307,16 @@ See [05_normalization.md](pipeline/05_normalization.md).
   [done]  Load-shift OLS — compute_load_shift() in biomech/load_shift.py; metric biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); requires ≥ 3 reps; test_biomech_load_shift.py (17 tests)
   [done]  YAML-based interpretation rules — derive_interpretations() in biomarker/interpretation.py; four exercise rule files; InterpretationRecord; test_interpretation.py (20 tests)
   [done]  Clinical feature mapping — docs/clinical/per_exercise_mapping.md (§5.5/§5.6) + data/definitions/clinical/feature_meanings.yaml
-  [done]  Task A pipeline verification pass — A1-A6 cover segmentation policy, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance.
+  [done]  Pipeline verification baseline — covers segmentation policy, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance.
 
 2027.02 – 2027.05  Robustness simulation, reporting, and dissertation outputs
   [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike
-  [next]  Task B — structured motion-attribution correction log and false-correction metrics
-  [planned]  Task C — viewpoint/compensation simulation injectors, robustness experiment runner, long-format outputs, summary reports
-  [planned]  Task D — dissertation-grade static reporting figures and save_figure()
-  [planned]  Task E — clinical mapping integration and dashboard decision gate
-  [conditional]  Task G — visibility-aware scoring fallback after pilot filming evidence
+  [next]  Task A — analysis-space canonicalization design and raw/norm/canon review
+  [planned]  Task B — side-view far-side landmark jitter preprocessing stabilization
+  [planned]  Task C — structured motion-attribution correction log and false-correction metrics
+  [planned]  Task D — viewpoint/compensation simulation injectors, robustness experiment runner, long-format outputs, summary reports
+  [planned]  Task E — dissertation-grade static reporting figures and save_figure()
+  [planned]  Task F — clinical mapping integration and dashboard decision gate
+  [planned]  Task G — maintenance and repository hygiene
+  [conditional]  Task H — visibility-aware scoring fallback after pilot filming evidence
 ```

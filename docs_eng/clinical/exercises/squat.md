@@ -1,7 +1,7 @@
 # Squat Clinical Rationale
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.0.4
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/clinical/exercises/squat.md` is the same-version Korean source.
 
 This document describes the biomechanical meaning of squat in this study, the
@@ -104,6 +104,21 @@ interpretation. A camera that is too close to side view can reduce frontal-plane
 knee deviation, while a camera that is too close to frontal view weakens sagittal
 ROM interpretation.
 
+For side-view or near-side-view squat recordings, bilateral symmetry must be
+treated as view-dependent. If the side view shows stable sagittal movement with
+little visible compensation, but a rotated frontal rendering of the monocular 3D
+skeleton shows large left-right imbalance, the frontal rendering should not be
+interpreted as direct evidence of true asymmetry. It is more likely to reflect the
+known limitation of monocular depth inference unless an actual frontal or
+front-oblique recording confirms the pattern.
+
+In such cases, the squat interpretation should prioritize sagittal and centerline
+features: descent depth, hip/knee/ankle ROM, trunk lean, heel lift, hip-center
+trajectory stability, tempo, and smoothness. Left/right ROM symmetry, pelvic
+rotation based on hip depth, or other depth-sensitive bilateral comparisons should
+be marked `low_confidence` or `not_assessed` rather than converted into a poor
+movement-quality score.
+
 ---
 
 ## 6. Recommended View Interpretation
@@ -133,7 +148,6 @@ material, not a default protocol requirement.
 This document is not a development requirement. If a pattern is promoted to a
 scoring candidate, use this sequence:
 
-1. Record the candidate and detectability basis in `docs_eng/code_revision_plan.md`.
+1. Document feature definitions and provenance rules in `docs_eng/pipeline/` and `docs/pipeline/`.
 2. Link it to `compensation_candidates` or `analysis_disrupting_patterns` in YAML.
-3. Document feature definitions and provenance rules in `docs_eng/pipeline/` and `docs/pipeline/`.
-4. Test reproducible detectability with synthetic input or a minimal annotation fixture.
+3. Test reproducible detectability with synthetic input or a minimal annotation fixture.

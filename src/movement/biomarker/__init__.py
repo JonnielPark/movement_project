@@ -10,6 +10,7 @@ Raises ValueError if source_fields is empty.
 Unit convention  : torso_length_ratio | degree | dimensionless_cv | second.
 Absolute units (N, kg, m, N·m) are not used.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -31,6 +32,7 @@ class BiomarkerRecord:
     unit              : torso_length_ratio | degree | dimensionless_cv | second
     note              : optional biomechanical interpretation note
     """
+
     biomarker_id: str
     exercise_id: str
     definition_version: str
@@ -122,6 +124,7 @@ def derive_biomarkers(
     Returns (list[BiomarkerRecord], list[BiomarkerScoreRecord]).
     """
     from movement.biomarker.scoring import derive_biomarkers as _derive
+
     return _derive(
         feat_records,
         biomech_records,
@@ -142,6 +145,7 @@ def derive_interpretations(score, biomech_records=None, rules_dir=None):
     from movement.biomarker.interpretation import (
         derive_interpretations as _derive,
     )
+
     return _derive(score, biomech_records=biomech_records, rules_dir=rules_dir)
 
 

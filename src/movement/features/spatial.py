@@ -1,5 +1,5 @@
 """
-⑧ Spatial Features
+⑥ Spatial Features
 
 Computes ROM (joint range of motion), left/right symmetry index, and trajectory shape.
 
@@ -9,6 +9,7 @@ Unit convention:
 
 Input: normalized pose dataframe (norm columns) and ExerciseDefinition.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -16,11 +17,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from movement.config import LANDMARKS
+from movement.core.config import LANDMARKS
 from movement.features import FeatureRecord
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
@@ -41,12 +42,15 @@ def _included_angle_deg(
     norm_d = np.linalg.norm(v_d, axis=1)
     denom = norm_p * norm_d
     safe = denom > 1e-9
-    cos_a = np.where(safe, np.einsum("ij,ij->i", v_p, v_d) / np.where(safe, denom, 1.0), np.nan)
+    cos_a = np.where(
+        safe, np.einsum("ij,ij->i", v_p, v_d) / np.where(safe, denom, 1.0), np.nan
+    )
     cos_a = np.clip(cos_a, -1.0, 1.0)
     return np.where(safe, np.degrees(np.arccos(cos_a)), np.nan)
 
 
 # ── ROM ───────────────────────────────────────────────────────────────────────
+
 
 def compute_rom(
     df: pd.DataFrame,
@@ -107,19 +111,22 @@ def compute_rom(
             continue
 
         rom_deg = float(np.max(valid) - np.min(valid))
-        records.append(FeatureRecord(
-            feature_id=f"spatial.rom.{joint_name}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=rom_deg,
-            unit="degree",
-            source_fields=["angle_definitions", "feature_domains.spatial"],
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"spatial.rom.{joint_name}",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=rom_deg,
+                unit="degree",
+                source_fields=["angle_definitions", "feature_domains.spatial"],
+            )
+        )
 
     return records
 
 
 # ── Left/right symmetry ───────────────────────────────────────────────────────
+
 
 def compute_symmetry(
     df: pd.DataFrame,
@@ -154,19 +161,22 @@ def compute_symmetry(
             si = abs(rl - rr) / ((rl + rr) / 2.0 + eps)
             # label: strip left_ prefix and _angle suffix (e.g. left_knee_angle → knee)
             label = lj.removeprefix("left_").removesuffix("_angle")
-            records.append(FeatureRecord(
-                feature_id=f"spatial.symmetry.{label}",
-                exercise_id=ex_id,
-                rep_id=rep_id,
-                value=round(si, 4),
-                unit="dimensionless_cv",
-                source_fields=["angle_definitions", "feature_domains.spatial"],
-            ))
+            records.append(
+                FeatureRecord(
+                    feature_id=f"spatial.symmetry.{label}",
+                    exercise_id=ex_id,
+                    rep_id=rep_id,
+                    value=round(si, 4),
+                    unit="dimensionless_cv",
+                    source_fields=["angle_definitions", "feature_domains.spatial"],
+                )
+            )
 
     return records
 
 
 # ── Trajectory shape ──────────────────────────────────────────────────────────
+
 
 def compute_shape(
     df: pd.DataFrame,
@@ -190,13 +200,15 @@ def compute_shape(
         except KeyError:
             continue
         arc = float(np.nansum(np.linalg.norm(np.diff(coords, axis=0), axis=1)))
-        records.append(FeatureRecord(
-            feature_id=f"spatial.shape.arc_length.{jname}",
-            exercise_id=ex_id,
-            rep_id=rep_id,
-            value=round(arc, 4),
-            unit="torso_length_ratio",
-            source_fields=["landmarks.primary_joints", "feature_domains.spatial"],
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"spatial.shape.arc_length.{jname}",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(arc, 4),
+                unit="torso_length_ratio",
+                source_fields=["landmarks.primary_joints", "feature_domains.spatial"],
+            )
+        )
 
     return records

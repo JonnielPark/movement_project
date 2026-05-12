@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.4.4
-**Last Updated:** 2026-05-10
+**Document Version:** 1.4.9
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -22,7 +22,8 @@ could change the research scope.
 | Moment-arm proxy | A normalized distance between a joint center and a reference line of action. It is used to interpret relative load distribution, not to compute absolute torque. |
 | Muscle-specific activation / target-muscle recruitment | Electrical activation, force contribution, or selective recruitment of an individual muscle. This study does not infer it directly from monocular pose. Outputs may describe joint-/segment-level tendencies, active side, or compensatory movement, but they are not direct evidence of a specific muscle's activation. |
 | Synthetic-normal baseline | Per-metric reference statistics from a normal-condition synthetic pipeline run. This is a reference distribution for Z-score computation, not a clinical normal/abnormal label. |
-| Movement quality score | A per-rep composite score (0–100) computed through Z-score deductions against the synthetic-normal baseline. It is not a clinical diagnostic score. |
+| Movement quality score | A per-rep composite score (0–100) computed through Z-score deductions against the synthetic-normal baseline. It is not a clinical diagnostic score and must be interpreted separately from data confidence. |
+| Data confidence | A separate provenance/summary describing observation and coordinate-standardization reliability, such as landmark visibility, left/right swap risk, correction magnitude, and canonicalization residuals. It is not the movement-quality score itself and should not be used as a direct score penalty by default. |
 
 All biomechanical outputs are relative metrics. If absolute force, mass, or torque units
 appear in an output, treat it as a documentation or code error.
@@ -52,10 +53,25 @@ appear in an output, treat it as a documentation or code error.
 | Validation | Structural and formal integrity checking of the input pose data. It is distinct from robustness evaluation and does not modify data. |
 | Robustness evaluation | Evaluation of metric responsiveness and consistency under synthetic conditions such as noise, occlusion, ROM restriction, or velocity spikes. It is not input-integrity validation. |
 | Visibility-based confidence weighting | A biomechanical-proxy weighting scheme that uses key-landmark visibility as frame weights. Low-visibility frames have reduced influence or are excluded from metric computation. |
+| View-metric reliability | An exercise-definition prior describing how well a camera zone supports a metric family. It is separate from coordinate correction and landmark quality; values such as `high`, `moderate`, `low`, and `not_assessed` guide reporting and scoring eligibility. |
+| Feature availability | A per-feature decision on whether a computable value may enter scoring after checking landmark coverage, geometry plausibility, swap risk, and view-metric reliability. It is distinct from merely being able to calculate a numeric value. |
 
 ---
 
-## 4. Clinical Language Use
+## 4. Coordinate-Correction Terms
+
+| Term | Fixed Meaning in This Study |
+|---|---|
+| Analysis-space canonicalization | An optional layer inside ⑤ Normalization that reduces consistent monocular-observation bias and re-expresses the pose in a canonical analysis space for movement-pattern evaluation. It is not template fitting to a good movement and not absolute 3D reconstruction. |
+| Canonical analysis space | An analysis coordinate representation defined from hip center, torso scale, exercise-specific movement-plane priors, support-plane priors, and related constraints. It is not an anatomical absolute coordinate system or calibrated world coordinate; it supports comparison of relative joint trajectories and temporal change. |
+| Pseudo-floor reference | An apparent floor reference estimated from support-contact landmarks inside the monocular pose coordinate system. It is not the physical location of the real floor, camera calibration, or absolute 3D reconstruction. |
+| Floor-relative correction | A support-plane prior for static support-contact exercises that attenuates apparent floor artifacts using the pseudo-floor reference. It is currently treated as the `support_plane_alignment` sub-filter of analysis-space canonicalization. Raw/norm coordinates are preserved, and canon coordinates plus residuals are added only as new columns. |
+| Support-contact landmark | A landmark expected by the exercise definition to contact the floor or support surface, such as feet in a squat or hands/feet in plank. Because true compensatory movement must not be erased, it is not always a fixed anchor; it is used for pseudo-floor estimation only when visibility and stability criteria are met. |
+| Protocol-height lateral-width alignment | A review-only canonicalization prior that first checks whether the observed camera height matches the exercise protocol, then uses the protocol height level to choose a body anchor for attenuating depth-dependent lateral-width bias. H1 uses a support/ankle-level anchor, H2 uses a pelvis/hip-center anchor, and H3 uses a shoulder-line anchor. It is not lens calibration, perspective reprojection, or template fitting. |
+
+---
+
+## 5. Clinical Language Use
 
 This study does not avoid clinical interpretation. However, because it does not
 perform a clinical trial, patient-cohort validation, or diagnostic-performance

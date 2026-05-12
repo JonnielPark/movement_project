@@ -1,6 +1,6 @@
 # 06. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.2.2
+**문서 버전:** 1.2.3
 **최종 갱신:** 2026-05-10
 **영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
@@ -235,7 +235,7 @@ annotation override
     이를 덮어쓰지 않는다.
 
 phase provenance handoff
-    phase label이 있는 rep에서 ⑧이 방출하는 phase-level FeatureRecord는
+    phase label이 있는 rep에서 ⑥가 방출하는 phase-level FeatureRecord는
     `source_fields`에 `phase_segmentation.*` 항목을 포함해야 한다.
 ```
 

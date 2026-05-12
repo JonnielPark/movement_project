@@ -10,6 +10,7 @@ Pipeline steps:
     ③  exercise_definition    biomechanical property object loading
     ④  preprocessing          monocular data quality correction
     ⑤  normalization          body-relative coordinate normalization
+       canonicalization optional analysis-space alignment
     ⑥  segmentation           semi-automatic rep splitter + intra-rep phase splitter
     ⑦  motion_attribution     per-rep active-side consistency
     ⑧  features               spatial / temporal / control feature extraction
@@ -25,25 +26,76 @@ Terminology: docs/terminology.md.
 
 from __future__ import annotations
 
-from movement.io import load_pose_csv  # noqa
-from movement.validation import run_basic_validation  # noqa
-from movement.annotation import apply_annotation, load_annotation_csv  # noqa
-from movement.exercise_definition import (  # noqa
-    load_exercise_definition,
+import sys as _sys
+
+from movement.core import config as config
+from movement.core import io as io
+from movement.core import utils as utils
+from movement.definitions import clinical as clinical
+from movement.definitions import exercise_definition as exercise_definition
+from movement.reporting import visualization as visualization
+from movement.simulation import generate_synthetic_squat as generate_synthetic_squat
+from movement.stages import annotation as annotation
+from movement.stages import canonicalization as canonicalization
+from movement.stages import floor_reference as floor_reference
+from movement.stages import motion_attribution as motion_attribution
+from movement.stages import normalization as normalization
+from movement.stages import preprocessing as preprocessing
+from movement.stages import segmentation as segmentation
+from movement.stages import validation as validation
+
+_COMPAT_MODULES = {
+    "annotation": annotation,
+    "canonicalization": canonicalization,
+    "clinical": clinical,
+    "config": config,
+    "exercise_definition": exercise_definition,
+    "floor_reference": floor_reference,
+    "generate_synthetic_squat": generate_synthetic_squat,
+    "io": io,
+    "motion_attribution": motion_attribution,
+    "normalization": normalization,
+    "preprocessing": preprocessing,
+    "segmentation": segmentation,
+    "utils": utils,
+    "validation": validation,
+    "visualization": visualization,
+}
+
+for _name, _module in _COMPAT_MODULES.items():
+    _sys.modules[f"{__name__}.{_name}"] = _module
+
+from movement.io import load_pose_csv  # noqa: E402
+from movement.validation import run_basic_validation  # noqa: E402
+from movement.annotation import apply_annotation, load_annotation_csv  # noqa: E402
+from movement.exercise_definition import (  # noqa: E402
     load_all_exercise_definitions,
+    load_exercise_definition,
 )
-from movement.preprocessing import preprocess_pose_dataframe  # noqa
-from movement.normalization import normalize_pose_by_hip_torso  # noqa
-from movement.segmentation import segment_reps, segment_phases  # noqa
-from movement.motion_attribution import attribute_motion, AttributionThresholds  # noqa
-from movement.visualization import (  # noqa
+from movement.preprocessing import preprocess_pose_dataframe  # noqa: E402
+from movement.normalization import normalize_pose_by_hip_torso  # noqa: E402
+from movement.floor_reference import (  # noqa: E402
+    FloorReferenceConfig,
+    FloorReferenceReport,
+    apply_floor_relative_correction,
+)
+from movement.canonicalization import (  # noqa: E402
+    CanonicalizationConfig,
+    apply_canonicalization,
+)
+from movement.segmentation import segment_phases, segment_reps  # noqa: E402
+from movement.motion_attribution import (
+    AttributionThresholds,
+    attribute_motion,
+)  # noqa: E402
+from movement.visualization import (  # noqa: E402
     create_pose_animation,
     create_pose_comparison_animation,
-    plot_reliability_overlay,
-    plot_joint_angle_timeseries,
-    plot_rep_timeline,
     plot_attribution_chart,
     plot_biomarker_radar,
+    plot_joint_angle_timeseries,
+    plot_reliability_overlay,
+    plot_rep_timeline,
 )
 from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
 from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
@@ -53,7 +105,9 @@ from movement.biomarker import (
     from_feature_record,
     from_biomech_record,
 )  # noqa
-from movement.clinical import load_fms_mapping, traffic_light_for_score  # noqa
+from movement.clinical import load_fms_mapping, traffic_light_for_score  # noqa: E402
+
+del _name, _module, _COMPAT_MODULES, _sys
 
 __all__ = [
     # I/O
@@ -70,6 +124,12 @@ __all__ = [
     "preprocess_pose_dataframe",
     # ⑤ normalization
     "normalize_pose_by_hip_torso",
+    # ⑤ normalization canonicalization and floor-relative support prior
+    "CanonicalizationConfig",
+    "apply_canonicalization",
+    "FloorReferenceConfig",
+    "FloorReferenceReport",
+    "apply_floor_relative_correction",
     # ⑥ segmentation
     "segment_reps",
     "segment_phases",

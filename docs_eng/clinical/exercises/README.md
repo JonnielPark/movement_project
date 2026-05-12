@@ -1,7 +1,7 @@
 # Per-Exercise Clinical Rationale
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.0.3
+**Last Updated:** 2026-05-11
 **Korean Sync:** `docs/clinical/exercises/README.md` is the same-version Korean source.
 
 This folder provides detailed biomechanical and clinical-interpretation rationale
@@ -12,9 +12,9 @@ movement quality.
 
 These documents are not development specifications. They may inform future
 `compensation_candidates`, `analysis_disrupting_patterns`, feature registry, or
-scoring rules. When an item is promoted to a computational rule, first record it in
-`docs_eng/code_revision_plan.md`, then update `docs_eng/pipeline/`, `docs/pipeline/`,
-YAML, and code in that order.
+scoring rules. When an item is promoted to a computational rule, first document the
+feature definition and provenance policy in `docs_eng/pipeline/` and `docs/pipeline/`,
+then update YAML and code in that order.
 
 The `Analysis Parameter Summary` section in each exercise document explains the key
 exercise-YAML settings from an interpretation perspective. The execution source of

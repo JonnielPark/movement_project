@@ -12,6 +12,7 @@ Pipeline position: after ③ exercise definition loading, before ⑤ normalizati
 
 Coordinate convention: columns named <landmark>_{x,y,z}.  Input shape: (T, columns).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -20,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 # ── Module-level constants (D1) ───────────────────────────────────────────────
@@ -28,22 +29,22 @@ if TYPE_CHECKING:
 # Included-angle bounds in degrees (min, max) at each named joint vertex.
 # Conservative: only anatomically implausible configurations are flagged.
 _JOINT_ANGLE_BOUNDS_DEG: dict[str, tuple[float, float]] = {
-    "left_knee":   (10.0, 180.0),   # proximal: left_hip,      distal: left_ankle
-    "right_knee":  (10.0, 180.0),
-    "left_elbow":  (10.0, 180.0),   # proximal: left_shoulder, distal: left_wrist
+    "left_knee": (10.0, 180.0),  # proximal: left_hip,      distal: left_ankle
+    "right_knee": (10.0, 180.0),
+    "left_elbow": (10.0, 180.0),  # proximal: left_shoulder, distal: left_wrist
     "right_elbow": (10.0, 180.0),
-    "left_hip":    (20.0, 180.0),   # proximal: left_shoulder, distal: left_knee
-    "right_hip":   (20.0, 180.0),
+    "left_hip": (20.0, 180.0),  # proximal: left_shoulder, distal: left_knee
+    "right_hip": (20.0, 180.0),
 }
 
 # (proximal, vertex, distal) landmark triplets for joint angle computation
 _JOINT_ANGLE_TRIPLETS: dict[str, tuple[str, str, str]] = {
-    "left_knee":   ("left_hip",       "left_knee",   "left_ankle"),
-    "right_knee":  ("right_hip",      "right_knee",  "right_ankle"),
-    "left_elbow":  ("left_shoulder",  "left_elbow",  "left_wrist"),
+    "left_knee": ("left_hip", "left_knee", "left_ankle"),
+    "right_knee": ("right_hip", "right_knee", "right_ankle"),
+    "left_elbow": ("left_shoulder", "left_elbow", "left_wrist"),
     "right_elbow": ("right_shoulder", "right_elbow", "right_wrist"),
-    "left_hip":    ("left_shoulder",  "left_hip",    "left_knee"),
-    "right_hip":   ("right_shoulder", "right_hip",   "right_knee"),
+    "left_hip": ("left_shoulder", "left_hip", "left_knee"),
+    "right_hip": ("right_shoulder", "right_hip", "right_knee"),
 }
 
 # Skeleton segments for per-frame length consistency (landmark name pairs).
@@ -52,30 +53,31 @@ _JOINT_ANGLE_TRIPLETS: dict[str, tuple[str, str, str]] = {
 # uncertainty as the joint moves through depth. Shank (knee-ankle), torso, and
 # arm segments are stable enough for consistency checking.
 _SKELETON_SEGMENTS: list[tuple[str, str]] = [
-    ("left_shoulder",  "left_elbow"),
+    ("left_shoulder", "left_elbow"),
     ("right_shoulder", "right_elbow"),
-    ("left_elbow",     "left_wrist"),
-    ("right_elbow",    "right_wrist"),
-    ("left_shoulder",  "left_hip"),
+    ("left_elbow", "left_wrist"),
+    ("right_elbow", "right_wrist"),
+    ("left_shoulder", "left_hip"),
     ("right_shoulder", "right_hip"),
-    ("left_hip",       "right_hip"),
-    ("left_shoulder",  "right_shoulder"),
-    ("left_knee",      "left_ankle"),
-    ("right_knee",     "right_ankle"),
+    ("left_hip", "right_hip"),
+    ("left_shoulder", "right_shoulder"),
+    ("left_knee", "left_ankle"),
+    ("right_knee", "right_ankle"),
 ]
 
 # Paired landmark names for L/R swap detection
 _SWAP_PAIRS: list[tuple[str, str]] = [
     ("left_shoulder", "right_shoulder"),
-    ("left_elbow",    "right_elbow"),
-    ("left_wrist",    "right_wrist"),
-    ("left_hip",      "right_hip"),
-    ("left_knee",     "right_knee"),
-    ("left_ankle",    "right_ankle"),
+    ("left_elbow", "right_elbow"),
+    ("left_wrist", "right_wrist"),
+    ("left_hip", "right_hip"),
+    ("left_knee", "right_knee"),
+    ("left_ankle", "right_ankle"),
 ]
 
 
 # ── Pure coordinate helpers ───────────────────────────────────────────────────
+
 
 def _xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
     """Return (T, 3) float array of xyz coordinates for a landmark."""
@@ -87,21 +89,21 @@ def _segment_length(df: pd.DataFrame, lm1: str, lm2: str) -> np.ndarray:
     return np.linalg.norm(_xyz(df, lm1) - _xyz(df, lm2), axis=1)
 
 
-def _joint_angle_deg(
-    df: pd.DataFrame, prox: str, vert: str, dist: str
-) -> np.ndarray:
+def _joint_angle_deg(df: pd.DataFrame, prox: str, vert: str, dist: str) -> np.ndarray:
     """
     Return (T,) included angle in degrees at the vertex landmark.
 
     Degenerate frames (zero-length bone) return NaN so no bound is violated.
     """
-    v_prox = _xyz(df, prox) - _xyz(df, vert)   # (T, 3)
-    v_dist = _xyz(df, dist) - _xyz(df, vert)   # (T, 3)
-    norm_p = np.linalg.norm(v_prox, axis=1)    # (T,)
+    v_prox = _xyz(df, prox) - _xyz(df, vert)  # (T, 3)
+    v_dist = _xyz(df, dist) - _xyz(df, vert)  # (T, 3)
+    norm_p = np.linalg.norm(v_prox, axis=1)  # (T,)
     norm_d = np.linalg.norm(v_dist, axis=1)
     denom = norm_p * norm_d
     safe = denom > 1e-9
-    cos_a = np.where(safe, np.sum(v_prox * v_dist, axis=1) / np.where(safe, denom, 1.0), np.nan)
+    cos_a = np.where(
+        safe, np.sum(v_prox * v_dist, axis=1) / np.where(safe, denom, 1.0), np.nan
+    )
     cos_a = np.clip(cos_a, -1.0, 1.0)
     return np.where(safe, np.degrees(np.arccos(cos_a)), np.nan)
 
@@ -131,11 +133,12 @@ def _estimate_fps(df: pd.DataFrame) -> float:
 
 # ── Detection steps (all modify mask in-place) ────────────────────────────────
 
+
 def _run_visibility_gating(
     df: pd.DataFrame,
     present: list[str],
     threshold: float,
-    mask: np.ndarray,   # (T, len(present)), True = reliable; modified in-place
+    mask: np.ndarray,  # (T, len(present)), True = reliable; modified in-place
 ) -> dict[str, int]:
     """Flag landmarks below visibility threshold. Returns per-landmark low-vis frame counts."""
     counts: dict[str, int] = {}
@@ -210,9 +213,9 @@ def _run_velocity_outlier(
     vel_threshold = threshold_torso_per_sec * torso_scale / max(fps, 1.0)
     total = 0
     for i, lm in enumerate(present):
-        xyz = _xyz(df, lm)                                      # (T, 3)
-        disp = np.linalg.norm(np.diff(xyz, axis=0), axis=1)    # (T-1,)
-        velocity = np.concatenate([[0.0], disp])                # frame 0 has no prior
+        xyz = _xyz(df, lm)  # (T, 3)
+        disp = np.linalg.norm(np.diff(xyz, axis=0), axis=1)  # (T-1,)
+        velocity = np.concatenate([[0.0], disp])  # frame 0 has no prior
         outlier = velocity > vel_threshold
         total += int(np.sum(outlier & mask[:, i]))
         mask[:, i] &= ~outlier
@@ -221,10 +224,11 @@ def _run_velocity_outlier(
 
 # ── Swap detection ────────────────────────────────────────────────────────────
 
+
 def _run_swap_detection(
     df: pd.DataFrame,
     present_set: set[str],
-    swap_cfg: Any,      # SwapDetectionConfig
+    swap_cfg: Any,  # SwapDetectionConfig
 ) -> tuple[np.ndarray, list[str], int, int]:
     """
     Temporal consistency L/R swap detection and correction.
@@ -240,7 +244,9 @@ def _run_swap_detection(
     swap_corrected = np.zeros(T, dtype=bool)
     notes: list[str] = [""] * T
 
-    active_pairs = [(l, r) for (l, r) in _SWAP_PAIRS if l in present_set and r in present_set]
+    active_pairs = [
+        (l, r) for (l, r) in _SWAP_PAIRS if l in present_set and r in present_set
+    ]
     if not active_pairs:
         return swap_corrected, notes, 0, 0
 
@@ -276,12 +282,18 @@ def _run_swap_detection(
                 df.loc[idx_labels, vis_r] = tmp
         swap_corrected[swap_frame_indices] = True
         for t in swap_frame_indices:
-            notes[t] = f"temporal_consistency swap at t={t} (vote={swap_votes[t]}/{len(active_pairs)})"
+            notes[t] = (
+                f"temporal_consistency swap at t={t} (vote={swap_votes[t]}/{len(active_pairs)})"
+            )
         num_corrected = len(swap_frame_indices)
 
     # Orientation prior (heuristic count only — no additional correction)
     num_orientation_disagree = 0
-    if swap_cfg.orientation_prior and "left_hip" in present_set and "right_hip" in present_set:
+    if (
+        swap_cfg.orientation_prior
+        and "left_hip" in present_set
+        and "right_hip" in present_set
+    ):
         diff = df["left_hip_x"].values - df["right_hip_x"].values
         majority_sign = np.sign(float(np.median(diff)))
         if majority_sign != 0:
@@ -293,6 +305,7 @@ def _run_swap_detection(
 
 
 # ── Short-gap interpolation ───────────────────────────────────────────────────
+
 
 def _find_false_runs(arr: np.ndarray) -> list[tuple[int, int]]:
     """Return (start, end) inclusive index pairs for contiguous False runs."""
@@ -313,7 +326,7 @@ def _find_false_runs(arr: np.ndarray) -> list[tuple[int, int]]:
 def _run_interpolation(
     df: pd.DataFrame,
     present: list[str],
-    mask: np.ndarray,   # (T, len(present)); modified in-place to mark resolved gaps as reliable
+    mask: np.ndarray,  # (T, len(present)); modified in-place to mark resolved gaps as reliable
     max_gap: int,
 ) -> tuple[int, int]:
     """
@@ -326,10 +339,10 @@ def _run_interpolation(
     for i, lm in enumerate(present):
         for start, end in _find_false_runs(mask[:, i]):
             gap = end - start + 1
-            has_left  = start > 0 and mask[start - 1, i]
+            has_left = start > 0 and mask[start - 1, i]
             has_right = end < T - 1 and mask[end + 1, i]
             if gap <= max_gap and has_left and has_right:
-                left_row  = df.index[start - 1]
+                left_row = df.index[start - 1]
                 right_row = df.index[end + 1]
                 for ax in ("x", "y", "z"):
                     col = f"{lm}_{ax}"
@@ -340,7 +353,7 @@ def _run_interpolation(
                     for offset in range(gap):
                         alpha = (offset + 1) / (gap + 1)
                         df.at[df.index[start + offset], col] = v0 + alpha * (v1 - v0)
-                mask[start: end + 1, i] = True
+                mask[start : end + 1, i] = True
                 n_short += 1
             else:
                 n_long += 1
@@ -348,6 +361,7 @@ def _run_interpolation(
 
 
 # ── Smoothing ─────────────────────────────────────────────────────────────────
+
 
 def _run_smoothing(
     df: pd.DataFrame,
@@ -376,11 +390,12 @@ def _run_smoothing(
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+
 def preprocess_pose_dataframe(
     df: pd.DataFrame,
     landmarks: list[str],
     exercise_definition: "ExerciseDefinition | None",
-    config: Any,    # PreprocessingConfig
+    config: Any,  # PreprocessingConfig
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Reliability detection, swap correction, short-gap interpolation, and optional smoothing.
@@ -420,7 +435,9 @@ def preprocess_pose_dataframe(
     if exercise_definition is not None:
         laterality = exercise_definition.classification.get("laterality", "") or ""
         is_generic = exercise_definition.is_generic_fallback
-        max_gap_from_def = exercise_definition.quality_rules.max_interpolation_gap_frames
+        max_gap_from_def = (
+            exercise_definition.quality_rules.max_interpolation_gap_frames
+        )
 
     do_swap = (
         config.swap_detection.enabled
@@ -447,8 +464,12 @@ def preprocess_pose_dataframe(
 
     # Step 3: Velocity outlier
     n_velocity_outliers = _run_velocity_outlier(
-        pre_df, present, torso_scale, fps,
-        config.reliability.velocity_threshold_torso_per_sec, mask
+        pre_df,
+        present,
+        torso_scale,
+        fps,
+        config.reliability.velocity_threshold_torso_per_sec,
+        mask,
     )
 
     # Step 4: Joint angle bounds
@@ -472,8 +493,8 @@ def preprocess_pose_dataframe(
     num_orient_disagree = 0
 
     if do_swap:
-        swap_corrected, swap_notes, num_temporal_swap, num_orient_disagree = _run_swap_detection(
-            pre_df, present_set, config.swap_detection
+        swap_corrected, swap_notes, num_temporal_swap, num_orient_disagree = (
+            _run_swap_detection(pre_df, present_set, config.swap_detection)
         )
 
     # ── Short-gap interpolation ───────────────────────────────────────────────
@@ -482,7 +503,7 @@ def preprocess_pose_dataframe(
         n_short_gaps, n_long_gaps = _run_interpolation(
             pre_df, present, mask, max_gap_from_def
         )
-        frame_reliable = mask.all(axis=1)   # recompute after gaps resolved
+        frame_reliable = mask.all(axis=1)  # recompute after gaps resolved
 
     # ── Smoothing ─────────────────────────────────────────────────────────────
     smoothing_applied: list[str] = []
@@ -493,12 +514,16 @@ def preprocess_pose_dataframe(
 
     # ── Output columns ────────────────────────────────────────────────────────
     pre_df["preprocessing_valid"] = frame_reliable
-    pre_df["preprocessing_note"]  = swap_notes
-    pre_df["swap_corrected"]      = swap_corrected
+    pre_df["preprocessing_note"] = swap_notes
+    pre_df["swap_corrected"] = swap_corrected
 
     # ── Report ────────────────────────────────────────────────────────────────
-    exercise_type = str(pre_df["exercise_type"].iloc[0]) if "exercise_type" in pre_df.columns else None
-    pattern       = str(pre_df["pattern"].iloc[0])       if "pattern"        in pre_df.columns else None
+    exercise_type = (
+        str(pre_df["exercise_type"].iloc[0])
+        if "exercise_type" in pre_df.columns
+        else None
+    )
+    pattern = str(pre_df["pattern"].iloc[0]) if "pattern" in pre_df.columns else None
 
     num_invalid_frames = int(np.sum(~frame_reliable))
 
@@ -509,7 +534,10 @@ def preprocess_pose_dataframe(
         "laterality": laterality,
         "num_frames": T,
         "num_coordinate_columns": sum(
-            1 for lm in present for ax in ("x", "y", "z") if f"{lm}_{ax}" in pre_df.columns
+            1
+            for lm in present
+            for ax in ("x", "y", "z")
+            if f"{lm}_{ax}" in pre_df.columns
         ),
         "reliability_summary": {
             "visibility_threshold": config.reliability.visibility_threshold,

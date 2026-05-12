@@ -1,7 +1,7 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.0.5
-**Last Updated:** 2026-05-10
+**Document Version:** 1.0.9
+**Last Updated:** 2026-05-12
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑧. Computes movement-quality features from normalized pose data.
@@ -73,6 +73,59 @@ spatial.rom.<joint>             max − min included angle per rep        (degre
 spatial.symmetry.<joint>        | ROM_left − ROM_right | / mean         (dimensionless_cv)
 spatial.shape.arc_length.<lm>   primary-joint trajectory length         (torso_length_ratio)
 ```
+
+#### View-Dependent Symmetry Availability
+
+`spatial.symmetry.*` is not interpreted as a valid movement-quality penalty every
+time a left/right ROM difference can be computed. For monocular recordings, a
+bilateral symmetry feature must first pass an availability gate. This is especially
+important for side-view squat recordings, where rotating the monocular 3D skeleton
+into a frontal view can expose depth-estimation artifacts that were not directly
+observed by the camera.
+
+The intended availability states are:
+
+```text
+assessed
+    Both sides have sufficient landmark visibility/coverage, plausible segment
+    lengths, low left/right swap risk, and a filming view that supports the
+    requested left-right interpretation.
+
+low_confidence
+    The feature can be computed, but visibility, far-side jitter, depth-dependent
+    canonicalization correction, or viewpoint mismatch makes the result suitable
+    only as an interpretation note.
+
+not_assessed
+    The computed value would mainly reflect observation artifact rather than
+    interpretable movement asymmetry. It should not enter the movement-quality
+    score.
+```
+
+For a side-view or near-side-view squat, primary scoring should rely on sagittal
+and centerline features such as descent depth, hip/knee/ankle ROM, trunk lean,
+heel lift, hip-center trajectory stability, tempo, and smoothness. Left/right
+symmetry should be emitted only when both sides pass the availability gate. If
+the side-view animation appears stable but the rotated frontal rendering shows
+large left/right imbalance, treat that pattern as a depth-inference limitation
+unless an actual frontal or front-oblique view confirms the asymmetry.
+
+The same rule generalizes to `view_metric_reliability` in the exercise definition.
+Feature extraction may compute a feature while reporting view reliability separately:
+
+```text
+computed_value      numeric FeatureRecord value, when source fields exist
+view_reliability   high | moderate | low | not_assessed
+availability       assessed | low_confidence | not_assessed
+```
+
+For bilateral symmetric exercises, the reliability map is mainly organized by
+frontal-plane versus sagittal-plane visibility. For unilateral or alternating
+exercises, it is organized by role: `forward_leg`, `trailing_leg`, `active_side`,
+and `support_side`. A lunge filmed from the side can therefore be high-confidence
+for forward-leg sagittal ROM and rear-limb extension while low-confidence for
+knee valgus or pelvis drop. A frontal lunge can show step width and pelvis drop
+well while making anterior knee travel and rear-hip extension low-confidence.
 
 ### 3-2. Temporal Features
 
@@ -271,9 +324,9 @@ compensation_candidates
 This report is diagnostic/provenance output. Unsupported entries do not crash
 feature extraction and are not automatically promoted to scoring factors.
 
-A6 adds a per-exercise compensation-candidate availability matrix. This matrix is
-the canonical current-state view for candidate implementation status; it does not
-create new metrics by itself.
+The per-exercise compensation-candidate availability matrix is the canonical
+current-state view for candidate implementation status; it does not create new
+metrics by itself.
 
 ```text
 candidate                    YAML candidate name
@@ -311,12 +364,12 @@ no_rule_registered
     explicit statuses above. It must stay visible in reports.
 ```
 
-For the current A6 pass, this matrix is used to resolve the squat and pike push-up
-candidate review notes in `docs_eng/code_revision_plan.md`.
+This matrix keeps candidates visible in reports even when squat or pike push-up
+candidates have not yet been promoted into scoring rules.
 
 ## 11. Analysis-Disrupting Pattern Detectability Audit
 
-A4 adds a second diagnostic report for
+This step adds a second diagnostic report for
 `performance_protocol.analysis_disrupting_patterns`. This audit separates
 pose-detectable scoring candidates from protocol-control or interpretation-limit
 factors, so analysis-disrupting patterns are not silently promoted to automatic

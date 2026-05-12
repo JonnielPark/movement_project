@@ -6,6 +6,7 @@ and converts biomarker composite scores into dashboard-ready traffic-light
 labels. The mapping is interpretive support only: it does not reproduce FMS
 scoring text and does not make medical conclusions.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,7 +16,7 @@ from typing import Any
 import yaml
 
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_FMS_MAPPING_PATH = (
     _PROJECT_ROOT / "data" / "definitions" / "clinical" / "fms_mapping.yaml"
 )
@@ -28,6 +29,7 @@ class TrafficLightBand:
     The interval is based on the project's 0-100 biomarker score and provides
     a quick review cue for movement-quality patterns; it is not an FMS score.
     """
+
     label: str
     meaning: str
     score_range: tuple[float, float]
@@ -40,6 +42,7 @@ class TrafficLightBand:
 @dataclass(frozen=True)
 class FmsCriterionMapping:
     """One feature-domain crosswalk entry for FMS-like movement observation."""
+
     id: str
     domain: str
     feature_id_prefix: str
@@ -49,6 +52,7 @@ class FmsCriterionMapping:
 @dataclass(frozen=True)
 class FmsExerciseMapping:
     """FMS-like crosswalk metadata for one exercise."""
+
     exercise_id: str
     reference_screen: str
     fms_test: str
@@ -61,6 +65,7 @@ class FmsExerciseMapping:
 @dataclass(frozen=True)
 class TrafficLightLabel:
     """Resolved traffic-light label for one biomarker score."""
+
     exercise_id: str
     label: str
     meaning: str
@@ -72,7 +77,9 @@ class TrafficLightLabel:
 def _parse_band(label: str, raw: dict[str, Any]) -> TrafficLightBand:
     score_range = raw.get("score_range")
     if not isinstance(score_range, list) or len(score_range) != 2:
-        raise ValueError(f"traffic_light_mapping.{label}.score_range must contain two values")
+        raise ValueError(
+            f"traffic_light_mapping.{label}.score_range must contain two values"
+        )
     return TrafficLightBand(
         label=label,
         meaning=str(raw.get("meaning", "")),
@@ -80,11 +87,20 @@ def _parse_band(label: str, raw: dict[str, Any]) -> TrafficLightBand:
     )
 
 
-def _parse_mapping(exercise_id: str, raw: dict[str, Any], source_path: Path) -> FmsExerciseMapping:
-    required = ("reference_screen", "fms_test", "traffic_light_mapping", "linked_criteria")
+def _parse_mapping(
+    exercise_id: str, raw: dict[str, Any], source_path: Path
+) -> FmsExerciseMapping:
+    required = (
+        "reference_screen",
+        "fms_test",
+        "traffic_light_mapping",
+        "linked_criteria",
+    )
     missing = [key for key in required if key not in raw]
     if missing:
-        raise ValueError(f"{exercise_id}: missing required field(s): {', '.join(missing)}")
+        raise ValueError(
+            f"{exercise_id}: missing required field(s): {', '.join(missing)}"
+        )
 
     bands = {
         label: _parse_band(label, band_raw or {})
@@ -92,7 +108,9 @@ def _parse_mapping(exercise_id: str, raw: dict[str, Any], source_path: Path) -> 
     }
     for label in ("green", "yellow", "red"):
         if label not in bands:
-            raise ValueError(f"{exercise_id}: traffic_light_mapping.{label} is required")
+            raise ValueError(
+                f"{exercise_id}: traffic_light_mapping.{label} is required"
+            )
 
     criteria = [
         FmsCriterionMapping(
@@ -104,10 +122,21 @@ def _parse_mapping(exercise_id: str, raw: dict[str, Any], source_path: Path) -> 
         for item in (raw.get("linked_criteria") or [])
     ]
     if len(criteria) < 3:
-        raise ValueError(f"{exercise_id}: at least three linked_criteria entries are required")
+        raise ValueError(
+            f"{exercise_id}: at least three linked_criteria entries are required"
+        )
     for criterion in criteria:
-        if not all((criterion.id, criterion.domain, criterion.feature_id_prefix, criterion.rationale)):
-            raise ValueError(f"{exercise_id}: linked_criteria entries require id/domain/feature_id_prefix/rationale")
+        if not all(
+            (
+                criterion.id,
+                criterion.domain,
+                criterion.feature_id_prefix,
+                criterion.rationale,
+            )
+        ):
+            raise ValueError(
+                f"{exercise_id}: linked_criteria entries require id/domain/feature_id_prefix/rationale"
+            )
 
     try:
         source_ref = source_path.resolve().relative_to(_PROJECT_ROOT).as_posix()
@@ -194,12 +223,15 @@ def traffic_light_for_score(
                 meaning=band.meaning,
                 score=clipped,
                 score_range=band.score_range,
-                source_fields=mapping.source_fields + [
+                source_fields=mapping.source_fields
+                + [
                     f"data/definitions/clinical/fms_mapping.yaml#{exercise}.traffic_light_mapping.{label}"
                 ],
             )
 
-    raise ValueError(f"No traffic-light interval matched score {clipped} for {exercise}")
+    raise ValueError(
+        f"No traffic-light interval matched score {clipped} for {exercise}"
+    )
 
 
 __all__ = [

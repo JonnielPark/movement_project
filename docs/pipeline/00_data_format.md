@@ -12,7 +12,7 @@
 
 포즈 추정 엔진에서 내보낸 CSV 파일. 현재 구현은 MediaPipe-style 33-landmark pose CSV를
 입력 전제로 한다. 즉, 한 행(row)은 한 프레임에 해당하며, `frame` / `timestamp` 칼럼과
-`src/movement/config.py`에 정의된 랜드마크 이름 기반 칼럼을 사용한다.
+`src/movement/core/config.py`에 정의된 랜드마크 이름 기반 칼럼을 사용한다.
 
 iPIXEL EXERCITE를 포함한 다른 엔진은 실제 export schema가 확보되기 전까지 future adapter
 대상이다. 현재 파이프라인에 넣기 전에는 이 MediaPipe-style schema로 변환해야 한다.
@@ -45,7 +45,7 @@ left_knee_y
 left_knee_z
 ```
 
-랜드마크 이름은 [src/movement/config.py](../../src/movement/config.py)에 정의되어 있다.
+랜드마크 이름은 [src/movement/core/config.py](../../src/movement/core/config.py)에 정의되어 있다.
 명명 규약: 양측 랜드마크는 `left_*` / `right_*` 접두사를 사용한다.
 
 ## 4. 가시성 칼럼 (Visibility Columns, 선택, 권장)
@@ -75,7 +75,7 @@ frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
 2. 각 랜드마크는 x, y, z 칼럼을 갖는다.
 3. frame 값은 정렬 가능하다.
 4. timestamp 값은 단조 증가한다.
-5. 랜드마크 이름은 src/movement/config.py의 정의와 일치한다.
+5. 랜드마크 이름은 src/movement/core/config.py의 정의와 일치한다.
 ```
 
 위반 사항은 ① 검증에서 보고된다 ([01_validation.md](01_validation.md) 참조).

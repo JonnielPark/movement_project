@@ -1,6 +1,6 @@
 # 04. Preprocessing
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/04_preprocessing.md` is the same-version Korean source.
 

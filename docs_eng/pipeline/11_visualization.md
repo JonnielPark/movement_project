@@ -1,7 +1,7 @@
 # 11. Visualization
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.3
+**Last Updated:** 2026-05-11
 **Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
 
 Pipeline step ⑪. Called independently outside the ①–⑩ runner. A collection of
@@ -73,7 +73,7 @@ landmark → YAML field` without leaving the figure.
 
 ### 4-1. create_pose_animation
 
-Plotly interactive 3D pose animation with Play/Pause buttons and frame slider.
+Plotly interactive 3D pose animation with play/pause buttons and frame slider.
 
 ```python
 from movement.visualization import create_pose_animation
@@ -96,12 +96,17 @@ fig.show()
 ```text
 "raw"   <landmark>_x/y/z columns
 "norm"  <landmark>_norm_x/y/z columns (requires ⑤ normalization)
+"floor" <landmark>_floor_x/y/z columns (requires optional floor-relative normalization filter)
 ```
+
+`"floor"` mode renders optional floor-relative normalization-filter output columns.
+Inspect this first in notebooks 04 and 15 before using floor coordinates in
+downstream analysis.
 
 ### 4-2. create_pose_comparison_animation
 
-Overlays two coordinate modes in one animation (blue = raw, red = normalized).
-Used to debug ⑤ normalization.
+Overlays two coordinate modes in one animation (blue = first mode, red = second
+mode). Used to debug ⑤ normalization and the optional floor-relative filter.
 
 ```python
 from movement.visualization import create_pose_comparison_animation
@@ -119,7 +124,7 @@ fig.show()
 ## 5. Planned Functions
 
 These functions exist as stubs (raise `NotImplementedError`); they are the
-remaining deliverables for dissertation Task B (see local `code_revision_plan.md`).
+remaining deliverables for dissertation reporting figures.
 
 ### 5-1. plot_reliability_overlay
 
@@ -267,7 +272,7 @@ notebook/15_visualization_demo.ipynb           planned — all five Task B chart
 ## 8. Code Mapping
 
 ```text
-src/movement/visualization.py        create_pose_animation,
+src/movement/reporting/visualization.py  create_pose_animation,
                                      create_pose_comparison_animation,
                                      plot_reliability_overlay (stub),
                                      plot_joint_angle_timeseries (stub),
@@ -275,7 +280,7 @@ src/movement/visualization.py        create_pose_animation,
                                      plot_attribution_chart (stub),
                                      plot_biomarker_radar (stub),
                                      ... (planned 5-5 ~ 5-10)
-src/movement/utils.py                get_frame_data, compute_plot_ranges,
+src/movement/core/utils.py           get_frame_data, compute_plot_ranges,
                                      validate_landmark_columns
 ```
 

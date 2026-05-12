@@ -76,6 +76,12 @@ phase_segmentation:
   multi_inflection_policy: global_extremum
 
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition

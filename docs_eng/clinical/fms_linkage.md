@@ -28,7 +28,7 @@ observation categories, and defines dashboard-ready traffic-light labels.
 
 ```text
 data/definitions/clinical/fms_mapping.yaml
-src/movement/clinical.py
+src/movement/definitions/clinical.py
 tests/test_fms_mapping.py
 ```
 

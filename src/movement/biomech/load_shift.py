@@ -15,6 +15,7 @@ Unit: torso_length_ratio_per_rep (TLR/rep).
 
 Minimum reps: 3. Fewer reps yield an unreliable slope and are skipped.
 """
+
 from __future__ import annotations
 
 import re
@@ -114,17 +115,19 @@ def compute_load_shift(
         sf = list(source_map.get((ex_id, joint, side), []))
         sf.append("biomech.load_shift.compute_load_shift")
 
-        results.append(BiomechRecord(
-            metric_id=f"biomech.load_shift.{joint}.{side}.slope",
-            exercise_id=ex_id,
-            rep_id=None,
-            value=round(slope, 6),
-            unit="torso_length_ratio_per_rep",
-            source_fields=sf,
-            note=_make_note(joint, side, slope),
-            visibility_weight_applied=False,
-            n_frames_used=len(rep_vals),
-            n_frames_excluded_low_visibility=0,
-        ))
+        results.append(
+            BiomechRecord(
+                metric_id=f"biomech.load_shift.{joint}.{side}.slope",
+                exercise_id=ex_id,
+                rep_id=None,
+                value=round(slope, 6),
+                unit="torso_length_ratio_per_rep",
+                source_fields=sf,
+                note=_make_note(joint, side, slope),
+                visibility_weight_applied=False,
+                n_frames_used=len(rep_vals),
+                n_frames_excluded_low_visibility=0,
+            )
+        )
 
     return results

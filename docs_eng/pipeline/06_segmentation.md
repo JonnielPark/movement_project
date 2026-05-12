@@ -1,6 +1,6 @@
 # 06. Segmentation
 
-**Document Version:** 1.2.2
+**Document Version:** 1.2.3
 **Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
 
@@ -244,7 +244,7 @@ annotation override
     overwritten by semi-automatic phase splitting.
 
 phase provenance handoff
-    ⑧ phase-level FeatureRecords emitted from phase-labelled reps must include
+    ⑥ phase-level FeatureRecords emitted from phase-labelled reps must include
     `phase_segmentation.*` entries in `source_fields`.
 ```
 

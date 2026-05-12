@@ -12,6 +12,11 @@ def test_lunge_loads_same_side_block_performance_protocol():
     protocol = definition.performance_protocol
 
     assert protocol is not None
+    assert protocol.prescription.target_sets == 3
+    assert protocol.prescription.target_count_per_set == 10
+    assert protocol.prescription.count_unit == "repetition"
+    assert protocol.prescription.segmentation_reps_per_count == 1
+    assert protocol.prescription.rest_between_sets_s == [120, 180]
     assert protocol.counting.target_count == 10
     assert protocol.counting.count_unit == "repetition"
     assert protocol.counting.segmentation_reps_per_count == 1
@@ -30,6 +35,10 @@ def test_plank_shoulder_tap_loads_left_right_pair_counting():
     protocol = definition.performance_protocol
 
     assert protocol is not None
+    assert protocol.prescription.target_sets == 3
+    assert protocol.prescription.target_count_per_set == 10
+    assert protocol.prescription.count_unit == "left_right_pair"
+    assert protocol.prescription.segmentation_reps_per_count == 2
     assert protocol.counting.target_count == 10
     assert protocol.counting.count_unit == "left_right_pair"
     assert protocol.counting.segmentation_reps_per_count == 2
@@ -45,6 +54,8 @@ def test_pike_pushup_allows_partial_completion_metadata():
 
     assert protocol is not None
     assert protocol.allowed_side_sequence_modes == ["none"]
+    assert protocol.prescription.target_sets == 3
+    assert protocol.prescription.target_count_per_set == 10
     assert protocol.completion.allow_partial_completion is True
     assert protocol.completion.recommended_sets == 3
 
@@ -56,7 +67,9 @@ def test_target_exercises_recommend_three_validation_sets():
         assert definition.performance_protocol is not None
         protocol = definition.performance_protocol
         assert protocol.side_sequence.mode in protocol.allowed_side_sequence_modes
-        assert definition.performance_protocol.completion.recommended_sets == 3
+        assert protocol.prescription.target_sets == 3
+        assert protocol.prescription.target_count_per_set == 10
+        assert protocol.completion.recommended_sets == 3
 
 
 def test_generic_definition_keeps_performance_protocol_optional():
@@ -104,6 +117,147 @@ performance_protocol:
     )
 
     with pytest.raises(ValueError, match="block_size_counts"):
+        load_exercise_definition("bad", tmp_path)
+
+
+def test_performance_prescription_can_drive_backward_compatible_counting(tmp_path):
+    yaml_path = tmp_path / "valid.yaml"
+    yaml_path.write_text(
+        """
+exercise_id: valid
+display_name: Valid
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  prescription:
+    target_sets: 2
+    target_count_per_set: 8
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [90, 120]
+  side_sequence:
+    mode: none
+    block_size_counts: null
+  completion:
+    allow_partial_completion: true
+""",
+        encoding="utf-8",
+    )
+
+    definition = load_exercise_definition("valid", tmp_path)
+    protocol = definition.performance_protocol
+
+    assert protocol is not None
+    assert protocol.prescription.target_sets == 2
+    assert protocol.prescription.target_count_per_set == 8
+    assert protocol.prescription.rest_between_sets_s == [90, 120]
+    assert protocol.counting.target_count == 8
+    assert protocol.counting.count_unit == "repetition"
+    assert protocol.completion.recommended_sets == 2
+
+
+def test_performance_prescription_rejects_mismatched_counting_mirror(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(
+        """
+exercise_id: bad
+display_name: Bad
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  counting:
+    target_count: 8
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 3
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="target_count"):
+        load_exercise_definition("bad", tmp_path)
+
+
+def test_performance_prescription_validates_rest_range(tmp_path):
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(
+        """
+exercise_id: bad
+display_name: Bad
+version: 0.0.1
+classification:
+  family: lower_body
+  posture_type: standing
+  kinetic_chain: closed_chain
+  laterality: bilateral_symmetric
+  primary_plane: sagittal
+phase_model:
+  type: cyclic
+landmarks:
+  model: mediapipe_pose_33
+compensation_candidates: []
+feature_domains:
+  spatial: []
+  temporal: []
+  control: []
+quality_rules: {}
+performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [180, 120]
+  side_sequence:
+    mode: none
+    block_size_counts: null
+  completion:
+    allow_partial_completion: false
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="rest_between_sets_s"):
         load_exercise_definition("bad", tmp_path)
 
 

@@ -1,7 +1,7 @@
 # 운동별 상세 해석 문서 (Per-Exercise Clinical Rationale)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10  
+**문서 버전:** 1.0.3
+**최종 갱신:** 2026-05-11
 **영문 동기화:** `docs_eng/clinical/exercises/README.md`는 동일 버전의 영문 번역본이다.
 
 이 폴더는 4대 대상 운동의 생체역학적, 임상적 해석 배경을 자세히 정리한다.
@@ -10,8 +10,8 @@
 
 이 문서는 개발 명세가 아니다. 다만 추후 `compensation_candidates`,
 `analysis_disrupting_patterns`, feature registry, scoring rule을 정리할 때 참고 근거가 될 수
-있다. 어떤 항목을 실제 계산 규칙으로 승격할 때는 `docs/code_revision_plan.md`에 먼저 기록하고,
-이후 `docs_eng/pipeline/`, `docs/pipeline/`, YAML, 코드 순서로 반영한다.
+있다. 어떤 항목을 실제 계산 규칙으로 승격할 때는 먼저 `docs_eng/pipeline/`과 `docs/pipeline/`에
+feature 정의와 provenance 규칙을 문서화하고, 이후 YAML과 코드 순서로 반영한다.
 
 각 운동 문서의 `분석 파라미터 요약`은 운동 정의 YAML의 핵심 설정을 해석 관점에서 설명한다.
 실행 기준은 항상 링크된 `data/definitions/exercises/<exercise_id>.yaml` 원본이다.

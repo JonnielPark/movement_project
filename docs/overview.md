@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.21
-**최종 갱신:** 2026-05-11
+**문서 버전:** 1.4.31
+**최종 갱신:** 2026-05-12
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -13,24 +13,24 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.4 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.21 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.2.3 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.4.7 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.31 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.2.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 1.0.2 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.0.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
-| 1.0.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.4 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.9 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
-| 1.0.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
-| 1.2.2 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.0.1 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.5 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.0.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.0.2 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.0.1 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
-| 1.0.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+| 1.0.1 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
+| 1.1.5 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.4.12 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.0.1 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
+| 1.2.5 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
+| 1.2.3 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.0.2 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
+| 1.0.7 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.0.1 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.0.4 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.0.3 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.0.1 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
 
@@ -108,7 +108,8 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     ③  Exercise Definition  ExerciseDefinition 객체 로드(미존재 시 generic 폴백)
     ④  Preprocessing        신뢰도 검출, 좌·우 스왑(swap) 보정, 보간(interpolation), 평활화(smoothing)
     ⑤  Normalization        골반 중심 평행이동 + 몸통 길이 중앙값 척도화
-    ⑥  Segmentation        관절 움직임 추적 기반 rep/phase 반자동 분할
+        canonicalization    선택: 분석 좌표 표준화(raw/norm 보존)
+    ⑥  Segmentation         관절 움직임 추적 기반 rep/phase 반자동 분할
     ⑦  Motion Attribution   반복별 활성 측(active-side) 일관성 검사
     ⑧  Feature Extraction   공간/시간/제어 피처(반복 단위 + 구간 단위) + audit reports
     ⑨  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
@@ -129,6 +130,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
     바이오마커 점수 목록 — BiomarkerScoreRecord (반복별 Z-score 종합, 기본 0–100의 조정 가능 척도)
     해석 기록 목록      — InterpretationRecord (반복별 YAML 규칙 기반 서술 라벨)
     수행 provenance report — actual_rep_count / failure-point metadata 기반 confidence note
+    canonicalization report — 선택 좌표 표준화 prior, correction magnitude, confidence note
     세그멘테이션 리포트 — SegmentationReport 목록, 반복당 1개
     분할 실패 지점 기록 — SegmentationFailurePoint 목록, 수동 개입 필요 프레임/구간
     시각화 도형 (figures)
@@ -144,12 +146,12 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 | ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼, performance/failure provenance 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
 | ③ Exercise Definition | `exercise_type`, exercise YAML | 운동별 YAML을 로드하여 `ExerciseDefinition` 객체를 생성하고, 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 정의 메타데이터로 보존한다. | ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
-| ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
+| ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. 필요 시 선택 `canonicalization` 층에서 support plane, movement plane, body axis prior를 이용해 단안 pose의 일관된 관찰 편향을 완화한다. 현재 구현된 floor-relative 보정은 support-plane prior로 취급하며, raw/norm/canon 좌표 계열을 분리한다. | Normalized DataFrame; 선택 canonical coordinate columns, correction diagnostics, data-confidence/correction report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
 | ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
-| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. 좌표 보정량과 관측 품질은 movement quality score와 분리된 data-confidence/provenance로 해석한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
 | ⑫ Simulation | 정상 또는 기준 시퀀스, injector 설정 | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등 조건을 주입하고 지표 반응성을 평가한다. | synthetic dataset, robustness report |
 
@@ -238,6 +240,19 @@ optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coars
 
 [05_normalization.md](pipeline/05_normalization.md) 참조.
 
+단안 pose의 raw skeleton은 실제 3D 공간과 다르게 비틀려 보일 수 있다. 본 연구는 이를 완전한
+3D 재구성으로 고치려는 것이 아니라, 같은 landmark가 같은 신체 부위를 안정적으로 추적하고
+오차가 시퀀스 안에서 어느 정도 일관될 때 관절의 상대 궤적과 시간적 변화량을 평가하는 데
+초점을 둔다.
+
+따라서 ⑤ 정규화 내부에는 선택적으로 `canonicalization` 층을 둘 수 있다. 이 층은 raw/norm
+좌표를 보존한 채 support plane, movement plane, body axis prior를 사용해 관찰 좌표계를
+`canonical analysis space`로 정렬한다. 현재 `floor_relative_correction`은 이 중
+support-plane prior로 취급하며, 좋은 동작 template에 강제로 맞추거나 실제 보상 움직임을
+지우는 용도로 사용하지 않는다.
+
+[05_normalization.md](pipeline/05_normalization.md) 참조.
+
 ---
 
 ## 8. 개발 로드맵 (Development Roadmap)
@@ -261,7 +276,7 @@ optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coars
   [완료]  보상 규칙 엔진 — COMPENSATION_RULES 레지스트리 (knee_valgus, knee_varus, lateral_pelvic_shift, excessive_trunk_flexion, heel_lift, pelvis_rotation)
   Visualization: 신뢰도 오버레이, 관절각 시계열, 단계별 결과 차트
 
-2026.10 – 2027.01  생체역학 프록시 모델링 및 바이오마커 도출 (⑨–⑩)
+2026.10 – 2027.01  생체역학 프록시 모델링 및 바이오마커 도출 (⑧–⑩)
   [완료]  CoM 궤적 지표 — 반복 단위 (range_x, range_z, path_length) + 가시성 가중
   [완료]  모멘트 암 프록시 — 무릎/엉덩이 시상면, 반복 단위 + 가시성 가중
   [완료]  extract_rep_biomech() 오케스트레이터를 파이프라인 ⑨에 결선
@@ -276,13 +291,16 @@ optional_phase 실패    Turnaround_Hold 등 선택 구간만 생략하고 coars
   [완료]  Load-shift OLS — biomech/load_shift.py의 compute_load_shift(); 지표 biomech.load_shift.<joint>.<side>.slope (torso_length_ratio_per_rep); ≥ 3 반복 필요; test_biomech_load_shift.py (17건)
   [완료]  YAML 기반 해석 규칙 — biomarker/interpretation.py의 derive_interpretations(); 4개 운동 규칙 파일 (data/definitions/interpretation_rules/); InterpretationRecord; test_interpretation.py (20건)
   [완료]  임상 피처 매핑 — docs/clinical/per_exercise_mapping.md (§5.5/§5.6) + data/definitions/clinical/feature_meanings.yaml (대시보드 툴팁용 YAML 미러)
-  [완료]  Task A 파이프라인 검증 pass — A1-A6에서 segmentation 정책, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance를 검증
+  [완료]  파이프라인 검증 기준선 — segmentation 정책, phase coverage, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance를 검증
 
 2027.02 – 2027.05  강건성 시뮬레이션, reporting, 논문 산출물
   [부분]  시뮬레이션 조건 인젝터(injector) — 노이즈, 가려짐, ROM 제한, 속도 스파이크
-  [다음]  Task B — 구조화된 motion-attribution correction log와 false-correction 지표
-  [계획]  Task C — viewpoint/compensation simulation injector, robustness experiment runner, long-format output, summary report
-  [계획]  Task D — 논문용 정적 reporting figure와 save_figure()
-  [계획]  Task E — clinical mapping 통합과 dashboard 결정 게이트
-  [조건부]  Task G — 파일럿 촬영 근거가 있을 때 visibility-aware scoring fallback
+  [다음]  Task A — analysis-space canonicalization 설계와 raw/norm/canon 검토
+  [계획]  Task B — 측면 촬영 반대측 landmark jitter 전처리 안정화
+  [계획]  Task C — 구조화된 motion-attribution correction log와 false-correction 지표
+  [계획]  Task D — viewpoint/compensation simulation injector, robustness experiment runner, long-format output, summary report
+  [계획]  Task E — 논문용 정적 reporting figure와 save_figure()
+  [계획]  Task F — clinical mapping 통합과 dashboard 결정 게이트
+  [계획]  Task G — 유지보수와 저장소 정리
+  [조건부]  Task H — 파일럿 촬영 근거가 있을 때 visibility-aware scoring fallback
 ```

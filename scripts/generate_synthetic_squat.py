@@ -22,8 +22,8 @@ Bodyweight squat model (frontal-leaning view):
     - Ankles fixed (closed-chain assumption: feet remain on the floor).
     - Arms are held in front for balance and move slightly with the trunk.
 
-Output: a CSV that satisfies validation in src/movement/validation.py and a
-matching annotation CSV in the format src/movement/annotation.py expects.
+Output: a CSV that satisfies validation in src/movement/stages/validation.py and a
+matching annotation CSV in the format src/movement/stages/annotation.py expects.
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 # 스쿼트 상세 해석 배경 (Squat Clinical Rationale)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10  
+**문서 버전:** 1.0.4
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/clinical/exercises/squat.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 스쿼트가 본 연구에서 어떤 생체역학적 의미를 갖는지, 어떤 움직임 패턴을 관찰하고,
@@ -102,6 +102,18 @@ feature의 방향성을 확인하는 데 적합하다.
 카메라가 지나치게 측면에 가까우면 관상면 무릎 편차가 줄어 보일 수 있고, 지나치게 정면이면
 고관절/무릎의 시상면 ROM 해석이 약해질 수 있다.
 
+측면 또는 측면에 가까운 스쿼트 촬영에서는 양측 대칭성을 view-dependent 지표로 다룬다. 측면
+시점에서는 시상면 움직임이 안정적이고 눈에 띄는 보상이 거의 없어 보이지만, 단안 3D skeleton을
+정면으로 돌려본 렌더링에서 좌우 균형이 크게 무너져 보일 수 있다. 이 정면 렌더링은 실제 정면
+촬영이 아니라 depth 추정 결과를 회전한 것이므로, 실제 비대칭의 직접 증거로 해석하지 않는다.
+실제 정면 또는 전방 대각 촬영이 같은 패턴을 확인하기 전까지는 단안 depth inference limitation으로
+처리하는 것이 타당하다.
+
+이 경우 스쿼트 해석은 하강 깊이, hip/knee/ankle ROM, 체간 기울기, heel lift, hip-center 궤적
+안정성, tempo, smoothness 같은 시상면 및 중심선 피처를 우선한다. 좌우 ROM symmetry, hip depth
+기반 pelvic rotation, 기타 depth-sensitive bilateral comparison은 나쁜 movement-quality score로
+변환하지 않고 `low_confidence` 또는 `not_assessed`로 남긴다.
+
 ---
 
 ## 6. 권장 view 해석
@@ -127,7 +139,6 @@ pelvic shift, 좌우 무릎 정렬을 보기 좋고, 측면에 가까울수록 �
 이 문서의 패턴 설명은 개발 요구사항이 아니다. 다만 점수화 후보로 승격할 경우 다음 순서가
 적절하다.
 
-1. `docs/code_revision_plan.md`에 후보와 식별 가능성 근거를 기록한다.
+1. `docs_eng/pipeline/`과 `docs/pipeline/`에 feature 정의와 provenance 규칙을 문서화한다.
 2. 운동 YAML의 `compensation_candidates` 또는 `analysis_disrupting_patterns`와 연결한다.
-3. `docs_eng/pipeline/`과 `docs/pipeline/`에 feature 정의와 provenance 규칙을 문서화한다.
-4. 합성 또는 최소 annotation fixture로 반복 가능한 식별 가능성을 테스트한다.
+3. 합성 또는 최소 annotation fixture로 반복 가능한 식별 가능성을 테스트한다.

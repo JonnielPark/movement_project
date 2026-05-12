@@ -1,6 +1,6 @@
 # 09. 생체역학 프록시 (Biomechanical Proxy)
 
-**문서 버전:** 1.0.0  
+**문서 버전:** 1.0.1
 **최종 갱신:** 2026-05-06  
 **영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
@@ -245,5 +245,5 @@ tests/test_biomech_load_shift.py         17건: slope 부호, 최소 반복 가�
 - `pike_pushup`, `plank_shoulder_tap`에 대한 역방향 자세 처리
   (인체 계측 표는 신체 방향 불변이지만, 역방향 닫힌 사슬 자세에서 랜드마크 매핑은
   검증이 필요)
-- 가려짐 / 노이즈 환경에서 CoM 안정성의 강건성 검증 (Task ⑫)
+- 가려짐 / 노이즈 환경에서 CoM 안정성의 강건성 검증 (Task C)
 ```

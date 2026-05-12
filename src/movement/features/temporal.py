@@ -1,5 +1,5 @@
 """
-⑧ Temporal Features
+⑥ Temporal Features
 
 Computes rep tempo (duration in seconds) and inter-rep variability (CV).
 
@@ -9,6 +9,7 @@ Unit convention:
 
 Input: normalized pose dataframe (with annotation columns) and ExerciseDefinition.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -19,7 +20,7 @@ import pandas as pd
 from movement.features import FeatureRecord
 
 if TYPE_CHECKING:
-    from movement.exercise_definition import ExerciseDefinition
+    from movement.definitions.exercise_definition import ExerciseDefinition
 
 
 def compute_tempo(
@@ -57,7 +58,8 @@ def compute_tempo(
         rep_mask = rep_mask & (df["rep_id"] == rep_id)
 
     target_ids = (
-        [rep_id] if rep_id is not None
+        [rep_id]
+        if rep_id is not None
         else sorted(df.loc[rep_mask, "rep_id"].dropna().unique())
     )
 
@@ -67,14 +69,16 @@ def compute_tempo(
         if len(ts) < 2:
             continue
         duration = float(ts.iloc[-1] - ts.iloc[0])
-        records.append(FeatureRecord(
-            feature_id=f"temporal.tempo.rep_{int(rid)}",
-            exercise_id=ex_id,
-            rep_id=int(rid),
-            value=round(duration, 3),
-            unit="second",
-            source_fields=["feature_domains.temporal"],
-        ))
+        records.append(
+            FeatureRecord(
+                feature_id=f"temporal.tempo.rep_{int(rid)}",
+                exercise_id=ex_id,
+                rep_id=int(rid),
+                value=round(duration, 3),
+                unit="second",
+                source_fields=["feature_domains.temporal"],
+            )
+        )
 
     return records
 
@@ -98,11 +102,13 @@ def compute_variability(
     std_v = float(np.std(values, ddof=1))
     cv = std_v / (mean_v + 1e-9)
 
-    return [FeatureRecord(
-        feature_id="temporal.variability.tempo_cv",
-        exercise_id=ex_id,
-        rep_id=None,
-        value=round(cv, 4),
-        unit="dimensionless_cv",
-        source_fields=["feature_domains.temporal"],
-    )]
+    return [
+        FeatureRecord(
+            feature_id="temporal.variability.tempo_cv",
+            exercise_id=ex_id,
+            rep_id=None,
+            value=round(cv, 4),
+            unit="dimensionless_cv",
+            source_fields=["feature_domains.temporal"],
+        )
+    ]

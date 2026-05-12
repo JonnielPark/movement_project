@@ -1,6 +1,6 @@
 # 01. Validation
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
@@ -114,6 +114,6 @@ validation:
 
 ## 6. Planned Extensions
 
-- Missing value heatmap visualization (⑩ step)
+- Missing value heatmap visualization (⑥ step)
 - Coordinate unit auto-detection (pixel vs. normalized)
 - Enhanced temporal gap distribution statistics

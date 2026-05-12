@@ -28,7 +28,7 @@ traffic-light 보조 라벨을 정의한다.
 
 ```text
 data/definitions/clinical/fms_mapping.yaml
-src/movement/clinical.py
+src/movement/definitions/clinical.py
 tests/test_fms_mapping.py
 ```
 

@@ -21,6 +21,7 @@ plus a simulation_log dict.
 Unit convention: distances/displacements in torso_length_ratio; angles in degree.
 Absolute units (N, kg, m) are not used.
 """
+
 from __future__ import annotations
 
 from movement.simulation.synthetic import (  # noqa

@@ -1,6 +1,6 @@
 # 12. In-silico Simulation
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.1
 **Last Updated:** 2026-05-06  
 **Korean Sync:** `docs/pipeline/12_insilico_simulation.md` is the same-version Korean source.
 
@@ -19,7 +19,7 @@ diagnostic accuracy. Corresponds to dissertation §8.
 
 ```text
 Pose CSV
-→ ① ~ ⑪ analysis pipeline (normal flow)
+→ ① ~ ⑩ analysis pipeline (normal flow)
                                        ↑
                                        │
    ⑫ Simulation  ──── inject distortion ┘
@@ -131,7 +131,7 @@ Mirror of `configs/pipeline_default.yaml :: simulation`:
 | Occlusion duration       | 5, 15, 30 frames                        | Robustness to occlusion                           |
 | Velocity spike magnitude | 0.2, 0.5, 1.0 (`torso_length_ratio`)    | Robustness to estimation instability              |
 
-The matrix is mirrored 1:1 in the YAML so that operators do not edit Python
+The matrix is mirrored 1:1 in the YAML so that operators do not edit iython
 code to add a level.
 
 ## 5. Robustness Metrics

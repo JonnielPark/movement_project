@@ -6,7 +6,8 @@
 # Terminology  : docs/terminology.md
 # Markdown doc : docs/clinical/per_exercise_mapping.md
 # Forbidden vocabulary: no "diagnose / diagnostic / abnormal / patient /
-#   clinically significant / clinically meaningful" (see code_revision_plan §0 Principle 4)
+#   clinically significant / clinically meaningful" unless supported by the
+#   terminology clinical language-use policy.
 #
 # Schema per entry:
 #   domain          : spatial | temporal | control

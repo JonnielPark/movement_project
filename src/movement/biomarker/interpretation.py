@@ -19,6 +19,7 @@ Condition types supported in rule `when` blocks:
 Rule firing: ALL conditions in `when` must be True. Unmatched rules are silently
 skipped. No exception may propagate out of derive_interpretations().
 """
+
 from __future__ import annotations
 
 import re
@@ -40,6 +41,7 @@ _LOAD_SHIFT_RE = re.compile(
 
 # ── Output dataclass ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class InterpretationRecord:
     """Interpretation of one BiomarkerScoreRecord firing one rule.
@@ -54,16 +56,18 @@ class InterpretationRecord:
     triggered_by  : condition keys in `when` that caused the rule to fire
     source_fields : YAML rule provenance + score source_fields
     """
-    score_id:     str
-    exercise_id:  str
-    rep_id:       int | None
-    rule_id:      str
-    label:        str
+
+    score_id: str
+    exercise_id: str
+    rep_id: int | None
+    rule_id: str
+    label: str
     triggered_by: list[str] = field(default_factory=list)
     source_fields: list[str] = field(default_factory=list)
 
 
 # ── Rule loader ───────────────────────────────────────────────────────────────
+
 
 def load_rules(exercise_id: str, rules_dir: Path | str | None = None) -> list[dict]:
     """Load interpretation rules for one exercise from YAML.
@@ -90,6 +94,7 @@ def load_rules(exercise_id: str, rules_dir: Path | str | None = None) -> list[di
 
 # ── Condition helpers ─────────────────────────────────────────────────────────
 
+
 def _threshold_check(value: float, spec: Any) -> bool:
     """Check a numeric value against a threshold spec.
 
@@ -99,10 +104,14 @@ def _threshold_check(value: float, spec: Any) -> bool:
     if isinstance(spec, dict):
         for op, threshold in spec.items():
             threshold = float(threshold)
-            if op == "lt"  and not (value <  threshold): return False
-            if op == "gt"  and not (value >  threshold): return False
-            if op == "lte" and not (value <= threshold): return False
-            if op == "gte" and not (value >= threshold): return False
+            if op == "lt" and not (value < threshold):
+                return False
+            if op == "gt" and not (value > threshold):
+                return False
+            if op == "lte" and not (value <= threshold):
+                return False
+            if op == "gte" and not (value >= threshold):
+                return False
         return True
     return float(value) == float(spec)
 
@@ -138,7 +147,7 @@ def _evaluate_condition(
 
     # floor_applied.<domain>
     if key.startswith("floor_applied."):
-        domain = key[len("floor_applied."):]
+        domain = key[len("floor_applied.") :]
         actual = score.floor_applied.get(domain, False)
         return actual == bool(spec)
 
@@ -148,7 +157,7 @@ def _evaluate_condition(
 
     # load_shift_slope.<joint> or <joint>.<side>
     if key.startswith("load_shift_slope."):
-        suffix = key[len("load_shift_slope."):]
+        suffix = key[len("load_shift_slope.") :]
         matching = {k: v for k, v in load_shift.items() if k.startswith(suffix)}
         if not matching:
             return False
@@ -156,7 +165,7 @@ def _evaluate_condition(
 
     # domain_score.<domain>
     if key.startswith("domain_score."):
-        domain = key[len("domain_score."):]
+        domain = key[len("domain_score.") :]
         actual = score.domain_scores.get(domain)
         if actual is None:
             return False
@@ -176,6 +185,7 @@ def _evaluate_condition(
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
+
 
 def derive_interpretations(
     score: Any,
@@ -242,7 +252,9 @@ def _derive_interpretations_inner(
 
         for cond_key, cond_spec in when.items():
             try:
-                met = _evaluate_condition(cond_key, cond_spec, score, dominant, load_shift)
+                met = _evaluate_condition(
+                    cond_key, cond_spec, score, dominant, load_shift
+                )
             except Exception:
                 met = False
             if not met:
@@ -259,15 +271,17 @@ def _derive_interpretations_inner(
         )
         sf = [yaml_provenance] + list(getattr(score, "source_fields", []))
 
-        results.append(InterpretationRecord(
-            score_id=score.score_id,
-            exercise_id=score.exercise_id,
-            rep_id=score.rep_id,
-            rule_id=rule_id,
-            label=label,
-            triggered_by=fired_keys,
-            source_fields=sf,
-        ))
+        results.append(
+            InterpretationRecord(
+                score_id=score.score_id,
+                exercise_id=score.exercise_id,
+                rep_id=score.rep_id,
+                rule_id=rule_id,
+                label=label,
+                triggered_by=fired_keys,
+                source_fields=sf,
+            )
+        )
 
     return results
 

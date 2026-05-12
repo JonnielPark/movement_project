@@ -1,11 +1,11 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.9
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.4.13
+**최종 갱신:** 2026-05-12
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
-모든 후속 단계(④–⑨)가 운동별 로직 적용을 위해 참조하는 `ExerciseDefinition` 객체를 반환한다.
+모든 후속 단계(④–⑩)가 운동별 로직 적용을 위해 참조하는 `ExerciseDefinition` 객체를 반환한다.
 
 ---
 
@@ -91,6 +91,7 @@ compensation_candidates:       # 모니터링할 보상 움직임 목록
 feature_domains:               # 활성화할 공간/시간/제어 피처
 view_requirements:             # 선호 카메라 뷰
 camera_protocol:               # 권장 촬영 zone/height와 경고 정책
+view_metric_reliability:       # zone별 metric family reliability prior
 quality_rules:                 # 분석 적격성 임계값
 notes: string
 ```
@@ -202,6 +203,12 @@ phase_segmentation:
 
 ```yaml
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition       # repetition | left_right_pair | hold_seconds
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition       # repetition | left_right_pair | hold_seconds
@@ -226,16 +233,23 @@ performance_protocol:
 필드 의미:
 
 ```text
-target_count                  피험자 안내 기준 목표 횟수
-count_unit                    프로토콜상 1회가 의미하는 단위
-segmentation_reps_per_count   프로토콜 1회에 대응되는 세그멘테이션 원자 반복 수
+prescription.target_sets              이 운동의 계획 취득 세트 수
+prescription.target_count_per_set     세트당 피험자 안내 기준 목표 횟수
+prescription.count_unit               프로토콜상 1회가 의미하는 단위
+prescription.segmentation_reps_per_count
+                                       프로토콜 1회에 대응되는 세그멘테이션 원자 반복 수
+prescription.rest_between_sets_s      세트 사이 계획 휴식 범위(초)
+counting.target_count                 target_count_per_set의 하위 호환 mirror
+counting.count_unit                   prescription.count_unit의 하위 호환 mirror
+counting.segmentation_reps_per_count  prescription.segmentation_reps_per_count의 하위 호환 mirror
 side_sequence.mode            프로토콜 수준의 기대 좌우 순서
 block_size_counts             블록 기반 전환에서 한쪽을 유지하는 횟수
 first_side_source             첫 수행 측을 선언하는 위치
 allowed_side_sequence_modes   이 운동/프로토콜 계열에서 허용 가능한 좌우 순서 variant;
                                side_sequence.mode는 본 연구에서 선택한 수행 프로토콜
 allow_partial_completion      목표 횟수 미만 수행을 메타데이터와 함께 수용할지 여부
-recommended_sets              실전 취득 권장 세트 수; 자동 반복 배수는 아님
+recommended_sets              prescription.target_sets의 하위 호환 mirror;
+                               실전 취득 권장 세트 수이며 자동 반복 배수는 아님
 analysis_disrupting_patterns  분석 중 관찰/기록할 수행 패턴 후보; 자동 제외 규칙 아님
 ```
 
@@ -244,6 +258,12 @@ analysis_disrupting_patterns  분석 중 관찰/기록할 수행 패턴 후보; 
 ```yaml
 # 런지: 한쪽 5회 뒤 반대쪽 5회.
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition
@@ -259,6 +279,12 @@ performance_protocol:
 
 # 플랭크 숄더탭: 좌우 한 쌍을 프로토콜 1회로 계산.
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: left_right_pair
+    segmentation_reps_per_count: 2
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: left_right_pair
@@ -273,27 +299,33 @@ performance_protocol:
     recommended_sets: 3
 ```
 
+`prescription`은 세트 수, 세트당 목표 횟수, count 단위, segmentation-count 대응, 계획 휴식
+시간을 담는 표준 계획 프로토콜 블록이다. 현재 migration 단계에서는 기존 코드와 테스트가
+읽는 `counting`과 `completion.recommended_sets`를 하위 호환 mirror로 유지한다. 두 표현이
+함께 있으면 서로 일치해야 한다.
+
 현재 구현은 ③ Exercise Definition에서 이 메타데이터를 파싱하고 검증한다.
 ⑦ Motion Attribution은 `performance_protocol.side_sequence`를 먼저 읽고, 프로토콜 규칙이
 선언되지 않은 경우에만 annotation의 `pattern` / `starting_side` 동작으로 fallback한다.
 `allowed_side_sequence_modes`는 프로토콜 설계 필드이다. 이 필드는 해당 운동에서 허용 가능한
 variant를 기록하지만, 런타임 attribution에서 선택된 `side_sequence.mode`를 덮어쓰지 않는다.
 
-수행 프로토콜의 카운트, 좌우 순서, 완료 규칙처럼 운동 정의에 고정되어야 하는 취득 규칙은
-`performance_protocol`에 둔다. 실제 촬영에서 발생한 결과(`actual_rep_count`,
-`failure_point_frame`, `failure_reason` 등)는 운동 정의가 아니라 ② Annotation 또는 recording
-metadata에 둔다. 보상 움직임 후보는 `compensation_candidates`와 `feature_domains.control`에
+계획 세트 수, 세트당 목표 횟수, count 단위, 좌우 순서, 완료 규칙처럼 운동 정의에 고정되어야
+하는 취득 규칙은 `performance_protocol.prescription`과 관련 protocol-level 필드에 둔다.
+실제 촬영에서 발생한 결과(`set_index`, `actual_rep_count`, `failure_point_frame`,
+`failure_reason` 등)는 운동 정의가 아니라 ② Annotation 또는 recording metadata에 둔다.
+목표 횟수 미달은 partial completion 또는 해석 신뢰도 저하로 표시해야 하며, 동작 품질 점수
+감점으로 직접 변환하지 않는다. 보상 움직임 후보는 `compensation_candidates`와
+`feature_domains.control`에
 선언하고, ⑧–⑩에서 구현되지 않은 후보는 숨기지 않고 report에 남긴다.
 `analysis_disrupting_patterns`는 관절 포인트 시계열에서 반복 가능하게 식별되는 경우에는
 동작 품질 점수 또는 보상 움직임 후보로 연결될 수 있다. 포즈 데이터만으로 안정적으로 구분하기
 어려운 경우에는 점수화하지 않고, 취득 통제 요인 또는 결과 해석 제한 요인으로 남긴다.
 두 경우 모두 기본 동작은 자동 제외가 아니라 observation note, warning, provenance 기록이다.
-개발 중 임시 매핑과 TODO는 출간 후 취득 프로토콜 문서가 아니라 git에서 제외된
-`docs/code_revision_plan.md`에만 둔다.
+개발 중 임시 매핑과 TODO는 출간 후 취득 프로토콜 문서에 남기지 않는다.
 
-A4는 이 목록에 대한 downstream detectability audit를 정의한다. YAML 필드는 여전히 단순한
-pattern 이름 목록으로 유지하고, 감사 리포트가 각 선언 항목을 네 가지 구현 범주 중 하나로
-분류한다.
+Downstream detectability audit는 이 목록을 평가한다. YAML 필드는 여전히 단순한 pattern 이름
+목록으로 유지하고, 감사 리포트가 각 선언 항목을 네 가지 구현 범주 중 하나로 분류한다.
 
 ```text
 pose_detectable_scoring_candidate
@@ -383,7 +415,7 @@ compensation_candidates:
   - lateral_pelvic_shift
 ```
 
-여기에 명시된 보상 움직임만 ⑩에서 바이오마커로 산출된다.
+여기에 명시된 보상 움직임만 ⑥에서 바이오마커로 산출된다.
 
 전체 어휘:
 
@@ -483,6 +515,81 @@ level이 권장 조건과 맞지 않으면 warning/provenance로만 보고한다
 피험자 안내 문구와 분석을 방해하는 수행 패턴은
 [exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md)를 참조한다.
 
+### view_metric_reliability
+
+`view_metric_reliability`는 각 camera zone이 각 metric family를 얼마나 잘 뒷받침하는지 기록하는
+계획된 운동 정의 블록이다. 좌표 보정 규칙이 아니며, 데이터를 거부하지 않는다. ⑧ Feature
+Extraction, ⑩ Biomarker Derivation, ⑪ Visualization이 사용할 reliability prior를 제공하여,
+피처 값은 계산되더라도 해당 view가 해석을 뒷받침하지 않으면 `low_confidence` 또는
+`not_assessed`로 표시할 수 있게 한다.
+
+reliability 값은 다음처럼 해석한다.
+
+```text
+high            view가 해당 metric family를 직접 뒷받침
+moderate        view가 알려진 tradeoff와 함께 지표를 뒷받침
+low             계산은 가능할 수 있으나 기본적으로 review-only로 남김
+not_assessed    해당 view에서는 scoring에 넣지 않음
+```
+
+양측 대칭 운동에서는 관상면 지표와 시상면 지표의 tradeoff를 보존한다.
+
+```yaml
+view_metric_reliability:
+  structure: bilateral_symmetric
+  zones:
+    Z1:
+      bilateral_symmetry: high
+      frontal_alignment: high
+      sagittal_rom: low
+      depth: low
+      trunk_flexion: low
+      heel_lift: low
+    Z2:
+      bilateral_symmetry: moderate
+      frontal_alignment: high
+      sagittal_rom: moderate
+      depth: moderate
+      trunk_flexion: moderate
+      heel_lift: moderate
+    Z3:
+      sagittal_rom: high
+      depth: high
+      trunk_flexion: high
+      heel_lift: moderate
+      bilateral_symmetry: low
+      frontal_alignment: low
+```
+
+편측 또는 교대 운동에서는 단순 anatomical left/right가 아니라 역할 기반으로 기록한다.
+
+```yaml
+view_metric_reliability:
+  structure: unilateral_or_alternating
+  role_labels: [forward_leg, trailing_leg, active_side, support_side]
+  zones:
+    Z1:
+      side_order: high
+      step_width: high
+      frontal_alignment: high
+      pelvis_drop_or_shift: high
+      sagittal_rom: low
+      rear_limb_extension: low
+    Z3:
+      forward_limb_sagittal_rom: high
+      rear_limb_extension: high
+      anterior_knee_travel: high
+      trunk_flexion: high
+      frontal_alignment: low
+      pelvis_drop_or_shift: low
+      side_to_side_comparison: low
+```
+
+런지에서는 측면 view가 forward-leg 무릎 전방 이동, rear-limb extension, 체간 정렬, 보폭을 강하게
+뒷받침하지만, 관상면 knee valgus나 pelvis drop은 낮은 confidence가 될 수 있다. 정면 view는
+그 반대다. side-to-side 비교는 active-side provenance와 near/far-side reliability가 충분할 때만
+scoring 후보가 된다.
+
 ### quality_rules
 
 ```yaml
@@ -580,6 +687,12 @@ phase_segmentation:
   multi_inflection_policy: global_extremum
 
 performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s: [120, 180]
   counting:
     target_count: 10
     count_unit: repetition

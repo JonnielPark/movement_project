@@ -1,6 +1,6 @@
 # 02. Annotation
 
-**Document Version:** 1.1.4
+**Document Version:** 1.1.5
 **Last Updated:** 2026-05-10
 **Korean Sync:** `docs/pipeline/02_annotation.md` is the same-version Korean source.
 
@@ -113,7 +113,7 @@ Rules:
 - A failure point is not a segmentation failure point. It marks where the
   participant stopped maintaining the protocol task.
 - The default behavior is warning/provenance only. Downstream scoring or figure
-  captions may display the note, but ② does not exclude frames and ⑩ does not
+  captions may display the note, but ② does not exclude frames and ⑥ does not
   penalize scores solely from these metadata fields.
 ```
 
