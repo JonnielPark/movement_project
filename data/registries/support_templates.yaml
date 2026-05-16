@@ -1,0 +1,26 @@
+version: 0.1.0
+templates:
+  bilateral_feet:
+    base_of_support: bilateral_feet
+    contact_points: [left_foot, right_foot]
+    support_surface: floor
+    weight_bearing_regions: [left_foot, right_foot]
+
+  split_stance:
+    base_of_support: split_stance
+    contact_points: [left_foot, right_foot]
+    support_surface: floor
+    weight_bearing_regions: [left_foot, right_foot]
+
+  hands_and_feet:
+    base_of_support: hands_and_feet
+    contact_points: [left_hand, right_hand, left_foot, right_foot]
+    support_surface: floor
+    weight_bearing_regions: [left_hand, right_hand, left_foot, right_foot]
+
+  hands_and_feet_with_trunk:
+    base_of_support: hands_and_feet
+    contact_points: [left_hand, right_hand, left_foot, right_foot]
+    support_surface: floor
+    weight_bearing_regions: [left_hand, right_hand, left_foot, right_foot, trunk]
+

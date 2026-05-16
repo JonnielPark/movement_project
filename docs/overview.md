@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.31
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.4.32
+**최종 갱신:** 2026-05-16
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -13,15 +13,16 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.7 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.31 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.2.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.5.1 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.32 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.3.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 0.1.1 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
 | 1.0.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.0.1 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.5 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.12 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.4.15 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.1 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.2.5 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
 | 1.2.3 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
@@ -69,24 +70,35 @@
 
 ## 1. 핵심 설계: YAML 객체로서의 운동 정의 (Exercise Definitions as YAML Objects)
 
-각 운동은 `data/definitions/exercises/<exercise_id>.yaml`의 YAML 객체로 기술한다.
-모든 파이프라인 단계는 동일한 `ExerciseDefinition` 객체를 소비하며, 운동별 동작은
-YAML 필드에서 결정된다.
+각 운동은 `exercise_id`로 조립되는 `ExerciseContext`에서 로드한다. 현재 대상 운동은 split
+YAML 산출물을 사용한다. Exercise definition은 운동 정체성만 유지하고, analysis,
+performance, camera 설정은 별도 파일에 둔다. loader는 하위 호환을 위해 legacy combined
+exercise YAML도 계속 지원하며, 후속 파이프라인 단계에는 기존과 같은 `ExerciseDefinition`
+객체를 반환한다. [exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md)를
+참조한다.
 
-운동 YAML에 정의되는 필드:
+split YAML 산출물에 정의되는 필드:
 
 ```text
+data/definitions/exercises/<exercise_id>.yaml
 classification        laterality, primary_plane, movement_chain, posture_type
-landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_of_support
 phases                구간 모델 (예: eccentric / concentric)
+
+data/definitions/analysis_profiles/<exercise_id>.yaml
+landmarks             primary_joints, critical_landmarks, bilateral_pairs
 rep_segmentation      반복 경계 검출 설정
 phase_segmentation    반복 내부 phase 검출 설정
-performance_protocol  피험자 안내 기준 카운트와 좌우 수행 순서 규칙
-camera_protocol       권장 촬영 zone/height와 경고 정책
 compensation_candidates  모니터링할 움직임 패턴
 feature_domains       활성화할 공간/시간/제어 피처
 biomechanical_focus   계산할 프록시(proxy) 지표
 quality_rules         가시성 임계값, 최대 보간 갭 등
+
+data/protocols/performance/<exercise_id>.yaml
+performance_protocol  피험자 안내 기준 카운트와 좌우 수행 순서 규칙
+
+data/protocols/camera/<exercise_id>.yaml
+camera_protocol       권장 촬영 zone/height와 경고 정책
+view_metric_reliability  zone별 metric-family reliability prior
 ```
 
 운동별 YAML이 없을 경우 일반 폴백(generic fallback) 정의(`generic.yaml`)가 로드된다.
@@ -144,7 +156,7 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
 |---|---|---|---|
 | ① Validation | Pose CSV | 필수 칼럼, 프레임 순서, 시간값, 랜드마크 좌표 구조, 결측 패턴을 검사한다. | Validation report |
 | ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼, performance/failure provenance 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
-| ③ Exercise Definition | `exercise_type`, exercise YAML | 운동별 YAML을 로드하여 `ExerciseDefinition` 객체를 생성하고, 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 정의 메타데이터로 보존한다. | ExerciseDefinition, camera protocol metadata |
+| ③ Exercise Definition | `exercise_type`, split YAML 산출물 또는 legacy combined YAML | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. 필요 시 선택 `canonicalization` 층에서 support plane, movement plane, body axis prior를 이용해 단안 pose의 일관된 관찰 편향을 완화한다. 현재 구현된 floor-relative 보정은 support-plane prior로 취급하며, raw/norm/canon 좌표 계열을 분리한다. | Normalized DataFrame; 선택 canonical coordinate columns, correction diagnostics, data-confidence/correction report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
@@ -179,7 +191,8 @@ quality_rules         가시성 임계값, 최대 보간 갭 등
         pelvis_rotation              좌·우 골반 깊이 비대칭 (횡단면 프록시)
 ```
 
-특정 운동에 어떤 도메인이 활성인지는 운동 YAML의 `feature_domains` 필드로 제어된다.
+특정 운동에 어떤 도메인이 활성인지는 analysis profile YAML의 `feature_domains` 필드로
+제어된다.
 
 ---
 
@@ -295,8 +308,9 @@ support-plane prior로 취급하며, 좋은 동작 template에 강제로 맞추�
 
 2027.02 – 2027.05  강건성 시뮬레이션, reporting, 논문 산출물
   [부분]  시뮬레이션 조건 인젝터(injector) — 노이즈, 가려짐, ROM 제한, 속도 스파이크
-  [다음]  Task A — analysis-space canonicalization 설계와 raw/norm/canon 검토
-  [계획]  Task B — 측면 촬영 반대측 landmark jitter 전처리 안정화
+  [다음]  Task 0 — exercise authoring notebook과 YAML 분리
+  [완료]  Task A — analysis-space canonicalization 설계와 raw/norm/canon 검토
+  [부분]  Task B — 측면 촬영 반대측 landmark jitter 전처리 안정화
   [계획]  Task C — 구조화된 motion-attribution correction log와 false-correction 지표
   [계획]  Task D — viewpoint/compensation simulation injector, robustness experiment runner, long-format output, summary report
   [계획]  Task E — 논문용 정적 reporting figure와 save_figure()

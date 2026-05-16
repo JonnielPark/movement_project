@@ -1,19 +1,20 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.14
-**Last Updated:** 2026-05-12
+**Document Version:** 1.4.15
+**Last Updated:** 2026-05-16
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
-Pipeline step ③. Loads exercise YAML files from `data/definitions/exercises/`.
-Returns an `ExerciseDefinition` object that all downstream steps (④–⑩) reference
-to apply exercise-specific logic.
+Pipeline step ③. Loads split exercise YAML artifacts by `exercise_id`, assembles an
+`ExerciseContext`, and returns a backward-compatible `ExerciseDefinition` object
+that all downstream steps (④–⑩) reference to apply exercise-specific logic. Legacy
+combined exercise YAML remains supported for compatibility.
 
 ---
 
 ## 1. Pipeline Position
 
 ```text
-Pose CSV + annotation + exercise YAML
+Pose CSV + annotation + exercise YAML artifacts
 → ① Validation
 → ② Annotation                    (exercise_type, pattern declared)
 → ③ Exercise Definition           ← this step
@@ -31,11 +32,28 @@ Annotation describes *where* the movement happened.
 
 ## 2. Design
 
-Exercise-specific behavior is expressed as YAML data, not code branches.
-Adding a new exercise = writing one YAML file in `data/definitions/exercises/`.
+Exercise-specific behavior is expressed as YAML data, not code branches. For the
+current target exercises, adding or editing an exercise means maintaining split
+artifacts for movement identity, analysis profile, performance protocol, and
+camera protocol.
 
 Every biomarker produced by ⑧–⑩ must reference `source_fields` pointing to the
 definition fields that drove its computation.
+
+### Runtime split
+
+The current runtime layout is:
+
+```text
+exercise definition   movement identity only
+analysis profile      segmentation, landmarks, angle definitions, feature domains, quality overrides
+performance protocol  participant-facing count, side sequence, cues, analysis-disrupting patterns
+camera protocol       recommended zones/heights and view-metric reliability
+```
+
+New exercises should be prototyped through the notebook-first authoring flow before
+more fields are added to `data/definitions/exercises/<exercise_id>.yaml`. See
+[exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md).
 
 ## 3. Available Definitions
 
@@ -46,6 +64,24 @@ data/definitions/exercises/
     pike_pushup.yaml
     plank_shoulder_tap.yaml
     generic.yaml               ← fallback
+
+data/definitions/analysis_profiles/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
+
+data/protocols/performance/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
+
+data/protocols/camera/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
 ```
 
 ## 4. Fallback Behavior
@@ -70,6 +106,10 @@ feature_domains:
 ```
 
 ## 5. YAML Schema Overview
+
+The split schema is the current source for the target exercises. The legacy
+combined schema is still accepted by the loader and is shown below as the merged
+runtime shape consumed by `ExerciseDefinition`.
 
 ```yaml
 exercise_id: string            # snake_case unique identifier

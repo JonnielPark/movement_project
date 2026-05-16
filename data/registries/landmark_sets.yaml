@@ -1,0 +1,53 @@
+version: 0.1.0
+sets:
+  lower_body_mediapipe_33:
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle]
+      secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis, left_foot, right_foot]
+      critical_landmarks: [23, 24, 25, 26, 27, 28]
+      optional_landmarks: [11, 12, 29, 30, 31, 32]
+    angle_definitions:
+      left_hip_angle: {points: [11, 23, 25], vertex: 23}
+      right_hip_angle: {points: [12, 24, 26], vertex: 24}
+      left_knee_angle: {points: [23, 25, 27], vertex: 25}
+      right_knee_angle: {points: [24, 26, 28], vertex: 26}
+      left_ankle_angle: {points: [25, 27, 31], vertex: 27}
+      right_ankle_angle: {points: [26, 28, 32], vertex: 28}
+      shoulder_line_angle: {points: [11, 12]}
+      pelvis_line_angle: {points: [23, 24]}
+
+  upper_push_mediapipe_33:
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist]
+      secondary_joints: [trunk, pelvis, left_hip, right_hip, head]
+      critical_landmarks: [11, 12, 13, 14, 15, 16, 23, 24]
+      optional_landmarks: [0, 25, 26, 27, 28]
+    angle_definitions:
+      left_shoulder_angle: {points: [23, 11, 13], vertex: 11}
+      right_shoulder_angle: {points: [24, 12, 14], vertex: 12}
+      left_elbow_angle: {points: [11, 13, 15], vertex: 13}
+      right_elbow_angle: {points: [12, 14, 16], vertex: 14}
+      left_hip_angle: {points: [11, 23, 25], vertex: 23}
+      right_hip_angle: {points: [12, 24, 26], vertex: 24}
+      shoulder_line_angle: {points: [11, 12]}
+      pelvis_line_angle: {points: [23, 24]}
+
+  plank_tap_mediapipe_33:
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [left_wrist, right_wrist, left_shoulder, right_shoulder]
+      secondary_joints: [trunk, pelvis, left_hip, right_hip, left_ankle, right_ankle]
+      critical_landmarks: [11, 12, 15, 16, 23, 24]
+      optional_landmarks: [13, 14, 25, 26, 27, 28]
+    angle_definitions:
+      left_shoulder_angle: {points: [23, 11, 13], vertex: 11}
+      right_shoulder_angle: {points: [24, 12, 14], vertex: 12}
+      left_elbow_angle: {points: [11, 13, 15], vertex: 13}
+      right_elbow_angle: {points: [12, 14, 16], vertex: 14}
+      left_hip_angle: {points: [11, 23, 25], vertex: 23}
+      right_hip_angle: {points: [12, 24, 26], vertex: 24}
+      shoulder_line_angle: {points: [11, 12]}
+      pelvis_line_angle: {points: [23, 24]}
+

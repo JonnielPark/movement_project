@@ -15,11 +15,35 @@ from movement.pipeline import (
 
 
 DEFINITIONS_DIR = Path("data/definitions/exercises")
+ANALYSIS_DIR = Path("data/definitions/analysis_profiles")
+PERFORMANCE_DIR = Path("data/protocols/performance")
+CAMERA_DIR = Path("data/protocols/camera")
 
 
 def _write_modified_squat(tmp_path: Path, **camera_updates: object) -> None:
     raw = yaml.safe_load((DEFINITIONS_DIR / "squat.yaml").read_text(encoding="utf-8"))
+    analysis = yaml.safe_load((ANALYSIS_DIR / "squat.yaml").read_text(encoding="utf-8"))
+    performance = yaml.safe_load(
+        (PERFORMANCE_DIR / "squat.yaml").read_text(encoding="utf-8")
+    )
+    camera = yaml.safe_load((CAMERA_DIR / "squat.yaml").read_text(encoding="utf-8"))
+
     raw["exercise_id"] = "bad"
+    raw.update(
+        {
+            "rep_segmentation": analysis["rep_segmentation"],
+            "phase_segmentation": analysis["phase_segmentation"],
+            "landmarks": analysis["landmarks"],
+            "angle_definitions": analysis["angle_definitions"],
+            "biomechanical_focus": analysis["biomechanical_focus"],
+            "compensation_candidates": analysis["compensation_candidates"],
+            "feature_domains": analysis["feature_domains"],
+            "quality_rules": analysis["quality_rules"],
+            "performance_protocol": performance["performance_protocol"],
+            "camera_protocol": camera["camera_protocol"],
+            "view_metric_reliability": camera["view_metric_reliability"],
+        }
+    )
     raw["camera_protocol"].update(camera_updates)
     (tmp_path / "bad.yaml").write_text(
         yaml.safe_dump(raw, sort_keys=False),

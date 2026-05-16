@@ -1,0 +1,74 @@
+exercise_id: plank_shoulder_tap
+version: 0.5.2
+view_requirements:
+  preferred_views:
+  - front_oblique
+  acceptable_views:
+  - frontal
+  - rear_oblique
+  critical_landmarks:
+  - 11
+  - 12
+  - 15
+  - 16
+  - 23
+  - 24
+  visibility_sensitive_landmarks:
+  - 11
+  - 12
+  - 15
+  - 16
+  - 23
+  - 24
+  occlusion_risk: very_high
+camera_protocol:
+  recommended_zones:
+  - Z2
+  - Z8
+  recommended_height: H1
+  anchor: reference_mat
+  distance_cm:
+  - 200
+  - 250
+  primary_observation_purpose:
+  - pelvic_rotation
+  - weight_shift_control
+  - lateral_sway
+  out_of_zone_policy: warn_and_continue
+  coordinate_correction: none
+view_metric_reliability:
+  structure: unilateral_or_alternating
+  role_labels:
+  - active_side
+  - support_side
+  zones:
+    Z1:
+      side_order: high
+      lateral_shift: high
+      active_hand_trajectory: moderate
+      pelvis_rotation: low
+      true_tap_contact: low
+      hip_height: low
+    Z2:
+      side_order: high
+      lateral_shift: high
+      pelvis_rotation: high
+      active_hand_trajectory: high
+      support_shoulder_alignment: moderate
+      true_tap_contact: low
+      hip_height: moderate
+    Z3:
+      hip_height: high
+      trunk_sagittal_alignment: high
+      active_hand_trajectory: low
+      side_order: low
+      lateral_shift: low
+      pelvis_rotation: low
+    Z8:
+      side_order: high
+      lateral_shift: high
+      pelvis_rotation: high
+      active_hand_trajectory: high
+      support_shoulder_alignment: moderate
+      true_tap_contact: low
+      hip_height: moderate

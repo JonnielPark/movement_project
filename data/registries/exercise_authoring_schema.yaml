@@ -1,0 +1,26 @@
+version: 0.1.0
+required_fields:
+  - exercise_id
+  - display_name
+  - movement_pattern
+  - posture_type
+  - laterality
+  - support_template
+  - primary_body_regions
+  - primary_plane
+  - phase_template
+  - counting_template
+  - camera_template
+  - analysis_template
+optional_fields:
+  - description
+  - tags
+  - secondary_planes
+  - author_notes
+output_artifacts:
+  exercise_definition: data/definitions/exercises/<exercise_id>.yaml
+  analysis_profile: data/definitions/analysis_profiles/<exercise_id>.yaml
+  performance_protocol: data/protocols/performance/<exercise_id>.yaml
+  camera_protocol: data/protocols/camera/<exercise_id>.yaml
+draft_root: data/processed/authoring_drafts
+

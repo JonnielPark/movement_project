@@ -1,0 +1,124 @@
+version: 0.1.0
+patterns:
+  squat:
+    default_description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and ankle coordination.
+    default_tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
+    classification:
+      family: lower_body
+      equipment: none
+      load_type: bodyweight
+      external_load_position: none
+      kinetic_chain: closed_chain
+      movement_pattern: squat
+      complexity: compound
+    joint_actions:
+      primary:
+        - hip_flexion_extension
+        - knee_flexion_extension
+        - ankle_dorsiflexion_plantarflexion
+      secondary:
+        - trunk_flexion_extension
+        - pelvis_lateral_tilt_proxy
+        - pelvis_rotation_proxy
+    biomechanical_identity:
+      expected_com_motion: vertical
+      stability_requirement: medium
+      primary_constraints:
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - avoid_knee_valgus
+        - avoid_heel_lift
+
+  lunge:
+    default_description: Alternating split-stance lower-body movement where the forward leg loads while the rear leg controls hip extension.
+    default_tags: [bodyweight, lower_body, closed_chain, alternating, strength]
+    classification:
+      family: lower_body
+      equipment: none
+      load_type: bodyweight
+      external_load_position: none
+      kinetic_chain: closed_chain
+      movement_pattern: lunge
+      complexity: compound
+    joint_actions:
+      primary:
+        - hip_flexion_extension
+        - knee_flexion_extension
+        - ankle_dorsiflexion_plantarflexion
+      secondary:
+        - trunk_flexion_extension
+        - trunk_lateral_flexion
+        - pelvis_lateral_tilt_proxy
+        - pelvis_rotation_proxy
+        - weight_shift_control
+    biomechanical_identity:
+      expected_com_motion: vertical_and_anterior_posterior
+      stability_requirement: high
+      primary_constraints:
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - avoid_knee_valgus
+        - maintain_pelvis_level
+
+  push:
+    default_description: Inverted closed-chain upper-body push movement where the head descends toward the floor between the hands.
+    default_tags: [bodyweight, upper_body, closed_chain, bilateral, strength]
+    classification:
+      family: upper_body
+      equipment: none
+      load_type: bodyweight
+      external_load_position: none
+      kinetic_chain: closed_chain
+      movement_pattern: push
+      complexity: compound
+    joint_actions:
+      primary:
+        - shoulder_flexion_extension
+        - elbow_flexion_extension
+        - scapular_stability_proxy
+      secondary:
+        - trunk_flexion_extension
+        - pelvis_anterior_posterior_tilt_proxy
+        - hip_flexion_extension
+    biomechanical_identity:
+      expected_com_motion: vertical
+      stability_requirement: high
+      primary_constraints:
+        - maintain_hand_contact
+        - maintain_trunk_alignment
+        - maintain_head_position
+        - maintain_support_symmetry
+
+  anti_rotation:
+    default_description: Plank-position anti-rotation task where one hand alternately taps the opposite shoulder while the trunk and pelvis remain stable.
+    default_tags: [bodyweight, core, closed_chain, alternating, stability, anti_rotation]
+    classification:
+      family: core
+      equipment: none
+      load_type: bodyweight
+      external_load_position: none
+      kinetic_chain: closed_chain_alternating
+      movement_pattern: anti_rotation
+      complexity: compound
+    joint_actions:
+      primary:
+        - anti_rotation_control
+        - weight_shift_control
+        - shoulder_flexion_extension
+        - scapular_stability_proxy
+      secondary:
+        - trunk_rotation_proxy
+        - trunk_lateral_flexion
+        - pelvis_rotation_proxy
+        - pelvis_lateral_tilt_proxy
+        - hip_flexion_extension
+    biomechanical_identity:
+      expected_com_motion: medial_lateral
+      stability_requirement: very_high
+      primary_constraints:
+        - maintain_hand_contact
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - maintain_pelvis_level
+        - avoid_excessive_rotation
+

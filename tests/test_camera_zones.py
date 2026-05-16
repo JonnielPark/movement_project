@@ -4,7 +4,7 @@ import yaml
 
 
 CAMERA_ZONES_PATH = Path("data/camera/camera_zones.yaml")
-EXERCISES_DIR = Path("data/definitions/exercises")
+CAMERA_PROTOCOLS_DIR = Path("data/protocols/camera")
 
 
 def test_camera_zones_use_polar_ring_model():
@@ -60,8 +60,8 @@ def test_target_exercise_camera_protocol_recommended_zones():
     }
 
     for exercise_id, zones in expected_zones.items():
-        exercise = yaml.safe_load(
-            (EXERCISES_DIR / f"{exercise_id}.yaml").read_text(encoding="utf-8")
+        protocol = yaml.safe_load(
+            (CAMERA_PROTOCOLS_DIR / f"{exercise_id}.yaml").read_text(encoding="utf-8")
         )
 
-        assert exercise["camera_protocol"]["recommended_zones"] == zones
+        assert protocol["camera_protocol"]["recommended_zones"] == zones

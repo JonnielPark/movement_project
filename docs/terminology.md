@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.5.0
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.5.1
+**최종 갱신:** 2026-05-16
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -46,7 +46,10 @@
 
 | 용어 | 본 연구에서의 고정 의미 |
 |---|---|
-| 운동 정의 (Exercise definition) | 운동 이름 자체가 아니라 YAML 객체를 뜻한다. 운동별 landmarks, phase 설정, 보상 후보, feature domain, quality rules를 포함하며 후속 단계의 기준 객체가 된다. |
+| 운동 정의 (Exercise definition) | 운동 이름 자체가 아니라 운동 정체성 YAML 객체를 뜻한다. 목표 스키마에서는 이 동작이 무엇인지, 즉 classification, support, 주요 신체 영역, phase model, joint actions, 생체역학적 정체성을 기술한다. 마이그레이션 중에는 loader 호환성을 위해 기존 통합 YAML에 analysis와 protocol 필드가 남아 있을 수 있다. |
+| 운동 작성 스펙 (Exercise authoring spec) | notebook 또는 향후 UI에서 연구자의 선택값으로 만드는 작은 초안 객체. exercise definition, analysis profile, performance protocol, camera protocol YAML 산출물을 생성하는 입력이며, 파이프라인이 직접 소비하는 실행 기준 파일은 아니다. |
+| 분석 프로필 (Analysis profile) | 운동 정체성에서 분리된 운동별 분석 설정. segmentation 설정, landmark set, angle definition, 활성 feature domain, quality-rule override, compensation-candidate 초안 등을 포함한다. |
+| 운동 런타임 컨텍스트 (`ExerciseContext`) | 하나의 `exercise_id`에 대해 exercise definition과 관련 analysis, performance, camera YAML 산출물을 조합한 런타임 객체. 과도하게 큰 단일 exercise-definition YAML 객체를 파이프라인 전체에 전달하는 현재 구조의 목표 대체 형태다. |
 | 수행 실패 지점 (Performance failure point) | 피험자가 통증 없이 움직일 수 있더라도 해당 운동의 기본 자세, ROM, 리듬, 지지 기저면, 좌우 순서를 더 이상 일관되게 유지하지 못하기 시작하는 최초 반복/프레임 또는 recording 종료 지점. 근력이나 피로의 임상 진단 기준이 아니라 실제 반복 수와 중단 사유를 남기기 위한 취득/annotation 표지이며, 분할 실패 지점과 구분한다. |
 | 보상 움직임 (Compensatory movement) | 주 작업을 대체하거나 왜곡하는 비주요 움직임. 본 연구에서는 YAML의 `compensation_candidates`와 코드의 보상 규칙 레지스트리에 등록된 후보만 바이오마커로 산출한다. |
 | 검증 (Validation) | 입력 포즈 데이터의 구조적·형식적 무결성 점검. 강건성 평가와 구분하며, 데이터를 수정하지 않는다. |
