@@ -18,7 +18,7 @@
 ## 파이프라인 (Pipeline)
 
 ```text
-Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
+Pose CSV  +  annotation CSV  +  exercise YAML 산출물
             ↓
 ①  Validation          구조적 무결성 점검
 ②  Annotation          프레임 단위 구간 메타데이터 (phase 칼럼 예약)
@@ -38,7 +38,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 
 ---
 
-## 구현 상태 (2026-05-12)
+## 구현 상태 (2026-05-16)
 
 ### 완료
 
@@ -47,7 +47,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | Pose I/O 및 설정 | `core/io.py`, `core/config.py` | CSV 로딩, 랜드마크/연결 정의 |
 | ① Validation | `stages/validation.py` | 구조적 무결성 리포트 |
 | ② Annotation | `stages/annotation.py` | 프레임 단위 메타데이터 병합; 촬영/수행 provenance와 관찰 protocol metadata 보존; performance/failure provenance를 annotation report로 요약 |
-| ③ Exercise Definition | `definitions/exercise_definition.py` | YAML 로더 + 검증기 + generic 폴백; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` 로더 + 검증기 + generic 폴백; exercise identity / analysis profile / performance protocol / camera protocol split YAML; legacy combined YAML 하위 호환 |
 | ④ Preprocessing | `stages/preprocessing.py` | 가시성 게이팅, 분절 일관성, 각도 한계, 속도 이상값, 좌·우 swap, 보간, 평활화 |
 | ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도; 선택 `canonicalization`은 단안 pose의 일관된 관찰 편향을 줄여 분석 좌표계(raw/norm/canon)로 정렬하는 층; 현재 `support_plane_alignment`는 기존 floor-reference 구현을 감싸는 prior이며 기본 비활성화 |
 | ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
@@ -60,7 +60,7 @@ Pose CSV  +  annotation CSV  +  운동 정의 (exercise definition) YAML
 | 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑩ 결선; 선택 `canonicalization`과 `support_plane_alignment` report 연결; legacy `floor_relative_correction`은 하위 호환 alias로 유지 |
 | 프로토콜 메타데이터 스키마 | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
 | 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 현재 4대 운동 범위에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance 검증 완료 |
-| 단위 테스트 | `tests/` | 프로토콜/prescription 메타데이터 대상 테스트 18개 통과. 최근 full run 113개 전체 통과 |
+| 단위 테스트 | `tests/` | 최근 full run 129개 전체 통과 |
 
 ### 부분 완료
 
@@ -100,9 +100,14 @@ movement_project/
 │   │   ├── sample/                  # 합성/데모 CSV
 │   │   └── mediapipe/               # MediaPipe 추출 CSV
 │   ├── definitions/                 # YAML 기반 분석 정의
-│   │   ├── exercises/               # squat · lunge · pike_pushup · plank_shoulder_tap · generic
+│   │   ├── exercises/               # 운동 정체성 YAML + generic 폴백
+│   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
 │   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   ├── protocols/
+│   │   ├── performance/             # 피험자 안내 기준 count/sequence protocol YAML
+│   │   └── camera/                  # 운동별 camera protocol YAML
+│   ├── registries/                  # authoring dropdown/template registry
 │   ├── camera/                      # camera_zones.yaml 촬영 구역 정의
 │   ├── reference/                   # baseline_zscore.json (합성 정상 베이스라인)
 │   └── processed/                   # 파이프라인 단계별 중간·최종 산출물 (.gitignore)
@@ -112,7 +117,8 @@ movement_project/
 │   ├── overview.md                  # 프레임워크 개요
 │   ├── practical_protocols/         # 실전 촬영 및 수행 프로토콜
 │   │   ├── camera_protocol.md
-│   │   └── exercise_performance_protocol.md
+│   │   ├── exercise_performance_protocol.md
+│   │   └── exercise_authoring_notebook.md
 │   ├── pipeline/                    # 파이프라인 ① ~ ⑫ 단계 문서
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
@@ -139,7 +145,8 @@ movement_project/
     │   └── utils.py                 # low-level pose/plot utilities
     ├── definitions/
     │   ├── clinical.py              # FMS-like mapping helpers
-    │   └── exercise_definition.py   # YAML loader + schema dataclasses
+    │   ├── exercise_authoring.py    # notebook-first 운동 YAML draft generator
+    │   └── exercise_definition.py   # ExerciseContext loader + schema dataclasses
     ├── features/
     │   ├── __init__.py              # extract_rep_features() · FeatureRecord
     │   ├── compensation.py          # COMPENSATION_RULES 레지스트리

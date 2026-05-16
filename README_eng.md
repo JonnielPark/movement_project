@@ -19,7 +19,7 @@ scores and labels on the right are illustrative examples, not validation results
 ## Pipeline
 
 ```text
-Pose CSV  +  annotation CSV  +  exercise definition YAML
+Pose CSV  +  annotation CSV  +  exercise YAML artifacts
             ↓
 ①  Validation           structural integrity check
 ②  Annotation           frame-level segment metadata (`phase` column reserved)
@@ -40,7 +40,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-05-12)
+## Implementation Status (2026-05-16)
 
 ### Complete
 
@@ -49,7 +49,7 @@ Stage activation is controlled by the `enabled` flags in
 | Pose I/O and config | `core/io.py`, `core/config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `stages/validation.py` | Structural integrity report |
 | ② Annotation | `stages/annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved; performance/failure provenance summarized in the annotation report |
-| ③ Exercise Definition | `definitions/exercise_definition.py` | YAML loader + validator + generic fallback; `rep_segmentation`, `phase_segmentation`, `performance_protocol`, `CameraProtocolSpec`, `allowed_side_sequence_modes` |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` loader + validator + generic fallback; split exercise identity / analysis profile / performance protocol / camera protocol YAML; legacy combined YAML remains supported |
 | ④ Preprocessing | `stages/preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
 | ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py` | Hip-center translation + median torso-length scale; optional `canonicalization` reduces consistent monocular-observation bias into an analysis coordinate space (raw/norm/canon); current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
 | ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
@@ -62,7 +62,7 @@ Stage activation is controlled by the `enabled` flags in
 | Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑩ connected; optional `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
 | Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
-| Unit tests | `tests/` | Protocol/prescription metadata targeted tests pass 18 cases; latest full run passes 113/113 |
+| Unit tests | `tests/` | Latest full run passes 129/129 |
 
 ### Partial
 
@@ -102,9 +102,14 @@ movement_project/
 │   │   ├── sample/                  # synthetic/demo CSVs
 │   │   └── mediapipe/               # MediaPipe-extracted CSVs
 │   ├── definitions/                 # YAML-based analysis definitions
-│   │   ├── exercises/               # squat · lunge · pike_pushup · plank_shoulder_tap · generic
+│   │   ├── exercises/               # exercise identity YAML + generic fallback
+│   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
 │   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   ├── protocols/
+│   │   ├── performance/             # participant-facing count/sequence protocol YAML
+│   │   └── camera/                  # per-exercise camera protocol YAML
+│   ├── registries/                  # authoring dropdown/template registries
 │   ├── camera/                      # camera_zones.yaml filming-zone definitions
 │   ├── reference/                   # baseline_zscore.json (synthetic-normal baseline)
 │   └── processed/                   # intermediate/final pipeline outputs by stage (.gitignore)
@@ -114,7 +119,8 @@ movement_project/
 │   ├── overview.md                  # framework overview
 │   ├── practical_protocols/         # practical filming and performance protocols
 │   │   ├── camera_protocol.md
-│   │   └── exercise_performance_protocol.md
+│   │   ├── exercise_performance_protocol.md
+│   │   └── exercise_authoring_notebook.md
 │   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
 │   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
@@ -141,7 +147,8 @@ movement_project/
     │   └── utils.py                 # low-level pose/plot utilities
     ├── definitions/
     │   ├── clinical.py              # FMS-like mapping helpers
-    │   └── exercise_definition.py   # YAML loader + schema dataclasses
+    │   ├── exercise_authoring.py    # notebook-first exercise YAML draft generator
+    │   └── exercise_definition.py   # ExerciseContext loader + schema dataclasses
     ├── features/
     │   ├── __init__.py              # extract_rep_features() · FeatureRecord
     │   ├── compensation.py          # COMPENSATION_RULES registry

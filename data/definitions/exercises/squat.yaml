@@ -1,14 +1,14 @@
 exercise_id: squat
 display_name: Bodyweight Squat
-description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and ankle coordination.
+description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and
+  ankle coordination.
 version: 0.5.2
 tags:
-  - bodyweight
-  - lower_body
-  - closed_chain
-  - bilateral
-  - strength
-
+- bodyweight
+- lower_body
+- closed_chain
+- bilateral
+- strength
 classification:
   family: lower_body
   equipment: none
@@ -20,248 +20,49 @@ classification:
   movement_pattern: squat
   primary_plane: sagittal
   secondary_planes:
-    - frontal
-    - transverse
+  - frontal
+  - transverse
   complexity: compound
-
 support:
   base_of_support: bilateral_feet
   contact_points:
-    - left_foot
-    - right_foot
+  - left_foot
+  - right_foot
   support_surface: floor
   weight_bearing_regions:
-    - left_foot
-    - right_foot
-
+  - left_foot
+  - right_foot
 phase_model:
   type: resistance_phase
-  # kinetic abstraction; for kinematic phase boundaries see phase_segmentation
   expected_ratio:
     eccentric: 0.4
     isometric: 0.1
     concentric: 0.5
-
-rep_segmentation:
-  reference_landmark: hip_center     # midpoint of left_hip / right_hip
-  reference_axis: vertical           # top position separates consecutive reps
-  boundary_logic: local_maximum      # highest hip-center z = rep boundary
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  minimum_rep_length_frames: 8
-  minimum_boundary_distance_frames: 8
-  minimum_reps: 1
-  boundary_prominence: null
-  include_endpoints: true
-
-phase_segmentation:
-  reference_landmark: hip_center     # midpoint of left_hip / right_hip
-  reference_axis: vertical           # norm_z — hip descends in Descent, rises in Ascent
-  phase_sequence: [Descent, Ascent]
-  split_logic: local_minimum         # lowest hip-center z within the rep
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  turnaround_hold:
-    enabled: true
-    half_window_frames: 3            # ±3 frames around the reversal = Turnaround_Hold
-  minimum_rep_length_frames: 8
-  multi_inflection_policy: global_extremum
-
-performance_protocol:
-  prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-  side_sequence:
-    mode: none
-    block_size_counts: null
-    first_side_source: null
-  allowed_side_sequence_modes: [none]
-  completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-  participant_cues:
-    - keep_hands_fixed
-    - avoid_arm_swing
-  analysis_disrupting_patterns:
-    - arm_swing
-    - heel_lift
-    - unstable_foot_contact
-    - excessive_knee_deviation
-    - inconsistent_depth
-    - excessive_trunk_flexion
-
-landmarks:
-  model: mediapipe_pose_33
-  primary_joints:
-    - left_hip
-    - right_hip
-    - left_knee
-    - right_knee
-    - left_ankle
-    - right_ankle
-  secondary_joints:
-    - left_shoulder
-    - right_shoulder
-    - trunk
-    - pelvis
-    - left_foot
-    - right_foot
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  optional_landmarks: [11, 12, 29, 30, 31, 32]
-
-angle_definitions:
-  left_hip_angle:    { points: [11, 23, 25], vertex: 23 }
-  right_hip_angle:   { points: [12, 24, 26], vertex: 24 }
-  left_knee_angle:   { points: [23, 25, 27], vertex: 25 }
-  right_knee_angle:  { points: [24, 26, 28], vertex: 26 }
-  left_ankle_angle:  { points: [25, 27, 31], vertex: 27 }
-  right_ankle_angle: { points: [26, 28, 32], vertex: 28 }
-  shoulder_line_angle: { points: [11, 12] }
-  pelvis_line_angle:   { points: [23, 24] }
-
 joint_actions:
   primary:
-    - hip_flexion_extension
-    - knee_flexion_extension
-    - ankle_dorsiflexion_plantarflexion
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
   secondary:
-    - trunk_flexion_extension
-    - pelvis_lateral_tilt_proxy
-    - pelvis_rotation_proxy
-
-biomechanical_focus:
+  - trunk_flexion_extension
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
+primary_body_regions:
+- hip
+- knee
+- ankle
+biomechanical_identity:
   expected_com_motion: vertical
   stability_requirement: medium
   main_load_regions:
-    - hip
-    - knee
-    - ankle
+  - hip
+  - knee
+  - ankle
   primary_constraints:
-    - maintain_foot_contact
-    - maintain_trunk_alignment
-    - avoid_knee_valgus
-    - avoid_heel_lift
-    - avoid_excessive_lateral_shift
-
-compensation_candidates:
-  - knee_valgus
-  - knee_varus
-  - asymmetric_depth
-  - excessive_trunk_flexion
-  - lateral_pelvic_shift
-  - heel_lift
-  - foot_external_rotation_proxy
-  - pelvis_rotation
-  - tempo_instability
-
-feature_domains:
-  spatial:
-    - rom
-    - symmetry
-    - shape
-    - depth_proxy
-    - alignment
-  temporal:
-    - tempo
-    - rep_duration
-    - eccentric_duration
-    - isometric_duration
-    - concentric_duration
-    - timing_ratio
-  control:
-    - stability
-    - compensation
-    - com_stability
-    - pelvis_stability
-    - joint_tracking_error
-    - lateral_shift
-  biomechanical_proxy:
-    - com_displacement
-    - segment_length_normalized_displacement
-    - moment_arm_proxy
-    - relative_joint_load_proxy
-    - compensation_load_shift_proxy
-
-view_requirements:
-  preferred_views:
-    - front_oblique
-  acceptable_views:
-    - frontal
-    - sagittal_left
-    - sagittal_right
-    - side_oblique
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  visibility_sensitive_landmarks: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-  occlusion_risk: medium
-
-camera_protocol:
-  recommended_zones: [Z2, Z8]
-  recommended_height: H2
-  anchor: reference_mat
-  distance_cm: [200, 250]
-  primary_observation_purpose:
-    - knee_valgus
-    - hip_flexion_depth
-  out_of_zone_policy: warn_and_continue
-  coordinate_correction: none
-
-view_metric_reliability:
-  structure: bilateral_symmetric
-  zones:
-    Z1:
-      bilateral_symmetry: high
-      frontal_alignment: high
-      sagittal_rom: low
-      depth: low
-      trunk_flexion: low
-      heel_lift: low
-    Z2:
-      bilateral_symmetry: moderate
-      frontal_alignment: high
-      sagittal_rom: moderate
-      depth: moderate
-      trunk_flexion: moderate
-      heel_lift: moderate
-    Z3:
-      sagittal_rom: high
-      depth: high
-      trunk_flexion: high
-      heel_lift: moderate
-      bilateral_symmetry: low
-      frontal_alignment: low
-    Z7:
-      sagittal_rom: high
-      depth: high
-      trunk_flexion: high
-      heel_lift: moderate
-      bilateral_symmetry: low
-      frontal_alignment: low
-    Z8:
-      bilateral_symmetry: moderate
-      frontal_alignment: high
-      sagittal_rom: moderate
-      depth: moderate
-      trunk_flexion: moderate
-      heel_lift: moderate
-
-quality_rules:
-  minimum_visible_landmark_ratio: 0.8
-  minimum_critical_landmark_ratio: 0.9
-  max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3
-  exclude_rep_if_critical_landmark_missing: true
-  exclude_rep_if_phase_missing: false
-  allow_partial_feature_output: true
-
-notes: Squat is a suitable reference exercise for validating bilateral symmetry, sagittal-plane ROM, COM displacement, and lower-limb compensation indicators.
+  - maintain_foot_contact
+  - maintain_trunk_alignment
+  - avoid_knee_valgus
+  - avoid_heel_lift
+  - avoid_excessive_lateral_shift
+notes: Squat is a suitable reference exercise for validating bilateral symmetry, sagittal-plane
+  ROM, COM displacement, and lower-limb compensation indicators.

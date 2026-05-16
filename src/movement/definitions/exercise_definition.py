@@ -9,6 +9,7 @@ Pipeline position: after ② annotation, before ④ preprocessing.
 
 Public API
 ----------
+load_exercise_context(exercise_id, definitions_dir)    -> ExerciseContext
 load_exercise_definition(exercise_id, definitions_dir) -> ExerciseDefinition
 load_all_exercise_definitions(definitions_dir)         -> dict[str, ExerciseDefinition]
 """
@@ -16,6 +17,7 @@ load_all_exercise_definitions(definitions_dir)         -> dict[str, ExerciseDefi
 from __future__ import annotations
 
 import warnings
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -208,6 +210,13 @@ _PHASE_RATIO_TOLERANCE: float = 0.02
 _GENERIC_ID = "generic"
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_CAMERA_ZONES_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.yaml"
+_DEFAULT_ANALYSIS_PROFILES_DIR = (
+    _PROJECT_ROOT / "data" / "definitions" / "analysis_profiles"
+)
+_DEFAULT_PERFORMANCE_PROTOCOLS_DIR = (
+    _PROJECT_ROOT / "data" / "protocols" / "performance"
+)
+_DEFAULT_CAMERA_PROTOCOLS_DIR = _PROJECT_ROOT / "data" / "protocols" / "camera"
 _OUT_OF_ZONE_POLICY = "warn_and_continue"
 _COORDINATE_CORRECTION_POLICY = "none"
 
@@ -488,6 +497,26 @@ class ExerciseDefinition:
     performance_protocol: PerformanceProtocolSpec | None = None
     camera_protocol: CameraProtocolSpec | None = None
     view_metric_reliability: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ExerciseContext:
+    """
+    Runtime exercise context assembled from split YAML artifacts.
+
+    The split source keeps exercise identity separate from analysis, performance,
+    and camera protocol settings while exposing a backward-compatible
+    ExerciseDefinition object for existing pipeline stages.
+    """
+
+    exercise_id: str
+    exercise_definition: ExerciseDefinition
+    exercise_identity: dict[str, Any]
+    analysis_profile: dict[str, Any] = field(default_factory=dict)
+    performance_protocol: dict[str, Any] = field(default_factory=dict)
+    camera_protocol: dict[str, Any] = field(default_factory=dict)
+    source_paths: dict[str, Path] = field(default_factory=dict)
+    is_split_source: bool = False
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -984,12 +1013,206 @@ def _load_raw(yaml_path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
+def _default_analysis_profiles_dir(definitions_dir: Path) -> Path:
+    if definitions_dir.name == "exercises":
+        return definitions_dir.parent / "analysis_profiles"
+    return _DEFAULT_ANALYSIS_PROFILES_DIR
+
+
+def _default_protocol_dir(definitions_dir: Path, protocol_name: str) -> Path:
+    if (
+        definitions_dir.name == "exercises"
+        and definitions_dir.parent.name == "definitions"
+    ):
+        return definitions_dir.parent.parent / "protocols" / protocol_name
+    return _PROJECT_ROOT / "data" / "protocols" / protocol_name
+
+
+def _is_split_identity(raw: dict) -> bool:
+    """Return True when an exercise YAML needs companion split artifacts."""
+    if raw.get("exercise_id") == _GENERIC_ID:
+        return False
+    return any(field not in raw for field in _REQUIRED_FIELDS)
+
+
+def _unwrap_named_block(raw: dict, key: str) -> dict:
+    block = raw.get(key)
+    if isinstance(block, dict):
+        return block
+    return raw
+
+
+def _compose_split_raw(
+    identity: dict,
+    analysis_profile: dict,
+    performance_protocol: dict | None,
+    camera_protocol: dict | None,
+) -> dict:
+    """Merge split YAML artifacts into the legacy raw shape consumed by _parse."""
+    raw = deepcopy(identity)
+    raw["phase_model"] = deepcopy(identity.get("phase_model") or {})
+    raw["landmarks"] = deepcopy(analysis_profile.get("landmarks") or {})
+    raw["angle_definitions"] = deepcopy(analysis_profile.get("angle_definitions") or {})
+    raw["biomechanical_focus"] = deepcopy(
+        analysis_profile.get("biomechanical_focus") or {}
+    )
+    raw["compensation_candidates"] = deepcopy(
+        analysis_profile.get("compensation_candidates") or []
+    )
+    raw["feature_domains"] = deepcopy(analysis_profile.get("feature_domains") or {})
+    raw["quality_rules"] = deepcopy(analysis_profile.get("quality_rules") or {})
+    raw["rep_segmentation"] = deepcopy(analysis_profile.get("rep_segmentation") or {})
+    raw["phase_segmentation"] = deepcopy(
+        analysis_profile.get("phase_segmentation") or {}
+    )
+
+    if "joint_actions" not in raw:
+        raw["joint_actions"] = deepcopy(analysis_profile.get("joint_actions") or {})
+
+    if performance_protocol:
+        raw["performance_protocol"] = deepcopy(
+            _unwrap_named_block(performance_protocol, "performance_protocol")
+        )
+    if camera_protocol:
+        raw["camera_protocol"] = deepcopy(
+            _unwrap_named_block(camera_protocol, "camera_protocol")
+        )
+        raw["view_metric_reliability"] = deepcopy(
+            camera_protocol.get("view_metric_reliability") or {}
+        )
+
+    return raw
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
+
+
+def load_exercise_context(
+    exercise_id: str | None,
+    definitions_dir: Path | str,
+    *,
+    analysis_profiles_dir: Path | str | None = None,
+    performance_protocols_dir: Path | str | None = None,
+    camera_protocols_dir: Path | str | None = None,
+) -> ExerciseContext:
+    """
+    Load the runtime exercise context for one exercise_id.
+
+    The loader accepts both the legacy combined exercise YAML and the split YAML
+    layout introduced for notebook-first exercise authoring. In split mode, the
+    companion analysis profile is required, while performance and camera protocol
+    files are optional metadata.
+    """
+    definitions_dir = Path(definitions_dir)
+    is_fallback = False
+
+    if not exercise_id:
+        warnings.warn(
+            "exercise_id is None or empty — loading generic fallback definition. "
+            "Biomarker output will be restricted to exercise-agnostic features.",
+            stacklevel=2,
+        )
+        exercise_id = _GENERIC_ID
+        is_fallback = True
+
+    yaml_path = definitions_dir / f"{exercise_id}.yaml"
+
+    if not yaml_path.exists():
+        if exercise_id != _GENERIC_ID:
+            warnings.warn(
+                f"Exercise definition not found: '{yaml_path}'. "
+                "Loading generic fallback. Biomarker output will be restricted.",
+                stacklevel=2,
+            )
+            yaml_path = definitions_dir / f"{_GENERIC_ID}.yaml"
+            exercise_id = _GENERIC_ID
+            is_fallback = True
+        if not yaml_path.exists():
+            raise FileNotFoundError(
+                f"Generic fallback definition not found at: '{yaml_path}'"
+            )
+
+    identity = _load_raw(yaml_path)
+    raw = identity
+    source_paths = {"exercise_definition": yaml_path}
+    split_source = _is_split_identity(identity)
+    analysis_profile: dict[str, Any] = {}
+    performance_protocol: dict[str, Any] = {}
+    camera_protocol: dict[str, Any] = {}
+
+    if split_source:
+        resolved_analysis_dir = (
+            Path(analysis_profiles_dir)
+            if analysis_profiles_dir is not None
+            else _default_analysis_profiles_dir(definitions_dir)
+        )
+        resolved_performance_dir = (
+            Path(performance_protocols_dir)
+            if performance_protocols_dir is not None
+            else _default_protocol_dir(definitions_dir, "performance")
+        )
+        resolved_camera_dir = (
+            Path(camera_protocols_dir)
+            if camera_protocols_dir is not None
+            else _default_protocol_dir(definitions_dir, "camera")
+        )
+
+        analysis_path = resolved_analysis_dir / f"{exercise_id}.yaml"
+        performance_path = resolved_performance_dir / f"{exercise_id}.yaml"
+        camera_path = resolved_camera_dir / f"{exercise_id}.yaml"
+
+        if not analysis_path.exists():
+            raise FileNotFoundError(
+                f"Split exercise definition '{exercise_id}' requires an "
+                f"analysis profile at: '{analysis_path}'"
+            )
+
+        analysis_profile = _load_raw(analysis_path)
+        source_paths["analysis_profile"] = analysis_path
+
+        if performance_path.exists():
+            performance_protocol = _load_raw(performance_path)
+            source_paths["performance_protocol"] = performance_path
+        if camera_path.exists():
+            camera_protocol = _load_raw(camera_path)
+            source_paths["camera_protocol"] = camera_path
+
+        raw = _compose_split_raw(
+            identity,
+            analysis_profile,
+            performance_protocol or None,
+            camera_protocol or None,
+        )
+
+    errors, warns = _validate(raw)
+    for w in warns:
+        warnings.warn(w, stacklevel=2)
+    if errors:
+        raise ValueError(
+            f"Exercise definition '{yaml_path}' failed validation:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
+
+    definition = _parse(raw, is_generic_fallback=is_fallback)
+    return ExerciseContext(
+        exercise_id=definition.exercise_id,
+        exercise_definition=definition,
+        exercise_identity=identity,
+        analysis_profile=analysis_profile,
+        performance_protocol=performance_protocol,
+        camera_protocol=camera_protocol,
+        source_paths=source_paths,
+        is_split_source=split_source,
+    )
 
 
 def load_exercise_definition(
     exercise_id: str | None,
     definitions_dir: Path | str,
+    *,
+    analysis_profiles_dir: Path | str | None = None,
+    performance_protocols_dir: Path | str | None = None,
+    camera_protocols_dir: Path | str | None = None,
 ) -> ExerciseDefinition:
     """
     Load an exercise definition YAML for the given exercise_id.
@@ -1017,49 +1240,21 @@ def load_exercise_definition(
     ValueError
         When a loaded YAML fails required-field validation.
     """
-    definitions_dir = Path(definitions_dir)
-    is_fallback = False
-
-    if not exercise_id:
-        warnings.warn(
-            "exercise_id is None or empty — loading generic fallback definition. "
-            "Biomarker output will be restricted to exercise-agnostic features.",
-            stacklevel=2,
-        )
-        exercise_id = _GENERIC_ID
-        is_fallback = True
-
-    yaml_path = definitions_dir / f"{exercise_id}.yaml"
-
-    if not yaml_path.exists():
-        if exercise_id != _GENERIC_ID:
-            warnings.warn(
-                f"Exercise definition not found: '{yaml_path}'. "
-                "Loading generic fallback. Biomarker output will be restricted.",
-                stacklevel=2,
-            )
-            yaml_path = definitions_dir / f"{_GENERIC_ID}.yaml"
-            is_fallback = True
-        if not yaml_path.exists():
-            raise FileNotFoundError(
-                f"Generic fallback definition not found at: '{yaml_path}'"
-            )
-
-    raw = _load_raw(yaml_path)
-    errors, warns = _validate(raw)
-    for w in warns:
-        warnings.warn(w, stacklevel=2)
-    if errors:
-        raise ValueError(
-            f"Exercise definition '{yaml_path}' failed validation:\n"
-            + "\n".join(f"  - {e}" for e in errors)
-        )
-
-    return _parse(raw, is_generic_fallback=is_fallback)
+    return load_exercise_context(
+        exercise_id,
+        definitions_dir,
+        analysis_profiles_dir=analysis_profiles_dir,
+        performance_protocols_dir=performance_protocols_dir,
+        camera_protocols_dir=camera_protocols_dir,
+    ).exercise_definition
 
 
 def load_all_exercise_definitions(
     definitions_dir: Path | str,
+    *,
+    analysis_profiles_dir: Path | str | None = None,
+    performance_protocols_dir: Path | str | None = None,
+    camera_protocols_dir: Path | str | None = None,
 ) -> dict[str, ExerciseDefinition]:
     """
     Load and validate all YAML exercise definitions in a directory.
@@ -1081,20 +1276,23 @@ def load_all_exercise_definitions(
     result: dict[str, ExerciseDefinition] = {}
 
     for yaml_path in sorted(definitions_dir.glob("*.yaml")):
-        raw = _load_raw(yaml_path)
-        errors, warns = _validate(raw)
-        for w in warns:
-            warnings.warn(w, stacklevel=2)
-        if errors:
+        try:
+            raw = _load_raw(yaml_path)
+            ex_id = raw.get("exercise_id", yaml_path.stem)
+            context = load_exercise_context(
+                ex_id,
+                definitions_dir,
+                analysis_profiles_dir=analysis_profiles_dir,
+                performance_protocols_dir=performance_protocols_dir,
+                camera_protocols_dir=camera_protocols_dir,
+            )
+        except (FileNotFoundError, ValueError) as exc:
             warnings.warn(
-                f"Skipping '{yaml_path.name}': validation failed:\n"
-                + "\n".join(f"  - {e}" for e in errors),
+                f"Skipping '{yaml_path.name}': validation failed:\n" f"  - {exc}",
                 stacklevel=2,
             )
             continue
 
-        ex_id = raw.get("exercise_id", yaml_path.stem)
-        is_fallback = ex_id == _GENERIC_ID
-        result[ex_id] = _parse(raw, is_generic_fallback=is_fallback)
+        result[context.exercise_id] = context.exercise_definition
 
     return result

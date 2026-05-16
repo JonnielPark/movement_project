@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.5.0
-**Last Updated:** 2026-05-12
+**Document Version:** 1.5.1
+**Last Updated:** 2026-05-16
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -47,7 +47,10 @@ appear in an output, treat it as a documentation or code error.
 
 | Term | Fixed Meaning in This Study |
 |---|---|
-| Exercise definition | The YAML object, not the exercise name itself. It contains exercise-specific landmarks, phase settings, compensation candidates, feature domains, and quality rules used by downstream stages. |
+| Exercise definition | The exercise-identity YAML object, not the exercise name itself. The target schema should describe what the movement is: classification, support, primary body regions, phase model, joint actions, and biomechanical identity. During migration, legacy combined YAML may still contain analysis and protocol fields for loader compatibility. |
+| Exercise authoring spec | A small draft object created by a notebook or future UI from researcher selections. It is used to generate exercise definition, analysis profile, performance protocol, and camera protocol YAML artifacts; it is not directly consumed as the execution source by the pipeline. |
+| Analysis profile | The exercise-specific analysis configuration separated from exercise identity, such as segmentation settings, landmark sets, angle definitions, active feature domains, quality-rule overrides, and compensation-candidate drafts. |
+| Exercise runtime context (`ExerciseContext`) | The runtime object assembled from the exercise definition plus related analysis, performance, and camera YAML artifacts for one `exercise_id`. It is the target replacement for passing one oversized exercise-definition YAML object through the pipeline. |
 | Performance failure point | The first rep/frame or recording endpoint at which the participant can no longer maintain the exercise's baseline posture, ROM, rhythm, base of support, or left-right sequence consistently, even if no pain is reported. It is an acquisition/annotation marker for actual repetition count and stop reason, not a clinical diagnosis of strength or fatigue, and is distinct from a segmentation failure point. |
 | Compensatory movement | A non-primary movement that substitutes for or distorts the main task. Only candidates declared in YAML `compensation_candidates` and registered in the compensation-rule code are emitted as biomarkers. |
 | Validation | Structural and formal integrity checking of the input pose data. It is distinct from robustness evaluation and does not modify data. |

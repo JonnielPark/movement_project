@@ -1,0 +1,68 @@
+version: 0.1.0
+templates:
+  repeated_repetition:
+    prescription:
+      target_sets: 3
+      target_count_per_set: 10
+      count_unit: repetition
+      segmentation_reps_per_count: 1
+      rest_between_sets_s: [120, 180]
+    counting:
+      target_count: 10
+      count_unit: repetition
+      segmentation_reps_per_count: 1
+    side_sequence:
+      mode: none
+      block_size_counts: null
+      first_side_source: null
+    allowed_side_sequence_modes: [none]
+    completion:
+      allow_partial_completion: false
+      recommended_sets: 3
+    participant_cues: []
+    analysis_disrupting_patterns: []
+
+  same_side_block_then_switch_5_each:
+    prescription:
+      target_sets: 3
+      target_count_per_set: 10
+      count_unit: repetition
+      segmentation_reps_per_count: 1
+      rest_between_sets_s: [120, 180]
+    counting:
+      target_count: 10
+      count_unit: repetition
+      segmentation_reps_per_count: 1
+    side_sequence:
+      mode: same_side_block_then_switch
+      block_size_counts: 5
+      first_side_source: annotation.starting_side
+    allowed_side_sequence_modes: [same_side_block_then_switch, alternating_each_rep]
+    completion:
+      allow_partial_completion: false
+      recommended_sets: 3
+    participant_cues: []
+    analysis_disrupting_patterns: []
+
+  alternating_left_right_pair:
+    prescription:
+      target_sets: 3
+      target_count_per_set: 10
+      count_unit: left_right_pair
+      segmentation_reps_per_count: 2
+      rest_between_sets_s: [120, 180]
+    counting:
+      target_count: 10
+      count_unit: left_right_pair
+      segmentation_reps_per_count: 2
+    side_sequence:
+      mode: alternating_each_rep
+      block_size_counts: null
+      first_side_source: annotation.starting_side
+    allowed_side_sequence_modes: [alternating_each_rep]
+    completion:
+      allow_partial_completion: false
+      recommended_sets: 3
+    participant_cues: []
+    analysis_disrupting_patterns: []
+

@@ -1,0 +1,33 @@
+exercise_id: pike_pushup
+version: 0.5.2
+performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s:
+    - 120
+    - 180
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  allowed_side_sequence_modes:
+  - none
+  completion:
+    allow_partial_completion: true
+    recommended_sets: 3
+  participant_cues:
+  - maintain_inverted_v
+  - descend_head_between_hands
+  analysis_disrupting_patterns:
+  - hip_drop_to_pushup
+  - head_forward_shift
+  - elbow_flare
+  - inconsistent_depth
+  - hand_foot_repositioning

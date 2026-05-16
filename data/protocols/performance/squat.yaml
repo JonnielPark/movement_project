@@ -1,0 +1,34 @@
+exercise_id: squat
+version: 0.5.2
+performance_protocol:
+  prescription:
+    target_sets: 3
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+    rest_between_sets_s:
+    - 120
+    - 180
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  allowed_side_sequence_modes:
+  - none
+  completion:
+    allow_partial_completion: false
+    recommended_sets: 3
+  participant_cues:
+  - keep_hands_fixed
+  - avoid_arm_swing
+  analysis_disrupting_patterns:
+  - arm_swing
+  - heel_lift
+  - unstable_foot_contact
+  - excessive_knee_deviation
+  - inconsistent_depth
+  - excessive_trunk_flexion

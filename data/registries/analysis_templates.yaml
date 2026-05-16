@@ -1,0 +1,152 @@
+version: 0.1.0
+templates:
+  bilateral_lower_body_closed_chain:
+    landmark_set: lower_body_mediapipe_33
+    biomechanical_focus:
+      expected_com_motion: vertical
+      stability_requirement: medium
+      main_load_regions: [hip, knee, ankle]
+      primary_constraints:
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - avoid_knee_valgus
+        - avoid_heel_lift
+    compensation_candidates:
+      - knee_valgus
+      - knee_varus
+      - asymmetric_depth
+      - excessive_trunk_flexion
+      - lateral_pelvic_shift
+      - heel_lift
+      - pelvis_rotation
+      - tempo_instability
+    feature_domains:
+      spatial: [rom, symmetry, shape, depth_proxy, alignment]
+      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
+      control: [stability, compensation, com_stability, pelvis_stability, lateral_shift]
+      biomechanical_proxy: [com_displacement, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy]
+    quality_rules:
+      minimum_visible_landmark_ratio: 0.8
+      minimum_critical_landmark_ratio: 0.9
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+
+  alternating_lower_body_split_stance:
+    landmark_set: lower_body_mediapipe_33
+    biomechanical_focus:
+      expected_com_motion: vertical_and_anterior_posterior
+      stability_requirement: high
+      main_load_regions: [hip, knee, ankle]
+      primary_constraints:
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - avoid_knee_valgus
+        - maintain_pelvis_level
+    compensation_candidates:
+      - knee_valgus
+      - asymmetric_knee_flexion
+      - asymmetric_hip_flexion
+      - insufficient_rear_hip_extension
+      - excessive_trunk_flexion
+      - lateral_trunk_lean
+      - lateral_pelvic_shift
+      - pelvis_drop
+      - unstable_step_width
+      - heel_lift
+      - tempo_instability
+      - phase_timing_asymmetry
+    feature_domains:
+      spatial: [rom, symmetry, shape, alignment, depth_proxy, support_width]
+      temporal: [tempo, rep_duration, eccentric_duration, concentric_duration, timing_ratio, left_right_timing_variability]
+      control: [stability, compensation, com_stability, pelvis_stability, lateral_shift, balance_control, joint_tracking_error]
+      biomechanical_proxy: [com_displacement, com_velocity_proxy, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy, compensation_load_shift_proxy]
+    quality_rules:
+      minimum_visible_landmark_ratio: 0.8
+      minimum_critical_landmark_ratio: 0.9
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+
+  bilateral_upper_body_inverted_closed_chain:
+    landmark_set: upper_push_mediapipe_33
+    biomechanical_focus:
+      expected_com_motion: vertical
+      stability_requirement: high
+      main_load_regions: [shoulder, elbow, wrist, trunk]
+      primary_constraints:
+        - maintain_hand_contact
+        - maintain_trunk_alignment
+        - maintain_head_position
+        - maintain_support_symmetry
+    compensation_candidates:
+      - elbow_flare
+      - elbow_asymmetry
+      - shoulder_asymmetry
+      - shoulder_collapse
+      - shoulder_elevation_compensation
+      - scapular_instability_proxy
+      - insufficient_head_descent
+      - head_forward_shift
+      - hip_drop
+      - hip_pike
+      - lateral_trunk_lean
+      - tempo_instability
+    feature_domains:
+      spatial: [rom, symmetry, shape, alignment, depth_proxy, reach_distance]
+      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
+      control: [stability, compensation, com_stability, trunk_stability, joint_tracking_error, movement_smoothness]
+      biomechanical_proxy: [com_displacement, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy, support_moment_proxy, compensation_load_shift_proxy]
+    quality_rules:
+      minimum_visible_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.9
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+
+  alternating_core_anti_rotation:
+    landmark_set: plank_tap_mediapipe_33
+    biomechanical_focus:
+      expected_com_motion: medial_lateral
+      stability_requirement: very_high
+      main_load_regions: [shoulder, trunk, core, pelvis, hip]
+      primary_constraints:
+        - maintain_hand_contact
+        - maintain_foot_contact
+        - maintain_trunk_alignment
+        - maintain_pelvis_level
+        - avoid_excessive_rotation
+    compensation_candidates:
+      - pelvis_rotation
+      - trunk_rotation
+      - lateral_pelvic_shift
+      - lateral_trunk_lean
+      - hip_drop
+      - shoulder_collapse
+      - shoulder_asymmetry
+      - excessive_com_lateral_shift
+      - excessive_com_variability
+      - left_right_timing_variability
+      - phase_timing_asymmetry
+      - tempo_instability
+      - movement_discontinuity
+    feature_domains:
+      spatial: [alignment, symmetry, reach_distance, support_width, base_of_support_width]
+      temporal: [tempo, rep_duration, phase_duration, rhythm_consistency, left_right_timing_variability, pause_duration]
+      control: [stability, compensation, com_stability, trunk_stability, pelvis_stability, balance_control, lateral_shift, rotation_control, movement_smoothness, endpoint_control]
+      biomechanical_proxy: [com_displacement, com_velocity_proxy, segment_length_normalized_displacement, support_moment_proxy, load_distribution_proxy, compensation_load_shift_proxy]
+    quality_rules:
+      minimum_visible_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.85
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+

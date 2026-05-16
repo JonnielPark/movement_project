@@ -1,7 +1,7 @@
 # Overview
 
-**Document Version:** 1.4.31
-**Last Updated:** 2026-05-12
+**Document Version:** 1.4.32
+**Last Updated:** 2026-05-16
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
@@ -13,15 +13,16 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.7 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.31 | [overview.md](overview.md) | Overall pipeline overview |
-| 1.2.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.5.1 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.32 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.3.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 0.1.1 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | Notebook-first exercise authoring and YAML generation plan |
 | 1.0.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 | 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.0.1 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.1.5 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.12 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.4.15 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.1 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.2.5 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, including optional canonicalization schema |
 | 1.2.3 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
@@ -78,24 +79,36 @@ robustness evidence within this scope.
 
 ## 1. Core Design: Exercise Definitions as YAML Objects
 
-Each exercise is described as a YAML object in
-`data/definitions/exercises/<exercise_id>.yaml`. All pipeline steps consume the same
-`ExerciseDefinition` object, and exercise-specific behavior is determined by YAML fields.
+Each exercise is loaded from an `ExerciseContext` assembled by `exercise_id`. The
+current target exercises use split YAML artifacts: the exercise definition keeps
+movement identity, while analysis, performance, and camera settings live in
+separate files. The loader still supports legacy combined exercise YAML for
+backward compatibility and returns the same `ExerciseDefinition` object to
+downstream pipeline stages. See
+[exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md).
 
-Fields defined in the exercise YAML:
+Fields defined across the split YAML artifacts:
 
 ```text
+data/definitions/exercises/<exercise_id>.yaml
 classification        laterality, primary_plane, movement_chain, posture_type
-landmarks             primary_joints, critical_landmarks, bilateral_pairs, base_of_support
 phases                phase model (e.g., eccentric / concentric)
+
+data/definitions/analysis_profiles/<exercise_id>.yaml
+landmarks             primary_joints, critical_landmarks, bilateral_pairs
 rep_segmentation      repetition-boundary detection settings
 phase_segmentation    intra-rep phase detection settings
-performance_protocol  participant-facing count and side-sequence rules
-camera_protocol       recommended filming zone/height and warning policy
 compensation_candidates  movement patterns to monitor
 feature_domains       which spatial / temporal / control features to activate
 biomechanical_focus   which proxy metrics to compute
 quality_rules         visibility threshold, max interpolation gap, …
+
+data/protocols/performance/<exercise_id>.yaml
+performance_protocol  participant-facing count and side-sequence rules
+
+data/protocols/camera/<exercise_id>.yaml
+camera_protocol       recommended filming zone/height and warning policy
+view_metric_reliability  per-zone metric-family reliability prior
 ```
 
 A generic fallback definition (`generic.yaml`) is loaded when no exercise-specific YAML
@@ -154,7 +167,7 @@ Output
 |---|---|---|---|
 | ① Validation | Pose CSV | Checks required columns, frame order, timestamps, landmark coordinate structure, and missing-value patterns. | Validation report |
 | ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
-| ③ Exercise Definition | `exercise_type`, exercise YAML | Loads the exercise-specific YAML to create an `ExerciseDefinition` object; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as definition metadata for filming recommendations and warning policy. | ExerciseDefinition, camera protocol metadata |
+| ③ Exercise Definition | `exercise_type`, split YAML artifacts or legacy combined YAML | Loads an `ExerciseContext` and returns a backward-compatible `ExerciseDefinition`; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as metadata for filming recommendations and warning policy. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. When needed, optional `canonicalization` attenuates consistent monocular-observation bias using support-plane, movement-plane, or body-axis priors. The current floor-relative correction is treated as a support-plane prior, and raw/norm/canon coordinate families remain separate. | Normalized DataFrame; optional canonical coordinate columns, correction diagnostics, data-confidence/correction report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
@@ -189,8 +202,8 @@ Control
         pelvis_rotation              left-right hip depth asymmetry (transverse proxy)
 ```
 
-Which domains are active for a given exercise is controlled by the `feature_domains` field
-in the exercise YAML.
+Which domains are active for a given exercise is controlled by the `feature_domains`
+field in the analysis profile YAML.
 
 ---
 
@@ -311,8 +324,9 @@ See [05_normalization.md](pipeline/05_normalization.md).
 
 2027.02 – 2027.05  Robustness simulation, reporting, and dissertation outputs
   [partial]  Simulation condition injectors — noise, occlusion, ROM restriction, velocity spike
-  [next]  Task A — analysis-space canonicalization design and raw/norm/canon review
-  [planned]  Task B — side-view far-side landmark jitter preprocessing stabilization
+  [next]  Task 0 — exercise authoring notebook and YAML split
+  [done]  Task A — analysis-space canonicalization design and raw/norm/canon review
+  [partial]  Task B — side-view far-side landmark jitter preprocessing stabilization
   [planned]  Task C — structured motion-attribution correction log and false-correction metrics
   [planned]  Task D — viewpoint/compensation simulation injectors, robustness experiment runner, long-format outputs, summary reports
   [planned]  Task E — dissertation-grade static reporting figures and save_figure()

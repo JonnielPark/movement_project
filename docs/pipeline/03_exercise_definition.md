@@ -1,18 +1,20 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.4.14
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.4.15
+**최종 갱신:** 2026-05-16
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ③. `data/definitions/exercises/`에 있는 운동 YAML 파일을 로드한다.
-모든 후속 단계(④–⑩)가 운동별 로직 적용을 위해 참조하는 `ExerciseDefinition` 객체를 반환한다.
+파이프라인 단계 ③. `exercise_id`로 split exercise YAML 산출물을 로드해 `ExerciseContext`를
+조립하고, 모든 후속 단계(④–⑩)가 운동별 로직 적용을 위해 참조하는 하위 호환
+`ExerciseDefinition` 객체를 반환한다. Legacy combined exercise YAML도 호환성 목적으로
+계속 지원한다.
 
 ---
 
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-Pose CSV + 어노테이션 + 운동 YAML
+Pose CSV + 어노테이션 + exercise YAML 산출물
 → ① Validation
 → ② Annotation                    (exercise_type, pattern 선언)
 → ③ Exercise Definition           ← 본 단계
@@ -30,11 +32,27 @@ Pose CSV + 어노테이션 + 운동 YAML
 
 ## 2. 설계 (Design)
 
-운동별 동작은 코드 분기가 아닌 YAML 데이터로 표현된다.
-새 운동 추가 = `data/definitions/exercises/`에 YAML 파일 1개 작성.
+운동별 동작은 코드 분기가 아닌 YAML 데이터로 표현된다. 현재 대상 운동에서는 운동을 추가하거나
+수정할 때 movement identity, analysis profile, performance protocol, camera protocol로 나뉜
+split 산출물을 관리한다.
 
 ⑧–⑩에서 산출되는 모든 바이오마커는 그 계산을 유발한 정의 필드를 가리키는 `source_fields`를
 반드시 참조해야 한다.
+
+### Runtime split
+
+현재 런타임 배치는 다음과 같다.
+
+```text
+exercise definition   운동 정체성만
+analysis profile      segmentation, landmarks, angle definitions, feature domains, quality overrides
+performance protocol  피험자 안내 기준 count, 좌우 순서, cue, analysis-disrupting patterns
+camera protocol       권장 zone/height와 view-metric reliability
+```
+
+새 운동은 `data/definitions/exercises/<exercise_id>.yaml`에 필드를 계속 추가하기 전에,
+notebook-first authoring 흐름으로 먼저 프로토타이핑한다.
+[exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md)를 참조한다.
 
 ## 3. 사용 가능한 정의 (Available Definitions)
 
@@ -45,6 +63,24 @@ data/definitions/exercises/
     pike_pushup.yaml
     plank_shoulder_tap.yaml
     generic.yaml               ← 폴백
+
+data/definitions/analysis_profiles/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
+
+data/protocols/performance/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
+
+data/protocols/camera/
+    squat.yaml
+    lunge.yaml
+    pike_pushup.yaml
+    plank_shoulder_tap.yaml
 ```
 
 ## 4. 폴백 동작 (Fallback Behavior)
@@ -69,6 +105,9 @@ feature_domains:
 ```
 
 ## 5. YAML 스키마 개요 (YAML Schema Overview)
+
+Split schema가 현재 대상 운동의 기준 source이다. Legacy combined schema도 loader에서 계속
+허용하며, 아래는 `ExerciseDefinition`이 소비하는 merged runtime shape로 제시한다.
 
 ```yaml
 exercise_id: string            # snake_case 고유 식별자

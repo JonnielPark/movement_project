@@ -32,6 +32,7 @@ from movement.core import config as config
 from movement.core import io as io
 from movement.core import utils as utils
 from movement.definitions import clinical as clinical
+from movement.definitions import exercise_authoring as exercise_authoring
 from movement.definitions import exercise_definition as exercise_definition
 from movement.reporting import visualization as visualization
 from movement.simulation import generate_synthetic_squat as generate_synthetic_squat
@@ -49,6 +50,7 @@ _COMPAT_MODULES = {
     "canonicalization": canonicalization,
     "clinical": clinical,
     "config": config,
+    "exercise_authoring": exercise_authoring,
     "exercise_definition": exercise_definition,
     "floor_reference": floor_reference,
     "generate_synthetic_squat": generate_synthetic_squat,
@@ -69,8 +71,17 @@ from movement.io import load_pose_csv  # noqa: E402
 from movement.validation import run_basic_validation  # noqa: E402
 from movement.annotation import apply_annotation, load_annotation_csv  # noqa: E402
 from movement.exercise_definition import (  # noqa: E402
+    ExerciseContext,
     load_all_exercise_definitions,
+    load_exercise_context,
     load_exercise_definition,
+)
+from movement.exercise_authoring import (  # noqa: E402
+    ExerciseAuthoringSpec,
+    artifact_to_yaml,
+    generate_authoring_artifacts,
+    load_authoring_registries,
+    write_authoring_draft_artifacts,
 )
 from movement.preprocessing import preprocess_pose_dataframe  # noqa: E402
 from movement.normalization import normalize_pose_by_hip_torso  # noqa: E402
@@ -84,10 +95,10 @@ from movement.canonicalization import (  # noqa: E402
     apply_canonicalization,
 )
 from movement.segmentation import segment_phases, segment_reps  # noqa: E402
-from movement.motion_attribution import (
+from movement.motion_attribution import (  # noqa: E402
     AttributionThresholds,
     attribute_motion,
-)  # noqa: E402
+)
 from movement.visualization import (  # noqa: E402
     create_pose_animation,
     create_pose_comparison_animation,
@@ -100,11 +111,11 @@ from movement.visualization import (  # noqa: E402
 from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
 from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
 from movement.biomech import BiomechRecord  # noqa
-from movement.biomarker import (
+from movement.biomarker import (  # noqa: E402
     BiomarkerRecord,
     from_feature_record,
     from_biomech_record,
-)  # noqa
+)
 from movement.clinical import load_fms_mapping, traffic_light_for_score  # noqa: E402
 
 del _name, _module, _COMPAT_MODULES, _sys
@@ -119,7 +130,14 @@ __all__ = [
     "load_annotation_csv",
     # ③ exercise definition
     "load_exercise_definition",
+    "load_exercise_context",
     "load_all_exercise_definitions",
+    "ExerciseContext",
+    "ExerciseAuthoringSpec",
+    "artifact_to_yaml",
+    "generate_authoring_artifacts",
+    "load_authoring_registries",
+    "write_authoring_draft_artifacts",
     # ④ preprocessing
     "preprocess_pose_dataframe",
     # ⑤ normalization

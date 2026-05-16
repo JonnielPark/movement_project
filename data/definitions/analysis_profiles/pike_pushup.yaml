@@ -1,0 +1,170 @@
+exercise_id: pike_pushup
+version: 0.5.2
+rep_segmentation:
+  reference_landmark: nose
+  reference_axis: vertical
+  boundary_logic: local_maximum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  minimum_rep_length_frames: 8
+  minimum_boundary_distance_frames: 8
+  minimum_reps: 1
+  boundary_prominence: null
+  include_endpoints: true
+phase_segmentation:
+  reference_landmark: nose
+  reference_axis: vertical
+  phase_sequence:
+  - Descent
+  - Ascent
+  split_logic: local_minimum
+  smoothing:
+    method: savitzky_golay
+    window_frames: 7
+    polyorder: 3
+  turnaround_hold:
+    enabled: true
+    half_window_frames: 3
+  minimum_rep_length_frames: 8
+  multi_inflection_policy: global_extremum
+landmarks:
+  model: mediapipe_pose_33
+  primary_joints:
+  - left_shoulder
+  - right_shoulder
+  - left_elbow
+  - right_elbow
+  - left_wrist
+  - right_wrist
+  secondary_joints:
+  - trunk
+  - pelvis
+  - left_hip
+  - right_hip
+  - head
+  critical_landmarks:
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 23
+  - 24
+  optional_landmarks:
+  - 0
+  - 25
+  - 26
+  - 27
+  - 28
+angle_definitions:
+  left_shoulder_angle:
+    points:
+    - 23
+    - 11
+    - 13
+    vertex: 11
+  right_shoulder_angle:
+    points:
+    - 24
+    - 12
+    - 14
+    vertex: 12
+  left_elbow_angle:
+    points:
+    - 11
+    - 13
+    - 15
+    vertex: 13
+  right_elbow_angle:
+    points:
+    - 12
+    - 14
+    - 16
+    vertex: 14
+  left_hip_angle:
+    points:
+    - 11
+    - 23
+    - 25
+    vertex: 23
+  right_hip_angle:
+    points:
+    - 12
+    - 24
+    - 26
+    vertex: 24
+  shoulder_line_angle:
+    points:
+    - 11
+    - 12
+  pelvis_line_angle:
+    points:
+    - 23
+    - 24
+biomechanical_focus:
+  expected_com_motion: vertical
+  stability_requirement: high
+  main_load_regions:
+  - shoulder
+  - elbow
+  - wrist
+  - trunk
+  primary_constraints:
+  - maintain_hand_contact
+  - maintain_trunk_alignment
+  - maintain_neutral_spine_proxy
+  - maintain_head_position
+  - maintain_support_symmetry
+compensation_candidates:
+- elbow_flare
+- elbow_asymmetry
+- shoulder_asymmetry
+- shoulder_collapse
+- shoulder_elevation_compensation
+- scapular_instability_proxy
+- insufficient_head_descent
+- head_forward_shift
+- hip_drop
+- hip_pike
+- lateral_trunk_lean
+- tempo_instability
+feature_domains:
+  spatial:
+  - rom
+  - symmetry
+  - shape
+  - alignment
+  - depth_proxy
+  - reach_distance
+  temporal:
+  - tempo
+  - rep_duration
+  - eccentric_duration
+  - isometric_duration
+  - concentric_duration
+  - timing_ratio
+  control:
+  - stability
+  - compensation
+  - com_stability
+  - trunk_stability
+  - joint_tracking_error
+  - movement_smoothness
+  biomechanical_proxy:
+  - com_displacement
+  - segment_length_normalized_displacement
+  - moment_arm_proxy
+  - relative_joint_load_proxy
+  - support_moment_proxy
+  - compensation_load_shift_proxy
+quality_rules:
+  minimum_visible_landmark_ratio: 0.75
+  minimum_critical_landmark_ratio: 0.9
+  max_missing_gap_frames: 10
+  max_interpolation_gap_frames: 3
+  exclude_rep_if_critical_landmark_missing: true
+  exclude_rep_if_phase_missing: false
+  allow_partial_feature_output: true

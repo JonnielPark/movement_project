@@ -1,14 +1,14 @@
 exercise_id: lunge
 display_name: Forward Lunge
-description: Alternating split-stance lower-body movement; the forward leg loads while the rear leg controls hip extension.
+description: Alternating split-stance lower-body movement; the forward leg loads while
+  the rear leg controls hip extension.
 version: 0.5.2
 tags:
-  - bodyweight
-  - lower_body
-  - closed_chain
-  - alternating
-  - strength
-
+- bodyweight
+- lower_body
+- closed_chain
+- alternating
+- strength
 classification:
   family: lower_body
   equipment: none
@@ -20,253 +20,55 @@ classification:
   movement_pattern: lunge
   primary_plane: sagittal
   secondary_planes:
-    - frontal
+  - frontal
   complexity: compound
-
 support:
   base_of_support: split_stance
   contact_points:
-    - left_foot
-    - right_foot
+  - left_foot
+  - right_foot
   support_surface: floor
   weight_bearing_regions:
-    - left_foot
-    - right_foot
-
+  - left_foot
+  - right_foot
 phase_model:
   type: resistance_phase
-  # kinetic abstraction; for kinematic phase boundaries see phase_segmentation
   expected_ratio:
     eccentric: 0.45
     isometric: 0.05
     concentric: 0.5
-
-rep_segmentation:
-  reference_landmark: hip_center     # midpoint of left_hip / right_hip
-  reference_axis: vertical           # top split-stance position separates reps
-  boundary_logic: local_maximum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  minimum_rep_length_frames: 8
-  minimum_boundary_distance_frames: 8
-  minimum_reps: 1
-  boundary_prominence: null
-  include_endpoints: true
-
-phase_segmentation:
-  reference_landmark: hip_center     # midpoint of left_hip / right_hip
-  reference_axis: vertical           # hip descends in Descent, rises in Ascent
-  phase_sequence: [Descent, Ascent]
-  split_logic: local_minimum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  turnaround_hold:
-    enabled: true
-    half_window_frames: 3
-  minimum_rep_length_frames: 8
-  multi_inflection_policy: global_extremum
-
-performance_protocol:
-  prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-  side_sequence:
-    mode: same_side_block_then_switch
-    block_size_counts: 5
-    first_side_source: annotation.starting_side
-  allowed_side_sequence_modes: [same_side_block_then_switch, alternating_each_rep]
-  completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-  participant_cues:
-    - keep_hands_on_pelvis
-    - avoid_arm_swing
-    - keep_trunk_upright
-  analysis_disrupting_patterns:
-    - inconsistent_step_length
-    - arm_swing
-    - excessive_trunk_flexion
-    - camera_side_change
-    - unstable_foot_contact
-
-landmarks:
-  model: mediapipe_pose_33
-  primary_joints:
-    - left_hip
-    - right_hip
-    - left_knee
-    - right_knee
-    - left_ankle
-    - right_ankle
-  secondary_joints:
-    - trunk
-    - pelvis
-    - left_shoulder
-    - right_shoulder
-    - left_foot
-    - right_foot
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  optional_landmarks: [11, 12, 29, 30, 31, 32]
-
-angle_definitions:
-  left_hip_angle:    { points: [11, 23, 25], vertex: 23 }
-  right_hip_angle:   { points: [12, 24, 26], vertex: 24 }
-  left_knee_angle:   { points: [23, 25, 27], vertex: 25 }
-  right_knee_angle:  { points: [24, 26, 28], vertex: 26 }
-  left_ankle_angle:  { points: [25, 27, 31], vertex: 27 }
-  right_ankle_angle: { points: [26, 28, 32], vertex: 28 }
-  shoulder_line_angle: { points: [11, 12] }
-  pelvis_line_angle:   { points: [23, 24] }
-
 joint_actions:
   primary:
-    - hip_flexion_extension
-    - knee_flexion_extension
-    - ankle_dorsiflexion_plantarflexion
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
   secondary:
-    - trunk_flexion_extension
-    - trunk_lateral_flexion
-    - pelvis_lateral_tilt_proxy
-    - pelvis_rotation_proxy
-    - weight_shift_control
-
-biomechanical_focus:
+  - trunk_flexion_extension
+  - trunk_lateral_flexion
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
+  - weight_shift_control
+primary_body_regions:
+- hip
+- knee
+- ankle
+biomechanical_identity:
   expected_com_motion: vertical_and_anterior_posterior
   stability_requirement: high
   main_load_regions:
-    - hip
-    - knee
-    - ankle
+  - hip
+  - knee
+  - ankle
   primary_constraints:
-    - maintain_foot_contact
-    - maintain_trunk_alignment
-    - avoid_knee_valgus
-    - avoid_excessive_lateral_shift
-    - maintain_pelvis_level
+  - maintain_foot_contact
+  - maintain_trunk_alignment
+  - avoid_knee_valgus
+  - avoid_excessive_lateral_shift
+  - maintain_pelvis_level
+notes: 'Lunge is the primary exercise for validating alternating-pattern motion attribution.
 
-compensation_candidates:
-  - knee_valgus
-  - asymmetric_knee_flexion
-  - asymmetric_hip_flexion
-  - insufficient_rear_hip_extension
-  - excessive_trunk_flexion
-  - lateral_trunk_lean
-  - lateral_pelvic_shift
-  - pelvis_drop
-  - unstable_step_width
-  - heel_lift
-  - tempo_instability
-  - phase_timing_asymmetry
-
-feature_domains:
-  spatial:
-    - rom
-    - symmetry
-    - shape
-    - alignment
-    - depth_proxy
-    - support_width
-  temporal:
-    - tempo
-    - rep_duration
-    - eccentric_duration
-    - concentric_duration
-    - timing_ratio
-    - left_right_timing_variability
-  control:
-    - stability
-    - compensation
-    - com_stability
-    - pelvis_stability
-    - lateral_shift
-    - balance_control
-    - joint_tracking_error
-  biomechanical_proxy:
-    - com_displacement
-    - com_velocity_proxy
-    - segment_length_normalized_displacement
-    - moment_arm_proxy
-    - relative_joint_load_proxy
-    - compensation_load_shift_proxy
-
-view_requirements:
-  preferred_views:
-    - sagittal_left
-    - sagittal_right
-  acceptable_views:
-    - front_oblique
-    - frontal
-    - side_oblique
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  visibility_sensitive_landmarks: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-  occlusion_risk: high
-
-camera_protocol:
-  recommended_zones: [Z3, Z7]
-  recommended_height: H2
-  anchor: reference_mat
-  distance_cm: [200, 250]
-  primary_observation_purpose:
-    - anterior_knee_travel
-    - sagittal_alignment
-    - trunk_spine_neutrality
-  out_of_zone_policy: warn_and_continue
-  coordinate_correction: none
-
-view_metric_reliability:
-  structure: unilateral_or_alternating
-  role_labels: [forward_leg, trailing_leg, active_side, support_side]
-  zones:
-    Z1:
-      side_order: high
-      step_width: high
-      frontal_alignment: high
-      pelvis_drop_or_shift: high
-      side_to_side_comparison: moderate
-      forward_limb_sagittal_rom: low
-      rear_limb_extension: low
-      anterior_knee_travel: low
-      trunk_flexion: low
-    Z3:
-      forward_limb_sagittal_rom: high
-      rear_limb_extension: high
-      anterior_knee_travel: high
-      trunk_flexion: high
-      step_length: high
-      frontal_alignment: low
-      pelvis_drop_or_shift: low
-      side_to_side_comparison: low
-    Z7:
-      forward_limb_sagittal_rom: high
-      rear_limb_extension: high
-      anterior_knee_travel: high
-      trunk_flexion: high
-      step_length: high
-      frontal_alignment: low
-      pelvis_drop_or_shift: low
-      side_to_side_comparison: low
-
-quality_rules:
-  minimum_visible_landmark_ratio: 0.8
-  minimum_critical_landmark_ratio: 0.9
-  max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3
-  exclude_rep_if_critical_landmark_missing: true
-  exclude_rep_if_phase_missing: false
-  allow_partial_feature_output: true
-
-notes: |
-  Lunge is the primary exercise for validating alternating-pattern motion attribution.
   Forward leg per rep is determined by annotation.starting_side and pattern=alternating.
+
   Sagittal view is preferred because the rear leg is often occluded in frontal view.
+
+  '
