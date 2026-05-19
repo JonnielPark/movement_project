@@ -763,6 +763,10 @@ def run_pipeline(
             config=config.preprocessing,
         )
         report["preprocessing"] = pre_report
+        if "feature_availability_summary" in pre_report:
+            df.attrs["feature_availability_summary"] = pre_report[
+                "feature_availability_summary"
+            ]
 
     # ── ⑤ Normalization ───────────────────────────────────────────────────────
     if config.normalization.enabled:
@@ -954,6 +958,11 @@ def run_pipeline(
                     "value": r.value,
                     "unit": r.unit,
                     "source_fields": r.source_fields,
+                    "view_reliability": r.view_reliability,
+                    "availability": r.availability,
+                    "availability_reasons": r.availability_reasons,
+                    "camera_zone": r.camera_zone,
+                    "role_context": r.role_context,
                 }
                 for r in feat_records
             ]

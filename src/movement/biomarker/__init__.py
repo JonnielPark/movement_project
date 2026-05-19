@@ -31,6 +31,10 @@ class BiomarkerRecord:
     value             : biomarker value
     unit              : torso_length_ratio | degree | dimensionless_cv | second
     note              : optional biomechanical interpretation note
+    view_reliability  : optional camera-zone reliability inherited from FeatureRecord
+    availability      : optional scoring availability inherited from FeatureRecord
+    availability_reasons : machine-readable reasons for availability decision
+    camera_zone       : recording camera zone used for availability decision
     """
 
     biomarker_id: str
@@ -41,6 +45,10 @@ class BiomarkerRecord:
     value: float
     unit: str
     note: str | None = None
+    view_reliability: str | None = None
+    availability: str | None = None
+    availability_reasons: list[str] = field(default_factory=list)
+    camera_zone: str | None = None
 
     def __post_init__(self) -> None:
         if not self.source_fields:
@@ -59,6 +67,10 @@ class BiomarkerRecord:
             "value": self.value,
             "unit": self.unit,
             "note": self.note,
+            "view_reliability": self.view_reliability,
+            "availability": self.availability,
+            "availability_reasons": self.availability_reasons,
+            "camera_zone": self.camera_zone,
         }
 
 
@@ -86,6 +98,10 @@ def from_feature_record(
         value=feature.value,
         unit=feature.unit,
         note=note,
+        view_reliability=getattr(feature, "view_reliability", None),
+        availability=getattr(feature, "availability", None),
+        availability_reasons=list(getattr(feature, "availability_reasons", []) or []),
+        camera_zone=getattr(feature, "camera_zone", None),
     )
 
 

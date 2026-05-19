@@ -1,12 +1,14 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.0.9
-**Last Updated:** 2026-05-12
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-16
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑧. Computes movement-quality features from normalized pose data.
 Each feature is returned as a `FeatureRecord` with `(value, unit, source_fields)`
-so that downstream biomarker derivation (⑩) can trace provenance.
+plus view-reliability and availability metadata so that downstream biomarker
+derivation (⑩) can trace provenance without turning observation limits into
+movement-quality penalties.
 
 Beyond raw joint angles, the design enforces a strict three-domain decomposition
 (**spatial / temporal / control**) so that every metric maps cleanly to a clinical
@@ -32,10 +34,14 @@ Pose CSV
 
 Required inputs:
 ```text
-normalized coordinates    <landmark>_norm_x/y/z columns from ⑤
-rep boundaries            segment_type == 'rep' + rep_id from ②
-phase column (optional)   from ⑥; enables phase-level feature emission
-exercise definition       angle_definitions, feature_domains, compensation_candidates
+normalized coordinates        <landmark>_norm_x/y/z columns from ⑤
+rep boundaries                segment_type == 'rep' + rep_id from ②
+phase column (optional)       from ⑥; enables phase-level feature emission
+exercise definition           angle_definitions, feature_domains,
+                              compensation_candidates, view_metric_reliability
+filming provenance            camera_zone, camera_height_level when available
+preprocessing reliability      feature_availability_summary, far-side jitter,
+                              swap-risk, and visibility context when available
 ```
 
 Does not modify coordinates. Adds `FeatureRecord` rows only; the pose dataframe
@@ -50,12 +56,14 @@ Allowed:
     Per-(rep × phase) aggregation when ⑥ phase column is populated
     Compensation candidate computation from COMPENSATION_RULES registry
     Provenance recording in source_fields
+    Reporting computed values separately from scoring eligibility
 
 Not allowed:
     Branching on exercise_id in feature code  (drive everything from YAML)
     Producing a feature whose source_fields is empty (raises ValueError)
     Mixing kinetic and kinematic phase labels in feature_id suffixes
     Outputs in absolute units (N, kg, m)  — torso_length_ratio / degree only
+    Penalizing a feature only because the camera view cannot support that metric
 ```
 
 ## 3. Three Feature Domains
@@ -126,6 +134,85 @@ and `support_side`. A lunge filmed from the side can therefore be high-confidenc
 for forward-leg sagittal ROM and rear-limb extension while low-confidence for
 knee valgus or pelvis drop. A frontal lunge can show step width and pelvis drop
 well while making anterior knee travel and rear-hip extension low-confidence.
+
+#### Feature Availability Resolver Contract
+
+Task A introduces a small resolver between raw feature computation and ⑩ scoring.
+The resolver does not change numeric feature values. It annotates each
+`FeatureRecord` with the best available observation context:
+
+```text
+view_reliability
+    Reliability prior read from exercise_definition.view_metric_reliability for
+    the active camera_zone and metric family. Allowed values are
+    high | moderate | low | not_assessed | unknown.
+
+availability
+    Final scoring eligibility after combining view_reliability with landmark
+    visibility, preprocessing feature_availability_summary, segment-length
+    plausibility, and left/right swap risk.
+
+availability_reasons
+    Short machine-readable reasons such as
+    view_metric_low, view_metric_not_assessed, far_side_jitter_high,
+    bilateral_landmark_coverage_low, swap_risk_high, or camera_zone_unknown.
+
+camera_zone
+    Recording-level camera zone used for the decision. If missing, use unknown.
+
+role_context
+    Optional role metadata for unilateral/alternating exercises, for example
+    {"active_side": "left", "support_side": "right", "near_side": "left"}.
+```
+
+The resolver uses feature-family mapping rather than hard-coded exercise IDs.
+The initial required mapping is:
+
+```text
+spatial.symmetry.*                    → bilateral_symmetry
+spatial.rom.*                         → sagittal_rom when the exercise primary plane is sagittal
+control.compensation.knee_valgus      → frontal_alignment
+control.compensation.knee_varus       → frontal_alignment
+control.compensation.lateral_pelvic_shift → frontal_alignment | lateral_shift
+control.compensation.heel_lift        → heel_lift | sagittal_rom
+control.compensation.pelvis_rotation  → transverse_rotation | pelvis_rotation
+temporal.tempo.*                      → tempo
+temporal.variability.*                → tempo | smoothness
+control.stability.*                   → centerline_stability | hip_center_stability
+```
+
+When several aliases exist, the resolver should select the first key present in
+the active exercise's `view_metric_reliability.zones.<camera_zone>` map and record
+the selected key in `source_fields` or `availability_reasons`.
+
+Default availability resolution:
+
+```text
+view_reliability high/moderate + sufficient landmark/preprocessing gates
+    → availability = assessed
+
+view_reliability low
+    → availability = low_confidence by default; report numeric value but do not
+      send it to composite scoring unless a later policy explicitly overrides it.
+
+view_reliability not_assessed
+    → availability = not_assessed; report only as an omitted metric/provenance note.
+
+camera_zone unknown or missing view_metric_reliability entry
+    → availability = low_confidence unless all non-view gates are also missing,
+      in which case use not_assessed.
+
+preprocessing gate failure for bilateral interpretation
+    → downgrade assessed to low_confidence or not_assessed according to the
+      reported reason.
+```
+
+For side-view squat specifically, sagittal and centerline families are the first
+scoring candidates: descent depth, hip/knee/ankle ROM, trunk lean, heel lift,
+hip-center stability, tempo, and smoothness. Depth-derived bilateral symmetry
+from a rotated monocular frontal rendering must be `low_confidence` or
+`not_assessed` unless an actual frontal or front-oblique view supports the same
+finding.
 
 ### 3-2. Temporal Features
 
@@ -240,6 +327,11 @@ class FeatureRecord:
     source_fields: list[str]      # required; raises ValueError if empty
     note:          str | None
     phase:         str | None     # None = rep-level; 'Descent' etc. = phase-level
+    view_reliability: str = "unknown"      # high | moderate | low | not_assessed | unknown
+    availability: str = "assessed"         # assessed | low_confidence | not_assessed
+    availability_reasons: list[str] = []
+    camera_zone: str | None = None
+    role_context: dict[str, str] | None = None
 ```
 
 Per-exercise mapping of which features are produced:
@@ -265,8 +357,10 @@ records += summarize_phase_to_rep(records)
 feat_df = features_to_dataframe(records)
 ```
 
-`features_to_dataframe()` flattens `source_fields` into a pipe-joined string for
-tabular interchange and preserves the `phase` column.
+`features_to_dataframe()` flattens `source_fields` and `availability_reasons` into
+pipe-joined strings for tabular interchange, preserves the `phase` column, and
+serializes `role_context` as a JSON-compatible object or string depending on the
+output format.
 
 ## 9. Configuration
 
@@ -467,6 +561,7 @@ tests/test_feature_registry_coverage.py  YAML feature-domain, compensation cover
 tests/test_analysis_disrupting_patterns.py
                                          analysis-disrupting pattern detectability coverage
 tests/test_feature_provenance.py          missing source_fields policy
+tests/test_feature_view_reliability.py    camera-zone reliability and availability metadata
 ```
 
 ## 14. Clinical Meaning Reference

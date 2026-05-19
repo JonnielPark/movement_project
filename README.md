@@ -60,7 +60,7 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑩ 결선; 선택 `canonicalization`과 `support_plane_alignment` report 연결; legacy `floor_relative_correction`은 하위 호환 alias로 유지 |
 | 프로토콜 메타데이터 스키마 | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
 | 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 현재 4대 운동 범위에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance 검증 완료 |
-| 단위 테스트 | `tests/` | 최근 full run 129개 전체 통과 |
+| 단위 테스트 | `tests/` | 최근 full run 133개 전체 통과 |
 
 ### 부분 완료
 
@@ -68,23 +68,23 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 |---|---|---|
 | Far-side preprocessing 근거 | `stages/preprocessing.py` | 측면 촬영 반대측 landmark jitter 안정화, feature availability, data-confidence hook (→ Task B) |
 | Motion attribution 근거 | `stages/motion_attribution.py` | 구조화된 correction log, false-correction 지표, ambiguous-repetition report (→ Task C) |
-| Robustness simulation 근거 | `simulation/`, `scripts/` | viewpoint variation, compensation injection, 실험 러너, long-format output, robustness summary (→ Task D) |
-| ⑪ Visualization | `reporting/visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task E) |
+| Robustness simulation 근거 | `simulation/`, `scripts/` | viewpoint variation, compensation injection, 실험 러너, long-format output, robustness summary (→ Task C) |
+| ⑪ Visualization | `reporting/visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
 
 ### 계획 (방어 이전)
 
 | 과업 | 산출물 | 학위논문 § |
 |---|---|---|
-| A — Analysis-space canonicalization | raw/norm/canon 좌표 체계, support-plane + movement-plane prior, correction report, data confidence 분리, 04/15번 노트북 raw/norm/canon 검토 | §6–§8 |
-| B — Visibility-aware far-side preprocessing | 측면 촬영 반대측 landmark jitter 안정화, near/far side 추정, feature availability, data-confidence hook, 07번 노트북 검토 | §6–§8 |
-| C — Structured motion-attribution correction log | Correction log, false-correction 지표, ambiguous-repetition report | §8 |
-| D — Robustness simulation and experiment runner | viewpoint/compensation simulation injector, `scripts/run_robustness_experiment.py`, long-format output, robustness summary | §8 |
-| E — 논문용 reporting visualization | 정적 figure 함수 6개, `save_figure()`, source-field/caption provenance, `outputs/figures/` export | §11 |
-| F — Clinical mapping 통합과 dashboard 결정 게이트 | FMS-like mapping coverage 확인, feature availability 연결, 필요 시 traffic-light/severity reporting 통합, dashboard 결정 게이트 | §7.4 |
-| G — 유지보수와 저장소 정리 | 집중 변경 후 targeted test, 인계 전 full `python -m pytest`, cache/build 정리, 안정화된 README 개발 명령 | 개발 위생 |
-| H — 선택 확장: visibility-aware scoring fallback | 전처리 이후에도 occlusion, left/right swap, landmark jitter가 반복될 경우 feature availability policy와 confidence note 추가 | Task C-E 이후 조건부 |
+| A — Visibility-aware zone reliability 완성 | 더 넓은 zone/role reliability mapping과 남은 zone-dependent test | §6–§8 |
+| B — Structured motion-attribution correction log | Correction log, false-correction 지표, ambiguous-repetition report | §8 |
+| C — Robustness simulation and experiment runner | viewpoint/compensation simulation injector, `scripts/run_robustness_experiment.py`, long-format output, robustness summary | §8 |
+| D — 논문용 reporting visualization | 정적 figure 함수 6개, `save_figure()`, source-field/caption provenance, `outputs/figures/` export | §11 |
+| E — Clinical mapping 통합과 dashboard 결정 게이트 | FMS-like mapping coverage 확인, feature availability 연결, 필요 시 traffic-light/severity reporting 통합, dashboard 결정 게이트 | §7.4 |
+| F — 유지보수와 저장소 정리 | 집중 변경 후 targeted test, 인계 전 full `python -m pytest`, cache/build 정리, 안정화된 README 개발 명령 | 개발 위생 |
+| G — 선택 확장: visibility-aware scoring fallback | 전처리 이후에도 occlusion, left/right swap, landmark jitter가 반복될 경우 feature availability policy와 confidence note 추가 | motion-attribution, robustness, reporting 이후 조건부 |
+| H — 후위 canonicalization 승격 게이트 | 노트북과 robustness 근거가 충분하기 전까지 `canon`을 review-only로 유지 | 조건부 / 후위 |
 
-Dashboard / Phantom 3D 작업은 Task F의 결정 게이트 뒤로 보류하며, 사용자가 학위논문 구현
+Dashboard / Phantom 3D 작업은 Task E의 결정 게이트 뒤로 보류하며, 사용자가 학위논문 구현
 산출물로 채택하기 전까지는 활성 구현 과업으로 두지 않는다.
 
 ---

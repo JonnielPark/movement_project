@@ -24,3 +24,5 @@ docs_eng/code_revision_plan.md
 
 # Pipeline outputs
 data/processed/
+data/dev_videos/
+data/pose/mediapipe/no_consent/

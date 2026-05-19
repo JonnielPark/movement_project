@@ -1,13 +1,14 @@
 # 10. Biomarker Scoring
 
-**Document Version:** 1.0.4
-**Last Updated:** 2026-05-12
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-16
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩. Integrates ⑧ feature extraction and ⑨ biomechanical proxy
 output into interpretable digital biomarkers and a per-rep composite movement
-quality score. Observation reliability and coordinate-correction magnitude are
-interpreted as separate confidence/provenance information.
+quality score. Observation reliability, feature availability, and
+coordinate-correction magnitude are interpreted as separate confidence/provenance
+information.
 
 Two record types are emitted:
 1. **`BiomarkerRecord`** — pass-through individual metrics with `source_fields`
@@ -39,7 +40,7 @@ Pose CSV
 
 Required inputs:
 ```text
-feat_records          list[FeatureRecord]   from ⑧
+feat_records          list[FeatureRecord]   from ⑧, including availability metadata
 biomech_records       list[BiomechRecord]   from ⑨
 exercise_definition   includes feature_domains, biomechanical_focus, quality_rules
 definition_version    exercise YAML version string (provenance)
@@ -57,6 +58,8 @@ Allowed:
     Per-feature deduction audit list with z, weight, deduction
     Pass-through provenance from FeatureRecord / BiomechRecord
     Data confidence and correction reports displayed separately from the score
+    Withholding low-confidence or not-assessed features from composite scoring
+    while preserving them in pass-through reporting
 
 Not allowed:
     Clinical thresholds for "normal" vs "abnormal"
@@ -65,6 +68,7 @@ Not allowed:
     Disease-prediction outputs
     Single-number summary without per-domain transparency
     Directly converting large coordinate corrections into movement-quality penalties
+    Directly converting camera-zone limitations into movement-quality penalties
 ```
 
 ## 3. Two-Stage Output
@@ -87,6 +91,10 @@ class BiomarkerRecord:
     unit:               str         # torso_length_ratio | degree
                                     # | dimensionless_cv | second
     note:               str | None
+    view_reliability:   str | None = None
+    availability:       str | None = None
+    availability_reasons: list[str] = []
+    camera_zone:        str | None = None
 ```
 
 ### 3-2. BiomarkerScoreRecord (composite)
@@ -105,6 +113,7 @@ class BiomarkerScoreRecord:
     domain_scores:      dict[str, float]  # configured score scale per domain
     floor_applied:      dict[str, bool]
     deductions:         list[dict]        # per-feature audit
+    withheld_features:  list[dict] = []   # numeric features not used for score
     final_score:        float             # weighted composite
     source_fields:      list[str]
     domain_weights:     dict[str, float]  # normalized weights used for final_score
@@ -188,6 +197,57 @@ When camera artifacts are large but landmark tracking and joint-change patterns
 remain stable, the movement-quality score may be high while data confidence is
 moderate or low. Conversely, low data confidence should trigger interpretive caution
 or withholding rather than silently becoming a movement-quality penalty.
+
+### 4-2. Scoring Eligibility From Feature Availability
+
+⑧ Feature Extraction may emit a numeric feature even when the filming view does
+not support scoring that metric. ⑩ must therefore use `FeatureRecord.availability`
+as the gate for composite scoring.
+
+Default policy:
+
+```text
+availability = assessed
+    Eligible for Z-score deduction if the feature_id exists in the baseline.
+
+availability = low_confidence
+    Excluded from composite score by default. Keep the BiomarkerRecord and record
+    the feature in BiomarkerScoreRecord.withheld_features with reason metadata.
+
+availability = not_assessed
+    Excluded from composite score. Keep a reporting/provenance note only.
+
+availability missing
+    Backward-compatible behavior: treat as assessed, but this is allowed only for
+    legacy records or metrics whose view does not affect interpretation.
+```
+
+`view_reliability` is not used as an independent score multiplier. It contributes
+to `availability` in ⑧. This avoids partial penalties that look precise but are
+actually camera-condition artifacts.
+
+`BiomarkerRecord` remains a pass-through metric, so a low-confidence numeric value
+can still be displayed in tables and plots with a confidence note. The composite
+score uses only `assessed` features. `BiomarkerScoreRecord.withheld_features`
+prevents silent omission:
+
+```python
+withheld_features = [
+    {
+        "feature_id": "spatial.symmetry.knee",
+        "value": 0.31,
+        "availability": "low_confidence",
+        "view_reliability": "low",
+        "camera_zone": "Z3",
+        "reasons": ["view_metric_low", "side_view_bilateral_symmetry"],
+    },
+]
+```
+
+For a side-view squat, sagittal and centerline features such as depth,
+hip/knee/ankle ROM, trunk lean, heel lift, hip-center stability, tempo, and
+smoothness may remain eligible. Depth-derived bilateral symmetry should be
+withheld unless the availability resolver marks it `assessed`.
 
 ## 5. Z-Score Deduction Formula
 
@@ -284,6 +344,9 @@ The list is consumed directly by `plot_attribution_heatmap()` in ⑪
 visualization to surface "why this rep lost points" at the individual
 feature level.
 
+`withheld_features` is consumed by reporting/visualization beside the deduction
+audit. It explains "why this computed metric did not affect the score."
+
 ## 9. Entry Point
 
 ```python
@@ -363,6 +426,8 @@ configs/pipeline_default.yaml          biomarker.domain_weights default relative
                                        biomarker.score_bounds default 0–100 scale
 tests/test_biomarker_scoring_weights.py  score-domain weight normalization,
                                           score-bound normalization, and final score
+tests/test_biomarker_scoring_availability.py
+                                          assessed-only scoring and withheld-feature audit
 tests/test_interpretation.py           20 tests: rule loader, 3 scenarios,
                                         edge cases
 ```

@@ -22,7 +22,10 @@ Unit convention       : torso_length_ratio (dimensionless) or degree.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 @dataclass
@@ -52,12 +55,29 @@ class FeatureRecord:
     source_fields: list[str] = field(default_factory=list)
     note: str | None = None
     phase: str | None = None
+    view_reliability: str = "unknown"
+    availability: str = "assessed"
+    availability_reasons: list[str] = field(default_factory=list)
+    camera_zone: str | None = None
+    role_context: dict[str, str] | None = None
 
     def __post_init__(self) -> None:
         if not self.source_fields:
             raise ValueError(
                 f"FeatureRecord '{self.feature_id}': source_fields is empty. "
                 "Provenance fields from the exercise definition must be specified."
+            )
+        valid_reliability = {"high", "moderate", "low", "not_assessed", "unknown"}
+        if self.view_reliability not in valid_reliability:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid view_reliability "
+                f"{self.view_reliability!r}."
+            )
+        valid_availability = {"assessed", "low_confidence", "not_assessed"}
+        if self.availability not in valid_availability:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid availability "
+                f"{self.availability!r}."
             )
 
 
@@ -132,6 +152,183 @@ PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset(
         "control.stability",
     }
 )
+
+_VIEW_RELIABILITY_VALUES = {"high", "moderate", "low", "not_assessed"}
+
+
+def _unique_preserve_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            result.append(value)
+            seen.add(value)
+    return result
+
+
+def _recording_camera_zone(df: Any) -> str:
+    if "camera_zone" not in getattr(df, "columns", []):
+        return "unknown"
+    values = [
+        str(value)
+        for value in df["camera_zone"].dropna().tolist()
+        if str(value).strip() and str(value).strip().lower() != "unknown"
+    ]
+    if not values:
+        return "unknown"
+    counts: dict[str, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    return max(counts, key=lambda key: (counts[key], -values.index(key)))
+
+
+def _feature_metric_aliases(feature_id: str, exercise_definition: Any) -> list[str]:
+    primary_plane = str(
+        getattr(exercise_definition, "classification", {}).get("primary_plane", "")
+    ).lower()
+
+    aliases: list[str] = []
+    if feature_id.startswith("spatial.symmetry."):
+        aliases.extend(
+            [
+                "bilateral_symmetry",
+                "upper_limb_symmetry",
+                "side_to_side_comparison",
+            ]
+        )
+    elif feature_id.startswith("spatial.rom."):
+        if primary_plane == "sagittal":
+            aliases.extend(
+                [
+                    "sagittal_rom",
+                    "forward_limb_sagittal_rom",
+                    "anterior_knee_travel",
+                    "rear_limb_extension",
+                    "depth",
+                    "hip_height",
+                ]
+            )
+        aliases.append("rom")
+    elif feature_id.startswith("spatial.shape."):
+        aliases.extend(
+            ["active_hand_trajectory", "hip_position", "depth", "step_length"]
+        )
+    elif feature_id.startswith("temporal.tempo."):
+        aliases.extend(["tempo", "smoothness"])
+    elif feature_id.startswith("temporal.variability."):
+        aliases.extend(["tempo", "smoothness"])
+    elif feature_id.startswith("control.stability."):
+        aliases.extend(
+            [
+                "centerline_stability",
+                "hip_center_stability",
+                "hip_position",
+                "lateral_shift",
+                "hip_height",
+            ]
+        )
+    elif feature_id.startswith("control.compensation.knee_valgus"):
+        aliases.extend(["frontal_alignment", "frontal_knee_tracking"])
+    elif feature_id.startswith("control.compensation.knee_varus"):
+        aliases.extend(["frontal_alignment", "frontal_knee_tracking"])
+    elif feature_id.startswith("control.compensation.lateral_pelvic_shift"):
+        aliases.extend(["frontal_alignment", "lateral_shift", "pelvis_drop_or_shift"])
+    elif feature_id.startswith("control.compensation.heel_lift"):
+        aliases.extend(["heel_lift", "sagittal_rom"])
+    elif feature_id.startswith("control.compensation.pelvis_rotation"):
+        aliases.extend(["transverse_rotation", "pelvis_rotation"])
+    elif feature_id.startswith("control.compensation.excessive_trunk_flexion"):
+        aliases.extend(["trunk_flexion", "trunk_sagittal_alignment", "sagittal_rom"])
+
+    return _unique_preserve_order(aliases)
+
+
+def _view_reliability_for_record(
+    record: FeatureRecord,
+    exercise_definition: Any,
+    camera_zone: str,
+) -> tuple[str, str | None]:
+    view_map = getattr(exercise_definition, "view_metric_reliability", {}) or {}
+    zone_map = view_map.get("zones") or {}
+    values = zone_map.get(camera_zone) or {}
+    for metric_key in _feature_metric_aliases(record.feature_id, exercise_definition):
+        reliability = values.get(metric_key)
+        if reliability in _VIEW_RELIABILITY_VALUES:
+            return str(reliability), metric_key
+    return "unknown", None
+
+
+def _matches_feature_family(feature_id: str, family_pattern: str) -> bool:
+    return (
+        family_pattern.endswith(".*")
+        and feature_id.startswith(family_pattern[:-1])
+        or feature_id == family_pattern
+    )
+
+
+def _downgrade_availability(current: str, candidate: str) -> str:
+    rank = {"assessed": 0, "low_confidence": 1, "not_assessed": 2}
+    return candidate if rank[candidate] > rank[current] else current
+
+
+def annotate_feature_availability(
+    records: list[FeatureRecord],
+    df: Any,
+    exercise_definition: Any,
+) -> list[FeatureRecord]:
+    """Attach camera-zone reliability and scoring availability metadata.
+
+    The numeric feature values are left unchanged. This stage only records whether
+    a computed metric is eligible for composite scoring from the current view.
+    """
+
+    camera_zone = _recording_camera_zone(df)
+    summary = getattr(df, "attrs", {}).get("feature_availability_summary", {}) or {}
+    low_families = summary.get("low_confidence_feature_families", []) or []
+    not_families = summary.get("not_assessed_feature_families", []) or []
+    summary_reasons = summary.get("reasons", {}) or {}
+
+    for record in records:
+        record.camera_zone = camera_zone
+        reasons = list(record.availability_reasons)
+
+        reliability, metric_key = _view_reliability_for_record(
+            record, exercise_definition, camera_zone
+        )
+        record.view_reliability = reliability
+        if metric_key is not None:
+            source = f"view_metric_reliability.zones.{camera_zone}.{metric_key}"
+            if source not in record.source_fields:
+                record.source_fields.append(source)
+
+        if reliability == "low":
+            record.availability = _downgrade_availability(
+                record.availability, "low_confidence"
+            )
+            reasons.append("view_metric_low")
+        elif reliability == "not_assessed":
+            record.availability = "not_assessed"
+            reasons.append("view_metric_not_assessed")
+        elif reliability == "unknown" and camera_zone == "unknown":
+            reasons.append("camera_zone_unknown")
+
+        for family in low_families:
+            if _matches_feature_family(record.feature_id, str(family)):
+                record.availability = _downgrade_availability(
+                    record.availability, "low_confidence"
+                )
+                reasons.extend(summary_reasons.get(family, []))
+        for family in not_families:
+            if _matches_feature_family(record.feature_id, str(family)):
+                record.availability = "not_assessed"
+                reasons.extend(summary_reasons.get(family, []))
+
+        record.availability_reasons = _unique_preserve_order(
+            [reason for reason in reasons if reason]
+        )
+
+    return records
+
 
 _FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
     "spatial": {
@@ -640,7 +837,6 @@ def _emit_rep_level(
     """Compute all rep-level features (phase=None)."""
     from movement.features.control import compute_compensation, compute_stability
     from movement.features.spatial import compute_rom, compute_shape, compute_symmetry
-    from movement.features.temporal import compute_tempo, compute_variability
 
     records: list[FeatureRecord] = []
     records += compute_rom(df_rep, exercise_definition, rep_id=rep_id)
@@ -772,7 +968,6 @@ def extract_rep_features(
     -------
     list[FeatureRecord]
     """
-    import pandas as pd
     from movement.features.temporal import compute_tempo, compute_variability
 
     records: list[FeatureRecord] = []
@@ -825,7 +1020,7 @@ def extract_rep_features(
         records += compute_stability(df, exercise_definition)
         records += compute_compensation(df, exercise_definition)
 
-    return records
+    return annotate_feature_availability(records, df, exercise_definition)
 
 
 def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecord]":
@@ -848,8 +1043,6 @@ def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecor
     list[FeatureRecord]
         New summary records only (not a copy of the input).
     """
-    import pandas as pd
-
     phase_recs = [r for r in records if r.phase is not None]
     if not phase_recs:
         return []
@@ -912,8 +1105,9 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
     """
     Convert a list of FeatureRecord objects to a tidy DataFrame.
 
-    Columns: feature_id, exercise_id, rep_id, phase, value, unit, source_fields, note.
-    source_fields is serialized as a pipe-joined string for tabular compatibility.
+    Columns include value/unit provenance plus view reliability and availability.
+    source_fields and availability_reasons are serialized as pipe-joined strings
+    for tabular compatibility.
     Returns an empty DataFrame (with schema columns) when records is empty.
     """
     import pandas as pd
@@ -929,6 +1123,11 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
                 "unit",
                 "source_fields",
                 "note",
+                "view_reliability",
+                "availability",
+                "availability_reasons",
+                "camera_zone",
+                "role_context",
             ]
         )
 
@@ -942,6 +1141,11 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
             "unit": r.unit,
             "source_fields": "|".join(r.source_fields),
             "note": r.note,
+            "view_reliability": r.view_reliability,
+            "availability": r.availability,
+            "availability_reasons": "|".join(r.availability_reasons),
+            "camera_zone": r.camera_zone,
+            "role_context": r.role_context,
         }
         for r in records
     ]
@@ -953,6 +1157,7 @@ __all__ = [
     "FeatureRecord",
     "FeatureRegistryCoverageReport",
     "PHASE_AWARE_FEATURE_FAMILIES",
+    "annotate_feature_availability",
     "audit_analysis_disrupting_patterns",
     "audit_feature_registry",
     "extract_rep_features",
