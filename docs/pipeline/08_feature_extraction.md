@@ -1,12 +1,13 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.0.9
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-16
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
-각 피처는 `(value, unit, source_fields)`를 가진 `FeatureRecord`로 반환되어,
-후속 바이오마커 도출(⑩)이 산출 근거(provenance)를 추적할 수 있게 한다.
+각 피처는 `(value, unit, source_fields)`와 view reliability / availability metadata를 가진
+`FeatureRecord`로 반환되어, 후속 바이오마커 도출(⑩)이 관측 한계를 movement-quality penalty로
+바꾸지 않고 산출 근거(provenance)를 추적할 수 있게 한다.
 
 원시 관절각을 넘어, 본 설계는 모든 지표가 임상적 추론 범주에 명확히 매핑되도록
 **공간(spatial) / 시간(temporal) / 제어(control)** 의 3 도메인 분해를 엄격하게 강제한다.
@@ -35,7 +36,11 @@ Pose CSV
 정규화 좌표                ⑤에서 온 <landmark>_norm_x/y/z 칼럼
 반복 경계                  ②에서 온 segment_type == 'rep' + rep_id
 phase 칼럼 (선택)          ⑥에서 온 값; 구간 단위 피처 방출 활성화
-운동 정의                  angle_definitions, feature_domains, compensation_candidates
+운동 정의                  angle_definitions, feature_domains,
+                            compensation_candidates, view_metric_reliability
+촬영 provenance            camera_zone, camera_height_level이 있으면 사용
+전처리 신뢰도              feature_availability_summary, far-side jitter,
+                            swap-risk, visibility context가 있으면 사용
 ```
 
 좌표를 수정하지 않는다. `FeatureRecord` 행만 추가한다; 포즈 데이터프레임은 그대로 보존된다.
@@ -49,12 +54,14 @@ phase 칼럼 (선택)          ⑥에서 온 값; 구간 단위 피처 방출 �
     ⑥의 phase 칼럼이 채워진 경우 (rep × phase) 단위 집계
     COMPENSATION_RULES 레지스트리로부터의 보상 후보 계산
     source_fields에 산출 근거 기록
+    계산값과 scoring eligibility를 분리해 보고
 
 불허:
     피처 코드 내 exercise_id에 따른 분기 (모든 동작은 YAML에서 구동)
     source_fields가 비어 있는 피처 산출 (ValueError 발생)
     feature_id 접미사에서 운동학적·기구학적 phase 라벨 혼용
     절대 단위 출력 (N, kg, m) — torso_length_ratio / degree만 허용
+    카메라 view가 해당 metric을 뒷받침하지 못한다는 이유만으로 movement-quality score 감점
 ```
 
 ## 3. 3 피처 도메인 (Three Feature Domains)
@@ -117,6 +124,77 @@ availability       assessed | low_confidence | not_assessed
 high-confidence일 수 있지만 knee valgus나 pelvis drop에는 low-confidence일 수 있다. 정면 런지는
 step width와 pelvis drop을 잘 보여주지만 무릎 전방 이동과 rear-hip extension은 low-confidence가
 될 수 있다.
+
+#### Feature Availability Resolver 계약
+
+Task A는 raw feature 계산과 ⑩ scoring 사이에 작은 resolver를 둔다. 이 resolver는 계산된 피처
+수치를 바꾸지 않는다. 각 `FeatureRecord`에 가능한 관측 context를 metadata로 붙인다.
+
+```text
+view_reliability
+    exercise_definition.view_metric_reliability에서 현재 camera_zone과 metric family에 대해 읽은
+    reliability prior. 허용값은 high | moderate | low | not_assessed | unknown.
+
+availability
+    view_reliability, landmark visibility, preprocessing feature_availability_summary,
+    분절 길이 plausibility, 좌우 swap risk를 종합한 최종 scoring eligibility.
+
+availability_reasons
+    view_metric_low, view_metric_not_assessed, far_side_jitter_high,
+    bilateral_landmark_coverage_low, swap_risk_high, camera_zone_unknown 같은
+    짧은 machine-readable reason.
+
+camera_zone
+    판정에 사용한 recording-level camera zone. 없으면 unknown을 사용한다.
+
+role_context
+    편측/교대 운동의 선택 role metadata. 예:
+    {"active_side": "left", "support_side": "right", "near_side": "left"}.
+```
+
+resolver는 exercise_id 하드코딩이 아니라 feature-family mapping을 사용한다. 초기 필수 mapping은
+다음과 같다.
+
+```text
+spatial.symmetry.*                    → bilateral_symmetry
+spatial.rom.*                         → 운동 primary plane이 sagittal이면 sagittal_rom
+control.compensation.knee_valgus      → frontal_alignment
+control.compensation.knee_varus       → frontal_alignment
+control.compensation.lateral_pelvic_shift → frontal_alignment | lateral_shift
+control.compensation.heel_lift        → heel_lift | sagittal_rom
+control.compensation.pelvis_rotation  → transverse_rotation | pelvis_rotation
+temporal.tempo.*                      → tempo
+temporal.variability.*                → tempo | smoothness
+control.stability.*                   → centerline_stability | hip_center_stability
+```
+
+alias가 여러 개일 때는 현재 운동의 `view_metric_reliability.zones.<camera_zone>` map에 실제로
+존재하는 첫 key를 선택하고, 선택된 key를 `source_fields` 또는 `availability_reasons`에 남긴다.
+
+기본 availability 판정은 다음과 같다.
+
+```text
+view_reliability high/moderate + landmark/preprocessing gate 통과
+    → availability = assessed
+
+view_reliability low
+    → 기본 availability = low_confidence. 수치는 보고하지만 이후 정책 override가 없으면
+      composite scoring으로 보내지 않는다.
+
+view_reliability not_assessed
+    → availability = not_assessed. 생략된 metric/provenance note로만 보고한다.
+
+camera_zone unknown 또는 view_metric_reliability entry 누락
+    → 기본 availability = low_confidence. 단, view 외 gate까지 모두 없으면 not_assessed로 둔다.
+
+bilateral 해석에 필요한 preprocessing gate 실패
+    → reported reason에 따라 assessed를 low_confidence 또는 not_assessed로 낮춘다.
+```
+
+측면 스쿼트에서는 하강 깊이, hip/knee/ankle ROM, 체간 기울기, heel lift, hip-center 안정성,
+tempo, smoothness 같은 시상면 및 중심선 계열을 우선 scoring 후보로 둔다. 단안 3D skeleton을
+정면으로 돌려 얻은 depth-derived bilateral symmetry는 실제 정면 또는 전방 대각 view가 같은
+소견을 뒷받침하기 전까지 `low_confidence` 또는 `not_assessed`로 둔다.
 
 ### 3-2. 시간(Temporal) 피처
 
@@ -228,6 +306,11 @@ class FeatureRecord:
     source_fields: list[str]      # 필수; 비어 있으면 ValueError
     note:          str | None
     phase:         str | None     # None = 반복 단위; 'Descent' 등 = 구간 단위
+    view_reliability: str = "unknown"      # high | moderate | low | not_assessed | unknown
+    availability: str = "assessed"         # assessed | low_confidence | not_assessed
+    availability_reasons: list[str] = []
+    camera_zone: str | None = None
+    role_context: dict[str, str] | None = None
 ```
 
 운동별로 산출되는 피처 매핑:
@@ -253,8 +336,9 @@ records += summarize_phase_to_rep(records)
 feat_df = features_to_dataframe(records)
 ```
 
-`features_to_dataframe()`는 표 교환을 위해 `source_fields`를 파이프(|)로 결합한 문자열로
-펼치고 `phase` 칼럼을 보존한다.
+`features_to_dataframe()`은 `source_fields`와 `availability_reasons`를 pipe로 연결한 문자열로
+평탄화해 tabular interchange에 사용하고, `phase` 칼럼을 보존한다. `role_context`는 출력 형식에
+따라 JSON-compatible object 또는 문자열로 직렬화한다.
 
 ## 9. 설정 (Configuration)
 
@@ -447,6 +531,7 @@ tests/test_feature_registry_coverage.py  YAML feature-domain, compensation cover
 tests/test_analysis_disrupting_patterns.py
                                          analysis-disrupting pattern detectability coverage
 tests/test_feature_provenance.py          missing source_fields policy
+tests/test_feature_view_reliability.py    camera-zone reliability와 availability metadata
 ```
 
 ## 14. 임상적 의미 참조 (Clinical Meaning Reference)

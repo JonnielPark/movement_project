@@ -62,7 +62,7 @@ Stage activation is controlled by the `enabled` flags in
 | Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑩ connected; optional `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
 | Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
-| Unit tests | `tests/` | Latest full run passes 129/129 |
+| Unit tests | `tests/` | Latest full run passes 133/133 |
 
 ### Partial
 
@@ -70,23 +70,23 @@ Stage activation is controlled by the `enabled` flags in
 |---|---|---|
 | Far-side preprocessing evidence | `stages/preprocessing.py` | Side-view far-side landmark jitter stabilization, feature availability, data-confidence hook (→ Task B) |
 | Motion attribution evidence | `stages/motion_attribution.py` | Structured correction log, false-correction metrics, and ambiguous-repetition reporting (→ Task C) |
-| Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task D) |
-| ⑪ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task E) |
+| Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
+| ⑪ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
 
 ### Plan (Before Defense)
 
 | Task | Deliverable | Dissertation § |
 |---|---|---|
-| A — Analysis-space canonicalization | raw/norm/canon coordinate families, support-plane + movement-plane priors, correction report, data-confidence separation, notebook 04/15 raw/norm/canon review | §6-§8 |
-| B — Visibility-aware far-side preprocessing | Side-view far-side landmark jitter stabilization, near/far-side inference, feature availability, data-confidence hook, notebook 07 review | §6-§8 |
-| C — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
-| D — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
-| E — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
-| F — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
-| G — Maintenance and repository hygiene | Focused test runs, full `python -m pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
-| H — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after Tasks C-E |
+| A — Visibility-aware zone reliability completion | Broader zone/role reliability mapping and remaining zone-dependent tests | §6-§8 |
+| B — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
+| C — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
+| D — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, source-field/caption provenance, `outputs/figures/` exports | §11 |
+| E — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
+| F — Maintenance and repository hygiene | Focused test runs, full `python -m pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
+| G — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after motion-attribution, robustness, and reporting |
+| H — Deferred canonicalization promotion gate | Keep `canon` review-only unless notebook and robustness evidence justify downstream promotion | Conditional / deferred |
 
-Dashboard / Phantom 3D work is deferred behind the Task F gate and is not an active
+Dashboard / Phantom 3D work is deferred behind the Task E gate and is not an active
 implementation task unless selected as a dissertation output.
 
 ---

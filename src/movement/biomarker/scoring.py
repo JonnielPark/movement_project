@@ -164,6 +164,8 @@ class BiomarkerScoreRecord:
     deductions         : per-feature audit list
                          [{'feature_id', 'domain', 'value', 'baseline_mean',
                            'baseline_std', 'z', 'w', 'deduction'}, ...]
+    withheld_features  : computed feature records excluded from composite scoring
+                         because availability is low_confidence or not_assessed
     final_score        : weighted composite on the configured score scale
     source_fields      : exercise definition fields that drove the score
     domain_weights     : normalized domain weights used for final_score
@@ -176,8 +178,9 @@ class BiomarkerScoreRecord:
     rep_id: int | None
     domain_scores: dict[str, float]
     floor_applied: dict[str, bool]
-    deductions: list[dict[str, Any]]
     final_score: float
+    deductions: list[dict[str, Any]]
+    withheld_features: list[dict[str, Any]] = field(default_factory=list)
     source_fields: list[str] = field(default_factory=list)
     domain_weights: dict[str, float] = field(
         default_factory=lambda: dict(DOMAIN_WEIGHTS)
@@ -196,6 +199,7 @@ class BiomarkerScoreRecord:
             "floor_applied": self.floor_applied,
             "final_score": self.final_score,
             "deductions": self.deductions,
+            "withheld_features": self.withheld_features,
             "source_fields": self.source_fields,
             "domain_weights": self.domain_weights,
             "score_bounds": self.score_bounds,
@@ -219,6 +223,27 @@ def _classify_domain(record_id: str) -> str:
         if record_id.startswith(prefix):
             return domain
     return "other"
+
+
+def _record_availability(record: Any) -> str:
+    availability = getattr(record, "availability", "assessed")
+    return "assessed" if availability in {None, ""} else str(availability)
+
+
+def _is_scoring_eligible(record: Any) -> bool:
+    return _record_availability(record) == "assessed"
+
+
+def _withheld_feature_entry(record: Any, domain: str) -> dict[str, Any]:
+    return {
+        "domain": domain,
+        "feature_id": _record_id(record),
+        "value": round(float(record.value), 4),
+        "availability": _record_availability(record),
+        "view_reliability": getattr(record, "view_reliability", None),
+        "camera_zone": getattr(record, "camera_zone", None),
+        "reasons": list(getattr(record, "availability_reasons", []) or []),
+    }
 
 
 # ── Baseline I/O ──────────────────────────────────────────────────────────────
@@ -277,6 +302,8 @@ def build_baseline_from_records(
     values: dict[str, list[float]] = defaultdict(list)
 
     for r in feat_records:
+        if not _is_scoring_eligible(r):
+            continue
         rid = _record_id(r)
         if rid and r.value is not None and not np.isnan(float(r.value)):
             values[rid].append(float(r.value))
@@ -313,6 +340,8 @@ def _mandatory_rom_ratio(
     ratios: list[float] = []
 
     for r in feat_records:
+        if not _is_scoring_eligible(r):
+            continue
         rid = _record_id(r)
         if not rid.startswith("spatial.rom."):
             continue
@@ -396,11 +425,15 @@ def _score_one_rep(
 ) -> BiomarkerScoreRecord:
     """Compute BiomarkerScoreRecord for one rep (or the full sequence)."""
     domain_records: dict[str, list] = {d: [] for d in _SCORE_DOMAIN_ORDER}
+    withheld_features: list[dict[str, Any]] = []
 
     for r in feat_rep:
         d = _classify_domain(_record_id(r))
         if d in domain_records:
-            domain_records[d].append(r)
+            if _is_scoring_eligible(r):
+                domain_records[d].append(r)
+            else:
+                withheld_features.append(_withheld_feature_entry(r, d))
     for r in biomech_rep:
         d = _classify_domain(_record_id(r))
         if d in domain_records:
@@ -440,6 +473,7 @@ def _score_one_rep(
         floor_applied=floor_applied,
         deductions=all_deductions,
         final_score=round(final_score, 2),
+        withheld_features=withheld_features,
         source_fields=["feature_domains", "biomechanical_focus", "quality_rules"],
         domain_weights=domain_weights,
         score_bounds=score_bounds,

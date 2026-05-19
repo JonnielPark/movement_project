@@ -1,12 +1,13 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.0.4
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-16
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
 바이오마커와 반복별 종합 동작 품질 점수(composite movement quality score)로 통합한다.
-관측 데이터 신뢰도와 좌표 보정량은 점수와 분리된 confidence/provenance 정보로 해석한다.
+관측 데이터 신뢰도, 피처 산출 가능성, 좌표 보정량은 점수와 분리된 confidence/provenance
+정보로 해석한다.
 
 두 종류의 레코드가 산출된다:
 1. **`BiomarkerRecord`** — `source_fields` provenance를 갖춘 패스스루 개별 지표.
@@ -37,7 +38,7 @@ Pose CSV
 
 필수 입력:
 ```text
-feat_records          list[FeatureRecord]   ⑧에서
+feat_records          list[FeatureRecord]   ⑧에서; availability metadata 포함
 biomech_records       list[BiomechRecord]   ⑨에서
 exercise_definition   feature_domains, biomechanical_focus, quality_rules 포함
 definition_version    운동 YAML 버전 문자열 (provenance)
@@ -55,6 +56,7 @@ baseline JSON         data/reference/baseline_zscore.json
     z, weight, deduction을 포함한 피처별 감점 감사 목록
     FeatureRecord / BiomechRecord로부터의 provenance 패스스루
     data confidence와 correction report를 점수와 분리해 표시
+    low-confidence 또는 not-assessed 피처는 패스스루 보고에 보존하되 종합 점수에서 보류
 
 불허:
     "정상" vs "비정상"의 임상 임계값
@@ -63,6 +65,7 @@ baseline JSON         data/reference/baseline_zscore.json
     질병 예측 출력
     도메인별 투명성 없는 단일 숫자 요약
     큰 좌표 보정량을 운동 품질 감점으로 직접 치환
+    camera-zone 한계를 운동 품질 감점으로 직접 치환
 ```
 
 ## 3. 2단계 출력 (Two-Stage Output)
@@ -84,6 +87,10 @@ class BiomarkerRecord:
     unit:               str         # torso_length_ratio | degree
                                     # | dimensionless_cv | second
     note:               str | None
+    view_reliability:   str | None = None
+    availability:       str | None = None
+    availability_reasons: list[str] = []
+    camera_zone:        str | None = None
 ```
 
 ### 3-2. BiomarkerScoreRecord (종합)
@@ -101,6 +108,7 @@ class BiomarkerScoreRecord:
     domain_scores:      dict[str, float]  # 도메인별 설정 점수 척도
     floor_applied:      dict[str, bool]
     deductions:         list[dict]        # 피처별 감사
+    withheld_features:  list[dict] = []   # 계산됐지만 점수에는 쓰지 않은 피처
     final_score:        float             # 가중 종합
     source_fields:      list[str]
     domain_weights:     dict[str, float]  # final_score에 사용된 정규화 가중치
@@ -177,6 +185,53 @@ correction_report
 추적과 관절 변화량이 안정적이면 동작 품질 점수는 높고 data confidence는 중간 또는 낮음으로
 보고될 수 있다. 반대로 data confidence가 낮은 경우에는 점수 자체를 해석 보류하거나
 confidence note를 함께 표시한다.
+
+### 4-2. Feature Availability에 따른 점수화 eligibility
+
+⑧ Feature Extraction은 촬영 view가 해당 metric의 점수화를 충분히 뒷받침하지 못해도 숫자 피처를
+계산할 수 있다. 따라서 ⑩은 `FeatureRecord.availability`를 종합 점수 입력 gate로 사용한다.
+
+기본 정책:
+
+```text
+availability = assessed
+    feature_id가 baseline에 있으면 Z-score 감점 입력으로 사용한다.
+
+availability = low_confidence
+    기본적으로 종합 점수에서 제외한다. BiomarkerRecord는 유지하고,
+    BiomarkerScoreRecord.withheld_features에 reason metadata와 함께 기록한다.
+
+availability = not_assessed
+    종합 점수에서 제외한다. reporting/provenance note로만 유지한다.
+
+availability 누락
+    하위 호환 동작: assessed로 취급한다. 단, legacy record 또는 view가 해석에 영향을 주지 않는
+    metric에만 허용한다.
+```
+
+`view_reliability`는 독립 score multiplier로 사용하지 않는다. ⑧에서 `availability`를 정할 때
+반영된다. 이렇게 해야 정밀해 보이지만 실제로는 camera-condition artifact인 부분 감점을 피할 수 있다.
+
+`BiomarkerRecord`는 pass-through metric으로 남기므로 low-confidence 수치도 confidence note와 함께
+표와 그림에 표시할 수 있다. 종합 점수는 `assessed` feature만 사용한다.
+`BiomarkerScoreRecord.withheld_features`는 조용한 누락을 막는다.
+
+```python
+withheld_features = [
+    {
+        "feature_id": "spatial.symmetry.knee",
+        "value": 0.31,
+        "availability": "low_confidence",
+        "view_reliability": "low",
+        "camera_zone": "Z3",
+        "reasons": ["view_metric_low", "side_view_bilateral_symmetry"],
+    },
+]
+```
+
+측면 스쿼트에서는 하강 깊이, hip/knee/ankle ROM, 체간 기울기, heel lift, hip-center 안정성,
+tempo, smoothness 같은 시상면 및 중심선 피처는 계속 eligible일 수 있다. Depth-derived bilateral
+symmetry는 availability resolver가 `assessed`로 표시한 경우에만 점수화한다.
 
 ## 5. Z-Score 감점 공식 (Z-Score Deduction Formula)
 
@@ -268,6 +323,9 @@ deductions = [
 이 목록은 ⑪ 시각화의 `plot_attribution_heatmap()`에서 직접 소비되어, "이 반복이 왜 점수를 잃었는가"를
 개별 피처 수준에서 표면화한다.
 
+`withheld_features`는 감점 감사 옆에서 reporting/visualization이 소비한다. 이는
+"계산된 metric이 왜 점수에 영향을 주지 않았는가"를 설명한다.
+
 ## 9. 진입점 (Entry Point)
 
 ```python
@@ -345,6 +403,8 @@ configs/pipeline_default.yaml          biomarker.domain_weights 기본 상대 �
                                        biomarker.score_bounds 기본 0–100 척도
 tests/test_biomarker_scoring_weights.py  score-domain 가중치 정규화,
                                         score-bound 정규화와 final score
+tests/test_biomarker_scoring_availability.py
+                                        assessed-only scoring과 withheld-feature audit
 tests/test_interpretation.py           20건: 규칙 로더, 3개 시나리오, 엣지 케이스
 ```
 
