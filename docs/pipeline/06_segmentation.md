@@ -1,7 +1,7 @@
 # 06. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.2.3
-**최종 갱신:** 2026-05-10
+**문서 버전:** 1.2.6
+**최종 갱신:** 2026-05-20
 **영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑥. 정규화된 관절 움직임을 추적하여 rep 경계와 phase 경계를 반자동으로
@@ -182,7 +182,67 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 수동 보정값은 후속 단계의 유일한 확정 라벨로 사용한다. 다만 자동 후보와의 차이, 보정 사유,
 보정자 메모는 리포트에 남겨 provenance를 보존한다.
 
-## 10. 후속 단계 영향 (Downstream Effects)
+## 10. Recording-Plane Phase Split 산출물
+
+실제 원테이크 MediaPipe 녹화에서는 기존 pipeline `phase_segmentation`이 첫 pass로 가장
+안전하지 않을 수 있다. MediaPipe `z`는 vertical height가 아니라 depth proxy이기 때문이다.
+이 경우 pipeline 승격 전에 recording-plane phase split을 annotation-adjacent QC 산출물로
+생성할 수 있다.
+
+```text
+source file        <recording_id>_annotation.csv
+candidate output   <recording_id>_phase_split.csv
+confirmed output   <recording_id>_phase_annotation.csv
+reference signal   raw image/recording 좌표의 hip_center_y
+phase order        Descent → Turnaround_Hold → Ascent
+```
+
+후보 파일은 확정된 rep range에서 반자동으로 생성한다. 시각 QC를 통과하고
+`<recording_id>_phase_annotation.csv`로 승격되기 전까지 연구자가 확정한 annotation으로
+취급하지 않는다. 승격 조건은 다음과 같다.
+
+Notebook 15는 `src/movement/stages/recording_phase_split.py`의 안정화된 helper를 호출한다:
+`generate_recording_plane_phase_split`, `validate_phase_split_for_promotion`,
+`promote_phase_split_to_annotation`. 이 helper들은 산출물을 생성하고 검증하지만, 시각 QC
+통과 여부 자체를 결정하지 않는다.
+
+```text
+- 모든 annotated rep를 정확히 덮는다
+- phase range가 해당 rep range 안에 있다
+- phase range 사이에 gap 또는 overlap이 없다
+- phase 순서가 운동 정의와 일치한다
+- bottom_frame_estimate가 Turnaround_Hold 안에 있다
+- camera_zone, reference_signal 같은 촬영 provenance를 보존한다
+```
+
+이 산출물은 운동 정의의 phase 의미를 유지하되, 관찰된 MediaPipe 샘플에 더 적합한
+recording-plane signal을 사용한다. 이는 calibrated 3D reconstruction이 아니며,
+MediaPipe depth를 height로 재해석하지 않는다.
+
+### 10-1. Pipeline 승격 결정
+
+현재 결정: recording-plane phase split을 아직 generic pipeline `phase_segmentation` source로
+승격하지 않는다. 이 기능은 annotation-adjacent 실제 데이터 QC 및 확정 annotation workflow로
+유지한다.
+
+Formal pipeline source로 승격하려면 다음 gate를 모두 통과해야 한다.
+
+```text
+- 추가 실제 recording에서도 같은 phase-boundary 동작이 확인된다
+- p01을 넘어 적용되거나, squat-only special source로 명시적으로 문서화된다
+- phase-level feature extraction이 generic normalized-coordinate segmentation 계약을 바꾸지 않고
+  확정된 <recording_id>_phase_annotation.csv를 읽을 수 있다
+- frame gap, landmark jitter, 합리적인 camera-zone 변화에서 recording-plane split이 안정적임을
+  robustness test로 확인한다
+- notebook 15와 module test가 candidate generation, visual-QC gate, promotion semantics에서 일치한다
+```
+
+이 gate를 통과하기 전까지 downstream analysis는 연구자가 확정한
+`<recording_id>_phase_annotation.csv`를 사용할 수 있지만, automatic pipeline 기본값은 기존
+normalized-coordinate phase segmentation 또는 실제 데이터 review에서 phase segmentation disabled
+상태로 유지한다.
+
+## 11. 후속 단계 영향 (Downstream Effects)
 
 ```text
 ⑦ Motion Attribution   확정된 rep_id를 기준으로 활성 측 일관성 판단
@@ -192,7 +252,7 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 ⑪ Visualization        실패 지점과 수동 보정 경계를 시각적으로 표시
 ```
 
-## 11. 현재 범위 (Current Scope)
+## 12. 현재 범위 (Current Scope)
 
 지원 항목:
 
@@ -203,6 +263,7 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 - 분할 실패 지점 기록
 - 실패 수준별 파이프라인 처리 정책
 - 수동 개입 후 확정 라벨 사용
+- 실제 데이터 QC를 위한 annotation-adjacent recording-plane phase split 산출물
 ```
 
 범위 외 항목:
@@ -213,7 +274,7 @@ rep_segmentation_source 또는 phase_segmentation_source = manual_override
 - 분할 실패를 임의 보간하여 성공으로 처리하는 정책
 ```
 
-## 12. 검증 대상 (Verification Targets)
+## 13. 검증 대상 (Verification Targets)
 
 A2 검증은 다음 동작을 집중 단위 테스트로 고정한다.
 
@@ -244,4 +305,5 @@ phase provenance handoff
 ```text
 tests/test_phase_segmentation.py         phase splitting report와 override 동작
 tests/test_features_phase_grouping.py    phase-level FeatureRecord provenance
+tests/test_recording_phase_split.py      recording-plane phase split 산출물과 승격 검증
 ```

@@ -15,6 +15,22 @@
 
 ---
 
+## 연구 프레이밍 (Research Framing)
+
+본 프로젝트는 단안 3D pose를 보정된 절대 3D 생체역학 계측값으로 보지 않고, 촬영 조건에
+의존하는 움직임 관찰 신호로 해석한다. 카메라 각도, landmark 가시성, depth 추정 불확실성은
+분석 provenance로 보존하고, 모든 feature를 같은 신뢰도와 같은 점수 가중치로 강제하지 않는다.
+
+따라서 목표 biomarker 전략은 view-aware reliability-weighted 분석이다. 선택한 촬영 view에서
+잘 관찰되는 feature는 강하게 반영하고, depth 의존도가 높거나 관찰 품질이 낮은 feature는
+낮은 가중치로 반영하거나 low confidence 또는 not assessed로 보고한다. 이 관점에서 촬영 각도는
+분석 설계 변수다. 정면 view는 frontal alignment, 측면 view는 sagittal depth와 ROM, 사선 view는
+두 계열의 균형 관찰을 강조한다. 향후 더 나은 단안 pose/depth 모델, 다중 카메라, 또는 추가
+센서를 사용하면 feature 신뢰도와 분석 세부도를 높일 수 있으며, 현재 단안 biomarker 논리를
+부정하지 않고 확장하는 구조가 된다.
+
+---
+
 ## 파이프라인 (Pipeline)
 
 ```text

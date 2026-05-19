@@ -35,6 +35,9 @@ class BiomarkerRecord:
     availability      : optional scoring availability inherited from FeatureRecord
     availability_reasons : machine-readable reasons for availability decision
     camera_zone       : recording camera zone used for availability decision
+    depth_dependency  : optional monocular-depth dependency inherited from FeatureRecord
+    model_depth_reliability : optional pose-estimator depth reliability
+    landmark_quality  : optional feature-level landmark evidence summary
     """
 
     biomarker_id: str
@@ -49,6 +52,9 @@ class BiomarkerRecord:
     availability: str | None = None
     availability_reasons: list[str] = field(default_factory=list)
     camera_zone: str | None = None
+    depth_dependency: str | None = None
+    model_depth_reliability: str | None = None
+    landmark_quality: str | None = None
 
     def __post_init__(self) -> None:
         if not self.source_fields:
@@ -71,6 +77,9 @@ class BiomarkerRecord:
             "availability": self.availability,
             "availability_reasons": self.availability_reasons,
             "camera_zone": self.camera_zone,
+            "depth_dependency": self.depth_dependency,
+            "model_depth_reliability": self.model_depth_reliability,
+            "landmark_quality": self.landmark_quality,
         }
 
 
@@ -102,6 +111,9 @@ def from_feature_record(
         availability=getattr(feature, "availability", None),
         availability_reasons=list(getattr(feature, "availability_reasons", []) or []),
         camera_zone=getattr(feature, "camera_zone", None),
+        depth_dependency=getattr(feature, "depth_dependency", None),
+        model_depth_reliability=getattr(feature, "model_depth_reliability", None),
+        landmark_quality=getattr(feature, "landmark_quality", None),
     )
 
 

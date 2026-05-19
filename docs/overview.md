@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.32
-**최종 갱신:** 2026-05-16
+**문서 버전:** 1.4.33
+**최종 갱신:** 2026-05-20
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.5.1 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.32 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.33 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.3.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 0.1.1 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
@@ -25,11 +25,11 @@
 | 1.4.15 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.0.1 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 1.2.5 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
-| 1.2.3 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.2.6 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.0.2 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.0.7 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.1.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
 | 1.0.1 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.0.4 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.1.1 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.0.3 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.0.1 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 

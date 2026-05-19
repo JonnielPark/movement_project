@@ -16,6 +16,26 @@ scores and labels on the right are illustrative examples, not validation results
 
 ---
 
+## Research Framing
+
+This project treats monocular 3D pose as an observation-dependent movement signal,
+not as calibrated absolute 3D biomechanics. Camera angle, landmark visibility, and
+depth-estimation uncertainty are preserved as analysis provenance and used to
+adjust feature confidence instead of forcing every extracted feature into the same
+score weight.
+
+The intended biomarker strategy is therefore view-aware and reliability-weighted:
+features that are well supported by the selected recording view can contribute
+strongly, while depth-sensitive or poorly observed features can be down-weighted,
+reported as low confidence, or marked not assessed. In this framing, the filming
+angle becomes an analysis-design choice. A frontal view emphasizes frontal
+alignment, a side view emphasizes sagittal depth and ROM, and an oblique view
+balances both families. Future improvements in monocular pose/depth models,
+multi-camera setups, or additional sensors can increase feature reliability and
+analysis detail without changing the core biomarker logic.
+
+---
+
 ## Pipeline
 
 ```text
