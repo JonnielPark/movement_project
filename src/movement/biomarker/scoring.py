@@ -242,6 +242,9 @@ def _withheld_feature_entry(record: Any, domain: str) -> dict[str, Any]:
         "availability": _record_availability(record),
         "view_reliability": getattr(record, "view_reliability", None),
         "camera_zone": getattr(record, "camera_zone", None),
+        "depth_dependency": getattr(record, "depth_dependency", None),
+        "model_depth_reliability": getattr(record, "model_depth_reliability", None),
+        "landmark_quality": getattr(record, "landmark_quality", None),
         "reasons": list(getattr(record, "availability_reasons", []) or []),
     }
 

@@ -47,6 +47,9 @@ def test_low_confidence_feature_is_passed_through_but_not_scored(tmp_path: Path)
             view_reliability="low",
             availability_reasons=["view_metric_low"],
             camera_zone="Z3",
+            depth_dependency="high",
+            model_depth_reliability="low",
+            landmark_quality="low",
         ),
     ]
 
@@ -66,6 +69,9 @@ def test_low_confidence_feature_is_passed_through_but_not_scored(tmp_path: Path)
     )
     assert withheld_biomarker.availability == "low_confidence"
     assert withheld_biomarker.view_reliability == "low"
+    assert withheld_biomarker.depth_dependency == "high"
+    assert withheld_biomarker.model_depth_reliability == "low"
+    assert withheld_biomarker.landmark_quality == "low"
 
     score = score_records[0]
     assert score.final_score == 100.0
@@ -80,6 +86,9 @@ def test_low_confidence_feature_is_passed_through_but_not_scored(tmp_path: Path)
             "availability": "low_confidence",
             "view_reliability": "low",
             "camera_zone": "Z3",
+            "depth_dependency": "high",
+            "model_depth_reliability": "low",
+            "landmark_quality": "low",
             "reasons": ["view_metric_low"],
         }
     ]

@@ -1,7 +1,7 @@
 # 10. Biomarker Scoring
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-16
+**Document Version:** 1.1.1
+**Last Updated:** 2026-05-20
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩. Integrates ⑧ feature extraction and ⑨ biomechanical proxy
@@ -95,6 +95,9 @@ class BiomarkerRecord:
     availability:       str | None = None
     availability_reasons: list[str] = []
     camera_zone:        str | None = None
+    depth_dependency:   str | None = None
+    model_depth_reliability: str | None = None
+    landmark_quality:   str | None = None
 ```
 
 ### 3-2. BiomarkerScoreRecord (composite)
@@ -239,6 +242,8 @@ withheld_features = [
         "availability": "low_confidence",
         "view_reliability": "low",
         "camera_zone": "Z3",
+        "depth_dependency": "high",
+        "model_depth_reliability": "low",
         "reasons": ["view_metric_low", "side_view_bilateral_symmetry"],
     },
 ]

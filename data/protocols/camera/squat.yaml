@@ -51,6 +51,10 @@ view_metric_reliability:
       depth: low
       trunk_flexion: low
       heel_lift: low
+      centerline_stability: moderate
+      hip_center_stability: moderate
+      tempo: high
+      smoothness: moderate
     Z2:
       bilateral_symmetry: moderate
       frontal_alignment: high
@@ -58,6 +62,10 @@ view_metric_reliability:
       depth: moderate
       trunk_flexion: moderate
       heel_lift: moderate
+      centerline_stability: moderate
+      hip_center_stability: moderate
+      tempo: high
+      smoothness: moderate
     Z3:
       sagittal_rom: high
       depth: high
@@ -65,6 +73,10 @@ view_metric_reliability:
       heel_lift: moderate
       bilateral_symmetry: low
       frontal_alignment: low
+      centerline_stability: high
+      hip_center_stability: high
+      tempo: high
+      smoothness: high
     Z7:
       sagittal_rom: high
       depth: high
@@ -72,6 +84,10 @@ view_metric_reliability:
       heel_lift: moderate
       bilateral_symmetry: low
       frontal_alignment: low
+      centerline_stability: high
+      hip_center_stability: high
+      tempo: high
+      smoothness: high
     Z8:
       bilateral_symmetry: moderate
       frontal_alignment: high
@@ -79,3 +95,7 @@ view_metric_reliability:
       depth: moderate
       trunk_flexion: moderate
       heel_lift: moderate
+      centerline_stability: moderate
+      hip_center_stability: moderate
+      tempo: high
+      smoothness: moderate

@@ -1,7 +1,7 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-16
+**Document Version:** 1.1.1
+**Last Updated:** 2026-05-20
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑧. Computes movement-quality features from normalized pose data.
@@ -125,6 +125,8 @@ Feature extraction may compute a feature while reporting view reliability separa
 computed_value      numeric FeatureRecord value, when source fields exist
 view_reliability   high | moderate | low | not_assessed
 availability       assessed | low_confidence | not_assessed
+depth_dependency   none | low | moderate | high | unknown
+model_depth_reliability  high | moderate | low | unknown
 ```
 
 For bilateral symmetric exercises, the reliability map is mainly organized by
@@ -163,6 +165,24 @@ camera_zone
 role_context
     Optional role metadata for unilateral/alternating exercises, for example
     {"active_side": "left", "support_side": "right", "near_side": "left"}.
+
+depth_dependency
+    How much the metric depends on monocular depth inference rather than directly
+    observed image-plane geometry. Bilateral symmetry and transverse rotation
+    proxies are high; sagittal ROM and centerline stability are usually moderate;
+    tempo is none.
+
+model_depth_reliability
+    Pose-estimator depth confidence used for the recording. MediaPipe-based depth
+    defaults to low in the current implementation. A future monocular model,
+    multi-camera setup, or additional sensor can raise this metadata without
+    redefining the biomarker.
+
+landmark_quality
+    Feature-level summary of landmark evidence available to the resolver:
+    sufficient | low | mixed | unknown. The current minimum implementation
+    derives it from preprocessing availability reasons when per-feature landmark
+    coverage is not yet available.
 ```
 
 The resolver uses feature-family mapping rather than hard-coded exercise IDs.
@@ -195,6 +215,11 @@ view_reliability low
     → availability = low_confidence by default; report numeric value but do not
       send it to composite scoring unless a later policy explicitly overrides it.
 
+view_reliability moderate + depth_dependency high + model_depth_reliability low
+    → availability = low_confidence by default. The view may support the metric,
+      but the current pose estimator does not provide enough depth reliability
+      for scoring that depth-sensitive value.
+
 view_reliability not_assessed
     → availability = not_assessed; report only as an omitted metric/provenance note.
 
@@ -213,6 +238,13 @@ hip-center stability, tempo, and smoothness. Depth-derived bilateral symmetry
 from a rotated monocular frontal rendering must be `low_confidence` or
 `not_assessed` unless an actual frontal or front-oblique view supports the same
 finding.
+
+For the current p01 squat recorded from Z8, front-oblique geometry can support
+both sagittal and frontal families with moderate tradeoffs. However, MediaPipe
+depth is still model-low-confidence. Therefore high-depth-dependency features
+such as bilateral symmetry are reported as low-confidence until visual evidence
+or a stronger depth source justifies promotion, while sagittal ROM, tempo, and
+image-plane frontal alignment can remain assessed when their own gates pass.
 
 ### 3-2. Temporal Features
 

@@ -1,7 +1,7 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.1.0
-**최종 갱신:** 2026-05-16
+**문서 버전:** 1.1.1
+**최종 갱신:** 2026-05-20
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
@@ -91,6 +91,9 @@ class BiomarkerRecord:
     availability:       str | None = None
     availability_reasons: list[str] = []
     camera_zone:        str | None = None
+    depth_dependency:   str | None = None
+    model_depth_reliability: str | None = None
+    landmark_quality:   str | None = None
 ```
 
 ### 3-2. BiomarkerScoreRecord (종합)
@@ -224,6 +227,8 @@ withheld_features = [
         "availability": "low_confidence",
         "view_reliability": "low",
         "camera_zone": "Z3",
+        "depth_dependency": "high",
+        "model_depth_reliability": "low",
         "reasons": ["view_metric_low", "side_view_bilateral_symmetry"],
     },
 ]

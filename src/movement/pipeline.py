@@ -963,6 +963,9 @@ def run_pipeline(
                     "availability_reasons": r.availability_reasons,
                     "camera_zone": r.camera_zone,
                     "role_context": r.role_context,
+                    "depth_dependency": r.depth_dependency,
+                    "model_depth_reliability": r.model_depth_reliability,
+                    "landmark_quality": r.landmark_quality,
                 }
                 for r in feat_records
             ]

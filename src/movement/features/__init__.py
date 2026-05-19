@@ -45,6 +45,10 @@ class FeatureRecord:
                     Phase-level records must include 'phase_segmentation.*' entries.
     note          : optional interpretation note
     phase         : kinematic phase label (None = rep-level; 'Descent' etc. = phase-level)
+    depth_dependency : dependency on monocular depth inference, separate from
+                    camera-zone view reliability
+    model_depth_reliability : pose-estimator depth confidence for this recording
+    landmark_quality : feature-level landmark evidence summary
     """
 
     feature_id: str
@@ -60,6 +64,9 @@ class FeatureRecord:
     availability_reasons: list[str] = field(default_factory=list)
     camera_zone: str | None = None
     role_context: dict[str, str] | None = None
+    depth_dependency: str = "unknown"
+    model_depth_reliability: str = "unknown"
+    landmark_quality: str = "unknown"
 
     def __post_init__(self) -> None:
         if not self.source_fields:
@@ -78,6 +85,24 @@ class FeatureRecord:
             raise ValueError(
                 f"FeatureRecord '{self.feature_id}': invalid availability "
                 f"{self.availability!r}."
+            )
+        valid_depth_dependency = {"none", "low", "moderate", "high", "unknown"}
+        if self.depth_dependency not in valid_depth_dependency:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid depth_dependency "
+                f"{self.depth_dependency!r}."
+            )
+        valid_model_depth_reliability = {"high", "moderate", "low", "unknown"}
+        if self.model_depth_reliability not in valid_model_depth_reliability:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid model_depth_reliability "
+                f"{self.model_depth_reliability!r}."
+            )
+        valid_landmark_quality = {"sufficient", "mixed", "low", "unknown"}
+        if self.landmark_quality not in valid_landmark_quality:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid landmark_quality "
+                f"{self.landmark_quality!r}."
             )
 
 
@@ -154,6 +179,14 @@ PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset(
 )
 
 _VIEW_RELIABILITY_VALUES = {"high", "moderate", "low", "not_assessed"}
+_MODEL_DEPTH_RELIABILITY_VALUES = {"high", "moderate", "low", "unknown"}
+_DEPTH_DEPENDENCY_VALUES = {"none", "low", "moderate", "high", "unknown"}
+_LANDMARK_QUALITY_LOW_REASONS = {
+    "far_side_jitter_high",
+    "far_side_jitter_present",
+    "bilateral_landmark_coverage_low",
+    "swap_risk_high",
+}
 
 
 def _unique_preserve_order(values: list[str]) -> list[str]:
@@ -258,6 +291,107 @@ def _view_reliability_for_record(
     return "unknown", None
 
 
+def _model_depth_reliability(df: Any, exercise_definition: Any) -> str:
+    attrs = getattr(df, "attrs", {}) or {}
+    attr_reliability = attrs.get("model_depth_reliability")
+    if attr_reliability in _MODEL_DEPTH_RELIABILITY_VALUES:
+        return str(attr_reliability)
+
+    pose_estimator = attrs.get("pose_estimator_reliability")
+    if isinstance(pose_estimator, dict):
+        value = pose_estimator.get("model_depth_reliability")
+        if value in _MODEL_DEPTH_RELIABILITY_VALUES:
+            return str(value)
+
+    view_map = getattr(exercise_definition, "view_metric_reliability", {}) or {}
+    yaml_reliability = view_map.get("model_depth_reliability")
+    if yaml_reliability in _MODEL_DEPTH_RELIABILITY_VALUES:
+        return str(yaml_reliability)
+
+    landmarks = getattr(exercise_definition, "landmarks", None)
+    landmark_model = str(getattr(landmarks, "model", "")).lower()
+    if "mediapipe" in landmark_model:
+        return "low"
+    return "unknown"
+
+
+def _depth_dependency_for_record(
+    record: FeatureRecord,
+    metric_key: str | None,
+) -> str:
+    if record.depth_dependency in _DEPTH_DEPENDENCY_VALUES - {"unknown"}:
+        return record.depth_dependency
+
+    feature_id = record.feature_id
+    high_keys = {
+        "bilateral_symmetry",
+        "side_to_side_comparison",
+        "transverse_rotation",
+        "pelvis_rotation",
+    }
+    moderate_keys = {
+        "sagittal_rom",
+        "forward_limb_sagittal_rom",
+        "rear_limb_extension",
+        "anterior_knee_travel",
+        "depth",
+        "hip_height",
+        "trunk_flexion",
+        "heel_lift",
+        "centerline_stability",
+        "hip_center_stability",
+        "hip_position",
+        "lateral_shift",
+        "step_length",
+        "active_hand_trajectory",
+        "rom",
+    }
+    low_keys = {
+        "frontal_alignment",
+        "frontal_knee_tracking",
+        "pelvis_drop_or_shift",
+        "tempo",
+        "smoothness",
+        "step_width",
+        "side_order",
+    }
+
+    if metric_key in high_keys:
+        return "high"
+    if metric_key in moderate_keys:
+        return "moderate"
+    if metric_key in low_keys:
+        return "low" if metric_key not in {"tempo", "smoothness"} else "none"
+
+    if feature_id.startswith("spatial.symmetry."):
+        return "high"
+    if feature_id.startswith("temporal."):
+        return "none"
+    if feature_id.startswith("spatial.rom.") or feature_id.startswith(
+        "control.stability."
+    ):
+        return "moderate"
+    if feature_id.startswith("control.compensation.pelvis_rotation"):
+        return "high"
+    if feature_id.startswith("control.compensation.knee_"):
+        return "low"
+    return "unknown"
+
+
+def _landmark_quality_from_reasons(
+    summary: dict[str, Any],
+    reasons: list[str],
+) -> str:
+    if any(reason in _LANDMARK_QUALITY_LOW_REASONS for reason in reasons):
+        return "low"
+    quality = summary.get("landmark_quality")
+    if quality in {"sufficient", "mixed", "low", "unknown"}:
+        return str(quality)
+    if summary:
+        return "sufficient"
+    return "unknown"
+
+
 def _matches_feature_family(feature_id: str, family_pattern: str) -> bool:
     return (
         family_pattern.endswith(".*")
@@ -287,6 +421,7 @@ def annotate_feature_availability(
     low_families = summary.get("low_confidence_feature_families", []) or []
     not_families = summary.get("not_assessed_feature_families", []) or []
     summary_reasons = summary.get("reasons", {}) or {}
+    model_depth_reliability = _model_depth_reliability(df, exercise_definition)
 
     for record in records:
         record.camera_zone = camera_zone
@@ -296,6 +431,8 @@ def annotate_feature_availability(
             record, exercise_definition, camera_zone
         )
         record.view_reliability = reliability
+        record.depth_dependency = _depth_dependency_for_record(record, metric_key)
+        record.model_depth_reliability = model_depth_reliability
         if metric_key is not None:
             source = f"view_metric_reliability.zones.{camera_zone}.{metric_key}"
             if source not in record.source_fields:
@@ -312,6 +449,17 @@ def annotate_feature_availability(
         elif reliability == "unknown" and camera_zone == "unknown":
             reasons.append("camera_zone_unknown")
 
+        if (
+            record.depth_dependency == "high"
+            and record.model_depth_reliability == "low"
+            and record.availability == "assessed"
+        ):
+            record.availability = "low_confidence"
+            reasons.append("model_depth_reliability_low")
+            source = "pose_estimator.model_depth_reliability"
+            if source not in record.source_fields:
+                record.source_fields.append(source)
+
         for family in low_families:
             if _matches_feature_family(record.feature_id, str(family)):
                 record.availability = _downgrade_availability(
@@ -325,6 +473,9 @@ def annotate_feature_availability(
 
         record.availability_reasons = _unique_preserve_order(
             [reason for reason in reasons if reason]
+        )
+        record.landmark_quality = _landmark_quality_from_reasons(
+            summary, record.availability_reasons
         )
 
     return records
@@ -1128,6 +1279,9 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
                 "availability_reasons",
                 "camera_zone",
                 "role_context",
+                "depth_dependency",
+                "model_depth_reliability",
+                "landmark_quality",
             ]
         )
 
@@ -1146,6 +1300,9 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
             "availability_reasons": "|".join(r.availability_reasons),
             "camera_zone": r.camera_zone,
             "role_context": r.role_context,
+            "depth_dependency": r.depth_dependency,
+            "model_depth_reliability": r.model_depth_reliability,
+            "landmark_quality": r.landmark_quality,
         }
         for r in records
     ]

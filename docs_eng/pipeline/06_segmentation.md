@@ -1,7 +1,7 @@
 # 06. Segmentation
 
-**Document Version:** 1.2.3
-**Last Updated:** 2026-05-10
+**Document Version:** 1.2.6
+**Last Updated:** 2026-05-20
 **Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑥. Tracks normalized joint motion to split rep boundaries and phase
@@ -189,7 +189,70 @@ Manual corrections become the only confirmed labels used by downstream steps. Th
 difference from the automatic candidate, correction reason, and reviewer note are
 retained in the report to preserve provenance.
 
-## 10. Downstream Effects
+## 10. Recording-Plane Phase Split Artifact
+
+For real one-take MediaPipe recordings, the generic pipeline `phase_segmentation`
+may not be the safest first pass because MediaPipe `z` is a depth proxy rather
+than vertical height. In this case, a recording-plane phase split can be generated
+as an annotation-adjacent QC artifact before pipeline promotion.
+
+```text
+source file        <recording_id>_annotation.csv
+candidate output   <recording_id>_phase_split.csv
+confirmed output   <recording_id>_phase_annotation.csv
+reference signal   hip_center_y in raw image/recording coordinates
+phase order        Descent → Turnaround_Hold → Ascent
+```
+
+The candidate file is generated semi-automatically from confirmed rep ranges. It
+is not treated as a researcher-confirmed annotation until visual QC passes and the
+candidate is promoted to `<recording_id>_phase_annotation.csv`. Promotion requires:
+
+Notebook 15 calls the stable helpers in
+`src/movement/stages/recording_phase_split.py`:
+`generate_recording_plane_phase_split`,
+`validate_phase_split_for_promotion`, and
+`promote_phase_split_to_annotation`. These helpers generate and validate the
+artifact; they do not decide whether visual QC has passed.
+
+```text
+- every annotated rep is covered exactly
+- phase ranges stay inside the corresponding rep range
+- phase ranges have no gaps or overlaps
+- phase order matches the exercise definition
+- bottom_frame_estimate falls inside Turnaround_Hold
+- filming provenance such as camera_zone and reference_signal is preserved
+```
+
+This artifact preserves the exercise-defined phase semantics while using a
+recording-plane signal better suited to the observed MediaPipe sample. It is not
+calibrated 3D reconstruction and does not reinterpret MediaPipe depth as height.
+
+### 10-1. Pipeline Promotion Decision
+
+Current decision: do not promote the recording-plane phase split to the generic
+pipeline `phase_segmentation` source yet. It remains an annotation-adjacent
+real-data QC and confirmed-annotation workflow.
+
+Promotion to a formal pipeline source requires all of the following:
+
+```text
+- at least one additional real recording confirms the same phase-boundary behavior
+- the rule is exercised beyond p01 or documented as a squat-only special source
+- phase-level feature extraction reads the confirmed <recording_id>_phase_annotation.csv
+  without changing the generic normalized-coordinate segmentation contract
+- robustness tests show that the recording-plane split is stable under frame gaps,
+  landmark jitter, and reasonable camera-zone variation
+- notebook 15 and the module tests agree on candidate generation, visual-QC gating,
+  and promotion semantics
+```
+
+Until those gates are met, downstream analysis may use the researcher-confirmed
+`<recording_id>_phase_annotation.csv`, but the automatic pipeline default remains
+the existing normalized-coordinate phase segmentation or no phase segmentation
+when that is disabled for a real-data review.
+
+## 11. Downstream Effects
 
 ```text
 ⑦ Motion Attribution   uses confirmed rep_id for active-side consistency
@@ -199,7 +262,7 @@ retained in the report to preserve provenance.
 ⑪ Visualization        shows failure points and manual correction boundaries
 ```
 
-## 11. Current Scope
+## 12. Current Scope
 
 Supported:
 
@@ -210,6 +273,7 @@ Supported:
 - Segmentation failure-point recording
 - Failure-level pipeline handling policy
 - Confirmed labels after manual intervention
+- Annotation-adjacent recording-plane phase split artifacts for real-data QC
 ```
 
 Not in scope:
@@ -220,7 +284,7 @@ Not in scope:
 - Treating a segmentation failure as success through arbitrary interpolation
 ```
 
-## 12. Verification Targets
+## 13. Verification Targets
 
 A2 verification locks the following behavior with focused unit tests:
 
@@ -253,4 +317,5 @@ Test mapping:
 ```text
 tests/test_phase_segmentation.py         phase splitting reports and override behavior
 tests/test_features_phase_grouping.py    phase-level FeatureRecord provenance
+tests/test_recording_phase_split.py      recording-plane phase split artifact and promotion validation
 ```

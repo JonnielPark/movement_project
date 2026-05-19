@@ -1,7 +1,7 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.1.0
-**최종 갱신:** 2026-05-16
+**문서 버전:** 1.1.1
+**최종 갱신:** 2026-05-20
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧. 정규화된 포즈 데이터로부터 동작 품질 피처를 계산한다.
@@ -116,6 +116,8 @@ not_assessed
 computed_value      source field가 있을 때 산출된 FeatureRecord 수치
 view_reliability   high | moderate | low | not_assessed
 availability       assessed | low_confidence | not_assessed
+depth_dependency   none | low | moderate | high | unknown
+model_depth_reliability  high | moderate | low | unknown
 ```
 
 양측 대칭 운동에서는 reliability map을 주로 관상면 가시성과 시상면 가시성의 tradeoff로 정리한다.
@@ -150,6 +152,21 @@ camera_zone
 role_context
     편측/교대 운동의 선택 role metadata. 예:
     {"active_side": "left", "support_side": "right", "near_side": "left"}.
+
+depth_dependency
+    해당 metric이 직접 관찰된 image-plane geometry보다 단안 depth inference에 얼마나 의존하는지.
+    bilateral symmetry와 transverse rotation proxy는 high, sagittal ROM과 centerline stability는
+    보통 moderate, tempo는 none으로 둔다.
+
+model_depth_reliability
+    해당 recording의 pose-estimator depth 신뢰도. 현재 MediaPipe 기반 depth는 low를 기본값으로
+    사용한다. 향후 더 강한 단안 모델, 다중 카메라, 추가 센서가 들어오면 biomarker 정의를
+    바꾸지 않고 이 metadata를 높일 수 있다.
+
+landmark_quality
+    resolver가 사용할 수 있는 feature-level landmark 근거 요약:
+    sufficient | low | mixed | unknown. 현재 최소 구현에서는 per-feature landmark coverage가
+    아직 없을 때 preprocessing availability reason에서 유도한다.
 ```
 
 resolver는 exercise_id 하드코딩이 아니라 feature-family mapping을 사용한다. 초기 필수 mapping은
@@ -181,6 +198,10 @@ view_reliability low
     → 기본 availability = low_confidence. 수치는 보고하지만 이후 정책 override가 없으면
       composite scoring으로 보내지 않는다.
 
+view_reliability moderate + depth_dependency high + model_depth_reliability low
+    → 기본 availability = low_confidence. view 자체는 metric을 어느 정도 뒷받침할 수 있지만,
+      현재 pose estimator의 depth 신뢰도가 낮아 depth-sensitive 값을 점수화하기에는 부족하다.
+
 view_reliability not_assessed
     → availability = not_assessed. 생략된 metric/provenance note로만 보고한다.
 
@@ -195,6 +216,12 @@ bilateral 해석에 필요한 preprocessing gate 실패
 tempo, smoothness 같은 시상면 및 중심선 계열을 우선 scoring 후보로 둔다. 단안 3D skeleton을
 정면으로 돌려 얻은 depth-derived bilateral symmetry는 실제 정면 또는 전방 대각 view가 같은
 소견을 뒷받침하기 전까지 `low_confidence` 또는 `not_assessed`로 둔다.
+
+현재 p01 스쿼트처럼 Z8에서 촬영한 경우, 전방 대각 geometry는 시상면과 관상면 계열을 모두
+중간 정도의 tradeoff로 뒷받침할 수 있다. 하지만 MediaPipe depth 자체는 여전히 모델 수준에서
+low confidence로 둔다. 따라서 bilateral symmetry처럼 depth 의존도가 high인 feature는 시각
+근거 또는 더 강한 depth source가 확보되기 전까지 low-confidence로 보고하고, sagittal ROM,
+tempo, image-plane frontal alignment는 각 gate를 통과하면 assessed로 유지할 수 있다.
 
 ### 3-2. 시간(Temporal) 피처
 
