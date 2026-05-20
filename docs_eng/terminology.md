@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.5.1
-**Last Updated:** 2026-05-16
+**Document Version:** 1.6.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -73,6 +73,11 @@ appear in an output, treat it as a documentation or code error.
 | Floor-relative correction | A support-plane prior for static support-contact exercises that attenuates apparent floor artifacts using the pseudo-floor reference. It is currently treated as the `support_plane_alignment` sub-filter of analysis-space canonicalization. Raw/norm coordinates are preserved, and canon coordinates plus residuals are added only as new columns. |
 | Support-contact landmark | A landmark expected by the exercise definition to contact the floor or support surface, such as feet in a squat or hands/feet in plank. Because true compensatory movement must not be erased, it is not always a fixed anchor; it is used for pseudo-floor estimation only when visibility and stability criteria are met. |
 | Protocol-height lateral-width alignment | A review-only canonicalization prior that first checks whether the observed camera height matches the exercise protocol, then uses the protocol height level to choose a body anchor for attenuating depth-dependent lateral-width bias. H1 uses a support/ankle-level anchor, H2 uses a pelvis/hip-center anchor, and H3 uses a shoulder-line anchor. It is not lens calibration, perspective reprojection, or template fitting. |
+| Anthropometric skeleton prior | A loose body-segment length plausibility envelope used to review monocular-depth behavior. In Stage A it may use aggregate Size Korea ratios only as an engineering envelope; it is not an empirical percentile prior, calibrated 3D reconstruction, or subject-specific skeleton fitting. |
+| Conservative engineering range | A researcher-defined wide tolerance around aggregate anthropometric ratios. It is used to catch impossible skeleton behavior and data-confidence problems, not to estimate population P5/P95. |
+| Row-level empirical anthropometric prior | A future upgrade that requires de-identified individual-level anthropometric rows so segment/stature ratios can be computed within each person before summarizing P1/P99 or P5/P95. |
+| Depth residual correction | A bounded review-only candidate adjustment of the depth axis that may be attempted only when x/y evidence, segment-length plausibility, visibility, and correction caps allow it. It never overwrites raw or base normalized coordinates. |
+| Articulation plausibility | A separate guard for impossible joint-angle or reverse-bending configurations. It downgrades data confidence or marks features unavailable; it is not a direct movement-quality penalty. |
 
 ---
 

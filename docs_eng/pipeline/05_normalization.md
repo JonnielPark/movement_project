@@ -1,6 +1,6 @@
 # 05. Normalization
 
-**Document Version:** 1.3.0
+**Document Version:** 1.4.0
 **Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
@@ -100,6 +100,7 @@ normalization:
     support_plane_alignment: ...
     movement_plane_alignment: ...
     protocol_height_lateral_width_alignment: ...
+    anthropometric_skeleton_prior: ...
 ```
 
 `report_only: true` means `canon` coordinates and reports may be created, but
@@ -157,6 +158,7 @@ normalization report.
         "support_plane_alignment": dict | None,
         "movement_plane_alignment": dict | None,
         "protocol_height_lateral_width_alignment": dict | None,
+        "anthropometric_skeleton_prior": dict | None,
     },
 }
 ```
@@ -175,13 +177,14 @@ to attenuate consistent observation bias while preserving raw/norm coordinates
 and true compensation patterns such as knee valgus, heel lift, trunk lean, or
 pelvis rotation.
 
-Current active priors:
+Current active or planned priors:
 
 | Prior | Status | Purpose | Guardrail |
 |---|---|---|---|
 | `support_plane_alignment` | implemented, disabled by default | Pose-internal pseudo-floor/support-plane review from support-contact landmarks. Wraps the older `floor_relative_correction` logic. | Does not lock feet to the floor; not camera calibration. |
 | `movement_plane_alignment` | prototype, disabled by default | Capped rigid rotation around the vertical axis using the dominant hip-knee-ankle movement direction. | Preserves out-of-plane residuals for compensation review. |
 | `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Not lens correction, reprojection, or far-side coordinate invention. |
+| `anthropometric_skeleton_prior` | planned, disabled by default | Uses loose body-segment length plausibility ranges as an engineering envelope for monocular-depth review. | Not empirical P5/P95 until raw row-level data are available; not skeleton template fitting. |
 
 Current prior order:
 
@@ -189,6 +192,7 @@ Current prior order:
 1. support_plane_alignment
 2. movement_plane_alignment
 3. protocol_height_lateral_width_alignment
+4. anthropometric_skeleton_prior
 ```
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
@@ -198,7 +202,202 @@ compensation if applied too early.
 
 ---
 
-## 6. Downstream Rules
+## 6. Anthropometric Skeleton Prior Policy
+
+### 6.1 Purpose
+
+The anthropometric skeleton prior is a **loose anatomical plausibility envelope**
+for monocular pose depth. It is not a precise anthropometric statistical model.
+
+Allowed uses:
+
+```text
+- flag segment lengths that are anatomically implausible after normalization
+- create review-only candidate depth residual corrections when bounded and small
+- downgrade data confidence for affected segment/frame/feature records
+- document why a depth-sensitive feature is withheld or marked low confidence
+```
+
+Not allowed:
+
+```text
+- overwrite raw coordinates
+- overwrite base norm coordinates
+- force the pose into a normal skeleton template
+- promote monocular depth confidence to high
+- claim calibrated 3D reconstruction or subject-specific body reconstruction
+- claim empirical P5/P95 ranges before row-level raw anthropometric data exist
+- infer absolute physical length, force, torque, strength, diagnosis, or prognosis
+```
+
+### 6.2 Evidence Level
+
+Current source scope:
+
+```text
+source                 Size Korea 8th Korean Anthropometric Survey
+included data family   2020 3D full-body automatic measurements only
+included item range    No.138-311
+excluded families      direct measurement, 3D direct measurement,
+                       3D foot/hand/head automatic measurements
+current evidence       file design + aggregate statistics fallback
+raw row-level data     not yet available
+```
+
+The current statistics table gives marginal aggregate values. It does **not**
+provide individual paired ratios such as `(hip height - knee height) / stature`.
+Therefore, the first implementation stage may use only an aggregate engineering
+envelope. It must not call the range empirical percentile prior.
+
+Two-stage evidence model:
+
+| Stage | Data level | Allowed claim | Use |
+|---|---|---|---|
+| Stage A | file design + aggregate statistics | conservative engineering range around aggregate ratios | plausibility flag, low-confidence marking, review-only candidate residual |
+| Stage B | de-identified row-level 3D full-body automatic raw data | empirical row-level ratio distribution, P1/P99, P5/P95, stratified checks | narrower prior, height-bin validation, model comparison |
+
+### 6.3 Aggregate-Only Segment Map
+
+The first prior uses dimensionless ratios derived from aggregate statistics. The
+values below are **not** individual-level ratio percentiles.
+
+| Segment | Pose endpoints | Measurement proxy | Aggregate mean/stature | Status |
+|---|---|---|---:|---|
+| `shoulder_width` | left_shoulder ↔ right_shoulder | `m299` shoulder-outside breadth | 0.2220 | proxy close |
+| `hip_width` | left_hip ↔ right_hip | `m265` hip breadth | 0.2114 | surface-width proxy |
+| `torso` | shoulder_center ↔ hip_center | `m145 - m155` | 0.3211 | vertical proxy, not Euclidean torso |
+| `upper_arm` | shoulder ↔ elbow | `m189` | 0.1921 | proxy close |
+| `forearm` | elbow ↔ wrist | `m191 - m189` | 0.1423 | derived proxy |
+| `thigh` | hip ↔ knee | `m155 - m159` | 0.2287 | vertical proxy |
+| `shank` | knee ↔ ankle | `m159 - m161` | 0.2186 | vertical proxy to lateral malleolus |
+| `foot` | ankle ↔ foot_index | not available | null | unavailable in current source scope |
+
+Additional reference proxies may be stored for review but are not primary skeleton
+segments: `sitting_height`, `trunk_vertical`, `crotch_height`, and
+`outside_leg_length`.
+
+`m195` thigh straight length is not the primary hip-knee prior. Its aggregate
+stature ratio is much smaller than `m155 - m159`; keep it only as a
+definition-check or sensitivity note until the measurement definition is reviewed.
+
+### 6.4 Range Policy
+
+Stage A range policy:
+
+```text
+center value          aggregate mean(segment) / aggregate mean(stature)
+range name            conservative_engineering_range
+range source          researcher-defined loose tolerance around aggregate center
+range purpose         detect impossible skeleton behavior, not estimate population percentile
+configuration         stored in YAML/data artifact, never hardcoded in Python
+```
+
+Stage B upgrade policy:
+
+```text
+required input        de-identified row-level 3D full-body automatic raw table
+ratio calculation     segment / stature, segment / torso proxy, relevant body-scale ratios
+summary statistics    n, mean, SD, median, IQR, P1, P5, P95, P99
+range names           recommended_plausible_range = P5-P95
+                      conservative_range = P1-P99
+stratification        sex, age_group, height_bin only after sample-size review
+```
+
+### 6.5 Height-Bin Policy
+
+The survey may collect height by optional 5 cm bins:
+
+```text
+150cm or less
+151-155cm
+156-160cm
+161-165cm
+166-170cm
+171-175cm
+176-180cm
+181cm or more
+prefer not to answer
+```
+
+At Stage A, height bins are metadata/provenance only. They are not used to select
+a stratified prior because aggregate tables do not prove that height-bin-specific
+segment ratios improve the model.
+
+At Stage B, row-level data may test whether bins help:
+
+```text
+Model 0  overall mean ratio
+Model 1  sex mean ratio
+Model 2  sex + height_bin mean ratio
+Model 3  sex + age_group + height_bin mean ratio
+```
+
+If 5 cm bins are sparse or unstable, internal analysis may merge adjacent bins.
+Questionnaire collection may still keep 5 cm bins for future flexibility.
+
+### 6.6 Correction And Confidence Policy
+
+The prior may create candidate `canon` coordinates only when all conditions hold:
+
+```text
+1. the segment is available in the prior
+2. x/y evidence does not already violate the plausible range
+3. a bounded depth residual can bring the segment inside the loose range
+4. correction magnitude is below configured cap
+5. landmark visibility and swap-risk gates allow review
+```
+
+If the x/y projection is already outside the envelope, the system must not invent
+depth to make the segment fit. It should mark the segment/frame as low confidence
+or not assessed.
+
+Report fields should include:
+
+```text
+source_scope
+evidence_level
+range_type
+segments_checked
+segments_unavailable
+candidate_corrections
+correction_magnitude_torso
+rejection_reasons
+confidence_downgrade_reasons
+model_depth_reliability_after_correction = low
+```
+
+### 6.7 Articulation Plausibility
+
+Joint-angle and reverse-bending constraints are separate from Size Korea segment
+length statistics. They should be documented and implemented as an
+`articulation_plausibility` guard that downgrades data confidence for impossible
+configurations. It must not directly penalize movement-quality scores.
+
+### 6.8 Data Artifact Policy
+
+Recommended repository locations:
+
+```text
+data/reference/anthropometry/
+    size_korea8_3d_auto_skeleton_prior.yaml
+    size_korea8_3d_auto_aggregate_ratio_preview.csv
+    size_korea8_3d_auto_unavailable_segments.csv
+
+data/processed/anthropometry/
+    row-level-derived summaries and validation reports when raw data become available
+```
+
+Every derived table must include:
+
+```text
+source_scope = 3d_fullbody_auto_only
+evidence_level = aggregate_engineering_preview | row_level_empirical
+unit = dimensionless_ratio
+```
+
+---
+
+## 7. Downstream Rules
 
 - ⑥ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, and ⑩ Biomarker
   Scoring consume `norm` coordinates by default.
@@ -211,13 +410,17 @@ compensation if applied too early.
 - ⑨ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
   moment-arm, and load-shift proxies. It must not infer absolute force, torque,
   or calibrated physical distances from this step.
+- Anthropometric skeleton prior outputs are not used downstream until notebook
+  review and robustness evaluation define explicit promotion rules.
 
 ---
 
-## 7. Planned Extensions
+## 8. Planned Extensions
 
-- Anthropometric skeleton prior for segment-length/depth plausibility after the
-  Size Korea-derived ratio source is documented.
+- Build Stage A aggregate-only engineering prior from the documented Size Korea
+  8th 3D full-body automatic measurement source.
+- Add row-level empirical prior only if de-identified raw 3D full-body automatic
+  measurements become available.
 - Visibility-weighted scale estimation and torso-length outlier handling.
 - Per-exercise canonicalization prior selection from exercise definition fields.
 - Robustness evaluation before any `canon` coordinate promotion.
