@@ -1,42 +1,38 @@
 # 00. Data Format
 
-**Document Version:** 1.0.1  
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/00_data_format.md` is the same-version Korean source.
 
-Input format specification for monocular 3D pose time series data.
+Input specification for monocular 3D pose time-series CSV files.
 
 ---
 
-## 1. Input
+## 1. Input Contract
 
-CSV file exported from a pose estimation engine. The current implementation assumes
-a MediaPipe-style 33-landmark pose CSV: one row per frame, `frame` / `timestamp`
-columns, and landmark columns named from `src/movement/core/config.py`.
+The current pipeline expects a MediaPipe-style 33-landmark CSV:
 
-Other engines, including iPIXEL EXERCITE, are future adapters until their actual
-export schema is available. They should be converted into this MediaPipe-style
-schema before entering the current pipeline.
+```text
+one row = one frame
+required scalar columns = frame, timestamp
+coordinate columns = <landmark>_x, <landmark>_y, <landmark>_z
+optional visibility columns = <landmark>_visibility
+landmark names = src/movement/core/config.py
+```
+
+Other engines are adapters until their export schemas are available. They should
+be converted into this schema before entering the current pipeline.
 
 ## 2. Required Columns
 
 ```text
-frame        integer frame index (sortable, monotonically increasing)
-timestamp    seconds since recording start (float)
+frame        integer frame index; sortable and monotonically increasing
+timestamp    seconds since recording start; float
 ```
 
-- `frame` — used for continuity and duplicate checks in ① validation.
-- `timestamp` — used to estimate sampling interval and FPS.
+① Validation uses these columns for duplicate/gap checks and FPS estimation.
 
-## 3. Landmark Coordinate Columns
-
-Each landmark has three coordinate columns:
-
-```text
-<landmark>_x
-<landmark>_y
-<landmark>_z
-```
+## 3. Landmark Columns
 
 Example:
 
@@ -44,22 +40,14 @@ Example:
 left_knee_x
 left_knee_y
 left_knee_z
+left_knee_visibility
 ```
 
-Landmark names are defined in [src/movement/core/config.py](../../src/movement/core/config.py).
-Naming convention: `left_*` / `right_*` prefixes for bilateral landmarks.
+Visibility is recommended because monocular pose engines often return low-quality
+landmarks rather than missing landmarks. ④ Preprocessing and later reliability
+gates use visibility metadata when available.
 
-## 4. Visibility Columns (optional, recommended)
-
-```text
-<landmark>_visibility    float 0.0–1.0
-```
-
-Used by ④ preprocessing for reliability gating. In monocular data, landmarks are rarely
-fully absent — they are more commonly reported with low visibility. Including visibility
-columns improves the reliability classification.
-
-## 5. CSV Example
+## 4. CSV Example
 
 ```text
 frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
@@ -67,39 +55,35 @@ frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
 1,0.033,0.52,0.24,-0.13,0.97,0.43,...
 ```
 
-Sample file: `data/pose/sample/mediapipe_squat_synthetic.csv`
-
-## 6. Assumptions
+Sample file:
 
 ```text
-1. One row = one frame.
-2. Each landmark has x, y, z columns.
-3. frame values are sortable.
-4. timestamp values are monotonically increasing.
-5. Landmark names match the definitions in src/movement/core/config.py.
+data/pose/sample/mediapipe_squat_synthetic.csv
 ```
 
-Violations are reported by ① validation (see [01_validation.md](01_validation.md)).
+## 5. Coordinate And Unit Policy
 
-## 7. Coordinate Convention
-
-- Input coordinates are in the native units of the pose estimation engine
-  (e.g., MediaPipe normalized image coordinates).
-- ⑤ normalization converts to a body-relative coordinate system
-  (see [05_normalization.md](05_normalization.md)).
-- All downstream features and biomarkers use dimensionless `torso_length_ratio` units or degrees.
-  Absolute force/length units are not used.
-
-## 8. Data Management
-
-`data/` separates analysis-input CSVs from analysis definition files:
+Input coordinates remain in the pose engine's native coordinate convention until
+⑤ Normalization. Downstream features and biomarkers use body-relative units:
 
 ```text
-data/pose/         joint-point time-series CSVs
-data/definitions/  exercise definitions, interpretation rules, clinical mapping YAML
-data/reference/    reference statistics such as the synthetic-normal baseline
-data/processed/    pipeline outputs (.gitignore)
+torso_length_ratio
+degree
+dimensionless / dimensionless_cv
+second
 ```
 
-Raw videos are not analysis inputs for this repository. Shareable joint-point
-CSVs are stored under `data/pose/` after direct identifiers have been removed.
+Absolute force, torque, mass, or physical-length outputs are not used.
+
+## 6. Data Locations
+
+```text
+data/pose/          joint-point CSV input
+data/definitions/   exercise definitions and interpretation YAML
+data/protocols/     performance and camera protocol YAML
+data/reference/     reference statistics
+data/processed/     pipeline outputs; gitignored
+```
+
+Raw videos are not analysis inputs for this repository. Shareable inputs are
+de-identified joint-point CSVs.

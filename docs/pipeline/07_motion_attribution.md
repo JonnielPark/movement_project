@@ -1,14 +1,13 @@
 # 07. 모션 어트리뷰션 (Motion Attribution)
 
-**문서 버전:** 1.0.2
-**최종 갱신:** 2026-05-10  
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/pipeline/07_motion_attribution.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑦. 각 반복에서 가장 많이 움직인 사지(limb)가 기대 활성 측(active side)과
-일치하는지 점검한다. 기대 활성 측은 `performance_protocol.side_sequence`가 있으면 이를
-먼저 사용하고, 없으면 어노테이션의 `pattern` / `starting_side`로 fallback한다.
-
-좌표를 수정하지 않는다. 반복별 메타데이터 칼럼만 추가한다.
+파이프라인 단계 ⑦은 각 반복에서 실제로 움직인 사지가 기대 활성 측과 일치하는지 점검한다.
+기대 측은 `performance_protocol.side_sequence`가 있으면 이를 먼저 사용하고, 없으면 annotation의
+`pattern` / `starting_side`에서 도출한다. 본 단계는 좌표를 수정하지 않으며, 후속 피처 귀속을
+위한 반복 단위 메타데이터 칼럼만 추가한다.
 
 ---
 
@@ -27,158 +26,127 @@ Pose CSV
 ```
 
 필수 입력:
+
 ```text
-반복 경계                  어노테이션 (segment_type = rep)에서 도출
-운동 컨텍스트              어노테이션의 exercise_type, pattern, starting_side
+반복 경계                  segment_type == rep, rep_id
+운동 컨텍스트              exercise_type, pattern, starting_side
 운동 정의                  laterality, primary_joints, performance_protocol.side_sequence
-정규화 좌표                ⑤ Normalization에서
+정규화 좌표                <landmark>_norm_x/y/z
 ```
 
-정규화 좌표를 사용함으로써, 동작 에너지 비교가 절대 신체 크기와 카메라 거리에 무관하게 된다.
+정규화 좌표를 사용하므로 motion-energy 비교가 신체 크기와 카메라 거리의 영향을 덜 받는다.
 
-## 2. 활성 조건 (Activation Condition)
+## 2. 활성 규칙 (Activation Rules)
 
 ```text
-laterality = bilateral_symmetric  → 본 단계 건너뜀 (반복별 활성 측 개념 없음)
-laterality = alternating          → 반복별 어트리뷰션 실행
-laterality = unilateral_*         → 실행; 선언된 측이 기대 활성 측
-laterality 미상 / generic         → 건너뜀 (안전 기본값)
+bilateral_symmetric       건너뜀; 반복별 활성 측 개념 없음
+alternating               반복별 실행
+unilateral_left/right     실행; 선언된 측이 기대 측
+unilateral_unspecified    컨텍스트/근거로 측을 추론할 수 있을 때 실행
+unknown / generic         건너뜀
 ```
 
-## 3. 활성 측 검출 (Active Side Detection)
+`bilateral_symmetric`은 config flag가 켜져 있어도 항상 건너뛴다.
 
-반복 윈도우(`segment_type = rep`) 내에서 좌·우 짝 랜드마크의 동작 에너지를 계산한다:
+## 3. 검출 방법 (Detection Method)
+
+각 반복 윈도우에서 좌우 짝 landmark의 motion energy를 계산한다:
 
 ```text
-left_motion  = Σ |p_left_landmark(t+1)  - p_left_landmark(t)|
-right_motion = Σ |p_right_landmark(t+1) - p_right_landmark(t)|
-
+left_motion  = Σ ||p_left(t+1)  - p_left(t)||
+right_motion = Σ ||p_right(t+1) - p_right(t)||
 motion_share = max(left_motion, right_motion) / (left_motion + right_motion + ε)
 ```
 
-랜드마크 짝은 운동 정의의 `landmarks.primary_joints`에서 도출된다.
-운동별 커스텀 짝은 YAML 설정에서 지정할 수 있다.
+짝은 가능하면 `landmarks.primary_joints`에서 선택하고, 불가능하면 기본 shoulder/elbow/wrist/
+hip/knee/ankle 짝을 사용한다. tap 동작이나 비대칭 하지 동작은 운동 YAML에서 custom pair를
+제공할 수 있다.
 
-예:
+판정 임계값:
+
 ```text
-plank_shoulder_tap : left_wrist  vs right_wrist
-lunge              : left_knee   vs right_knee
+motion_share > τ_active          → detected_active = left/right, confidence = motion_share
+τ_ambiguous < share ≤ τ_active   → detected_active = ambiguous
+share ≤ τ_ambiguous              → detected_active = bilateral
 ```
 
-여러 짝 랜드마크를 결합(가중 평균)하여 단일 노이즈 랜드마크에 대한 민감도를 줄일 수 있다.
+기본값: `τ_active = 0.70`, `τ_ambiguous = 0.55`, `τ_swap = 0.85`.
 
-## 4. 검출 임계값 (Detection Thresholds)
+## 4. 기대 측 (Expected Side)
+
+우선순위:
 
 ```text
-if motion_share > τ_active (기본값: 0.70):
-    detected_active = 더 많이 움직인 측
-    confidence = motion_share
-
-elif τ_ambiguous < motion_share ≤ τ_active (기본값: 0.55 – 0.70):
-    detected_active = "ambiguous"
-    confidence = motion_share
-
-else:
-    detected_active = "bilateral"
-    confidence = 1 - motion_share
+1. laterality = unilateral_left/right
+2. performance_protocol.side_sequence
+3. annotation pattern + starting_side
+4. starting_side가 없고 근거가 충분할 때 첫 rep의 검출 측
 ```
 
-## 5. 기대 활성 측 (Expected Active Side)
-
-우선 `performance_protocol.side_sequence`에서 도출하고, 없으면 어노테이션의 `pattern`,
-`starting_side`에서 도출한다. 이후 운동 정의의 `laterality`와 교차 검증된다.
+지원 side-sequence mode:
 
 ```text
-pattern = alternating, starting_side = right:
-    rep 1 → right
-    rep 2 → left
-    rep 3 → right
-    ...
-
-pattern = alternating, starting_side = left:
-    rep 1 → left
-    rep 2 → right
-    ...
-
-performance_protocol.side_sequence.mode = same_side_block_then_switch,
-block_size_counts = 5, starting_side = right:
-    rep 1-5  → right
-    rep 6-10 → left
-
-performance_protocol.side_sequence.mode = alternating_each_rep,
-starting_side = left:
-    rep 1 → left
-    rep 2 → right
-    ...
+alternating_each_rep             rep 1 right, rep 2 left, ...
+same_side_block_then_switch      첫 블록은 starting_side, 다음 블록은 반대측
 ```
 
-`starting_side`가 없으면 rep 1의 검출된 활성 측을 시작으로 가정하고, rep 2부터 교대를 적용한다.
+기대 측을 결정할 수 없으면 조용히 통과시키지 않고 flag한다.
 
-## 6. 일관성 점검 및 조치 (Consistency Check and Action)
+## 5. 조치 정책 (Action Policy)
 
 ```text
-case A: detected == expected
-        attribution_consistent = True
-        action = "accept"
+detected == expected
+    attribution_consistent = True
+    action = accept
 
-case B: detected != expected AND confidence > τ_swap (기본값: 0.85)
-        attribution_consistent = False
-        action = "swap"   (auto_correct 모드)
-             or "flag"   (conservative 모드)
+detected != expected and confidence > τ_swap
+    attribution_consistent = False
+    action = auto_correct 모드에서는 swap, 그 외 flag
 
-case C: detected != expected AND confidence ≤ τ_swap
-        attribution_consistent = False
-        action = "flag"
+detected != expected and confidence ≤ τ_swap
+    attribution_consistent = False
+    action = flag
 
-case D: detected in {"ambiguous", "bilateral"}
-        attribution_consistent = None
-        action = "flag"
+detected in {ambiguous, bilateral}
+    attribution_consistent = None
+    action = flag
 ```
 
-기본 모드는 `conservative` (표시만 하고 라벨 수정하지 않음).
-`auto_correct` (스왑) 모드는 강건성 시뮬레이션에서 오보정율(false-correction rate)이 검증된 후에만 활성화된다.
+기본 모드는 `conservative`이다. 라벨을 변경하지 않는다. `auto_correct`는 향후/실험 모드이며,
+강건성 시뮬레이션에서 낮은 오보정율이 확인되기 전까지 비활성으로 둔다.
 
-## 7. 출력 칼럼 (Output Columns)
+## 6. 출력 계약 (Output Contract)
 
-프레임별로 추가되며, `rep` 구간 내에서만 non-null이다.
+프레임별로 추가되며, 값은 `rep` 구간 안에서만 non-null이다:
 
 ```text
-detected_active_limb     'left' | 'right' | 'bilateral' | 'ambiguous' | None
-expected_active_limb     'left' | 'right' | None
+detected_active_limb     left | right | bilateral | ambiguous | None
+expected_active_limb     left | right | None
 attribution_consistent   bool | None
-attribution_confidence   float 0–1 | None
-attribution_action       'accept' | 'flag' | 'swap' | None
+attribution_confidence   float 0-1 | None
+attribution_action       accept | flag | swap | None
 ```
 
-## 8. 어트리뷰션 리포트 (Attribution Report)
+Report fields:
 
-```python
-attr_df, attr_report = attribute_motion(df, exercise_definition, thresholds, mode)
+```text
+method
+exercise_type
+laterality
+pattern
+starting_side
+num_reps / num_consistent / num_flagged / num_swapped
+num_ambiguous / num_bilateral
+thresholds = {τ_active, τ_ambiguous, τ_swap}
+landmark_pairs_used
+performance_side_sequence
+expected_side_source
+side_sequence_warnings
+mode
+skipped / skip_reason
 ```
 
-리포트 필드:
-```python
-{
-    "method": str,
-    "exercise_type": str,
-    "laterality": str,
-    "pattern": str,
-    "starting_side": str,
-    "num_reps": int,
-    "num_consistent": int,
-    "num_flagged": int,
-    "num_swapped": int,
-    "num_ambiguous": int,
-    "num_bilateral": int,
-    "thresholds": {"active": float, "ambiguous": float, "swap": float},
-    "landmark_pairs_used": list,
-    "mode": str,      # "conservative" | "auto_correct"
-    "skipped": bool,
-    "skip_reason": str | None,
-}
-```
-
-## 9. 설정 (Configuration)
+## 7. 설정 (Configuration)
 
 ```yaml
 motion_attribution:
@@ -190,36 +158,27 @@ motion_attribution:
   mode: conservative        # conservative | auto_correct
 ```
 
-`bilateral_symmetric` laterality는 `enabled` 플래그와 무관하게 항상 본 단계를 건너뛴다.
+## 8. 후속 사용 (Downstream Use)
 
-## 10. ④ 전처리와의 관계 (Relationship to Preprocessing)
-
-④ 전처리는 프레임 단위로 동작하며 짧은 좌·우 스왑 이벤트를 보정할 수 있다.
-전체 반복 동안 활성 사지가 가려져 정지 측이 움직이는 측으로 보이는 경우 같은
-반복 단위 라벨 불일치는 신뢰성 있게 검출하지 못한다.
-
-⑦ 모션 어트리뷰션은 반복 경계와 운동 컨텍스트를 사용해 반복 윈도우 단위로 동작하며,
-④에서 놓치는 상위 수준의 일관성 이슈를 잡아낸다.
-
-## 11. ⑧ 피처 추출과의 관계 (Relationship to Feature Extraction)
-
-⑧ 피처 추출은 어트리뷰션 메타데이터를 사용해 피처를 올바른 측에 할당한다:
+⑧ Feature Extraction은 attribution metadata를 사용해 측별 피처를 귀속하거나 신뢰도를 표시한다:
 
 ```text
-attribution_consistent == True
-    → 피처가 기대 활성 측에 귀속됨
-
-attribution_consistent == False AND action == "flag"
-    → 피처는 계산되나 측별 집계에서 가중치 하향 또는 제외
-
-attribution_consistent == False AND action == "swap"
-    → 좌·우 라벨 교환; 보정된 할당 위에서 피처 계산
+consistent true       → 기대 활성 측에 피처 귀속
+flagged mismatch      → 피처는 계산하되 측 귀속 신뢰도 낮음으로 표시
+auto-corrected swap   → 보정된 측 할당으로 피처 계산
+ambiguous/bilateral   → 강한 측별 해석을 피함
 ```
 
-## 12. 향후 확장 (Planned Extensions)
+⑦은 ④ Preprocessing을 보완한다. ④는 짧은 frame-level L/R swap을 다루고, ⑦은 segmentation과
+운동 컨텍스트를 사용해 rep-level side consistency를 점검한다.
 
-- 운동별 학습 가중치를 사용한 다중 랜드마크 motion-share
-- 탭(tap) 형태 운동을 위한 수직축/법선축 동작 에너지
-- 어노테이션 없이 starting_side를 추론하기 위한 HMM 기반 구간 인식
-- 강건성 시뮬레이션 검증 후 auto_correct 활성화
-- 수동 검토용 반복별 동작 에너지 시각화
+## 9. 코드 매핑 (Code Mapping)
+
+```text
+src/movement/stages/motion_attribution.py
+    AttributionThresholds
+    AttributionReport
+    attribute_motion()
+
+tests/test_motion_attribution_protocol_sequence.py
+```

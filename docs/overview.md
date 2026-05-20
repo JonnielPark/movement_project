@@ -15,23 +15,23 @@
 |---|---|---|
 | 1.5.1 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
 | 1.4.34 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.3.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.0.8 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 0.1.1 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
-| 1.0.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
-| 1.0.1 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
-| 1.0.1 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
-| 1.1.5 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.4.15 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
-| 1.1.2 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.2.9 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
-| 1.2.6 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.0.2 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.1.1 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.0.1 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.1.1 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.0.3 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
-| 1.0.1 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+| 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 0.2.0 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
+| 1.1.0 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
+| 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
+| 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
+| 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
+| 1.3.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
+| 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
+| 1.1.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
+| 1.2.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
+| 1.1.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.2.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
+| 1.1.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
+| 1.1.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
 
 ---
 

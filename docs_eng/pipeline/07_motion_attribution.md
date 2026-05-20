@@ -1,15 +1,14 @@
 # 07. Motion Attribution
 
-**Document Version:** 1.0.2
-**Last Updated:** 2026-05-10  
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/07_motion_attribution.md` is the same-version Korean source.
 
-Pipeline step ⑦. Checks whether the limb that moved most in each rep matches the
+Pipeline step ⑦ checks whether the observed moving limb in each rep matches the
 expected active side. The expected side is derived from
-`performance_protocol.side_sequence` when available, then falls back to annotation
-`pattern` / `starting_side`.
-
-Does not modify coordinates. Adds per-rep metadata columns only.
+`performance_protocol.side_sequence` when available, then from annotation
+`pattern` / `starting_side`. This step does not modify coordinates; it adds
+rep-level metadata columns for downstream feature attribution.
 
 ---
 
@@ -28,164 +27,130 @@ Pose CSV
 ```
 
 Required inputs:
+
 ```text
-rep boundaries            from annotation (segment_type = rep)
-exercise context          exercise_type, pattern, starting_side from annotation
+rep boundaries            segment_type == rep, rep_id
+exercise context          exercise_type, pattern, starting_side
 exercise definition       laterality, primary_joints, performance_protocol.side_sequence
-normalized coordinates    from ⑤ normalization
+normalized coordinates    <landmark>_norm_x/y/z
 ```
 
-Uses normalized coordinates so that motion energy comparison is independent of
-absolute body size and camera distance.
+Normalized coordinates keep motion-energy comparisons independent of body size
+and camera distance.
 
-## 2. Activation Condition
+## 2. Activation Rules
 
 ```text
-laterality = bilateral_symmetric  → step is skipped (no active-side concept per rep)
-laterality = alternating          → runs per-rep attribution
-laterality = unilateral_*         → runs; declared side is the expected active side
-laterality unknown / generic      → skipped (safe default)
+bilateral_symmetric       skipped; no per-rep active-side concept
+alternating               run per rep
+unilateral_left/right     run; declared side is expected
+unilateral_unspecified    run when side can be inferred from context/evidence
+unknown / generic         skipped
 ```
 
-## 3. Active Side Detection
+`bilateral_symmetric` skips this step even if the config flag is enabled.
 
-Motion energy is computed for left and right paired landmarks within the rep window
-(`segment_type = rep`):
+## 3. Detection Method
+
+For each rep window, left/right motion energy is computed from paired landmarks:
 
 ```text
-left_motion  = Σ |p_left_landmark(t+1)  - p_left_landmark(t)|
-right_motion = Σ |p_right_landmark(t+1) - p_right_landmark(t)|
-
+left_motion  = Σ ||p_left(t+1)  - p_left(t)||
+right_motion = Σ ||p_right(t+1) - p_right(t)||
 motion_share = max(left_motion, right_motion) / (left_motion + right_motion + ε)
 ```
 
-Landmark pairs are derived from `landmarks.primary_joints` in the exercise definition.
-Custom pairs can be specified per exercise in the YAML config.
+Pairs are selected from `landmarks.primary_joints` when possible; otherwise the
+default shoulder/elbow/wrist/hip/knee/ankle pairs are used. Exercise YAML may
+provide custom pairs for tasks such as taps or asymmetric lower-limb movements.
 
-Examples:
+Decision thresholds:
+
 ```text
-plank_shoulder_tap : left_wrist  vs right_wrist
-lunge              : left_knee   vs right_knee
+motion_share > τ_active          → detected_active = left/right, confidence = motion_share
+τ_ambiguous < share ≤ τ_active   → detected_active = ambiguous
+share ≤ τ_ambiguous              → detected_active = bilateral
 ```
 
-Multiple paired landmarks can be combined (weighted average) to reduce sensitivity to
-a single noisy landmark.
+Default thresholds: `τ_active = 0.70`, `τ_ambiguous = 0.55`, `τ_swap = 0.85`.
 
-## 4. Detection Thresholds
+## 4. Expected Side
+
+Priority:
 
 ```text
-if motion_share > τ_active (default: 0.70):
-    detected_active = side with greater motion
-    confidence = motion_share
-
-elif τ_ambiguous < motion_share ≤ τ_active (default: 0.55 – 0.70):
-    detected_active = "ambiguous"
-    confidence = motion_share
-
-else:
-    detected_active = "bilateral"
-    confidence = 1 - motion_share
+1. laterality = unilateral_left/right
+2. performance_protocol.side_sequence
+3. annotation pattern + starting_side
+4. first-rep detected side when starting_side is missing and evidence is usable
 ```
 
-## 5. Expected Active Side
-
-Derived first from `performance_protocol.side_sequence`, then from `pattern` and
-`starting_side` in annotation, cross-checked against `laterality` in the exercise
-definition.
+Supported side-sequence modes:
 
 ```text
-pattern = alternating, starting_side = right:
-    rep 1 → right
-    rep 2 → left
-    rep 3 → right
-    ...
-
-pattern = alternating, starting_side = left:
-    rep 1 → left
-    rep 2 → right
-    ...
-
-performance_protocol.side_sequence.mode = same_side_block_then_switch,
-block_size_counts = 5, starting_side = right:
-    rep 1-5  → right
-    rep 6-10 → left
-
-performance_protocol.side_sequence.mode = alternating_each_rep,
-starting_side = left:
-    rep 1 → left
-    rep 2 → right
-    ...
+alternating_each_rep             rep 1 right, rep 2 left, ...
+same_side_block_then_switch      first block on starting_side, next block on the other side
 ```
 
-If `starting_side` is absent, the detected active side of rep 1 is assumed as the
-start, and alternation is applied from rep 2.
+When the expected side cannot be determined, the rep is flagged rather than
+silently accepted.
 
-## 6. Consistency Check and Action
+## 5. Action Policy
 
 ```text
-case A: detected == expected
-        attribution_consistent = True
-        action = "accept"
+detected == expected
+    attribution_consistent = True
+    action = accept
 
-case B: detected != expected AND confidence > τ_swap (default: 0.85)
-        attribution_consistent = False
-        action = "swap"   (in auto_correct mode)
-             or "flag"   (in conservative mode)
+detected != expected and confidence > τ_swap
+    attribution_consistent = False
+    action = swap in auto_correct mode, otherwise flag
 
-case C: detected != expected AND confidence ≤ τ_swap
-        attribution_consistent = False
-        action = "flag"
+detected != expected and confidence ≤ τ_swap
+    attribution_consistent = False
+    action = flag
 
-case D: detected in {"ambiguous", "bilateral"}
-        attribution_consistent = None
-        action = "flag"
+detected in {ambiguous, bilateral}
+    attribution_consistent = None
+    action = flag
 ```
 
-Default mode is `conservative` (flag only; no label modification).
-`auto_correct` (swap) mode is enabled only after false-correction rate is verified
-in robustness simulation.
+Default mode is `conservative`: labels are not changed. `auto_correct` is a
+future/experimental mode and should remain disabled until robustness simulation
+shows a sufficiently low false-correction rate.
 
-## 7. Output Columns
+## 6. Output Contract
 
-Added per-frame; non-null only within `rep` segments.
+Columns added per frame; values are non-null only inside `rep` segments:
 
 ```text
-detected_active_limb     'left' | 'right' | 'bilateral' | 'ambiguous' | None
-expected_active_limb     'left' | 'right' | None
+detected_active_limb     left | right | bilateral | ambiguous | None
+expected_active_limb     left | right | None
 attribution_consistent   bool | None
-attribution_confidence   float 0–1 | None
-attribution_action       'accept' | 'flag' | 'swap' | None
-```
-
-## 8. Attribution Report
-
-```python
-attr_df, attr_report = attribute_motion(df, exercise_definition, thresholds, mode)
+attribution_confidence   float 0-1 | None
+attribution_action       accept | flag | swap | None
 ```
 
 Report fields:
-```python
-{
-    "method": str,
-    "exercise_type": str,
-    "laterality": str,
-    "pattern": str,
-    "starting_side": str,
-    "num_reps": int,
-    "num_consistent": int,
-    "num_flagged": int,
-    "num_swapped": int,
-    "num_ambiguous": int,
-    "num_bilateral": int,
-    "thresholds": {"active": float, "ambiguous": float, "swap": float},
-    "landmark_pairs_used": list,
-    "mode": str,      # "conservative" | "auto_correct"
-    "skipped": bool,
-    "skip_reason": str | None,
-}
+
+```text
+method
+exercise_type
+laterality
+pattern
+starting_side
+num_reps / num_consistent / num_flagged / num_swapped
+num_ambiguous / num_bilateral
+thresholds = {τ_active, τ_ambiguous, τ_swap}
+landmark_pairs_used
+performance_side_sequence
+expected_side_source
+side_sequence_warnings
+mode
+skipped / skip_reason
 ```
 
-## 9. Configuration
+## 7. Configuration
 
 ```yaml
 motion_attribution:
@@ -197,36 +162,28 @@ motion_attribution:
   mode: conservative        # conservative | auto_correct
 ```
 
-`bilateral_symmetric` laterality always skips this step regardless of the `enabled` flag.
+## 8. Downstream Use
 
-## 10. Relationship to ④ Preprocessing
-
-④ preprocessing operates frame-by-frame and can correct short L/R swap events.
-It cannot reliably detect rep-level label mismatches (e.g., active limb occluded for
-the entire rep, causing the stationary side to appear as the mover).
-
-⑦ motion attribution operates on rep windows using rep boundaries and exercise context,
-catching higher-level consistency issues that ④ misses.
-
-## 11. Relationship to ⑧ Feature Extraction
-
-⑧ Feature Extraction uses the attribution metadata to assign features to the correct side:
+⑧ Feature Extraction uses attribution metadata to assign or qualify side-specific
+features:
 
 ```text
-attribution_consistent == True
-    → features attributed to the expected active side
-
-attribution_consistent == False AND action == "flag"
-    → features computed but down-weighted or excluded in per-side aggregation
-
-attribution_consistent == False AND action == "swap"
-    → L/R labels exchanged; features computed on the corrected assignment
+consistent true       → assign features to expected active side
+flagged mismatch      → compute features but mark side attribution as low confidence
+auto-corrected swap   → compute features on corrected side assignment
+ambiguous/bilateral   → avoid strong side-specific interpretation
 ```
 
-## 12. Planned Extensions
+⑦ complements ④ Preprocessing: ④ handles short frame-level L/R swaps, while ⑦
+checks rep-level side consistency using segmentation and exercise context.
 
-- Multi-landmark motion-share with exercise-specific learned weights
-- Vertical-axis / normal-axis motion energy for tap-style exercises
-- HMM-based phase recognition to infer starting_side without annotation
-- Activation of auto_correct after robustness simulation verification
-- Per-rep motion energy visualization for manual review
+## 9. Code Mapping
+
+```text
+src/movement/stages/motion_attribution.py
+    AttributionThresholds
+    AttributionReport
+    attribute_motion()
+
+tests/test_motion_attribution_protocol_sequence.py
+```
