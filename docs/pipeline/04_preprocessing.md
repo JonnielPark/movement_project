@@ -1,7 +1,7 @@
 # 04. 전처리 (Preprocessing)
 
-**문서 버전:** 1.1.1
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.1.2
+**최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/pipeline/04_preprocessing.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ④. 정규화 이전에 단안 포즈 데이터의 품질 이슈를 보정한다.
@@ -366,20 +366,7 @@ preprocessing:
 }
 ```
 
-## 10. 칼만 필터 (Kalman Filter, 향후)
-
-칼만 필터는 YAML 옵션으로 제공되지만 기본적으로 비활성화되어 있다.
-베이스라인(가시성 게이팅 + 해부학적 점검 + 보간 + rolling median)이 충분히 특성화된 후에만 활성화한다.
-
-```yaml
-preprocessing:
-  kalman_filter:
-    enabled: false
-    process_noise: 0.01
-    measurement_noise: 0.1
-```
-
-## 11. Laterality 분기 요약 (Laterality Branch Summary)
+## 10. Laterality 분기 요약 (Laterality Branch Summary)
 
 ```text
 laterality               visibility  segment  ROM  velocity  L/R swap  far-side  smoothing
@@ -390,7 +377,7 @@ unilateral_*             enabled     enabled  on   enabled   enabled   role-awar
 generic 폴백              enabled     enabled  on   enabled   skip      skip      optional
 ```
 
-## 12. 무효 프레임 표시 (Invalid Frame Marking)
+## 11. 무효 프레임 표시 (Invalid Frame Marking)
 
 프레임은 절대 조용히 삭제되지 않는다. 품질 메타데이터 칼럼이 추가된다:
 
@@ -402,7 +389,7 @@ swap_corrected = True         좌·우 라벨이 교환됨
 
 피처 추출 단계에서의 정확한 프레임 제외는 어노테이션 규칙과 피처 단계 로직이 결정한다.
 
-## 13. 전처리 리포트 (Preprocessing Report)
+## 12. 전처리 리포트 (Preprocessing Report)
 
 ```python
 {
@@ -444,7 +431,7 @@ swap_corrected = True         좌·우 라벨이 교환됨
 }
 ```
 
-## 14. 향후 확장 (Planned Extensions)
+## 13. 향후 확장 (Planned Extensions)
 
 - 가시성 가중 보간(visibility-weighted interpolation)
 - 신뢰도 가중 평활화

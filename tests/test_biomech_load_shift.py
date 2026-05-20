@@ -9,8 +9,6 @@ Synthetic input: BiomechRecord objects constructed directly
 """
 from __future__ import annotations
 
-import pytest
-
 from movement.biomech import BiomechRecord
 from movement.biomech.load_shift import compute_load_shift
 

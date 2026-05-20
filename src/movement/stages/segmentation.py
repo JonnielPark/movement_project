@@ -916,7 +916,9 @@ def segment_phases(
         if frame_vals:
             all_labels = sorted(set(label_map.values()))
             for phase_name in all_labels:
-                local_indices = [i for i, l in label_map.items() if l == phase_name]
+                local_indices = [
+                    i for i, label in label_map.items() if label == phase_name
+                ]
                 if local_indices:
                     phase_assignments[phase_name] = (
                         frame_vals[local_indices[0]],

@@ -265,7 +265,6 @@ def _derive_interpretations_inner(
         if not fired:
             continue
 
-        rules_dir_path = Path(rules_dir) if rules_dir else _DEFAULT_RULES_DIR
         yaml_provenance = (
             f"interpretation_rules/{score.exercise_id}.yaml#rules[{rule_id}]"
         )

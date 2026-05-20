@@ -1,7 +1,7 @@
 # 05. Normalization
 
-**Document Version:** 1.2.8
-**Last Updated:** 2026-05-12
+**Document Version:** 1.2.9
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
 Pipeline step ⑤. Converts raw pose coordinates to a body-relative coordinate system
@@ -38,7 +38,7 @@ optionally use `canonicalization` inside ⑤ Normalization. The currently implem
 sub-priors are `support_plane_alignment`, which wraps the existing
 `floor_relative_correction` implementation, and a prototype
 `movement_plane_alignment`. A protocol-gated `protocol_height_lateral_width_alignment`
-prior is being added for height-aware lateral-width review. All priors emit
+prior is being added for height-aware lateral-width review. Active priors emit
 separate `canon` coordinates plus a `canonicalization_report`.
 
 ## 2. Method: hip_torso
@@ -186,12 +186,6 @@ normalization:
       visibility_threshold: 0.6
       apply_to_landmarks: []
       preserve_anchor_landmarks: true
-    body_axis_alignment:
-      enabled: false
-      method: pelvis_shoulder_axis
-      correction_strength: 0.5
-      max_rotation_deg: 15.0
-
   # Current implementation key. During the transition, this is treated as a
   # backward-compatible alias for canonicalization.support_plane_alignment.
   floor_relative_correction:
@@ -269,7 +263,6 @@ When canonicalization is enabled, `canonicalization_report` is added inside
         "support_plane_alignment": dict | None,
         "movement_plane_alignment": dict | None,
         "protocol_height_lateral_width_alignment": dict | None,
-        "body_axis_alignment": dict | None,
     },
 }
 ```
@@ -344,9 +337,6 @@ protocol_height_lateral_width_alignment
     H1 maps to a support/ankle-level anchor, H2 to the pelvis / hip center, and
     H3 to the shoulder line. This is review-only and not lens correction.
 
-body_axis_alignment
-    Stabilizes body-relative orientation from pelvis/shoulder axes and the body centerline.
-
 camera_prior
     Uses camera zone, height level, pitch/roll, and related recording metadata for
     correction interpretation and confidence/provenance. It does not perform
@@ -372,9 +362,12 @@ Initial implementation is intentionally limited to the following order.
    near-side lateral spread around the H1/H2/H3 anchor and records far-side depth
    compression as confidence context rather than inventing a physical location.
 
-4. body_axis_alignment
-   Applies only when pelvis/shoulder axes are stable enough for optional use.
 ```
+
+Body-axis alignment is intentionally not an active prior in the current code. It
+may be reconsidered after the anthropometric skeleton prior is specified, because
+pelvis/shoulder-axis alignment can accidentally suppress true pelvis rotation,
+trunk lean, or compensatory transverse-plane motion if it is applied too early.
 
 Each enabled prior emits its own report. If one prior is `rejected`, the remaining
 priors may still run, and the final `canonicalization_report.status` becomes

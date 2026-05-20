@@ -63,10 +63,6 @@ preprocessing:
     depth_axis: z
     near_depth_sign: negative
     min_depth_offset_torso: 0.05
-  kalman_filter:
-    enabled: false            # enable after baseline is characterized
-    process_noise: 0.01
-    measurement_noise: 0.1
 
 # ── ⑤ Normalization ──────────────────────────────────────────────────────────
 normalization:
@@ -130,11 +126,6 @@ normalization:
       visibility_threshold: 0.6
       apply_to_landmarks: []
       preserve_anchor_landmarks: true
-    body_axis_alignment:
-      enabled: false
-      method: pelvis_shoulder_axis
-      correction_strength: 0.5
-      max_rotation_deg: 15.0
 
   # Backward-compatible legacy key. New development should prefer
   # canonicalization.support_plane_alignment.
