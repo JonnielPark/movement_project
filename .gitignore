@@ -26,3 +26,8 @@ docs_eng/code_revision_plan.md
 data/processed/
 data/dev_videos/
 data/pose/mediapipe/no_consent/
+
+# Local/private source data
+data/raw/
+data/private/
+data/reference/anthropometry/source_documents/

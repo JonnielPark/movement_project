@@ -1,0 +1,3 @@
+﻿segment,requested_pose_proxy,reason,policy
+foot,ankle ↔ foot_index/heel proxy,Requires 3D foot auto or another foot measurement source; excluded by auto-only scope.,keep_null_and_do_not_substitute_from_excluded_sources
+arm_span,left/right fingertip span,Do not substitute wall-forward fist length or wall-shoulder horizontal length.,keep_null_and_do_not_substitute_from_excluded_sources

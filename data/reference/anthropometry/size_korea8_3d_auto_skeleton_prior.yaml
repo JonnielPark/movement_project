@@ -1,0 +1,221 @@
+anthropometric_skeleton_prior:
+  schema_version: "0.1"
+  artifact_status: "stage_a_aggregate_fallback"
+  source: "Size Korea 8th Korean Anthropometric Survey"
+  source_scope: "2020_3d_full_body_automatic_measurements_only_no_138_to_311"
+  population_note: "Korean adults aged 20-69; aggregate fallback only; individual-level raw rows are required for empirical ratio distributions."
+  current_data_level: "file_design_plus_pdf_aggregate_fallback"
+  intended_use: "segment_length_plausibility_and_confidence_adjustment"
+  unit: "dimensionless_ratio"
+  limitations:
+    calibrated_3d_reconstruction: false
+    ratio_percentiles_available_without_raw: false
+    height_bin_validation_available_without_raw: false
+    use_as_hard_template_fit: false
+    excluded_sources: ["direct_measurement", "3d_direct_measurement", "3d_foot_auto", "3d_hand_auto", "3d_head_auto"]
+  correction_policy:
+    correct_depth_residuals: true
+    overwrite_raw_coordinates: false
+    overwrite_norm_coordinates: false
+    default_model_depth_reliability: "low"
+    uncorrectable_policy: "mark_low_confidence_or_not_assessed"
+  height_bins:
+    recommended_survey_bins: ["150cm 이하", "151-155cm", "156-160cm", "161-165cm", "166-170cm", "171-175cm", "176-180cm", "181cm 이상", "응답하지 않음"]
+    analysis_bins_common: ["155cm 이하", "156-165cm", "166-175cm", "176cm 이상", "응답하지 않음"]
+    bin_merge_rule: "merge adjacent bins when n < 50 or sex-specific tail is sparse"
+  segment_length_ratios:
+    shoulder_width:
+      endpoints: [left_shoulder, right_shoulder]
+      formula: "m299"
+      component_items:
+        - "m299:어깨가쪽사이너비"
+      proxy_level: "proxy_close"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.221998
+      aggregate_mean_ratio_by_sex:
+        male: 0.227011
+        female: 0.217742
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Seated shoulder-outside breadth proxy; closer to transverse shoulder landmark distance than shoulder length. Compare m298 as sensitivity."
+    hip_width:
+      endpoints: [left_hip, right_hip]
+      formula: "m265"
+      component_items:
+        - "m265:엉덩이너비"
+      proxy_level: "proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.211442
+      aggregate_mean_ratio_by_sex:
+        male: 0.204023
+        female: 0.217742
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Surface hip breadth proxy; can exceed pose-model internal hip-joint distance."
+    torso_shoulder_hip_vertical:
+      endpoints: [shoulder_center, hip_center]
+      formula: "m145 - m155"
+      component_items:
+        - "m145:어깨가쪽높이"
+        - "m155:엉덩이높이"
+      proxy_level: "vertical_proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.321113
+      aggregate_mean_ratio_by_sex:
+        male: 0.320115
+        female: 0.32196
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Standing vertical proxy; not 3D Euclidean shoulder-center to hip-center segment."
+    trunk_vertical:
+      endpoints: "trunk scale proxy"
+      formula: "m192"
+      component_items:
+        - "m192:몸통수직길이"
+      proxy_level: "proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.390696
+      aggregate_mean_ratio_by_sex:
+        male: 0.397126
+        female: 0.385236
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Trunk vertical length proxy; do not collapse with shoulder-hip vertical proxy until validated."
+    upper_arm:
+      endpoints: [shoulder, elbow]
+      formula: "m189"
+      component_items:
+        - "m189:위팔길이(어깨가쪽점)"
+      proxy_level: "proxy_close"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.192074
+      aggregate_mean_ratio_by_sex:
+        male: 0.192529
+        female: 0.191687
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark convention."
+    forearm:
+      endpoints: [elbow, wrist]
+      formula: "m191 - m189"
+      component_items:
+        - "m191:팔길이(어깨가쪽점)"
+        - "m189:위팔길이(어깨가쪽점)"
+      proxy_level: "derived_proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.142324
+      aggregate_mean_ratio_by_sex:
+        male: 0.144828
+        female: 0.140199
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Compute row-level from raw; aggregate mean difference only as fallback."
+    thigh:
+      endpoints: [hip, knee]
+      formula: "m155 - m159"
+      component_items:
+        - "m155:엉덩이높이"
+        - "m159:무릎높이"
+      proxy_level: "vertical_proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.228708
+      aggregate_mean_ratio_by_sex:
+        male: 0.227011
+        female: 0.230149
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee height; vertical-only, not Euclidean 3D segment."
+    shank:
+      endpoints: [knee, ankle]
+      formula: "m159 - m161"
+      component_items:
+        - "m159:무릎높이"
+        - "m161:가쪽복사높이"
+      proxy_level: "vertical_proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.218617
+      aggregate_mean_ratio_by_sex:
+        male: 0.221839
+        female: 0.215881
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment."
+    sitting_height:
+      endpoints: "seated global trunk scale"
+      formula: "m290"
+      component_items:
+        - "m290:앉은키"
+      proxy_level: "proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.54457
+      aggregate_mean_ratio_by_sex:
+        male: 0.540805
+        female: 0.547767
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Includes head/neck; not torso segment."
+    crotch_height:
+      endpoints: "inseam/lower limb scale proxy"
+      formula: "m156"
+      component_items:
+        - "m156:샅높이"
+      proxy_level: "proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.455547
+      aggregate_mean_ratio_by_sex:
+        male: 0.452874
+        female: 0.457816
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Inseam/crotch-height proxy; useful for lower-limb scale."
+    outside_leg_length:
+      endpoints: "lower limb global scale"
+      formula: "m278"
+      component_items:
+        - "m278:다리가쪽길이"
+      proxy_level: "proxy"
+      reference: "stature"
+      aggregate_mean_ratio_overall: 0.611321
+      aggregate_mean_ratio_by_sex:
+        male: 0.61092
+        female: 0.611663
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Whole outside leg length; not a single pose segment."
+    foot:
+      endpoints: [ankle, foot_index/heel proxy]
+      formula: "not_available"
+      component_items: []
+      proxy_level: "not_available"
+      reference: "stature"
+      aggregate_mean_ratio_overall: null
+      aggregate_mean_ratio_by_sex:
+        male: null
+        female: null
+      empirical_p05: null
+      empirical_p95: null
+      empirical_range_status: "requires_individual_level_raw_rows"
+      confidence: "aggregate_proxy_prior"
+      notes: "Requires 3D foot auto or another foot measurement source; excluded by auto-only scope."
