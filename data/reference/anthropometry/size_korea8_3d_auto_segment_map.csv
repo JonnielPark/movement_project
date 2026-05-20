@@ -1,0 +1,19 @@
+﻿segment,mediapipe_endpoints,primary_dataset,primary_formula,component_items,proxy_level,available_under_auto_only,notes
+full_body_height,global scale reference,3d_fullbody_auto_only,m138,m138,reference,yes,3D full-body auto stature; use as main global scale.
+shoulder_width,left_shoulder ↔ right_shoulder,3d_fullbody_auto_only,m299,m299,proxy_close,yes,Seated shoulder-outside breadth proxy; closer to transverse shoulder landmark distance than shoulder length. Compare m298 as sensitivity.
+shoulder_width_alt,left_shoulder ↔ right_shoulder,3d_fullbody_auto_only,m298,m298,proxy_close_alt,yes,Alternative seated shoulder breadth proxy; keep separate from m299.
+hip_width,left_hip ↔ right_hip,3d_fullbody_auto_only,m265,m265,proxy,yes,Surface hip breadth proxy; can exceed pose-model internal hip-joint distance.
+torso_shoulder_hip_vertical,shoulder_center ↔ hip_center,3d_fullbody_auto_only,m145 - m155,"m145, m155",vertical_proxy,yes,Standing vertical proxy; not 3D Euclidean shoulder-center to hip-center segment.
+trunk_vertical,trunk scale proxy,3d_fullbody_auto_only,m192,m192,proxy,yes,Trunk vertical length proxy; do not collapse with shoulder-hip vertical proxy until validated.
+upper_arm,shoulder ↔ elbow,3d_fullbody_auto_only,m189,m189,proxy_close,yes,Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark convention.
+upper_arm_alt,shoulder ↔ elbow,3d_fullbody_auto_only,m188,m188,proxy_close_alt,yes,Alternative shoulder-point definition; keep as sensitivity analysis.
+forearm,elbow ↔ wrist,3d_fullbody_auto_only,m191 - m189,"m191, m189",derived_proxy,yes,Compute row-level from raw; aggregate mean difference only as fallback.
+forearm_alt,elbow ↔ wrist,3d_fullbody_auto_only,m190 - m188,"m190, m188",derived_proxy_alt,yes,Alternative forearm derivation based on shoulder-point definition.
+thigh,hip ↔ knee,3d_fullbody_auto_only,m155 - m159,"m155, m159",vertical_proxy,yes,"Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee height; vertical-only, not Euclidean 3D segment."
+thigh_straight_item_alt,hip ↔ knee,3d_fullbody_auto_only,m195,m195,definition_check_required,yes,3D auto m195 is substantially shorter than hip-height minus knee-height; do not use as primary hip-knee prior unless definition is confirmed.
+shank,knee ↔ ankle,3d_fullbody_auto_only,m159 - m161,"m159, m161",vertical_proxy,yes,Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
+sitting_height,seated global trunk scale,3d_fullbody_auto_only,m290,m290,proxy,yes,Includes head/neck; not torso segment.
+crotch_height,inseam/lower limb scale proxy,3d_fullbody_auto_only,m156,m156,proxy,yes,Inseam/crotch-height proxy; useful for lower-limb scale.
+outside_leg_length,lower limb global scale,3d_fullbody_auto_only,m278,m278,proxy,yes,Whole outside leg length; not a single pose segment.
+foot,ankle ↔ foot_index/heel proxy,none_in_3d_fullbody_auto_only,not_available,not_available,not_available,no,Requires 3D foot auto or another foot measurement source; excluded by auto-only scope.
+arm_span,left/right fingertip span,none_in_3d_fullbody_auto_only,not_available,not_available,not_available,no,Do not substitute wall-forward fist length or wall-shoulder horizontal length.

@@ -1,0 +1,51 @@
+manifest_version: "1.0"
+created_at: "2026-05-21"
+artifact_status: "derived_reference_metadata"
+source_family: "Size Korea 8th Korean Anthropometric Survey"
+source_scope: "2020 3D full-body automatic measurements only; item No.138-No.311"
+project_use: "anthropometric skeleton prior for segment-length plausibility, depth-residual correction, and confidence adjustment"
+
+local_generation_inputs:
+  - filename: "size_korea8_skeleton_prior_analysis.xlsx"
+    role: "generated working workbook used to derive compact YAML/CSV artifacts"
+    commit_policy: "do_not_commit_workbook; commit derived YAML/CSV only"
+  - filename: "size_korea8_codex_work_brief.md"
+    role: "temporary Codex task brief"
+    commit_policy: "do_not_commit; decisions should be reflected in docs and derived artifacts"
+
+source_documents:
+  - filename: "2020년_한국인인체치수조사_3차원전신자동측정_파일설계서.xlsx"
+    role: "schema/parser reference"
+    required_for: "field order, sex code, age-group code, and item No.138-No.311 measurement names"
+    commit_policy: "manifest_only_by_default"
+  - filename: "2020년_한국인인체치수조사_보고서(통계표).pdf"
+    role: "aggregate statistical fallback"
+    required_for: "marginal item statistics and item list checks"
+    limitation: "marginal tables cannot produce row-level ratio distributions"
+    commit_policy: "manifest_only_by_default"
+  - filename: "2020년_한국인인체치수조사_보고서(조사표 포함).pdf"
+    role: "protocol, sample, posture, landmark, and quality-control context"
+    commit_policy: "manifest_only_by_default"
+  - filename: "(통계자료_1~2차년도) 제8차 한국인 인체치수 조사 측정 결과 자료.pdf"
+    role: "duplicate or broader aggregate reference"
+    commit_policy: "manifest_only_unless_needed"
+
+excluded_or_private_sources:
+  - source: "individual-level 3D full-body automatic raw CSV/TXT"
+    status: "not included in this repository"
+    reason: "needed for true empirical ratio percentiles and height-bin validation, but should remain private/raw"
+  - source: "direct measurement, 3D direct measurement, 3D foot/hand/head automatic sources"
+    status: "excluded from current source scope"
+    reason: "current prior intentionally uses 3D full-body automatic measurements only"
+
+derived_artifacts:
+  - path: "data/reference/anthropometry/size_korea8_3d_auto_skeleton_prior.yaml"
+  - path: "data/reference/anthropometry/size_korea8_3d_auto_segment_map.csv"
+  - path: "data/reference/anthropometry/size_korea8_3d_auto_aggregate_ratio_preview.csv"
+  - path: "data/reference/anthropometry/size_korea8_3d_auto_unavailable_segments.csv"
+
+limitations:
+  ratio_percentiles_available_without_raw: false
+  height_bin_validation_available_without_raw: false
+  calibrated_3d_reconstruction: false
+  clinical_diagnostic_interpretation: false
