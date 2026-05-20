@@ -1,14 +1,11 @@
 # 01. Validation
 
-**Document Version:** 1.0.1
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.1.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
-Pipeline step ①. Checks structural and formal integrity of input pose data.
-Does not modify the data. Returns a diagnostic report dict.
-
-Note: "validation" here means data integrity checking only.
-      Robustness evaluation (simulation-based testing with synthetic data) is a separate concept.
+Pipeline step ① checks structural integrity of input pose data. It does not
+modify data and is distinct from ⑫ robustness evaluation.
 
 ---
 
@@ -18,30 +15,24 @@ Note: "validation" here means data integrity checking only.
 Pose CSV
 → ① Validation             ← this step
 → ② Annotation
-→ ③ Exercise Definition
-→ ④ Preprocessing
-→ ⑤ Normalization
-→ ⑥ Segmentation
-→ ⑦ Motion Attribution
-→ ⑧ Feature Extraction
+→ downstream steps
 ```
 
-Runs before all other steps. Downstream steps can rely on the integrity assumptions
-confirmed by the validation report.
+Downstream steps rely on integrity assumptions confirmed here.
 
 ## 2. Checks
 
-| Check | Description |
+| Check | Purpose |
 |---|---|
-| Required columns | `frame`, `timestamp`, landmark coordinate columns |
-| Frame continuity | gaps in frame index |
+| Required columns | `frame`, `timestamp`, coordinate columns |
+| Frame continuity | frame-index gaps |
 | Frame duplicates | repeated frame values |
-| Timestamp monotonicity | non-positive time diffs |
-| Estimated FPS | derived from median timestamp delta |
+| Timestamp monotonicity | non-positive time differences |
+| Estimated FPS | median timestamp delta |
 | Missing value ratio | per coordinate column |
-| Visibility quality | distribution / ratio below threshold (if visibility columns present) |
+| Visibility quality | low-visibility ratio when visibility columns exist |
 
-## 3. Output
+## 3. Entry Point
 
 ```python
 report = run_basic_validation(
@@ -50,57 +41,29 @@ report = run_basic_validation(
     coordinate_columns=make_coordinate_columns(),
     visibility_columns=make_visibility_columns(),
 )
-print(report["passed"])   # bool
 ```
 
-Report structure:
+Report top-level keys:
 
-```python
-{
-    "passed": bool,
-    "required_columns": {
-        "passed": bool,
-        "missing_columns": list[str],
-        "num_missing_columns": int,
-    },
-    "frame_continuity": {
-        "passed": bool,
-        "start_frame": int,
-        "end_frame": int,
-        "num_frames": int,
-        "num_missing_frames": int,
-        "missing_frames": list[int],
-        "num_duplicated_frames": int,
-        "duplicated_frames": list[int],
-    },
-    "timestamp": {
-        "passed": bool,
-        "num_timestamps": int,
-        "median_dt": float,
-        "estimated_fps": float | None,
-        "min_dt": float,
-        "max_dt": float,
-        "num_non_positive_diffs": int,
-    },
-    "missing_values": {
-        "passed": bool,
-        "num_columns": int,
-        "total_missing_values": int,
-        "missing_ratio_by_column": dict[str, float],
-    },
-    "visibility": { ... },   # only if visibility_columns provided
-}
+```text
+passed
+required_columns
+frame_continuity
+timestamp
+missing_values
+visibility     # only when visibility columns are provided
 ```
 
-## 4. Design Principle
+## 4. Policy
 
-This step only reports potential issues. It does not correct them.
+Validation reports issues; it does not correct them.
 
-- Short gaps → handled by ④ preprocessing interpolation.
-- Noisy trajectories → handled by ④ preprocessing smoothing.
-- Low visibility → handled by ④ preprocessing reliability gating.
-
-A failed validation is a signal for manual review, not automatic discard.
+```text
+short gaps          handled later by ④ interpolation
+noisy trajectories  handled later by ④ smoothing
+low visibility      handled later by reliability gates
+failed validation   manual-review signal, not automatic discard
+```
 
 ## 5. Thresholds
 
@@ -108,12 +71,13 @@ Configured in `configs/pipeline_default.yaml`:
 
 ```yaml
 validation:
-  missing_value_threshold: 0.05   # column missing ratio > 5% → warn
-  visibility_threshold: 0.5       # landmark visibility quality threshold
+  missing_value_threshold: 0.05
+  visibility_threshold: 0.5
 ```
 
-## 6. Planned Extensions
+## 6. Code Mapping
 
-- Missing value heatmap visualization (⑥ step)
-- Coordinate unit auto-detection (pixel vs. normalized)
-- Enhanced temporal gap distribution statistics
+```text
+src/movement/stages/validation.py
+src/movement/core/config.py
+```

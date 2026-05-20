@@ -1,213 +1,94 @@
 # 대상 운동별 수행 프로토콜 (Exercise Performance Protocol per Exercise)
 
-**문서 버전:** 1.0.8
-**최종 갱신:** 2026-05-09
+**문서 버전:** 1.1.0
+**최종 갱신:** 2026-05-21
 **영문 동기화:** [docs_eng/practical_protocols/exercise_performance_protocol.md](../../docs_eng/practical_protocols/exercise_performance_protocol.md)는 동일 내용의 영문 번역본이다.
 
-본 문서는 현재 4대 대상 운동의 표준 수행 지시, 피험자 안내 문구, 그리고 분석을 방해하는
-수행 패턴을 정리한다. 여기서 "올바른 수행"은 임상적 교정 기준이 아니라, 단안 비전 포즈
-분석에서 의도한 관절 움직임과 보상 후보를 일관되게 관찰하기 위한 데이터 취득 기준이다.
-공통 원칙, 특히 수행 실패 지점 기록은 향후 추가되는 운동에도 동일하게 적용한다.
+본 문서는 데이터 취득을 위한 표준 수행 지침을 정의한다.
+"표준 수행"은 단안 포즈 취득 목표를 재현 가능하게 만드는 기준이며, 임상적 교정 기준이 아니다.
+동일한 failure-point 및 provenance 규칙은 향후 추가 운동에도 적용한다.
 
-카메라 위치와 높이의 공통 정의는 [camera_protocol.md](camera_protocol.md)를 따른다.
-각 운동 예시 이미지는 피험자가 동작을 이해하기 위한 대표 사진이다. 운동별 생체역학적 해석
-배경, 보상 패턴, 점수화 후보/통제 요인 구분은 `docs/clinical/exercises/`의 상세 문서를 참조한다.
+카메라 배치는 [camera_protocol.md](camera_protocol.md)를 따른다. 상세 생체역학적 근거와
+scoring-candidate/control-factor 구분은 `docs/clinical/exercises/`에 둔다.
 
 ---
 
-## 1. 공통 원칙 (Common Principles)
-
-1. 각 세트는 가능하면 원테이크로 촬영하며, 시작 후 별도의 정적 대기 시간 없이 수행한다.
-2. 파일럿 파이프라인 검증용 데이터의 기본 취득 단위는 하루 1가지 운동, 운동별 3세트,
-   세트당 10회이다. 가능하면 각 세트는 별도 녹화 파일로 저장한다.
-3. 세트 사이에는 호흡이 평상시에 가깝게 안정될 때까지 약 2-3분 휴식한다. 같은 날 2가지
-   이상의 운동을 촬영해야 한다면, 운동 종류 사이에는 최소 15-20분 이상 충분히 휴식한다.
-4. 주요 관절이 잘 검출되도록 운동복을 착용한다. 무릎, 골반, 어깨, 몸통 랜드마크를 가릴 수
-   있는 매우 헐렁한 상의나 통이 넓은 바지는 피한다.
-5. 포즈 추정기가 대상자를 혼동하지 않도록 거울 반사가 없고 다른 사람이 프레임 안으로
-   들어오지 않는 독립된 공간에서 촬영한다.
-6. 세트 후반에 자세가 무너지더라도 카메라를 의식해 인위적으로 깔끔한 반복을 연기하지
-   않는다. 통증이 없는 범위에서 자연스럽게 수행하되, 통증이나 부상 위험이 느껴지면 즉시
-   중단한다.
-7. 목표 반복 수는 10회이다. 10회를 채우기 어려운 운동은 자세가 완전히 무너지기 전의 최대
-   반복 수를 기록하고, 실제 반복 수를 annotation 또는 recording metadata에 남긴다.
-8. 모든 운동에서 수행 실패 지점(performance failure point)을 기록할 수 있어야 한다. 이는
-   기본 자세, ROM, 리듬, 지지 기저면, 좌우 순서 중 해당 운동이 요구하는 핵심 조건을 더 이상
-   일관되게 유지하지 못하기 시작하는 최초 반복/프레임 또는 recording 종료 지점이다. 이 값은
-   근력·피로를 진단하기 위한 기준이 아니라, 실제 취득 반복 수와 해석 신뢰도 경고를 남기기
-   위한 취득/annotation 표지이다.
-9. 팔 움직임이 분석 대상이 아닌 운동에서는 양손을 고정하여 팔 반동이 관절 궤적에 섞이지
-   않도록 한다.
-10. 아래의 "분석을 방해하는 수행 패턴"은 촬영 즉시 무효 처리 기준이 아니다. 해당 패턴이
-   관찰되면 recording 또는 annotation note에 기록하여 결과 해석 시 함께 확인한다.
-11. 분석을 방해하는 수행 패턴은 기록 후 두 갈래로 해석한다. 관절 포인트 시계열에서 반복
-   가능하게 식별할 수 있는 패턴은 동작 품질 저하 또는 보상 움직임 후보로 남긴다. 반대로
-   포즈 데이터만으로 안정적으로 구분하기 어려운 패턴은 점수화하지 않고, 취득 통제 요인 또는
-   결과 해석 제한 요인으로 남긴다.
-12. 같은 패턴이라도 촬영 시점, 가시성, 피험자 체형, 의복, 지지면 변화 때문에 식별 가능성이
-   달라질 수 있다. 따라서 분석을 방해하는 수행 패턴은 자동 제외 규칙으로 먼저 사용하지 않고,
-   관찰 근거와 데이터 품질 조건을 함께 기록한다.
-
----
-
-## 2. 운동별 프로토콜 (Per-Exercise Protocols)
-
-### 2-1. 스쿼트 (Squat)
-
-![스쿼트 예시 자세](assets/exercise_squat.png)
-
-*그림 2-1. 피험자가 동작을 이해하기 위한 스쿼트 수행 예시 이미지.*
-
-**카메라 세팅**
+## 1. 공통 규칙 (Common Rules)
 
 ```text
-Zone: Z2 / Z8
-Height: H2
+default pilot unit          하루 1운동, 운동별 3세트, 세트당 10 count
+recording structure         가능하면 세트별 one take
+rest                        세트 간 2-3분; 운동 종류 간 15-20분
+clothing                    관절이 보이도록 착용; landmark를 가리는 헐렁한 옷 회피
+environment                 거울 반사나 다른 사람이 없는 공간
+arm motion                  팔 반동이 분석 대상이 아니면 손 고정
+participant safety          통증 또는 부상 위험 시 중단
+metadata                    actual count와 performance note 기록
 ```
 
-기준 매트 기준 전방 대각 위치인 `Z2` 또는 `Z8`에 카메라를 둔다. 렌즈 높이는
-골반 또는 배꼽 높이인 약 80-110 cm로 맞춘다.
+카메라를 의식해 인위적으로 더 깔끔한 반복을 수행하지 않는다. 자세가 무너지면 통증 없는 범위에서만
+계속하고, 실제로 일어난 일을 기록한다.
 
-**측정 이유**
+## 2. Failure-Point 정책 (Failure-Point Policy)
 
-무릎의 관상면 정렬 변화와 고관절 굴곡 깊이를 동시에 관찰하기 위한 조건이다.
-
-**상세 해석 배경**
-
-[스쿼트 상세 해석 배경](../clinical/exercises/squat.md)을 참조한다.
-
-**피험자 안내 문구**
-
-1. 발을 어깨너비로 벌리고 선다. 양손은 가슴 앞에 X자로 교차하거나 가볍게 모아, 팔의 반동을
-   사용하지 않도록 고정한다.
-2. 의자에 앉듯 엉덩이를 뒤로 빼며 허벅지가 바닥과 거의 평행해질 때까지 내려간 뒤 일어선다.
-3. 쉬지 않고 연속 10회를 수행한다.
-
-**분석을 방해하는 수행 패턴**
-
-- 팔을 크게 흔들어 상승 동작에 반동을 주는 경우
-- 발뒤꿈치가 반복적으로 들리거나 발 위치가 매 반복 크게 바뀌는 경우
-- 무릎이 발 진행 방향 대비 과도하게 안쪽 또는 바깥쪽으로 벗어나는 경우
-- 하강 깊이가 반복마다 크게 달라져 ROM 기준점이 불안정한 경우
-- 체간을 과도하게 접어 고관절 굴곡과 체간 굴곡이 분리되지 않는 경우
-
-### 2-2. 런지 (Lunge)
-
-![런지 예시 자세](assets/exercise_lunge.png)
-
-*그림 2-2. 피험자가 동작을 이해하기 위한 런지 수행 예시 이미지.*
-
-**카메라 세팅**
+모든 운동은 performance failure-point 기록을 지원한다. Performance failure point는 피험자가
+해당 운동의 핵심 조건을 더 이상 일관되게 유지하지 못하는 첫 rep/frame 또는 recording endpoint이다:
 
 ```text
-Zone: Z3 / Z7
-Height: H2
+baseline posture
+range of motion
+rhythm
+base of support
+left-right sequence
 ```
 
-기준 매트 기준 측면 위치인 `Z3` 또는 `Z7`에 카메라를 둔다. 렌즈 높이는
-골반 높이인 약 80-110 cm로 맞춘다.
+이 표지는 취득/annotation provenance이다. 근력, 피로, 질환을 진단하지 않으며, 자동 점수 감점
+규칙도 아니다.
 
-**측정 이유**
+분석을 방해하는 수행 패턴은 note에 기록한다. 관절 포인트 시계열에서 반복 가능하게 보이는 패턴은
+scoring candidate가 될 수 있고, 포즈 데이터만으로 안정적으로 분리하기 어려운 패턴은 취득 통제 또는
+해석 제한 요인으로 남긴다.
 
-앞으로 나간 무릎의 전방 이동, 체간의 시상면 정렬, 앞다리와 뒷다리의 상대 움직임을 관찰하기
-위한 조건이다.
+## 3. 운동별 프로토콜 (Per-Exercise Protocols)
 
-**상세 해석 배경**
+| Exercise | Image | Camera | Count target | Participant cue | Analysis-disrupting patterns |
+|---|---|---|---|---|---|
+| Squat | `assets/exercise_squat.png` | Z2/Z8, H2 | 10 reps | 발 어깨너비; 손 고정; 엉덩이를 뒤로 빼며 허벅지 수평에 가깝게 내려갔다가 일어남. | arm swing assist; heel lift/foot repositioning; knees inward/outward; inconsistent depth; excessive trunk folding |
+| Lunge | `assets/exercise_lunge.png` | Z3/Z7, H2 | 앞발별 5 reps | 한 발을 앞으로; 손은 pelvis/waist; 양 무릎이 약 90도에 가깝게 수직 하강; 몸을 돌리지 않고 앞발 교대. | changing step length; arm swing/trunk extension assist; excessive trunk flexion; body turn during side switch; unstable foot contact |
+| Pike push-up | `assets/exercise_pike_pushup.png` | Z3/Z7, H1 | 10 reps 또는 clean maximum | 엉덩이를 높인 inverted V; 정수리를 손 사이 바닥 쪽으로 내림; 어깨로 밀어 올라옴. | hips dropping; head forward beyond hands; excessive elbow flare; shallow/inconsistent depth; hand/foot repositioning |
+| Plank shoulder tap | `assets/exercise_plank_shoulder_tap.png` | Z2/Z8, H1 | 10 protocol cycles | high plank; trunk/hips 고정; 반대쪽 어깨 tap; left+right tap = 1 protocol cycle. | pelvic rotation/shift; hips too high/low; hand/foot repositioning; wrong side order; hand lift without tap |
 
-[런지 상세 해석 배경](../clinical/exercises/lunge.md)을 참조한다.
-
-**피험자 안내 문구**
-
-1. 두 발을 골반 너비로 벌리고 선 뒤 한 발을 앞으로 넉넉히 내딛는다. 양손은 골반이나 허리를
-   짚어 팔 반동을 사용하지 않도록 고정한다.
-2. 상체를 세운 상태로 앞뒤 무릎이 모두 약 90도에 가까워지도록 수직으로 내려갔다 올라온다.
-3. 같은 발을 앞으로 낸 상태로 연속 5회를 수행한 뒤, 뒤돌지 말고 발만 바꿔 반대 발로 연속
-   5회를 수행한다. 총 10회를 채운다.
-
-**분석을 방해하는 수행 패턴**
-
-- 매 반복 보폭이 크게 달라져 앞무릎과 고관절 궤적 기준이 흔들리는 경우
-- 팔을 흔들거나 몸통을 크게 젖혀 상승 동작에 반동을 주는 경우
-- 체간이 과도하게 앞으로 숙여져 무릎 전방 이동과 체간 정렬을 분리하기 어려운 경우
-- 좌우 전환 시 카메라 방향을 바꾸거나 몸 전체가 돌아서 측면 기준이 사라지는 경우
-- 앞발 또는 뒷발 접촉이 반복적으로 불안정해지는 경우
-
-### 2-3. 파이크 푸쉬업 (Pike Push-up)
-
-![파이크 푸쉬업 예시 자세](assets/exercise_pike_pushup.png)
-
-*그림 2-3. 피험자가 동작을 이해하기 위한 파이크 푸쉬업 수행 예시 이미지.*
-
-**카메라 세팅**
+상세 근거:
 
 ```text
-Zone: Z3 / Z7
-Height: H1
+squat                ../clinical/exercises/squat.md
+lunge                ../clinical/exercises/lunge.md
+pike_pushup          ../clinical/exercises/pike_pushup.md
+plank_shoulder_tap   ../clinical/exercises/plank_shoulder_tap.md
 ```
 
-기준 매트 기준 측면 위치인 `Z3` 또는 `Z7`에 카메라를 둔다. 카메라는 바닥과
-가까운 0-30 cm 높이에 둔다.
+## 4. 파이프라인 사용 (Pipeline Use)
 
-**측정 이유**
-
-엉덩이가 정점을 이루는 역V자 자세의 변화와 머리, 어깨, 팔꿈치의 시상면 궤적을 관찰하기
-위한 조건이다.
-
-**상세 해석 배경**
-
-[파이크 푸쉬업 상세 해석 배경](../clinical/exercises/pike_pushup.md)을 참조한다.
-
-**피험자 안내 문구**
-
-1. 엉덩이를 높이 들어 올려 몸을 역V자 모양으로 만든다.
-2. 정수리가 양손 사이 바닥을 향하도록 내려갔다가 어깨 힘으로 밀어 올린다.
-3. 목표는 10회이다. 난이도가 높아 10회를 채우기 어렵다면 공통 원칙의 수행 실패 지점 기록
-   규칙에 따라 무리하지 말고 중단하며, 가능하면 같은 3세트 취득 구조를 유지한다.
-
-**분석을 방해하는 수행 패턴**
-
-- 엉덩이가 내려가 일반 푸쉬업에 가까운 평평한 자세가 되는 경우
-- 머리가 양손 사이가 아니라 손보다 앞쪽으로 빠지는 경우
-- 팔꿈치가 과도하게 벌어져 어깨와 팔꿈치 궤적이 불안정해지는 경우
-- 하강 깊이가 너무 얕거나 반복마다 크게 달라지는 경우
-- 손 또는 발 위치가 반복 중 크게 이동하는 경우
-
-### 2-4. 플랭크 숄더탭 (Plank Shoulder Tap)
-
-![플랭크 숄더탭 예시 자세](assets/exercise_plank_shoulder_tap.png)
-
-*그림 2-4. 피험자가 동작을 이해하기 위한 플랭크 숄더탭 수행 예시 이미지.*
-
-**카메라 세팅**
+Performance protocol field는 split YAML로 표현한다:
 
 ```text
-Zone: Z2 / Z8
-Height: H1
+data/protocols/performance/<exercise_id>.yaml
 ```
 
-기준 매트 기준 전방 대각 위치인 `Z2` 또는 `Z8`에 카메라를 둔다. 카메라는
-바닥과 가까운 0-30 cm 높이에 둔다.
+Annotation은 다음을 기록할 수 있다:
 
-**측정 이유**
+```text
+performance_protocol_status
+actual_rep_count
+failure_point_frame
+failure_rep_id
+failure_reason
+performance_note
+rep_side_sequence
+side_block_size
+rep_unit
+protocol_cycle_id
+```
 
-한 손으로 반대쪽 어깨를 터치할 때 나타나는 골반 회전, 체중 이동, 측방 흔들림을 관찰하기
-위한 조건이다.
-
-**상세 해석 배경**
-
-[플랭크 숄더탭 상세 해석 배경](../clinical/exercises/plank_shoulder_tap.md)을 참조한다.
-
-**피험자 안내 문구**
-
-1. 기본 플랭크 또는 푸쉬업 준비 자세에서 코어와 엉덩이에 힘을 준다.
-2. 골반과 몸통이 크게 흔들리지 않도록 버티며 한 손을 들어 반대쪽 어깨를 가볍게 터치한다.
-3. 왼손과 오른손을 번갈아 한 번씩 터치하는 것을 1회 프로토콜 사이클로 간주하고, 총 10회를
-   수행한다.
-
-**분석을 방해하는 수행 패턴**
-
-- 어깨를 터치할 때 골반이 과도하게 회전하거나 측방으로 크게 이동하는 경우
-- 엉덩이가 반복적으로 높이 들리거나 아래로 처지는 경우
-- 손 또는 발 위치가 반복 중 크게 이동해 지지 기저면이 바뀌는 경우
-- 좌우 터치 순서가 누락되거나 한쪽만 반복되는 경우
-- 어깨를 실제로 터치하지 않고 손만 들어 올리는 경우
+이 field들은 report, ⑦ motion attribution, feature availability, interpretation-confidence note를
+위한 provenance이다. 그 자체로 자동 movement-quality penalty가 되지 않는다.

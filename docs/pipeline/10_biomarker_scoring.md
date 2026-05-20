@@ -1,142 +1,68 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.1.1
-**최종 갱신:** 2026-05-20
+**문서 버전:** 1.2.0
+**최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑩. ⑧ 피처 추출과 ⑨ 생체역학 프록시의 출력을 해석 가능한 디지털
-바이오마커와 반복별 종합 동작 품질 점수(composite movement quality score)로 통합한다.
-관측 데이터 신뢰도, 피처 산출 가능성, 좌표 보정량은 점수와 분리된 confidence/provenance
-정보로 해석한다.
+파이프라인 단계 ⑩은 ⑧ `FeatureRecord`와 ⑨ `BiomechRecord`를 해석 가능한 biomarker record로
+감싸고, baseline이 있을 때 반복별 movement-quality score를 산출한다. 관측 신뢰도, feature
+availability, coordinate-correction magnitude는 별도 confidence/provenance signal로 유지한다.
 
-두 종류의 레코드가 산출된다:
-1. **`BiomarkerRecord`** — `source_fields` provenance를 갖춘 패스스루 개별 지표.
-   표 형식 보고에 적합.
-2. **`BiomarkerScoreRecord`** — 도메인별 서브 스코어, 동적 하한(dynamic floor),
-   피처별 감점 감사(audit)를 포함한 반복별 종합 점수(기본 0–100).
-
-학위논문 §7에 해당. 점수는 합성 정상 베이스라인(synthetic-normal baseline)에 고정되며,
-임상 임계값이 **아니므로** 진단 결과로 보고되어서는 안 된다.
+점수는 공학적 요약이며 clinical threshold 또는 diagnostic output이 아니다.
 
 ---
 
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-Pose CSV
-→ ① Validation
-→ ② Annotation
-→ ③ Exercise Definition
-→ ④ Preprocessing
-→ ⑤ Normalization
-→ ⑥ Segmentation
-→ ⑦ Motion Attribution
-→ ⑧ Feature Extraction          (FeatureRecord 목록)
-→ ⑨ Biomech Proxy               (BiomechRecord  목록)
-→ ⑩ Biomarker Derivation         ← 본 단계
+⑧ Feature Extraction   FeatureRecord list
+⑨ Biomech Proxy        BiomechRecord list
+→ ⑩ Biomarker Scoring  ← 본 단계
 ```
 
 필수 입력:
-```text
-feat_records          list[FeatureRecord]   ⑧에서; availability metadata 포함
-biomech_records       list[BiomechRecord]   ⑨에서
-exercise_definition   feature_domains, biomechanical_focus, quality_rules 포함
-definition_version    운동 YAML 버전 문자열 (provenance)
-baseline JSON         data/reference/baseline_zscore.json
-                      scripts/compute_baseline.py로 생성
-```
-
-## 2. 설계 원칙 (Design Principle)
 
 ```text
-허용:
-    합성 정상 베이스라인 대비 Z-score 감점으로부터의 도메인별 서브 스코어
-    문서화된 도메인 가중치를 가진 종합 점수
-    의무 ROM 달성에 비례하는 동적 하한
-    z, weight, deduction을 포함한 피처별 감점 감사 목록
-    FeatureRecord / BiomechRecord로부터의 provenance 패스스루
-    data confidence와 correction report를 점수와 분리해 표시
-    low-confidence 또는 not-assessed 피처는 패스스루 보고에 보존하되 종합 점수에서 보류
-
-불허:
-    "정상" vs "비정상"의 임상 임계값
-    환자 분류 라벨
-    하드코딩된 mean / std (반드시 베이스라인 파일에서)
-    질병 예측 출력
-    도메인별 투명성 없는 단일 숫자 요약
-    큰 좌표 보정량을 운동 품질 감점으로 직접 치환
-    camera-zone 한계를 운동 품질 감점으로 직접 치환
+feat_records           availability metadata를 포함한 FeatureRecord list
+biomech_records        BiomechRecord list
+exercise_definition    feature_domains, biomechanical_focus, quality rules
+definition_version     exercise YAML version
+baseline JSON          scoring을 켤 때 data/reference/baseline_zscore.json
 ```
 
-## 3. 2단계 출력 (Two-Stage Output)
+---
 
-### 3-1. BiomarkerRecord (패스스루)
+## 2. 출력 계약 (Output Contract)
 
-각 FeatureRecord와 BiomechRecord가 동일한 value, unit, provenance를 가진 BiomarkerRecord 1개로 변환된다.
-YAML 버전(`definition_version`)으로 감싸는 것 외에 어떠한 변환도 없다.
-
-```python
-@dataclass
-class BiomarkerRecord:
-    biomarker_id:       str
-    exercise_id:        str
-    definition_version: str
-    source_fields:      list[str]   # 필수; 비면 ValueError
-    rep_id:             int | None
-    value:              float
-    unit:               str         # torso_length_ratio | degree
-                                    # | dimensionless_cv | second
-    note:               str | None
-    view_reliability:   str | None = None
-    availability:       str | None = None
-    availability_reasons: list[str] = []
-    camera_zone:        str | None = None
-    depth_dependency:   str | None = None
-    model_depth_reliability: str | None = None
-    landmark_quality:   str | None = None
-```
-
-### 3-2. BiomarkerScoreRecord (종합)
-
-합성 정상 베이스라인 대비 계산된 반복별 동작 품질 요약. `rep_id`당 1개 레코드;
-반복이 어노테이트되지 않은 경우 시퀀스 단위로 폴백한다.
-
-```python
-@dataclass
-class BiomarkerScoreRecord:
-    score_id:           str               # 항상 'rep_quality_score'
-    exercise_id:        str
-    definition_version: str
-    rep_id:             int | None
-    domain_scores:      dict[str, float]  # 도메인별 설정 점수 척도
-    floor_applied:      dict[str, bool]
-    deductions:         list[dict]        # 피처별 감사
-    withheld_features:  list[dict] = []   # 계산됐지만 점수에는 쓰지 않은 피처
-    final_score:        float             # 가중 종합
-    source_fields:      list[str]
-    domain_weights:     dict[str, float]  # final_score에 사용된 정규화 가중치
-    score_bounds:       dict[str, float]  # 기본값 {'min': 0.0, 'max': 100.0}
-```
-
-## 4. 도메인 가중치와 점수 범위 (Domain Weights and Score Bounds)
-
-현재 검증 정책은 score domain 사이에 **동일 상대 가중치**를 사용한다. 가중치는 상대 단위로
-입력하고 런타임에서 합이 1이 되도록 정규화한다:
+두 record type을 방출한다.
 
 ```text
-spatial   1.0 → 25 %     폼 완성도 (ROM, 대칭, 형태)
-temporal  1.0 → 25 %     속도 조절과 일관성
-control   1.0 → 25 %     안정성과 보상
-biomech   1.0 → 25 %     상대적 부하 분포 경향
+BiomarkerRecord
+    value, unit, rep_id, source_fields, availability, view/depth reliability,
+    note metadata를 가진 개별 metric pass-through record.
+
+BiomarkerScoreRecord
+    domain score, final score, floor flag, deduction audit, withheld-feature audit,
+    score bounds, domain weights를 가진 반복별 composite score.
 ```
 
-종합 공식:
+`BiomarkerRecord.source_fields`는 필수다. Provenance 없는 record는 산출하지 않는다.
+
+---
+
+## 3. 점수화 계약 (Scoring Contract)
+
+Composite scoring은 synthetic-normal baseline 대비 Z-score deduction을 사용한다. 기본 score bounds는
+0-100이고, 기본 domain weight는 동일한 상대 가중치다.
 
 ```text
-final_score = Σ_d  W_d · domain_score_d
+spatial   form completeness와 symmetry/shape feature
+temporal  pacing과 timing consistency
+control   stability와 compensation feature
+biomech   relative load-distribution proxy feature
 ```
 
-기본 상대 단위는 `configs/pipeline_default.yaml`에 둔다:
+기본 설정은 `configs/pipeline_default.yaml`에 둔다.
 
 ```yaml
 biomarker:
@@ -150,188 +76,123 @@ biomarker:
     biomech: 1.0
 ```
 
-현재 연구 단계에서는 임상적 우선순위 가정을 임의로 추가하지 않기 위해 동일 가중을 사용한다.
-향후 민감도 분석에서는 운동별 또는 보고 목적별로 값을 조정할 수 있다. 특정 domain을 `0.0`으로
-두면 최종 종합 점수에서는 제외되지만, 해당 domain score와 감점 감사는 계속 보고할 수 있다.
-
-점수 척도 역시 `score_bounds`로 파라미터화한다. 기본값 `min: 0.0`, `max: 100.0`은 현재의
-0–100 보고 규칙을 그대로 유지한다. 향후 다른 표시 척도나 검증 척도가 필요해지면, 점수화
-방법을 바꾸는 것이 아니라 같은 Z-score 감점 로직을 설정된 범위에 선형 스케일링한다.
-
-도메인 할당은 `feature_id` / `metric_id` 접두어로 결정된다:
+Domain은 record ID prefix로 배정한다.
 
 ```text
-spatial.*    → spatial      temporal.*   → temporal
-control.*    → control      biomech.*    → biomech
-기타          → 무시
+spatial.*   → spatial
+temporal.*  → temporal
+control.*   → control
+biomech.*   → biomech
+other       → pass-through only
 ```
 
-### 4-1. 동작 품질 점수와 데이터 신뢰도의 분리
+---
 
-단안 pose의 canonicalization은 실제 3D 복원이 아니라, 일관된 관찰 편향을 줄여 관절 움직임
-패턴을 평가 가능한 좌표계로 옮기는 과정이다. 따라서 canonicalized pose에서 계산한
-`movement_quality_score`와, raw pose 품질 및 보정량을 요약하는 `data_confidence`는 분리한다.
+## 4. Feature Eligibility
 
-```text
-movement_quality_score
-    canonical 또는 normalized 좌표에서 계산한 운동 패턴 점수.
-
-data_confidence
-    visibility, jitter, 좌우 swap 위험, canonicalization correction magnitude,
-    residual after fit 같은 관측/보정 신뢰도 요약.
-
-correction_report
-    어떤 prior를 사용했고 얼마나 보정했는지에 대한 provenance.
-```
-
-보정량이 크다고 해서 동작 품질이 자동으로 낮다는 뜻은 아니다. 카메라 artifact가 크지만 landmark
-추적과 관절 변화량이 안정적이면 동작 품질 점수는 높고 data confidence는 중간 또는 낮음으로
-보고될 수 있다. 반대로 data confidence가 낮은 경우에는 점수 자체를 해석 보류하거나
-confidence note를 함께 표시한다.
-
-### 4-2. Feature Availability에 따른 점수화 eligibility
-
-⑧ Feature Extraction은 촬영 view가 해당 metric의 점수화를 충분히 뒷받침하지 못해도 숫자 피처를
-계산할 수 있다. 따라서 ⑩은 `FeatureRecord.availability`를 종합 점수 입력 gate로 사용한다.
-
-기본 정책:
+⑧은 scoring에 충분히 신뢰할 수 없는 numeric feature도 방출할 수 있다. ⑩은 `availability`를
+composite-score gate로 사용한다.
 
 ```text
-availability = assessed
-    feature_id가 baseline에 있으면 Z-score 감점 입력으로 사용한다.
+assessed
+    baseline statistics가 있으면 Z-score deduction 대상.
 
-availability = low_confidence
-    기본적으로 종합 점수에서 제외한다. BiomarkerRecord는 유지하고,
-    BiomarkerScoreRecord.withheld_features에 reason metadata와 함께 기록한다.
+low_confidence
+    기본적으로 composite score에서 제외한다. BiomarkerRecord에는 보존하고
+    BiomarkerScoreRecord.withheld_features에 기록한다.
 
-availability = not_assessed
-    종합 점수에서 제외한다. reporting/provenance note로만 유지한다.
+not_assessed
+    composite score에서 제외한다. provenance/unavailable로만 보고한다.
 
 availability 누락
-    하위 호환 동작: assessed로 취급한다. 단, legacy record 또는 view가 해석에 영향을 주지 않는
-    metric에만 허용한다.
+    하위 호환: legacy record에 한해 assessed로 취급한다.
 ```
 
-`view_reliability`는 독립 score multiplier로 사용하지 않는다. ⑧에서 `availability`를 정할 때
-반영된다. 이렇게 해야 정밀해 보이지만 실제로는 camera-condition artifact인 부분 감점을 피할 수 있다.
+`view_reliability`는 별도 score multiplier가 아니다. 이는 이미 `availability`에 반영되어야 하며,
+camera artifact에서 나온 가짜 정밀도를 피하기 위함이다.
 
-`BiomarkerRecord`는 pass-through metric으로 남기므로 low-confidence 수치도 confidence note와 함께
-표와 그림에 표시할 수 있다. 종합 점수는 `assessed` feature만 사용한다.
-`BiomarkerScoreRecord.withheld_features`는 조용한 누락을 막는다.
+큰 canonicalization correction magnitude도 movement-quality score를 직접 낮추지 않는다. 검증된
+별도 점수 정책이 생기기 전까지는 data-confidence/provenance에 둔다.
+
+---
+
+## 5. Z-Score Deduction And Dynamic Floor
+
+각 assessed feature에 대해:
+
+```text
+σ_eff  = max(σ_baseline, STD_FLOOR_RATIO * |μ_baseline|, STD_ABS_FLOOR)
+Z      = (value - μ_baseline) / σ_eff
+w_i    = 1 / domain 안의 assessed feature 수
+deduct = scaled_abs_z_deduction(Z, w_i, score_bounds)
+```
+
+σ floor는 baseline variance가 0에 가까울 때 deduction이 불안정해지는 것을 막는다.
+
+Dynamic floor는 mandatory ROM achievement에 묶는다.
+
+```text
+mandatory_ROM_ratio = mean(min(ROM_i / ROM_baseline_i, 1.0))
+floor_dynamic       = score_min + 0.50 * score_span * clamp(mandatory_ROM_ratio)
+domain_score        = max(floor_dynamic, raw_domain_score)
+```
+
+이 규칙은 동작을 수행한 반복이 여러 compensation/control deduction 때문에 최저점으로 바로
+떨어지는 것을 막는다. `floor_applied`는 floor가 domain에 영향을 준 경우를 기록한다.
+
+---
+
+## 6. Baseline
+
+```text
+File       data/reference/baseline_zscore.json
+Generator  scripts/compute_baseline.py
+Schema     { exercise_id: { metric_id: {"mean": float, "std": float} } }
+```
+
+Baseline은 synthetic engineering reference이며 population norm이 아니다. Baseline data가 없으면
+warning과 함께 composite score record만 건너뛰고, pass-through biomarker record는 반환한다.
+
+---
+
+## 7. Audit Fields
+
+`deductions`는 scoring에 사용된 feature가 domain score에 어떤 영향을 줬는지 설명한다.
 
 ```python
-withheld_features = [
-    {
-        "feature_id": "spatial.symmetry.knee",
-        "value": 0.31,
-        "availability": "low_confidence",
-        "view_reliability": "low",
-        "camera_zone": "Z3",
-        "depth_dependency": "high",
-        "model_depth_reliability": "low",
-        "reasons": ["view_metric_low", "side_view_bilateral_symmetry"],
-    },
-]
+{
+    "domain": "spatial",
+    "feature_id": "spatial.rom.left_knee",
+    "value": 85.4,
+    "baseline_mean": 92.1,
+    "baseline_std": 3.5,
+    "z": -1.91,
+    "weight": 0.143,
+    "deduction": 0.273,
+}
 ```
 
-측면 스쿼트에서는 하강 깊이, hip/knee/ankle ROM, 체간 기울기, heel lift, hip-center 안정성,
-tempo, smoothness 같은 시상면 및 중심선 피처는 계속 eligible일 수 있다. Depth-derived bilateral
-symmetry는 availability resolver가 `assessed`로 표시한 경우에만 점수화한다.
-
-## 5. Z-Score 감점 공식 (Z-Score Deduction Formula)
-
-도메인 `d`의 각 피처 `i`에 대해:
-
-```text
-σ_eff_i  = max( σ_baseline_i,  STD_FLOOR_RATIO · |μ_baseline_i|,  STD_ABS_FLOOR )
-           STD_FLOOR_RATIO = 0.10
-           STD_ABS_FLOOR   = 0.01
-
-Z_i      = ( value_i − μ_i ) / σ_eff_i
-score_span = score_max − score_min
-w_i        = 1 / n_features_in_domain          (도메인 내 균등 가중)
-deduct_i   = (score_span / 100) · w_i · | Z_i |
-
-raw_score_d   = max( score_min, score_max − Σ_i deduct_i )
-domain_d      = max( floor_dynamic, raw_score_d )
-```
-
-σ 하한은 합성 정상 베이스라인에서 사실상 0인 피처(예: 깔끔한 스쿼트의 측방 골반 이동)에서
-거의 0인 σ가 Z-score를 폭발시키는 것을 방지한다. 1 % 몸통 길이 편차는
-`Z → ∞` 대신 `Z ≈ 1`을 산출한다.
-
-## 6. 동적 하한 — 의무 ROM 기준 (Dynamic Floor)
-
-```text
-mandatory_ROM_ratio = mean(  min( ROM_i / ROM_baseline_i,  1.0 )  )
-                      반복 내 주요 관절 ROM 피처에 대해
-
-floor_dynamic = score_min + 0.50 · score_span · clamp( mandatory_ROM_ratio,  0.0,  1.0 )
-```
-
-근거: 요구되는 ROM을 달성한 반복은 단지 보상 움직임 때문에 하한까지 처벌받아서는 안 된다.
-하한은 많은 control 감점이 적용되더라도 동작을 완수한 것에 대한 절반 점수를 보존한다.
-
-기본 0–100 척도:
-
-```text
-ROM 달성률         하한       최대 감점
-────────────       ─────      ─────────────────
- 100 %              50 pts    50 pts
-  80 %              40 pts    60 pts
-  50 %              25 pts    75 pts
-   0 %               0 pts   100 pts
-```
-
-`floor_applied[domain] = True`는 해당 반복에서 하한에 도달한 모든 도메인을 기록하여,
-가동성과 제어 사이의 반복 간 결합(coupling)을 표면화한다.
-
-## 7. 합성 정상 베이스라인 (Synthetic-Normal Baseline)
-
-```text
-파일         data/reference/baseline_zscore.json
-생성기       scripts/compute_baseline.py  (합성 정상 데이터에 파이프라인을 실행하고
-                                          μ, σ를 집계)
-
-스키마       { exercise_id: {
-                 feature_id: { "mean": float, "std": float },
-                 ...
-               }, ... }
-```
-
-`load_baseline()`이 로드한다; 파일이 없으면 `BiomarkerScoreRecord` 계산은 예외를 발생시키는 대신
-**`UserWarning`과 함께 건너뛰어**, ⑧ + ⑨ 패스스루 레코드는 여전히 반환된다.
-
-베이스라인은 합성 공학 참조이며 인구 규준(population norm)이 아니다.
-이 베이스라인 대비 Z-score를 환자 분류로 보고하지 **말 것**.
-
-## 8. 감점 감사 (Deduction Audit)
-
-모든 BiomarkerScoreRecord는 피처별 감사 목록을 포함한다:
+`withheld_features`는 계산됐지만 score에는 들어가지 않은 metric의 이유를 설명한다.
 
 ```python
-deductions = [
-    {
-        "domain":         "spatial",
-        "feature_id":     "spatial.rom.left_knee",
-        "value":          85.4,
-        "baseline_mean":  92.1,
-        "baseline_std":   3.5,
-        "z":              -1.91,
-        "w":              0.143,
-        "deduction":      0.273,
-    },
-    ...
-]
+{
+    "feature_id": "spatial.symmetry.knee",
+    "value": 0.31,
+    "availability": "low_confidence",
+    "view_reliability": "low",
+    "camera_zone": "Z3",
+    "depth_dependency": "high",
+    "model_depth_reliability": "low",
+    "reasons": ["view_metric_low"],
+}
 ```
 
-이 목록은 ⑪ 시각화의 `plot_attribution_heatmap()`에서 직접 소비되어, "이 반복이 왜 점수를 잃었는가"를
-개별 피처 수준에서 표면화한다.
+Reporting과 visualization은 두 목록을 모두 보여줘야 한다. 하나는 "왜 감점됐는가"를, 다른
+하나는 "왜 계산된 metric이 점수에 들어가지 않았는가"를 설명한다.
 
-`withheld_features`는 감점 감사 옆에서 reporting/visualization이 소비한다. 이는
-"계산된 metric이 왜 점수에 영향을 주지 않았는가"를 설명한다.
+---
 
-## 9. 진입점 (Entry Point)
+## 8. 진입점 (Entry Point)
 
 ```python
 from movement.biomarker import derive_biomarkers
@@ -341,85 +202,55 @@ biomarker_records, score_records = derive_biomarkers(
     biomech_records,
     exercise_definition,
     definition_version=exercise_definition.version,
-    baseline_path=None,    # 기본값: data/reference/baseline_zscore.json
-    domain_weights=None,   # 기본값: 동일 상대 가중
-    score_bounds=None,     # 기본값: {'min': 0.0, 'max': 100.0}
+    baseline_path=None,
+    domain_weights=None,
+    score_bounds=None,
 )
 ```
 
 동작:
-```text
-- 항상 biomarker_records를 반환 (⑧/⑨ 패스스루)
-- 베이스라인 파일이 없으면 빈 score_records 목록 반환
-- 입력 레코드의 distinct rep_id를 순회
-- rep_id가 어디에도 설정되어 있지 않으면 단일 시퀀스 단위 점수로 폴백
-```
-
-## 10. 기존 임상 평가 척도와의 연계 (Linkage to Existing Clinical Scales)
-
-종합 점수는 확립된 기능적 동작 평가(예: FMS 형식의 0–3 감점, OAB 형식의 이진 체크리스트)
-구조를 **반영(mirror)** 하도록 설계되었으나, 그것들과 직접 비교 가능한 것은 아니다.
-연계는 감사 목록 수준에서 명시적이다:
 
 ```text
-spatial 감점     → "form" 하위 기준         (FMS 채점 루브릭)
-temporal 감점    → "control" 하위 기준      (FMS / SFMA 내)
-control 감점     → 보상 감점                (FMS 동작 스크린)
-biomech 감점     → 부하 분포 경향           (FMS에 직접 등가물 없음)
+항상 pass-through BiomarkerRecord를 반환한다.
+baseline file이 없으면 score_records는 빈 목록이다.
+rep_id별로 독립 산출하고, 필요하면 sequence-level score로 fallback한다.
 ```
 
-⑪ 시각화는 감사 목록을 임상의가 읽기 쉬운 레이아웃으로 표면화하는 책임을 진다;
-본 단계는 데이터만 제공한다.
+---
 
-## 11. Provenance
+## 9. Provenance And Clinical Boundary
 
 ```text
-BiomarkerRecord.source_fields         FeatureRecord / BiomechRecord에서 상속
-BiomarkerScoreRecord.source_fields    ['feature_domains', 'biomechanical_focus',
-                                        'quality_rules']
+BiomarkerRecord.source_fields       FeatureRecord/BiomechRecord에서 상속
+BiomarkerScoreRecord.source_fields  feature_domains, biomechanical_focus,
+                                    quality_rules, baseline file, score config
 ```
 
-`derive_biomarkers()`는 생성 시점에 provenance를 강제한다:
-원천 FeatureRecord / BiomechRecord의 `source_fields`가 비어 있던 레코드는 BiomarkerRecord
-목록에서 조용히 제거된다 (기저 레코드가 이미 `ValueError`를 발생시켰을 것이다).
+Composite score는 functional movement assessment 구조를 참고할 수 있지만 FMS/OAB 점수와 직접
+비교할 수 없다. Clinical diagnosis, patient classification, clinical significance claim으로
+표현하지 않는다.
 
-## 12. 코드 매핑 (Code Mapping)
+---
+
+## 10. 코드 매핑 (Code Mapping)
 
 ```text
-src/movement/biomarker/__init__.py     BiomarkerRecord, from_feature_record,
-                                       from_biomech_record, derive_biomarkers,
-                                       derive_interpretations
-src/movement/biomarker/scoring.py      BiomarkerScoreRecord, DOMAIN_WEIGHTS,
-                                       normalize_domain_weights,
-                                       normalize_score_bounds,
-                                       load_baseline, save_baseline,
-                                       build_baseline_from_records,
-                                       derive_biomarkers
-src/movement/biomarker/interpretation.py  load_rules, derive_interpretations,
-                                          InterpretationRecord; YAML 기반 규칙 엔진;
-                                          예외 발생하지 않음
-data/definitions/interpretation_rules/squat.yaml   6개 규칙 (floor_hit, dominant_domain,
-data/definitions/interpretation_rules/lunge.yaml      load_shift, score 임계값)
-data/definitions/interpretation_rules/pike_pushup.yaml
-data/definitions/interpretation_rules/plank_shoulder_tap.yaml
-scripts/compute_baseline.py            data/reference/baseline_zscore.json 생성
-data/reference/baseline_zscore.json    feature_id별 합성 정상 μ, σ
-configs/pipeline_default.yaml          biomarker.domain_weights 기본 상대 단위,
-                                       biomarker.score_bounds 기본 0–100 척도
-tests/test_biomarker_scoring_weights.py  score-domain 가중치 정규화,
-                                        score-bound 정규화와 final score
-tests/test_biomarker_scoring_availability.py
-                                        assessed-only scoring과 withheld-feature audit
-tests/test_interpretation.py           20건: 규칙 로더, 3개 시나리오, 엣지 케이스
+src/movement/biomarker/__init__.py        BiomarkerRecord, derive_biomarkers
+src/movement/biomarker/scoring.py         BiomarkerScoreRecord, baseline IO,
+                                          scoring, score bounds, weights
+src/movement/biomarker/interpretation.py  YAML rule loader and InterpretationRecord
+data/definitions/interpretation_rules/    per-exercise interpretation rules
+scripts/compute_baseline.py               baseline generator
+tests/test_biomarker_scoring_weights.py   weights and bounds
+tests/test_biomarker_scoring_availability.py assessed-only scoring and withheld audit
+tests/test_interpretation.py              rule engine behavior
 ```
 
-## 13. 향후 확장 (Planned Extensions)
+---
 
-- 구간별 점수화 (`Descent` 전용, `Ascent` 전용 서브 스코어), phase-aware FeatureRecord
-  패밀리로 구동
-- 인구 단위 베이스라인 교체 (실제 코호트 데이터), 합성 베이스라인을 폴백으로 보존
-- 피처별 z 분산으로부터 `final_score`별 신뢰 구간
-- 민감도 분석 이후 운동별 domain-weight profile 정의; 현재 구현은 parameterized weights를
-  지원하지만 기본값은 동일 가중으로 둔다.
-- 세트 단위 추세 `BiomarkerTrendRecord` (세트 내 반복 간 집계 slope, 피로 시그니처)
-- YAML 버전이 베이스라인 도중에 변경될 때의 하위 호환 마이그레이션
+## 11. 향후 확장 (Planned Extensions)
+
+- Phase-aware feature 근거가 안정화된 뒤 phase-specific sub-score 추가.
+- Sensitivity analysis 이후 exercise-specific domain-weight profile 추가.
+- Synthetic fallback을 보존하면서 real cohort baseline 지원.
+- Set-level trend record로 within-set fatigue 또는 consistency 분석.

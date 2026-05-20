@@ -1,13 +1,15 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.4.15
-**Last Updated:** 2026-05-16
+**Document Version:** 1.5.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
-Pipeline step ③. Loads split exercise YAML artifacts by `exercise_id`, assembles an
-`ExerciseContext`, and returns a backward-compatible `ExerciseDefinition` object
-that all downstream steps (④–⑩) reference to apply exercise-specific logic. Legacy
-combined exercise YAML remains supported for compatibility.
+Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
+`ExerciseContext`, and returns the backward-compatible `ExerciseDefinition` object
+used by downstream stages ④-⑩.
+
+Exercise definitions describe what the movement means. Annotation describes where
+the movement happened in a recording.
 
 ---
 
@@ -16,658 +18,359 @@ combined exercise YAML remains supported for compatibility.
 ```text
 Pose CSV + annotation + exercise YAML artifacts
 → ① Validation
-→ ② Annotation                    (exercise_type, pattern declared)
+→ ② Annotation                    exercise_type, pattern, recording metadata
 → ③ Exercise Definition           ← this step
-→ ④ Preprocessing                 (reads laterality, landmarks, quality_rules)
+→ ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
-→ ⑥ Segmentation
-→ ⑦ Motion Attribution            (reads laterality, primary_joints, performance_protocol.side_sequence)
-→ ⑧ Feature Extraction            (reads feature_domains, joint_actions)
-→ ⑨ Biomech Proxy                 (reads biomechanical_focus)
-→ ⑩ Biomarker Derivation          (reads compensation_candidates)
+→ ⑥ Segmentation                  rep/phase settings
+→ ⑦ Motion Attribution            laterality, side_sequence
+→ ⑧ Feature Extraction            feature_domains, joint_actions
+→ ⑨ Biomech Proxy                 biomechanical_focus
+→ ⑩ Biomarker Derivation          compensation_candidates
 ```
 
-Exercise definitions describe *what* the movement means.
-Annotation describes *where* the movement happened.
+Exercise-specific behavior should be represented as YAML data rather than Python
+branches whenever possible.
 
-## 2. Design
+---
 
-Exercise-specific behavior is expressed as YAML data, not code branches. For the
-current target exercises, adding or editing an exercise means maintaining split
-artifacts for movement identity, analysis profile, performance protocol, and
-camera protocol.
+## 2. Split YAML Ownership
 
-Every biomarker produced by ⑧–⑩ must reference `source_fields` pointing to the
-definition fields that drove its computation.
-
-### Runtime split
-
-The current runtime layout is:
+The current target exercises use four coordinated YAML artifacts.
 
 ```text
-exercise definition   movement identity only
-analysis profile      segmentation, landmarks, angle definitions, feature domains, quality overrides
-performance protocol  participant-facing count, side sequence, cues, analysis-disrupting patterns
-camera protocol       recommended zones/heights and view-metric reliability
+data/definitions/exercises/<exercise_id>.yaml
+    Movement identity: classification, support, phase model, tags, notes.
+
+data/definitions/analysis_profiles/<exercise_id>.yaml
+    Analysis behavior: landmarks, angle definitions, segmentation settings,
+    feature domains, biomechanical focus, compensation candidates, quality rules.
+
+data/protocols/performance/<exercise_id>.yaml
+    Participant-facing protocol: planned sets/counts, count unit, side sequence,
+    completion policy, cues, analysis-disrupting performance patterns.
+
+data/protocols/camera/<exercise_id>.yaml
+    Recording protocol: recommended zones/heights and view-metric reliability.
 ```
 
-New exercises should be prototyped through the notebook-first authoring flow before
-more fields are added to `data/definitions/exercises/<exercise_id>.yaml`. See
-[exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md).
+The loader merges these artifacts into the runtime `ExerciseDefinition` shape.
+Legacy combined YAML remains accepted only for backward compatibility; new work
+should use split artifacts.
 
-## 3. Available Definitions
+---
+
+## 3. Current And Future Exercise Coverage
+
+Current canonical exercise IDs:
 
 ```text
-data/definitions/exercises/
-    squat.yaml
-    lunge.yaml
-    pike_pushup.yaml
-    plank_shoulder_tap.yaml
-    generic.yaml               ← fallback
-
-data/definitions/analysis_profiles/
-    squat.yaml
-    lunge.yaml
-    pike_pushup.yaml
-    plank_shoulder_tap.yaml
-
-data/protocols/performance/
-    squat.yaml
-    lunge.yaml
-    pike_pushup.yaml
-    plank_shoulder_tap.yaml
-
-data/protocols/camera/
-    squat.yaml
-    lunge.yaml
-    pike_pushup.yaml
-    plank_shoulder_tap.yaml
+squat
+lunge
+pike_pushup
+plank_shoulder_tap
+generic                  fallback only
 ```
 
-## 4. Fallback Behavior
+The schema must remain extensible beyond these four exercises. New exercises may
+introduce different laterality, posture, support, phase models, count units,
+camera zones, or feature availability, but they should not require new hardcoded
+pipeline branches unless a new analytical capability is genuinely needed.
 
-If `exercise_type` is absent from annotation, or the corresponding YAML is not found,
-`generic.yaml` is loaded. Generic mode activates only exercise-agnostic features
-(ROM, tempo, stability). Compensation movement biomarkers are not produced.
+Future exercises should start as draft split YAML generated through the
+notebook-first authoring flow, then be reviewed and promoted to canonical YAML.
+See [exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md).
 
-```yaml
-# generic.yaml (excerpt)
-exercise_id: generic
-classification:
-  laterality: bilateral_symmetric
-  primary_plane: sagittal
-phase_model:
-  type: cyclic
-compensation_candidates: []
-feature_domains:
-  spatial: [rom]
-  temporal: [tempo]
-  control: [stability]
-```
+If `exercise_type` is missing or no matching YAML exists, `generic.yaml` is loaded.
+Generic mode activates only exercise-agnostic features such as ROM, tempo, and
+stability. Compensation biomarkers are not produced.
 
-## 5. YAML Schema Overview
+---
 
-The split schema is the current source for the target exercises. The legacy
-combined schema is still accepted by the loader and is shown below as the merged
-runtime shape consumed by `ExerciseDefinition`.
+## 4. Runtime Schema Contract
+
+The merged runtime shape consumed by `ExerciseDefinition` is:
 
 ```yaml
-exercise_id: string            # snake_case unique identifier
+exercise_id: string
 display_name: string
 description: string
 version: string
 tags: list[string]
 
-classification:                # macro-level exercise classification
-support:                       # contact / base of support
-phase_model:                   # temporal structure of one rep
-rep_segmentation:              # repetition-boundary detection settings
-phase_segmentation:            # intra-rep phase detection settings
-performance_protocol:          # practical counting, side sequence, and completion rules
-landmarks:                     # landmark model and primary/secondary joints
-angle_definitions:             # joint angle triplets
-joint_actions:                 # expected joint actions
-biomechanical_focus:           # CoM motion, stability, load regions
-compensation_candidates:       # list of compensation movements to monitor
-feature_domains:               # which spatial/temporal/control features to activate
-view_requirements:             # preferred camera views
-camera_protocol:               # recommended filming zone/height and warning policy
-view_metric_reliability:       # per-zone reliability prior for metric families
-quality_rules:                 # thresholds for analysis eligibility
+classification: ...
+support: ...
+phase_model: ...
+rep_segmentation: ...
+phase_segmentation: ...
+performance_protocol: ...
+landmarks: ...
+angle_definitions: ...
+joint_actions: ...
+biomechanical_focus: ...
+compensation_candidates: ...
+feature_domains: ...
+view_requirements: ...
+camera_protocol: ...
+view_metric_reliability: ...
+quality_rules: ...
 notes: string
 ```
 
-Not all fields need to be populated in the initial implementation.
-The schema is designed to allow incremental addition without restructuring.
+Not every field must be equally rich for every exercise. Missing or unavailable
+capabilities should be reported as unavailable or low confidence rather than
+silently treated as normal.
 
-## 6. Field Reference
+---
+
+## 5. Field Contracts
 
 ### classification
 
+Defines broad movement identity and controls laterality-sensitive stages.
+
 ```yaml
 classification:
-  family: lower_body           # lower_body | upper_body | core | full_body | balance | ...
-  equipment: none
-  load_type: bodyweight        # bodyweight | external_load | assisted | ...
-  posture_type: standing       # standing | plank | inverted_closed_chain | kneeling | ...
-  kinetic_chain: closed_chain  # open_chain | closed_chain | mixed_chain | ...
-  laterality: bilateral_symmetric
-      # bilateral_symmetric | bilateral_asymmetric | alternating
-      # unilateral_left | unilateral_right | unilateral_unspecified
-  movement_pattern: squat
-  primary_plane: sagittal      # sagittal | frontal | transverse | multiplanar | static
-  secondary_planes: [frontal, transverse]
-  complexity: compound         # single_joint | multi_joint | compound | whole_body
+  family: lower_body | upper_body | core | full_body | balance | ...
+  equipment: none | external_load | assisted | ...
+  load_type: bodyweight | external_load | assisted | ...
+  posture_type: standing | plank | inverted_closed_chain | kneeling | ...
+  kinetic_chain: open_chain | closed_chain | mixed_chain | ...
+  laterality: bilateral_symmetric | bilateral_asymmetric | alternating |
+              unilateral_left | unilateral_right | unilateral_unspecified
+  movement_pattern: squat | lunge | pushup | shoulder_tap | custom
+  primary_plane: sagittal | frontal | transverse | multiplanar | static
+  secondary_planes: list[string]
+  complexity: single_joint | multi_joint | compound | whole_body
 ```
 
-`laterality` controls:
-- ④ preprocessing: whether to run L/R swap detection
-- ⑦ motion attribution: whether to run per-rep active-side check (`bilateral_symmetric` → skipped)
+`laterality` informs L/R swap handling and motion-attribution checks. Bilateral
+symmetric tasks may skip per-rep active-side attribution; unilateral or
+alternating tasks should preserve active-side or role metadata.
 
-### support
+### support and phase_model
+
+`support` describes contact and weight-bearing context. It should remain general
+enough for standing, plank, kneeling, inverted closed-chain, and future exercise
+families.
 
 ```yaml
 support:
-  base_of_support: bilateral_feet   # bilateral_feet | single_foot_left | split_stance | ...
-  contact_points: [left_foot, right_foot]
-  support_surface: floor
-  weight_bearing_regions: [left_foot, right_foot]
+  base_of_support: bilateral_feet | split_stance | single_foot_left | hands_feet | ...
+  contact_points: list[string]
+  support_surface: floor | mat | bench | wall | ...
+  weight_bearing_regions: list[string]
 ```
 
-### phase_model
+`phase_model` describes one repetition or task cycle.
 
 ```yaml
 phase_model:
-  type: resistance_phase
-      # resistance_phase | task_phase | static_hold | cyclic | locomotion_phase | custom
-  expected_ratio:             # only for resistance_phase; must sum to ~1.0
-    eccentric: 0.4
-    isometric: 0.1
-    concentric: 0.5
+  type: resistance_phase | task_phase | static_hold | cyclic | locomotion_phase | custom
+  expected_ratio: optional mapping
 ```
 
-Standard phase names:
+Standard phase vocabularies should be reused when possible, but `custom` is
+allowed for future exercises when the phase structure cannot be represented by the
+existing families.
 
-```text
-resistance_phase  : eccentric, isometric, concentric, transition_top, transition_bottom
-task_phase        : setup, support_stable, weight_shift, tap, reach, return, reset, hold, ...
-static_hold       : setup, hold, fatigue, release
-locomotion_phase  : initial_contact, loading_response, mid_stance, terminal_stance, ...
-```
+### segmentation
 
-### rep_segmentation / phase_segmentation
-
-`rep_segmentation` confirms repetition start/end boundaries and creates `rep_id`.
-`phase_segmentation` keeps the existing identifier and YAML key, and creates
-kinematic phase labels inside confirmed reps.
+`rep_segmentation` creates or confirms repetition boundaries. `phase_segmentation`
+assigns phase labels inside confirmed reps.
 
 ```yaml
 rep_segmentation:
-  reference_landmark: hip_center
-  reference_axis: vertical
-  boundary_logic: local_maximum      # local_maximum | local_minimum | zero_crossing
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  minimum_rep_length_frames: 8
-  minimum_boundary_distance_frames: 8
-  minimum_reps: 1
-  boundary_prominence: null
-  include_endpoints: true
+  reference_landmark: hip_center | wrist_center | shoulder_center | custom
+  reference_axis: vertical | horizontal | depth | custom
+  boundary_logic: local_maximum | local_minimum | zero_crossing | threshold | custom
+  smoothing: optional mapping
+  minimum_rep_length_frames: int
 
 phase_segmentation:
-  reference_landmark: hip_center
-  reference_axis: vertical
-  phase_sequence: [Descent, Ascent]
-  split_logic: local_minimum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  turnaround_hold:
-    enabled: true
-    half_window_frames: 3
-  minimum_rep_length_frames: 8
-  multi_inflection_policy: global_extremum
+  reference_landmark: string
+  reference_axis: string
+  phase_sequence: list[string]
+  split_logic: local_minimum | local_maximum | multi_inflection | custom
+  minimum_rep_length_frames: int
 ```
+
+If automatic segmentation is uncertain, downstream analysis should use confirmed
+manual labels rather than silently accepting poor boundaries.
 
 ### performance_protocol
 
-`performance_protocol` records how the participant is instructed to perform and
-count the exercise. It is separate from `rep_segmentation`: segmentation defines
-which movement unit receives a `rep_id`, while the performance protocol defines
-how the protocol-facing count is interpreted.
-
-This separation is needed for exercises such as plank shoulder tap, where each tap
-may be segmented as an atomic movement but one participant-facing protocol count
-means a left-right pair.
+`performance_protocol` describes participant-facing instructions and planned
+acquisition. It is separate from segmentation because one protocol count may map
+to one or more segmented atomic movements.
 
 ```yaml
 performance_protocol:
   prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: repetition       # repetition | left_right_pair | hold_seconds
-    segmentation_reps_per_count: 1
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: repetition       # repetition | left_right_pair | hold_seconds
-    segmentation_reps_per_count: 1
+    target_sets: int
+    target_count_per_set: int | float
+    count_unit: repetition | left_right_pair | hold_seconds | custom
+    segmentation_reps_per_count: int | float
+    rest_between_sets_s: [min_s, max_s]
   side_sequence:
-    mode: none                   # none | alternating_each_rep | same_side_block_then_switch
-    block_size_counts: null      # e.g., lunge: 5
-    first_side_source: null      # null | annotation.starting_side
-  allowed_side_sequence_modes: [none]
+    mode: none | alternating_each_rep | same_side_block_then_switch | custom
+    block_size_counts: int | null
+    first_side_source: null | annotation.starting_side
+  allowed_side_sequence_modes: list[string]
   completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-  participant_cues:
-    - keep_hands_fixed
-    - avoid_arm_swing
-  analysis_disrupting_patterns:
-    - arm_swing
-    - unstable_foot_contact
-    - incomplete_depth
-```
-
-Field meanings:
-
-```text
-prescription.target_sets              planned acquisition sets for this exercise
-prescription.target_count_per_set     participant-facing target count per set
-prescription.count_unit               what one protocol count means
-prescription.segmentation_reps_per_count
-                                       how many segmented atomic reps correspond to one protocol count
-prescription.rest_between_sets_s      planned rest range between sets, in seconds
-counting.target_count                 backward-compatible mirror of target_count_per_set
-counting.count_unit                   backward-compatible mirror of prescription.count_unit
-counting.segmentation_reps_per_count  backward-compatible mirror of prescription.segmentation_reps_per_count
-side_sequence.mode            expected left/right order at the protocol level
-block_size_counts             count size before side switching, if block-based
-first_side_source             where the first side is declared
-allowed_side_sequence_modes   side-sequence variants allowed for this exercise/protocol family;
-                               side_sequence.mode is the selected study protocol
-allow_partial_completion      whether fewer than target_count can be accepted with metadata
-recommended_sets              backward-compatible mirror of prescription.target_sets;
-                               practical acquisition recommendation, not an automatic multiplier
-analysis_disrupting_patterns  performance-pattern candidates to observe/record; not automatic exclusion rules
+    allow_partial_completion: bool
+    recommended_sets: int
+  participant_cues: list[string]
+  analysis_disrupting_patterns: list[string]
 ```
 
 Examples:
 
-```yaml
-# Lunge: 5 repetitions on one side, then 5 on the other side.
-performance_protocol:
-  prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-  side_sequence:
-    mode: same_side_block_then_switch
-    block_size_counts: 5
-    first_side_source: annotation.starting_side
-  allowed_side_sequence_modes: [same_side_block_then_switch, alternating_each_rep]
-  completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-
-# Plank shoulder tap: one left-right pair is counted as one protocol cycle.
-performance_protocol:
-  prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: left_right_pair
-    segmentation_reps_per_count: 2
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: left_right_pair
-    segmentation_reps_per_count: 2
-  side_sequence:
-    mode: alternating_each_rep
-    block_size_counts: null
-    first_side_source: annotation.starting_side
-  allowed_side_sequence_modes: [alternating_each_rep]
-  completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-```
-
-`prescription` is the canonical planned-protocol block for set count, target count
-per set, count unit, segmentation-count mapping, and planned rest. During the
-current migration, `counting` and `completion.recommended_sets` remain
-backward-compatible mirrors because existing code and tests read those fields.
-When both representations are present, they must agree.
-
-Current implementation parses and validates this metadata in ③ Exercise Definition.
-⑦ Motion Attribution reads `performance_protocol.side_sequence` first, then falls
-back to annotation `pattern` / `starting_side` when no protocol rule is declared.
-`allowed_side_sequence_modes` is a protocol-design field: it records acceptable
-variants for the exercise, but does not override the selected `side_sequence.mode`
-during runtime attribution.
-
-Acquisition rules that are fixed by the performance protocol, such as planned set
-count, target count per set, count unit, side sequence, and completion policy,
-belong in `performance_protocol.prescription` and its protocol-level companion
-fields. What actually happened during acquisition (`set_index`, `actual_rep_count`,
-`failure_point_frame`, `failure_reason`, and related fields) belongs to ②
-Annotation or recording metadata, not to the exercise definition. Falling short of
-the target count should lower interpretation confidence or mark partial completion;
-it must not be converted directly into a movement-quality score penalty.
-Compensation candidates are declared in
-`compensation_candidates` and `feature_domains.control`; candidates that are not yet
-implemented by ⑧–⑩ must be reported rather than silently ignored.
-`analysis_disrupting_patterns` may be linked to movement-quality scoring or
-compensatory-movement candidates when they can be identified reproducibly from
-joint-point time series. Patterns that cannot be separated reliably from pose data
-remain acquisition-control factors or interpretation-limitation factors rather than
-scoring factors. In both cases, the default behavior is observation note, warning,
-and provenance recording, not automatic exclusion. Temporary development mappings
-and TODOs must not remain in publication-facing acquisition protocol documents.
-
-A downstream detectability audit evaluates this list. The YAML field remains a
-simple list of pattern names; the audit classifies each declared pattern into one of
-four implementation categories:
-
 ```text
-pose_detectable_scoring_candidate
-    Reproducibly observable from joint-point trajectories under the recommended
-    view and eligible for future feature/biomarker linkage.
+lunge
+    Can use same_side_block_then_switch with block_size_counts: 5.
 
-acquisition_control_factor
-    A protocol-performance or recording-control issue that may contaminate
-    movement interpretation but should not be scored directly.
+plank_shoulder_tap
+    Can segment each tap as an atomic movement while counting one left-right pair
+    as one participant-facing protocol count.
 
-interpretation_limitation_factor
-    A pattern that can be noted after acquisition but is not reliably separable
-    from pose data alone.
-
-unknown
-    Declared in YAML but not yet classified; must remain warning/provenance only.
+static hold future exercise
+    Can use count_unit: hold_seconds and a static_hold phase model.
 ```
 
-For each declared pattern, the audit reports required landmarks, view sensitivity,
-visibility dependency, annotation fallback, and any linked compensation candidates
-or feature-domain entries. A `pose_detectable_scoring_candidate` is still not an
-automatic score. It only means the pattern can be considered for ⑧ Feature
-Extraction, ⑩ Biomarker Scoring, or ⑫ Simulation after a feature definition and
-testable provenance rule are added.
+Planned protocol values belong here. What actually happened during recording,
+such as `set_index`, `actual_rep_count`, `failure_point_frame`, or
+`failure_reason`, belongs to ② Annotation or recording metadata. Partial
+completion should lower interpretation confidence or mark partial completion; it
+must not be converted directly into a movement-quality penalty.
 
-### landmarks
+### landmarks and angle_definitions
+
+The current landmark model is `mediapipe_pose_33`. Exercise definitions should
+declare primary, secondary, critical, and optional landmarks according to the
+movement, not according to a single squat template.
 
 ```yaml
 landmarks:
   model: mediapipe_pose_33
-  primary_joints: [left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle]
-  secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis]
-  critical_landmarks: [23, 24, 25, 26, 27, 28]   # MediaPipe indices
-  optional_landmarks: [11, 12, 29, 30, 31, 32]
-```
+  primary_joints: list[string]
+  secondary_joints: list[string]
+  critical_landmarks: list[int | string]
+  optional_landmarks: list[int | string]
 
-Standard joint names:
-
-```text
-left_shoulder  right_shoulder  left_elbow    right_elbow
-left_wrist     right_wrist     left_hip      right_hip
-left_knee      right_knee      left_ankle    right_ankle
-left_foot      right_foot      trunk         pelvis       head
-```
-
-### angle_definitions
-
-```yaml
 angle_definitions:
-  left_knee_angle:  { points: [23, 25, 27], vertex: 25 }
-  right_knee_angle: { points: [24, 26, 28], vertex: 26 }
-  left_hip_angle:   { points: [11, 23, 25], vertex: 23 }
-  right_hip_angle:  { points: [12, 24, 26], vertex: 24 }
+  left_knee_angle: { points: [23, 25, 27], vertex: 25 }
 ```
 
-Standard triplets (MediaPipe indices):
+For future pose models, add an adapter or mapping layer before changing exercise
+YAML semantics.
 
-```text
-left_shoulder_angle  : [23, 11, 13]   right_shoulder_angle : [24, 12, 14]
-left_elbow_angle     : [11, 13, 15]   right_elbow_angle    : [12, 14, 16]
-left_hip_angle       : [11, 23, 25]   right_hip_angle      : [12, 24, 26]
-left_knee_angle      : [23, 25, 27]   right_knee_angle     : [24, 26, 28]
-left_ankle_angle     : [25, 27, 31]   right_ankle_angle    : [26, 28, 32]
-```
-
-### biomechanical_focus
+### feature, biomech, and compensation fields
 
 ```yaml
+joint_actions: mapping
+
 biomechanical_focus:
-  expected_oom_motion: vertical
-      # minimal | vertical | anterior_posterior | medial_lateral
-      # vertical_and_anterior_posterior | vertical_and_medial_lateral
-      # rotational | multidireotional
-  stability_requirement: medium   # low | medium | high | very_high
-  main_load_regions: [hip, knee, ankle]
-      # shoulder | elbow | wrist | trunk | core | hip | knee | ankle | foot | pelvis
-  primary_oonstraints:
-    - maintain_foot_contact
-    - maintain_trunk_alignment
-    - avoid_knee_valgus
-```
+  expected_com_motion: minimal | vertical | anterior_posterior | medial_lateral |
+                       rotational | multidirectional | custom
+  stability_requirement: low | medium | high | very_high
+  main_load_regions: list[string]
+  primary_constraints: list[string]
 
-### compensation_candidates
+compensation_candidates: list[string]
 
-```yaml
-compensation_candidates:
-  - knee_valgus
-  - exoessive_trunk_flexion
-  - lateral_pelvio_shift
-```
-
-Only compensation movements listed here are produced as biomarkers by ⑥.
-
-Full vocabulary:
-
-```text
-# Lower body
-knee_valgus                    knee_varus
-asymmetric_depth               asymmetric_knee_flexion
-asymmetric_hip_flexion         limited_ankle_dorsiflexion_proxy
-heel_lift                      foot_external_rotation_proxy
-foot_oollapse_proxy            pelvis_drop
-lateral_pelvio_shift           hip_shift
-insuffioient_rear_hip_extension unstable_step_width
-
-# Trunk / pelvis
-exoessive_trunk_flexion        trunk_extension_compensation
-lateral_trunk_lean             trunk_rotation
-trunk_sway                     pelvis_rotation
-pelvis_anterior_tilt_proxy     pelvis_posterior_tilt_proxy
-hip_pike                       hip_drop
-loss_of_neutral_spine_proxy
-
-# Upper body
-shoulder_elevation_compensation shoulder_asymmetry
-shoulder_oollapse              elbow_flare
-elbow_asymmetry                wrist_shift
-soapular_instability_proxy     insuffioient_head_desoent
-head_forward_shift
-
-# Control / timing
-excessive_com_lateral_shift    excessive_com_variability
-phase_timing_asymmetry         tempo_instability
-left_right_timing_variability  movement_disoontinuity
-```
-
-### feature_domains
-
-```yaml
 feature_domains:
-  spatial: [rom, symmetry, shape]
-  temporal: [tempo, variability]
-  control: [stability, compensation]
-  biomechanical_proxy: [com_displacement, moment_arm_proxy]
+  spatial: list[string]
+  temporal: list[string]
+  control: list[string]
+  biomechanical_proxy: list[string]
 ```
 
-Full vocabulary:
+Only implemented and detectable compensation candidates should produce biomarkers.
+Declared-but-unimplemented candidates must be reported by availability/audit logic
+instead of silently ignored. Absolute force, torque, or clinical-diagnosis claims
+do not belong in these fields.
 
-```text
-spatial:
-  rom, joint_angle_min, joint_angle_max, joint_angle_range,
-  symmetry, shape, trajectory_similarity, alignment,
-  posture_angle, depth_proxy, reach_distance, support_width
+### camera_protocol and view_metric_reliability
 
-temporal:
-  tempo, rep_duration, phase_duration, eccentric_duration,
-  isometric_duration, concentric_duration, timing_ratio,
-  variability, rhythm_oonsistenoy, left_right_timing_variability, pause_duration
-
-control:
-  stability, compensation, com_stability, trunk_stability,
-  pelvis_stability, joint_traoking_error, lateral_shift,
-  rotation_control, balance_control, movement_smoothness, endpoint_control
-
-biomechanical_proxy:
-  com_displacement, com_velocity_proxy,
-  segment_length_normalized_displacement,
-  moment_arm_proxy, relative_joint_load_proxy,
-  load_distribution_proxy, support_moment_proxy,
-  compensation_load_shift_proxy
-```
-
-### camera_protocol
-
-`camera_protocol` records exercise-specific recommended filming conditions. This
-field is used for acquisition guidance and result warnings; it is not used to correct
-coordinates directly or to force data exclusion.
+`camera_protocol` is acquisition guidance and provenance. It is not a coordinate
+correction rule and should not force exclusion by default.
 
 ```yaml
 camera_protocol:
-  recommended_zones: [Z2, Z8]
-  recommended_height: H2
-  anchor: reference_mat
-  distance_om: [200, 250]
-  primary_observation_purpose:
-    - knee_valgus
-    - hip_flexion_depth
+  recommended_zones: list[string]
+  recommended_height: H1 | H2 | H3 | custom
+  anchor: reference_mat | body_center | custom
+  distance_cm: [min_cm, max_cm]
+  primary_observation_purpose: list[string]
   out_of_zone_policy: warn_and_continue
   coordinate_correction: none
 ```
 
-Shared zone/height definitions are stored in `data/camera/camera_zones.yaml`.
-Current implementation parses this block into `CameraProtocolSpec`, validates
-`recommended_zones` and `recommended_height` against the shared camera YAML, and
-enforces `out_of_zone_policy: warn_and_continue`. Runtime camera-zone or
-height-level mismatches are reported as warning/provenance only: no coordinate
-correction, no reprojection, and no forced exclusion.
-For the full filming principle, see
-[camera_protocol.md](../practical_protocols/camera_protocol.md). For
-participant-facing exercise cues and analysis-disrupting performance patterns, see
-[exercise_performance_protocol.md](../practical_protocols/exercise_performance_protocol.md).
-
-### view_metric_reliability
-
-`view_metric_reliability` is an exercise-definition block that records how well
-each camera zone supports each metric family. The current loader preserves it as
-`ExerciseDefinition.view_metric_reliability`. It is not a coordinate-correction
-rule and does not reject data. It supplies a prior for ④ Preprocessing,
-⑧ Feature Extraction, ⑩ Biomarker Derivation, and ⑪ Visualization so a feature
-can be computed but still marked `low_confidence` or `not_assessed` when the view
-does not support the interpretation.
-
-Reliability values:
-
-```text
-high            view directly supports the metric family
-moderate        view supports the metric with known tradeoffs
-low             metric may be computable but should normally remain review-only
-not_assessed    metric should not enter scoring from this view
-```
-
-For bilateral symmetric exercises, the map can preserve the tradeoff between
-frontal-plane and sagittal-plane reads:
+`view_metric_reliability` records which camera zones support which metric
+families. It should stay flexible for bilateral symmetric, unilateral,
+alternating, static, and future task structures.
 
 ```yaml
 view_metric_reliability:
-  structure: bilateral_symmetric
+  structure: bilateral_symmetric | unilateral_or_alternating | static_hold | custom
+  role_labels: optional list[string]
   zones:
     Z1:
-      bilateral_symmetry: high
-      frontal_alignment: high
-      sagittal_rom: low
-      depth: low
-      trunk_flexion: low
-      heel_lift: low
-    Z2:
-      bilateral_symmetry: moderate
-      frontal_alignment: high
-      sagittal_rom: moderate
-      depth: moderate
-      trunk_flexion: moderate
-      heel_lift: moderate
-    Z3:
-      sagittal_rom: high
-      depth: high
-      trunk_flexion: high
-      heel_lift: moderate
-      bilateral_symmetry: low
-      frontal_alignment: low
+      frontal_alignment: high | moderate | low | not_assessed
+      sagittal_rom: high | moderate | low | not_assessed
 ```
 
-For unilateral or alternating exercises, the map should be role-based rather than
-raw anatomical left/right:
-
-```yaml
-view_metric_reliability:
-  structure: unilateral_or_alternating
-  role_labels: [forward_leg, trailing_leg, active_side, support_side]
-  zones:
-    Z1:
-      side_order: high
-      step_width: high
-      frontal_alignment: high
-      pelvis_drop_or_shift: high
-      sagittal_rom: low
-      rear_limb_extension: low
-    Z3:
-      forward_limb_sagittal_rom: high
-      rear_limb_extension: high
-      anterior_knee_travel: high
-      trunk_flexion: high
-      frontal_alignment: low
-      pelvis_drop_or_shift: low
-      side_to_side_comparison: low
-```
-
-For lunge, this means a side view can strongly support forward-leg knee travel,
-rear-limb extension, trunk alignment, and step length, while making frontal-plane
-knee valgus or pelvis drop lower-confidence. A frontal view does the reverse. A
-side-to-side comparison is eligible for scoring only when active-side provenance
-and near/far-side reliability are sufficient.
+For unilateral or alternating tasks, prefer role labels such as `forward_leg`,
+`trailing_leg`, `active_side`, and `support_side` over raw anatomical left/right
+when the camera view affects interpretation.
 
 ### quality_rules
 
 ```yaml
 quality_rules:
-  minimum_visible_landmark_ratio: 0.8
-  minimum_critical_landmark_ratio: 0.9
-  max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3        # read by ④ preprocessing
-  exclude_rep_if_critical_landmark_missing: true
-  exclude_rep_if_phase_missing: false
-  allow_partial_feature_output: true
+  minimum_visible_landmark_ratio: float
+  minimum_critical_landmark_ratio: float
+  max_missing_gap_frames: int
+  max_interpolation_gap_frames: int
+  exclude_rep_if_critical_landmark_missing: bool
+  exclude_rep_if_phase_missing: bool
+  allow_partial_feature_output: bool
 ```
 
-Read directly by ④ preprocessing and ⑧ feature extraction.
+These thresholds are consumed by ④ Preprocessing and ⑧ Feature Extraction.
+
+---
+
+## 6. Extending To A New Exercise
+
+Use this checklist for the remaining current exercises and future undefined
+exercises.
+
+```text
+1. Create draft split YAML artifacts through the authoring notebook.
+2. Choose the closest schema family, but do not force the exercise into squat-like
+   assumptions if posture, laterality, phase model, or count unit differ.
+3. Define primary landmarks, critical landmarks, and feature domains from the
+   movement's observable mechanics.
+4. Define participant-facing protocol separately from segmentation units.
+5. Define camera protocol and view-metric reliability before interpreting
+   low-confidence view-dependent features.
+6. Keep unsupported metrics as unavailable/not_assessed until implemented and tested.
+7. Add or update tests when a new field affects loader behavior or downstream logic.
+8. Promote draft YAML to canonical files only after researcher review.
+```
+
+Adding a new exercise should usually require YAML and tests, not new stage-level
+code. If code changes are required, document the new concept in `docs_eng/` first
+and then sync `docs/`.
+
+---
 
 ## 7. Provenance Convention
 
-Every biomarker produced by ⑧–⑩ includes `source_fields` pointing to the definition fields
-that drove the computation. Biomarkers without `source_fields` are not produced (raises
-`ValueError` in `BiomarkerRecord`).
+Every biomarker produced by ⑧-⑩ must include `source_fields` pointing to the
+definition fields that drove the computation.
 
 ```text
 biomarker_id       : knee_valgus_index
@@ -681,200 +384,17 @@ value              : 0.13
 unit               : torso_length_ratio
 ```
 
-## 8. Full Example: squat.yaml
+Biomarkers without `source_fields` should not be produced.
 
-```yaml
-exercise_id: squat
-display_name: Bodyweight Squat
-description: Bilateral lower-limb closed-chain movement evaluating hip/knee/ankle coordination.
-version: 0.5.2
-tags: [bodyweight, lower_body, closed_chain, bilateral, strength]
+---
 
-classification:
-  family: lower_body
-  equipment: none
-  load_type: bodyweight
-  posture_type: standing
-  kinetic_chain: closed_chain
-  laterality: bilateral_symmetric
-  movement_pattern: squat
-  primary_plane: sagittal
-  secondary_planes: [frontal, transverse]
-  complexity: compound
-
-support:
-  base_of_support: bilateral_feet
-  contact_points: [left_foot, right_foot]
-  support_surface: floor
-  weight_bearing_regions: [left_foot, right_foot]
-
-phase_model:
-  type: resistance_phase
-  expected_ratio:
-    eccentric: 0.4
-    isometric: 0.1
-    concentric: 0.5
-
-rep_segmentation:
-  reference_landmark: hip_center
-  reference_axis: vertical
-  boundary_logic: local_maximum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  minimum_rep_length_frames: 8
-  minimum_boundary_distance_frames: 8
-  minimum_reps: 1
-  boundary_prominence: null
-  include_endpoints: true
-
-phase_segmentation:
-  reference_landmark: hip_center
-  reference_axis: vertical
-  phase_sequence: [Descent, Ascent]
-  split_logic: local_minimum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 7
-    polyorder: 3
-  turnaround_hold:
-    enabled: true
-    half_window_frames: 3
-  minimum_rep_length_frames: 8
-  multi_inflection_policy: global_extremum
-
-performance_protocol:
-  prescription:
-    target_sets: 3
-    target_count_per_set: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-    rest_between_sets_s: [120, 180]
-  counting:
-    target_count: 10
-    count_unit: repetition
-    segmentation_reps_per_count: 1
-  side_sequence:
-    mode: none
-    block_size_counts: null
-    first_side_source: null
-  allowed_side_sequence_modes: [none]
-  completion:
-    allow_partial_completion: false
-    recommended_sets: 3
-  participant_cues:
-    - keep_hands_fixed
-    - avoid_arm_swing
-  analysis_disrupting_patterns:
-    - arm_swing
-    - unstable_foot_contact
-    - incomplete_depth
-
-landmarks:
-  model: mediapipe_pose_33
-  primary_joints:
-    - left_hip
-    - right_hip
-    - left_knee
-    - right_knee
-    - left_ankle
-    - right_ankle
-  secondary_joints: [left_shoulder, right_shoulder, trunk, pelvis, left_foot, right_foot]
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  optional_landmarks: [11, 12, 29, 30, 31, 32]
-
-angle_definitions:
-  left_hip_angle:    { points: [11, 23, 25], vertex: 23 }
-  right_hip_angle:   { points: [12, 24, 26], vertex: 24 }
-  left_knee_angle:   { points: [23, 25, 27], vertex: 25 }
-  right_knee_angle:  { points: [24, 26, 28], vertex: 26 }
-  left_ankle_angle:  { points: [25, 27, 31], vertex: 27 }
-  right_ankle_angle: { points: [26, 28, 32], vertex: 28 }
-
-joint_actions:
-  primary:
-    - hip_flexion_extension
-    - knee_flexion_extension
-    - ankle_dorsiflexion_plantarflexion
-  secondary:
-    - trunk_flexion_extension
-    - pelvis_lateral_tilt_proxy
-    - pelvis_rotation_proxy
-
-biomechanical_focus:
-  expected_oom_motion: vertical
-  stability_requirement: medium
-  main_load_regions: [hip, knee, ankle]
-  primary_oonstraints:
-    - maintain_foot_contact
-    - maintain_trunk_alignment
-    - avoid_knee_valgus
-    - avoid_heel_lift
-    - avoid_exoessive_lateral_shift
-
-compensation_candidates:
-  - knee_valgus
-  - knee_varus
-  - asymmetric_depth
-  - exoessive_trunk_flexion
-  - lateral_pelvio_shift
-  - heel_lift
-  - foot_external_rotation_proxy
-  - pelvis_rotation
-  - tempo_instability
-
-feature_domains:
-  spatial: [rom, symmetry, shape, depth_proxy, alignment]
-  temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
-  control: [stability, compensation, com_stability, pelvis_stability, lateral_shift]
-  biomechanical_proxy: [com_displacement, moment_arm_proxy, relative_joint_load_proxy]
-
-view_requirements:
-  preferred_views: [front_oblique]
-  acceptable_views: [frontal, sagittal_left, sagittal_right, side_oblique]
-  critical_landmarks: [23, 24, 25, 26, 27, 28]
-  occlusion_risk: medium
-
-camera_protocol:
-  recommended_zones: [Z2, Z8]
-  recommended_height: H2
-  anchor: reference_mat
-  distance_om: [200, 250]
-  primary_observation_purpose:
-    - knee_valgus
-    - hip_flexion_depth
-  out_of_zone_policy: warn_and_continue
-  coordinate_correction: none
-
-quality_rules:
-  minimum_visible_landmark_ratio: 0.8
-  minimum_critical_landmark_ratio: 0.9
-  max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3
-  exclude_rep_if_critical_landmark_missing: true
-  exclude_rep_if_phase_missing: false
-  allow_partial_feature_output: true
-```
-
-## 9. MediaPipe Pose 33 Landmark Index
-
-```text
-0  nose               1  left_eye_inner    2  left_eye          3  left_eye_outer
-4  right_eye_inner    5  right_eye         6  right_eye_outer
-7  left_ear           8  right_ear         9  mouth_left        10 mouth_right
-11 left_shoulder      12 right_shoulder    13 left_elbow        14 right_elbow
-15 left_wrist         16 right_wrist       17 left_pinky        18 right_pinky
-19 left_index         20 right_index       21 left_thumb        22 right_thumb
-23 left_hip           24 right_hip         25 left_knee         26 right_knee
-27 left_ankle         28 right_ankle       29 left_heel         30 right_heel
-31 left_foot_index    32 right_foot_index
-```
-
-## 10. Loader API
+## 8. Loader API
 
 ```python
-from movement.exercise_definition import load_exercise_definition, load_all_exercise_definitions
+from movement.exercise_definition import (
+    load_all_exercise_definitions,
+    load_exercise_definition,
+)
 
 definition = load_exercise_definition(
     exercise_id="squat",

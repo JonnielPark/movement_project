@@ -1,65 +1,32 @@
 # Exercise Authoring Notebook
 
-**Document Version:** 0.1.1
-**Last Updated:** 2026-05-16
+**Document Version:** 0.2.0
+**Last Updated:** 2026-05-21
 **Korean Sync:** [docs/practical_protocols/exercise_authoring_notebook.md](../../docs/practical_protocols/exercise_authoring_notebook.md) is the matching Korean document.
 
-This document defines the temporary UI-development path for adding new exercises.
-At the current stage, a Jupyter notebook authoring UI comes before a separate web
-app. The purpose is to create an exercise draft from dropdown-like choices,
-checkbox-like choices, and short text inputs, then generate multiple YAML artifacts
-from that draft.
-
-This document is not an exercise performance guide or a filming guide. Performance
-instructions follow [exercise_performance_protocol.md](exercise_performance_protocol.md),
-and filming instructions follow [camera_protocol.md](camera_protocol.md).
+This document defines the temporary notebook-first workflow for adding new
+exercises. It is not a performance guide or filming guide. The notebook creates
+a small `exercise_authoring_spec`, previews generated YAML artifacts, and writes
+drafts for researcher review before canonical files are updated.
 
 ---
 
 ## 1. Current Decision
 
-Use a notebook UI first in the current development stage.
-
-Reasons:
-
-1. The existing validation workflow is notebook-centered, so no new web framework is required.
-2. User selections and generated YAML previews can be reviewed in the same place.
-3. The authoring schema can be tested before splitting the current four target exercise YAML files.
-4. A future web UI can reuse the same authoring spec and generator.
-
-The first version should start without a new dependency: cell variables, tabular
-previews, and YAML text previews are enough. If widgets such as `ipywidgets` become
-necessary, the dependency should be decided separately before adding a package.
-Streamlit, Dash, or React-based dashboards are not part of the current priority scope.
-
-Current implementation files:
+Use a notebook UI before building a separate web app.
 
 ```text
-src/movement/definitions/exercise_authoring.py
-    ExerciseAuthoringSpec, registry loader, deterministic artifact generator,
-    draft writer, overwrite protection
-
-data/registries/
-    exercise_authoring_schema.yaml
-    movement_patterns.yaml
-    support_templates.yaml
-    phase_templates.yaml
-    landmark_sets.yaml
-    analysis_templates.yaml
-    performance_templates.yaml
-    camera_templates.yaml
-
-notebook/16_exercise_authoring_test.ipynb
-    notebook prototype for previewing generated draft YAML
+reason 1   current validation workflow is notebook-centered
+reason 2   YAML previews and researcher review can happen in one place
+reason 3   the split-YAML schema can be tested before broad exercise expansion
+reason 4   a future web UI can reuse the same spec and generator
 ```
 
----
+No new UI dependency is required for the first version. Cell variables, tables,
+and YAML text previews are enough. Any widget or web framework dependency must
+be decided separately before adding a package.
 
-## 2. Design Principle
-
-The notebook is not the place for hand-editing final data structures. The user
-creates one small `exercise_authoring_spec`, and a generator produces the required
-YAML artifacts.
+## 2. Authoring Flow
 
 ```text
 Notebook selections
@@ -70,20 +37,20 @@ Notebook selections
 → canonical YAML files
 ```
 
-Core principles:
+Core rules:
 
-- UI-facing input contains only exercise identity and high-level analysis choices.
-- The generator produces the same YAML for the same input.
-- Drafts are written first under `data/processed/authoring_drafts/<exercise_id>/`.
-- Existing canonical YAML files are not overwritten without explicit approval.
-- Automatically generated fields and researcher-review fields are displayed separately.
-- Generated text must not claim clinical diagnosis, clinical effect, absolute torque, or absolute force.
-
----
+```text
+UI input is small and researcher-facing
+same input produces the same YAML
+drafts are written under data/processed/authoring_drafts/<exercise_id>/
+canonical YAML is not overwritten without explicit approval
+generated fields and review-required fields are separated
+generated text must avoid clinical diagnosis, clinical-effect claims, absolute force, and absolute torque
+```
 
 ## 3. Authoring Spec
 
-The first input produced by the notebook UI stays small.
+Example:
 
 ```yaml
 exercise_id: squat
@@ -101,64 +68,56 @@ camera_template: front_oblique_lower_body
 analysis_template: bilateral_lower_body_closed_chain
 ```
 
-This file is a researcher-readable draft. It is not the execution source consumed
-directly by the pipeline.
-
----
+The spec is a draft input, not the execution source consumed by the pipeline.
 
 ## 4. Generated Artifacts
 
-The generator creates the following artifacts from one authoring spec.
+One spec generates four artifact families:
 
 ```text
 data/definitions/exercises/<exercise_id>.yaml
-    exercise definition containing only exercise identity
+    exercise identity
 
 data/definitions/analysis_profiles/<exercise_id>.yaml
-    segmentation, landmarks, angle_definitions, feature_domains, quality overrides,
-    and compensation-candidate draft
+    segmentation, landmarks, angle definitions, feature domains, quality overrides
 
 data/protocols/performance/<exercise_id>.yaml
     target sets/reps, count unit, side sequence, participant cues,
-    and analysis-disrupting performance patterns
+    analysis-disrupting performance patterns
 
 data/protocols/camera/<exercise_id>.yaml
-    recommended zones, height, observation purpose, and view-metric reliability
+    recommended zones, height, observation purpose, view-metric reliability
 ```
 
-Existing `data/definitions/interpretation_rules/<exercise_id>.yaml` and
-`data/definitions/clinical/feature_meanings.yaml` remain separate interpretation
-and display layers.
+Interpretation rules and feature-meaning text remain separate display layers.
+The loader supports both split YAML artifacts and legacy combined exercise YAML.
 
-The current loader can read both split YAML artifacts and legacy combined exercise
-YAML. For split artifacts, the pipeline loads an `ExerciseContext` by
-`exercise_id`, composed from the files above, and exposes a backward-compatible
-`ExerciseDefinition` to existing stages.
+## 5. Review Boundary
 
----
+Generated automatically:
 
-## 5. Generated Versus Review Fields
-
-Can be generated automatically:
-
-- `exercise_id`, `display_name`, and basic `classification`
-- `support` and draft contact points
-- basic `phase_model`
-- landmark set and draft angle triplets
-- basic `rep_segmentation` / `phase_segmentation` templates
-- basic performance count template
-- draft camera zone / height recommendation
+```text
+exercise identity and classification
+support/contact template
+draft phase model
+landmark set and draft angle triplets
+rep/phase segmentation templates
+performance count template
+draft camera recommendation
+```
 
 Requires researcher review:
 
-- compensation candidates and implementation feasibility
-- view-metric reliability
-- quality thresholds and scoring eligibility
-- clinical meaning text
-- exercise-specific exception rules
-- naming and stage consistency with the current four target exercises
+```text
+compensation candidates and implementation feasibility
+view-metric reliability
+quality thresholds and scoring eligibility
+clinical meaning text
+exercise-specific exception rules
+naming and stage consistency with existing exercises
+```
 
-Before review, generated artifacts include this metadata.
+Draft artifacts include:
 
 ```yaml
 status: draft
@@ -170,44 +129,53 @@ requires_review:
   - clinical_meaning
 ```
 
----
-
 ## 6. Notebook Target
 
-The first notebook should be `notebook/16_exercise_authoring_test.ipynb`.
+Target notebook:
+
+```text
+notebook/16_exercise_authoring_test.ipynb
+```
 
 Required cell flow:
 
-1. Standard autoreload cell
-2. Registry loading
-3. Authoring spec input or selection
-4. Exercise identity preview
-5. Analysis profile preview
-6. Performance protocol preview
-7. Camera protocol preview
-8. Review checklist display
-9. Draft YAML write
-
-The notebook is a UI prototype for validating the generator. The core generation
-logic already lives in `src/movement/definitions/exercise_authoring.py`; notebook
-cells should call that module rather than reimplementing YAML assembly.
-
----
-
-## 7. Future Web UI Link
-
-When a web UI is added later, it should not assemble YAML files directly. It should
-call the same `exercise_authoring_spec` schema and generator validated in the notebook.
-
 ```text
-Web UI dropdowns
-→ same exercise_authoring_spec
-→ same generator
-→ same YAML review workflow
+1. autoreload
+2. registry loading
+3. authoring spec input/selection
+4. exercise identity preview
+5. analysis profile preview
+6. performance protocol preview
+7. camera protocol preview
+8. review checklist
+9. draft YAML write
 ```
 
-Therefore, the main output of this stage is not a polished UI. The main outputs are:
+Notebook cells must call `src/movement/definitions/exercise_authoring.py` rather
+than reimplement YAML assembly.
 
-1. A small, clear authoring spec
-2. A reusable generator
-3. YAML previews and a review checklist that a researcher can inspect
+## 7. Code Mapping
+
+```text
+src/movement/definitions/exercise_authoring.py
+    ExerciseAuthoringSpec
+    load_authoring_registries()
+    validate_authoring_spec()
+    generate_authoring_artifacts()
+    artifact_to_yaml()
+    draft_artifact_paths()
+    write_authoring_draft_artifacts()
+
+data/registries/
+    exercise_authoring_schema.yaml
+    movement_patterns.yaml
+    support_templates.yaml
+    phase_templates.yaml
+    landmark_sets.yaml
+    analysis_templates.yaml
+    performance_templates.yaml
+    camera_templates.yaml
+```
+
+A future web UI should call the same spec and generator. It should not assemble
+canonical YAML directly.
