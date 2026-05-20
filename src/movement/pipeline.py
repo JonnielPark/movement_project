@@ -37,7 +37,6 @@ from movement.core.config import (
 from movement.stages.normalization import normalize_pose_by_hip_torso
 from movement.stages.validation import run_basic_validation
 from movement.stages.canonicalization import (
-    BodyAxisAlignmentConfig,
     CanonicalizationConfig,
     CanonicalizationDataConfidenceConfig,
     MovementPlaneAlignmentConfig,
@@ -135,13 +134,6 @@ class ValidationConfig:
 
 
 @dataclass
-class KalmanConfig:
-    enabled: bool = False
-    process_noise: float = 0.01
-    measurement_noise: float = 0.1
-
-
-@dataclass
 class ReliabilityConfig:
     visibility_threshold: float = 0.5
     segment_length_tolerance: float = 0.25
@@ -197,7 +189,6 @@ class PreprocessingConfig:
     far_side_stabilization: FarSideStabilizationConfig = field(
         default_factory=FarSideStabilizationConfig
     )
-    kalman_filter: KalmanConfig = field(default_factory=KalmanConfig)
 
 
 @dataclass
@@ -403,14 +394,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     itp = pre.get("interpolation", {})
     sm = pre.get("smoothing", {})
     fss = pre.get("far_side_stabilization", {})
-    kal = pre.get("kalman_filter", {})
     nor = raw.get("normalization", {})
     can = nor.get("canonicalization", {})
     can_conf = can.get("data_confidence", {})
     can_support = can.get("support_plane_alignment", {})
     can_movement = can.get("movement_plane_alignment", {})
     can_protocol_height = can.get("protocol_height_lateral_width_alignment", {}) or {}
-    can_body = can.get("body_axis_alignment", {})
     # floor_relative_correction belongs to the normalization family in YAML. The top-level key remains
     # a backward-compatible fallback for older local configs.
     frc = nor.get("floor_relative_correction", raw.get("floor_relative_correction", {}))
@@ -499,11 +488,6 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 near_depth_sign=fss.get("near_depth_sign", "negative"),
                 min_depth_offset_torso=float(fss.get("min_depth_offset_torso", 0.05)),
             ),
-            kalman_filter=KalmanConfig(
-                enabled=bool(kal.get("enabled", False)),
-                process_noise=float(kal.get("process_noise", 0.01)),
-                measurement_noise=float(kal.get("measurement_noise", 0.1)),
-            ),
         ),
         normalization=NormalizationConfig(
             enabled=nor.get("enabled", True),
@@ -576,12 +560,6 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             ),
             protocol_height_lateral_width_alignment=(
                 _protocol_height_lateral_width_alignment_config(can_protocol_height)
-            ),
-            body_axis_alignment=BodyAxisAlignmentConfig(
-                enabled=bool(can_body.get("enabled", False)),
-                method=can_body.get("method", "pelvis_shoulder_axis"),
-                correction_strength=float(can_body.get("correction_strength", 0.5)),
-                max_rotation_deg=float(can_body.get("max_rotation_deg", 15.0)),
             ),
         ),
         floor_relative_correction=FloorRelativeCorrectionConfig(

@@ -1,7 +1,7 @@
 # 05. 정규화 (Normalization)
 
-**문서 버전:** 1.2.8
-**최종 갱신:** 2026-05-12
+**문서 버전:** 1.2.9
+**최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/pipeline/05_normalization.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑤. 원시 포즈 좌표를 신체 상대(body-relative) 좌표계로 변환하고,
@@ -36,7 +36,7 @@ Pose CSV
 뚜렷한 운동에서는 ⑤ 정규화 내부의 선택 층으로 `canonicalization`을 둘 수 있다. 현재 구현된
 하위 prior는 기존 `floor_relative_correction` 구현을 감싸는 `support_plane_alignment`와
 prototype `movement_plane_alignment`다. height-aware lateral-width 검토를 위한
-protocol-gated `protocol_height_lateral_width_alignment` prior도 추가한다. 모든 prior는 별도
+protocol-gated `protocol_height_lateral_width_alignment` prior도 추가한다. 활성 prior는 별도
 `canon` 좌표와 `canonicalization_report`를 방출한다.
 
 ## 2. 방식: hip_torso (Method)
@@ -183,12 +183,6 @@ normalization:
       visibility_threshold: 0.6
       apply_to_landmarks: []
       preserve_anchor_landmarks: true
-    body_axis_alignment:
-      enabled: false
-      method: pelvis_shoulder_axis
-      correction_strength: 0.5
-      max_rotation_deg: 15.0
-
   # 현재 구현 키. 구현 전환 중에는 아래 키를
   # canonicalization.support_plane_alignment의 하위 호환 alias로 취급한다.
   floor_relative_correction:
@@ -263,7 +257,6 @@ canonicalization이 켜진 경우 `norm_report` 안에 `canonicalization_report`
         "support_plane_alignment": dict | None,
         "movement_plane_alignment": dict | None,
         "protocol_height_lateral_width_alignment": dict | None,
-        "body_axis_alignment": dict | None,
     },
 }
 ```
@@ -329,9 +322,6 @@ protocol_height_lateral_width_alignment
     depth-dependent lateral-width prior를 보수적으로 적용한다. H1은 지지/발목 높이 anchor,
     H2는 골반 / hip-center, H3는 어깨선으로 매핑한다. review-only prior이며 렌즈 보정이 아니다.
 
-body_axis_alignment
-    골반/어깨 축과 신체 중심선을 이용한 신체 기준 방향 안정화.
-
 camera_prior
     camera zone, height level, pitch/roll 등 기록 정보를 보정량 해석과
     confidence/provenance에 반영. calibrated reprojection은 수행하지 않는다.
@@ -356,9 +346,11 @@ camera_prior
    과장을 완화하고, far-side depth compression은 물리적 위치를 만들어내기보다 confidence
    context로 기록한다.
 
-4. body_axis_alignment
-   골반/어깨 축이 안정적인 경우에만 선택적으로 적용한다.
 ```
+
+Body-axis alignment는 현재 코드의 활성 prior가 아니다. 골반/어깨 축 정렬은 너무 이른 단계에서
+적용하면 실제 골반 회전, 체간 기울기, 횡단면 보상 움직임을 지울 수 있으므로, anthropometric
+skeleton prior가 구체화된 뒤 별도 검토 대상으로 남긴다.
 
 여러 prior가 함께 켜져도 각 prior는 독립 report를 남긴다. 한 prior가 `rejected`되어도 나머지
 prior가 실행될 수 있으며, 최종 `canonicalization_report.status`는 `partial`로 표시한다.

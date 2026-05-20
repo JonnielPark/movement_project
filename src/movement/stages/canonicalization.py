@@ -80,14 +80,6 @@ class ProtocolHeightLateralWidthAlignmentConfig:
 
 
 @dataclass
-class BodyAxisAlignmentConfig:
-    enabled: bool = False
-    method: str = "pelvis_shoulder_axis"
-    correction_strength: float = 0.5
-    max_rotation_deg: float = 15.0
-
-
-@dataclass
 class CanonicalizationConfig:
     enabled: bool = False
     coordinate_mode: str = "norm"
@@ -106,9 +98,6 @@ class CanonicalizationConfig:
     protocol_height_lateral_width_alignment: (
         ProtocolHeightLateralWidthAlignmentConfig
     ) = field(default_factory=ProtocolHeightLateralWidthAlignmentConfig)
-    body_axis_alignment: BodyAxisAlignmentConfig = field(
-        default_factory=BodyAxisAlignmentConfig
-    )
 
 
 def _source_columns(landmark: str, coordinate_mode: str) -> dict[str, str]:
@@ -932,7 +921,6 @@ def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]
             "support_plane_alignment": None,
             "movement_plane_alignment": None,
             "protocol_height_lateral_width_alignment": None,
-            "body_axis_alignment": None,
         },
     }
 
@@ -970,7 +958,6 @@ def apply_canonicalization(
         "support_plane_alignment": None,
         "movement_plane_alignment": None,
         "protocol_height_lateral_width_alignment": None,
-        "body_axis_alignment": None,
     }
     max_correction = 0.0
     median_correction = 0.0
@@ -1130,15 +1117,6 @@ def apply_canonicalization(
                 "status"
             ]
             confidence_notes.extend(protocol_report["confidence_notes"])
-
-    if config.body_axis_alignment.enabled:
-        active_priors.append("body_axis_alignment")
-        skipped_priors["body_axis_alignment"] = "not_implemented"
-        prior_reports["body_axis_alignment"] = {
-            "enabled": True,
-            "status": "not_implemented",
-            "method": config.body_axis_alignment.method,
-        }
 
     if not active_priors:
         status = "skipped"

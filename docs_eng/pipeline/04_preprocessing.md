@@ -1,7 +1,7 @@
 # 04. Preprocessing
 
-**Document Version:** 1.1.1
-**Last Updated:** 2026-05-12
+**Document Version:** 1.1.2
+**Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/04_preprocessing.md` is the same-version Korean source.
 
 Pipeline step ④. Corrects data quality issues in monocular pose data before normalization.
@@ -374,21 +374,7 @@ Report fields:
 }
 ```
 
-## 10. Kalman Filter (future)
-
-Kalman filtering is available as a YAML option but disabled by default.
-Enable only after the baseline (visibility gating + anatomical checks + interpolation +
-rolling median) is sufficiently characterized.
-
-```yaml
-preprocessing:
-  kalman_filter:
-    enabled: false
-    process_noise: 0.01
-    measurement_noise: 0.1
-```
-
-## 11. Laterality Branch Summary
+## 10. Laterality Branch Summary
 
 ```text
 laterality               visibility  segment  ROM  velocity  L/R swap  far-side  smoothing
@@ -399,7 +385,7 @@ unilateral_*             enabled     enabled  on   enabled   enabled   role-awar
 generic fallback         enabled     enabled  on   enabled   skip      skip      optional
 ```
 
-## 12. Invalid Frame Marking
+## 11. Invalid Frame Marking
 
 Frames are never silently deleted. Quality metadata columns are added:
 
@@ -412,7 +398,7 @@ swap_corrected = True         L/R labels were exchanged
 Exact frame exclusion at feature extraction time is determined by annotation rules
 and feature step logic.
 
-## 13. Preprocessing Report
+## 12. Preprocessing Report
 
 ```python
 {
@@ -454,7 +440,7 @@ and feature step logic.
 }
 ```
 
-## 14. Planned Extensions
+## 13. Planned Extensions
 
 - Visibility-weighted interpolation
 - Reliability-weighted smoothing

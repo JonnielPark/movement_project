@@ -28,6 +28,7 @@ from movement.simulation.synthetic import (  # noqa
     add_gaussian_noise,
     add_occlusion,
     add_velocity_spike,
+    generate_squat_csv,
     restrict_rom,
 )
 
@@ -35,5 +36,6 @@ __all__ = [
     "add_gaussian_noise",
     "add_occlusion",
     "add_velocity_spike",
+    "generate_squat_csv",
     "restrict_rom",
 ]

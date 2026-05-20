@@ -15,11 +15,87 @@ Units:
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+from movement.core.config import LANDMARKS
+
+
+# Synthetic standing reference pose (image-normalized, y-down).
+STANDING_POSE: dict[str, tuple[float, float, float]] = {
+    "nose": (0.500, 0.180, 0.010),
+    "left_eye_inner": (0.488, 0.170, 0.010),
+    "left_eye": (0.482, 0.168, 0.010),
+    "left_eye_outer": (0.476, 0.170, 0.010),
+    "right_eye_inner": (0.512, 0.170, 0.010),
+    "right_eye": (0.518, 0.168, 0.010),
+    "right_eye_outer": (0.524, 0.170, 0.010),
+    "left_ear": (0.470, 0.180, 0.020),
+    "right_ear": (0.530, 0.180, 0.020),
+    "mouth_left": (0.490, 0.205, 0.010),
+    "mouth_right": (0.510, 0.205, 0.010),
+    "left_shoulder": (0.430, 0.300, 0.010),
+    "right_shoulder": (0.570, 0.300, 0.010),
+    "left_elbow": (0.420, 0.430, -0.020),
+    "right_elbow": (0.580, 0.430, -0.020),
+    "left_wrist": (0.430, 0.540, -0.040),
+    "right_wrist": (0.570, 0.540, -0.040),
+    "left_pinky": (0.422, 0.560, -0.045),
+    "right_pinky": (0.578, 0.560, -0.045),
+    "left_index": (0.418, 0.555, -0.045),
+    "right_index": (0.582, 0.555, -0.045),
+    "left_thumb": (0.434, 0.555, -0.040),
+    "right_thumb": (0.566, 0.555, -0.040),
+    "left_hip": (0.460, 0.520, 0.000),
+    "right_hip": (0.540, 0.520, 0.000),
+    "left_knee": (0.460, 0.720, 0.000),
+    "right_knee": (0.540, 0.720, 0.000),
+    "left_ankle": (0.460, 0.920, 0.005),
+    "right_ankle": (0.540, 0.920, 0.005),
+    "left_heel": (0.460, 0.940, 0.020),
+    "right_heel": (0.540, 0.940, 0.020),
+    "left_foot_index": (0.460, 0.950, -0.020),
+    "right_foot_index": (0.540, 0.950, -0.020),
+}
+
+
+BOTTOM_DELTAS: dict[str, tuple[float, float, float]] = {
+    "nose": (0.000, 0.105, -0.020),
+    "left_eye_inner": (0.000, 0.105, -0.020),
+    "left_eye": (0.000, 0.105, -0.020),
+    "left_eye_outer": (0.000, 0.105, -0.020),
+    "right_eye_inner": (0.000, 0.105, -0.020),
+    "right_eye": (0.000, 0.105, -0.020),
+    "right_eye_outer": (0.000, 0.105, -0.020),
+    "left_ear": (0.000, 0.105, -0.020),
+    "right_ear": (0.000, 0.105, -0.020),
+    "mouth_left": (0.000, 0.105, -0.020),
+    "mouth_right": (0.000, 0.105, -0.020),
+    "left_shoulder": (0.000, 0.110, -0.025),
+    "right_shoulder": (0.000, 0.110, -0.025),
+    "left_elbow": (0.000, 0.080, -0.060),
+    "right_elbow": (0.000, 0.080, -0.060),
+    "left_wrist": (0.000, 0.040, -0.090),
+    "right_wrist": (0.000, 0.040, -0.090),
+    "left_pinky": (0.000, 0.040, -0.090),
+    "right_pinky": (0.000, 0.040, -0.090),
+    "left_index": (0.000, 0.040, -0.090),
+    "right_index": (0.000, 0.040, -0.090),
+    "left_thumb": (0.000, 0.040, -0.090),
+    "right_thumb": (0.000, 0.040, -0.090),
+    "left_hip": (0.000, 0.130, 0.005),
+    "right_hip": (0.000, 0.130, 0.005),
+    "left_knee": (-0.005, 0.000, -0.060),
+    "right_knee": (0.005, 0.000, -0.060),
+    "left_ankle": (0.000, 0.000, 0.000),
+    "right_ankle": (0.000, 0.000, 0.000),
+    "left_heel": (0.000, 0.000, 0.000),
+    "right_heel": (0.000, 0.000, 0.000),
+    "left_foot_index": (0.000, 0.000, 0.000),
+    "right_foot_index": (0.000, 0.000, 0.000),
+}
 
 
 # ── Internal helpers ─────────────────────────────────────────────────────────
@@ -45,6 +121,28 @@ def _get_torso_scale(df: pd.DataFrame) -> float:
         return float(np.median(lengths))
     except KeyError:
         return 1.0
+
+
+def squat_phase(frame: int, start: int, end: int) -> float:
+    """Map a frame inside a rep window to a smooth squat phase in [0, 1]."""
+    t = (frame - start) / (end - start)
+    return 0.5 * (1.0 - np.cos(2.0 * np.pi * t))
+
+
+def build_frame(
+    s: float, rng: np.random.Generator
+) -> dict[str, tuple[float, float, float, float]]:
+    """Build one synthetic squat frame as landmark x/y/z/visibility tuples."""
+    out = {}
+    for lm in LANDMARKS:
+        x0, y0, z0 = STANDING_POSE[lm]
+        dx, dy, dz = BOTTOM_DELTAS[lm]
+        x = x0 + s * dx + rng.normal(0.0, 0.0015)
+        y = y0 + s * dy + rng.normal(0.0, 0.0015)
+        z = z0 + s * dz + rng.normal(0.0, 0.0015)
+        vis = float(np.clip(rng.normal(0.96, 0.015), 0.6, 1.0))
+        out[lm] = (round(x, 5), round(y, 5), round(z, 5), round(vis, 4))
+    return out
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -184,8 +282,6 @@ def add_velocity_spike(
     scale = _get_torso_scale(df)
     magnitude_raw = spike_magnitude_torso_ratio * scale
 
-    frame_col = "frame" if "frame" in df_out.columns else df_out.index.name
-
     for lm in target_landmarks:
         for spike_f in spike_frames:
             mask = df_out["frame"] == spike_f
@@ -309,13 +405,12 @@ def restrict_rom(
     return df_out, log
 
 
-# ── Synthetic squat data generation (merged from generate_synthetic_squat.py) ─
+# ── Synthetic squat data generation ─────────────────────────────────────────
 
 
 def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     """Generate synthetic squat pose CSV files.
 
-    This is the main() function from generate_synthetic_squat.py, now housed here.
     Accepts out_dir to preserve the data/pose/sample/ directory path.
 
     Parameters
@@ -327,14 +422,6 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     """
     import csv as _csv
     from pathlib import Path as _Path
-
-    from movement.simulation.generate_synthetic_squat import (
-        BOTTOM_DELTAS,
-        LANDMARKS,
-        STANDING_POSE,
-        build_frame,
-        squat_phase,
-    )
 
     out_dir = _Path(out_dir)
     rng = np.random.default_rng(seed=seed)

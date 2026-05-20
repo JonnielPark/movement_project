@@ -249,7 +249,9 @@ def _run_swap_detection(
     notes: list[str] = [""] * T
 
     active_pairs = [
-        (l, r) for (l, r) in _SWAP_PAIRS if l in present_set and r in present_set
+        (left_landmark, right_landmark)
+        for (left_landmark, right_landmark) in _SWAP_PAIRS
+        if left_landmark in present_set and right_landmark in present_set
     ]
     if not active_pairs:
         return swap_corrected, notes, 0, 0

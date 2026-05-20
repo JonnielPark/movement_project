@@ -39,7 +39,6 @@ _MIN_REPS = 3
 def _make_note(joint: str, side: str, slope: float) -> str:
     """Human-readable biomechanical interpretation of the slope."""
     direction = "decreasing" if slope < 0 else "increasing"
-    abs_s = abs(slope)
     suffix = ""
     if joint == "knee" and slope < 0:
         suffix = "; possible load shift toward hip"

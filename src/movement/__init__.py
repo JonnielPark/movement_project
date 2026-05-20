@@ -35,7 +35,6 @@ from movement.definitions import clinical as clinical
 from movement.definitions import exercise_authoring as exercise_authoring
 from movement.definitions import exercise_definition as exercise_definition
 from movement.reporting import visualization as visualization
-from movement.simulation import generate_synthetic_squat as generate_synthetic_squat
 from movement.stages import annotation as annotation
 from movement.stages import canonicalization as canonicalization
 from movement.stages import floor_reference as floor_reference
@@ -53,7 +52,6 @@ _COMPAT_MODULES = {
     "exercise_authoring": exercise_authoring,
     "exercise_definition": exercise_definition,
     "floor_reference": floor_reference,
-    "generate_synthetic_squat": generate_synthetic_squat,
     "io": io,
     "motion_attribution": motion_attribution,
     "normalization": normalization,
