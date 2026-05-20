@@ -1,6 +1,6 @@
 # 09. 생체역학 프록시 (Biomechanical Proxy)
 
-**문서 버전:** 1.1.0
+**문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
@@ -81,6 +81,22 @@ SEGMENT_ENDPOINTS    각 분절을 정의하는 landmark pair
 
 모든 비율은 무차원이다. 현재 trunk proxy는 hip-to-shoulder line을 사용한다.
 이는 상대 proxy trend에는 충분하지만 절대 trunk mass location 추정에는 적합하지 않다.
+
+이 Winter 계열 모델은 [05_normalization.md](05_normalization.md)에 정의한 Size Korea 기반
+`anthropometric_skeleton_prior`와 분리한다. Winter 비율은 ⑨ 안에서 CoM과 segment-mass proxy
+계산에 사용한다. Size Korea prior는 ⑤ 안에서 단안 depth confidence와 review-only candidate
+correction을 위한 느슨한 segment-length plausibility envelope다. 두 prior를 하나의
+subject-specific skeleton model로 합치지 않는다.
+
+현재 정책:
+
+```text
+Winter anthropometry         ⑨의 CoM / segment-mass proxy
+Size Korea aggregate prior   ⑤의 segment-length plausibility envelope
+row-level Size Korea prior   raw data가 있을 때만 future empirical upgrade
+foot segment conflict        Size Korea full-body auto source에서는 foot unavailable;
+                             Winter foot mass ratio는 CoM proxy에 남을 수 있음
+```
 
 ## 4. 계산 지표 (Computed Metrics)
 

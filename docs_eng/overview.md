@@ -13,7 +13,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.5.1 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.6.0 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
 | 1.4.34 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
@@ -24,11 +24,11 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
 | 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.3.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, including optional canonicalization schema |
+| 1.4.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, including optional canonicalization schema |
 | 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.1.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.2.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.1.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.2.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.2.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.1.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.1.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
@@ -235,9 +235,10 @@ Partial
     scaffolding. Visualization stubs are intentionally retained until ⑪ begins.
 
 Next design gate
-    anthropometric skeleton prior for depth plausibility using the 2021 / 8th
-    Korean Anthropometric Survey as the first pilot source. This must remain a
-    confidence-aware correction/provenance layer, not calibrated 3D reconstruction.
+    Stage A anthropometric skeleton prior for depth plausibility using Size Korea
+    8th 3D full-body automatic aggregate ratios as a loose engineering envelope.
+    It must remain confidence/provenance support, not calibrated 3D
+    reconstruction or empirical P5/P95 prior.
 
 Out of current scope
     calibrated camera reprojection, Kalman filtering, full dashboard, Phantom 3D,

@@ -1,6 +1,6 @@
 # 09. Biomechanical Proxy
 
-**Document Version:** 1.1.0
+**Document Version:** 1.2.0
 **Last Updated:** 2026-05-21
 **Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
 
@@ -84,6 +84,24 @@ SEGMENT_ENDPOINTS    landmark pair defining each segment
 All ratios are dimensionless. The current trunk proxy uses a hip-to-shoulder
 line. This is sufficient for relative proxy trends but not for absolute trunk
 mass localization.
+
+This Winter-style model is separate from the Size Korea-derived
+`anthropometric_skeleton_prior` described in
+[05_normalization.md](05_normalization.md). Winter ratios are used for CoM and
+segment-mass proxy computation inside ⑨. The Size Korea prior is a loose
+segment-length plausibility envelope for monocular-depth confidence and
+review-only candidate correction inside ⑤. The two priors must not be merged into
+one subject-specific skeleton model.
+
+Current policy:
+
+```text
+Winter anthropometry         CoM / segment-mass proxy in ⑨
+Size Korea aggregate prior   segment-length plausibility envelope in ⑤
+row-level Size Korea prior   future empirical upgrade only if raw data exist
+foot segment conflict        Size Korea full-body auto source marks foot unavailable;
+                             Winter foot mass ratio may still remain in CoM proxy
+```
 
 ## 4. Computed Metrics
 

@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.5.1
-**최종 갱신:** 2026-05-16
+**문서 버전:** 1.6.0
+**최종 갱신:** 2026-05-21
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -72,6 +72,11 @@
 | 바닥 기준 보정 (Floor-relative correction) | 정적 접지 운동에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
 | 접지 랜드마크 (Support-contact landmark) | 스쿼트의 발, 플랭크의 손/발처럼 운동 정의상 바닥 또는 지지면과 접촉한다고 기대되는 랜드마크. 실제 보상 움직임을 지울 위험이 있으므로, 항상 고정 anchor로 쓰지 않고 visibility와 안정성 조건을 통과한 경우에만 pseudo-floor 추정에 사용한다. |
 | 프로토콜 높이 기반 좌우폭 정렬 (Protocol-height lateral-width alignment) | 관찰된 카메라 높이가 운동별 촬영 프로토콜과 맞는지 먼저 확인한 뒤, 해당 height level에 맞는 신체 anchor를 사용해 depth-dependent lateral-width bias를 완화하는 review-only canonicalization prior. H1은 지지/발목 높이 anchor, H2는 골반/hip-center anchor, H3는 어깨선 anchor를 사용한다. 렌즈 캘리브레이션, perspective reprojection, template fitting이 아니다. |
+| 인체계측 스켈레톤 prior (Anthropometric skeleton prior) | 단안 depth 동작을 검토하기 위한 느슨한 신체 분절 길이 plausibility envelope. Stage A에서는 Size Korea aggregate ratio를 engineering envelope로만 사용할 수 있으며, empirical percentile prior, calibrated 3D reconstruction, subject-specific skeleton fitting이 아니다. |
+| 보수적 engineering range (Conservative engineering range) | aggregate anthropometric ratio 주변에 연구자가 넓게 정의한 tolerance. impossible skeleton behavior와 data-confidence 문제를 잡기 위한 것이며 population P5/P95 추정이 아니다. |
+| 개인별 empirical 인체계측 prior (Row-level empirical anthropometric prior) | 비식별 개인별 anthropometric row가 있어야 가능한 향후 upgrade. 같은 개인 안에서 segment/stature ratio를 계산한 뒤 P1/P99 또는 P5/P95를 요약한다. |
+| Depth residual correction | x/y evidence, segment-length plausibility, visibility, correction cap이 모두 허용할 때만 시도할 수 있는 bounded review-only depth-axis 후보 보정. raw 또는 base normalized coordinate를 덮어쓰지 않는다. |
+| 관절 plausibility (Articulation plausibility) | 불가능한 joint-angle 또는 reverse-bending configuration을 다루는 별도 guard. data confidence를 낮추거나 feature를 unavailable로 표시하며, movement-quality를 직접 감점하지 않는다. |
 
 ---
 

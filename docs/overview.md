@@ -13,7 +13,7 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.5.1 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.6.0 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
 | 1.4.34 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
@@ -24,11 +24,11 @@
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
 | 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.3.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
+| 1.4.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
 | 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.1.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
 | 1.2.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.1.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
+| 1.2.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
 | 1.2.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
 | 1.1.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
 | 1.1.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
@@ -221,9 +221,10 @@ Review-only / 기본 비활성
     Visualization stub은 ⑪ Visualization 착수 전까지 의도적으로 유지한다.
 
 다음 설계 gate
-    2021년 / 제8차 한국인 인체치수 조사자료를 1차 pilot source로 사용하는
-    anthropometric skeleton prior for depth plausibility. 이는 calibrated 3D
-    reconstruction이 아니라 confidence-aware correction/provenance layer여야 한다.
+    Size Korea 8차 3D full-body automatic aggregate ratio를 느슨한 engineering envelope로
+    사용하는 Stage A anthropometric skeleton prior for depth plausibility.
+    이는 calibrated 3D reconstruction이나 empirical P5/P95 prior가 아니라
+    confidence/provenance support여야 한다.
 
 현재 범위 밖
     calibrated camera reprojection, Kalman filtering, full dashboard, Phantom 3D,
