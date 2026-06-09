@@ -192,10 +192,24 @@ class PreprocessingConfig:
 
 
 @dataclass
+class Corrected3DHypothesisConfig:
+    enabled: bool = False
+    output_family: str = "corrected_3d_hypothesis"
+    downstream_coordinate_mode: str = "norm"
+    feature_depth_gravity: float = 0.0
+    report_burden_before_feature_use: bool = True
+    require_feature_domain_declaration: bool = True
+
+
+@dataclass
 class NormalizationConfig:
     enabled: bool = True
     method: str = "hip_torso"
     keep_reference_columns: bool = True
+    model_depth_scale: float = 1.0
+    corrected_3d_hypothesis: Corrected3DHypothesisConfig = field(
+        default_factory=Corrected3DHypothesisConfig
+    )
 
 
 @dataclass
@@ -395,6 +409,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sm = pre.get("smoothing", {})
     fss = pre.get("far_side_stabilization", {})
     nor = raw.get("normalization", {})
+    corrected_3d = nor.get("corrected_3d_hypothesis", {}) or {}
     can = nor.get("canonicalization", {})
     can_conf = can.get("data_confidence", {})
     can_support = can.get("support_plane_alignment", {})
@@ -493,6 +508,25 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             enabled=nor.get("enabled", True),
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
+            model_depth_scale=float(nor.get("model_depth_scale", 1.0)),
+            corrected_3d_hypothesis=Corrected3DHypothesisConfig(
+                enabled=bool(corrected_3d.get("enabled", False)),
+                output_family=str(
+                    corrected_3d.get("output_family", "corrected_3d_hypothesis")
+                ),
+                downstream_coordinate_mode=str(
+                    corrected_3d.get("downstream_coordinate_mode", "norm")
+                ),
+                feature_depth_gravity=float(
+                    corrected_3d.get("feature_depth_gravity", 0.0)
+                ),
+                report_burden_before_feature_use=bool(
+                    corrected_3d.get("report_burden_before_feature_use", True)
+                ),
+                require_feature_domain_declaration=bool(
+                    corrected_3d.get("require_feature_domain_declaration", True)
+                ),
+            ),
         ),
         canonicalization=CanonicalizationConfig(
             enabled=bool(can.get("enabled", False)),
@@ -752,6 +786,25 @@ def run_pipeline(
             df=df,
             landmarks=landmarks,
             keep_reference_columns=config.normalization.keep_reference_columns,
+            model_depth_scale=config.normalization.model_depth_scale,
+            corrected_3d_hypothesis={
+                "enabled": config.normalization.corrected_3d_hypothesis.enabled,
+                "output_family": (
+                    config.normalization.corrected_3d_hypothesis.output_family
+                ),
+                "downstream_coordinate_mode": (
+                    config.normalization.corrected_3d_hypothesis.downstream_coordinate_mode
+                ),
+                "feature_depth_gravity": (
+                    config.normalization.corrected_3d_hypothesis.feature_depth_gravity
+                ),
+                "report_burden_before_feature_use": (
+                    config.normalization.corrected_3d_hypothesis.report_burden_before_feature_use
+                ),
+                "require_feature_domain_declaration": (
+                    config.normalization.corrected_3d_hypothesis.require_feature_domain_declaration
+                ),
+            },
         )
         report["normalization"] = norm_report
 

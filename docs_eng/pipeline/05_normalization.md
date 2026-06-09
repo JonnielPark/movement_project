@@ -1,12 +1,13 @@
 # 05. Normalization
 
-**Document Version:** 1.4.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.12.0
+**Last Updated:** 2026-06-10
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
 Pipeline step ⑤ converts raw pose coordinates to a body-relative coordinate
-system. When explicitly enabled, it may also create review-only canonical
-coordinates that reduce consistent monocular-observation bias.
+system. When explicitly enabled, it may also create corrected-3D-hypothesis
+candidate coordinates and burden reports that reduce consistent
+monocular-observation bias.
 
 This step does not estimate absolute forces, absolute torque, calibrated 3D, or
 absolute body dimensions. It provides the coordinate base for ⑧ Feature
@@ -42,6 +43,7 @@ The implemented method is `hip_torso`.
 ```text
 Translation reference : frame-wise hip center
 Scale reference       : sequence-wise median torso length
+Model-depth gain      : model_depth_scale, default 1.0
 Output unit           : torso_length_ratio (dimensionless)
 ```
 
@@ -60,8 +62,15 @@ torso-length noise.
 shoulder_center(t) = (left_shoulder(t) + right_shoulder(t)) / 2
 torso_length(t)    = distance(hip_center(t), shoulder_center(t))
 s                  = median(valid torso_length)
-p_norm_i(t)        = (p_i(t) - hip_center(t)) / s
+p_translated_i(t)  = p_i(t) - hip_center(t)
+p_norm_x_i(t)      = p_translated_x_i(t) / s
+p_norm_y_i(t)      = p_translated_y_i(t) / s
+p_norm_z_i(t)      = p_translated_z_i(t) * model_depth_scale / s
 ```
+
+`model_depth_scale` is a coordinate-gain parameter for monocular model depth,
+not camera calibration. The default is `1.0`; review runs may attenuate model
+depth, but this must be reported and remains low-confidence evidence.
 
 Raw coordinates are never overwritten.
 
@@ -90,6 +99,14 @@ normalization:
   enabled: true
   method: hip_torso
   keep_reference_columns: true
+  model_depth_scale: 1.0
+  corrected_3d_hypothesis:
+    enabled: false
+    output_family: corrected_3d_hypothesis
+    downstream_coordinate_mode: norm
+    feature_depth_gravity: 0.0
+    report_burden_before_feature_use: true
+    require_feature_domain_declaration: true
   canonicalization:
     enabled: false
     coordinate_mode: norm
@@ -112,6 +129,12 @@ evidence, and an explicit docs update before code promotion.
 is treated as a backward-compatible alias for `support_plane_alignment`; new work
 should prefer the canonicalization key.
 
+`corrected_3d_hypothesis.feature_depth_gravity` is the explicit scoring gate for
+depth-derived candidate evidence. The default value is `0.0`, meaning corrected
+depth is excluded from feature scoring even when a candidate coordinate family is
+produced for review. Future work may raise this value only after multi-recording
+and multi-exercise sensitivity review defines feature-specific burden thresholds.
+
 ---
 
 ## 4. Report Contract
@@ -130,6 +153,17 @@ report.
     "median_torso_length": float,
     "num_invalid_torso_frames": int,
     "num_normalized_landmarks": int,
+    "model_depth_scale": float,
+    "corrected_3d_hypothesis": {
+        "enabled": bool,
+        "output_family": str,
+        "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
+        "feature_depth_gravity": float,
+        "used_for_features_or_scores": bool,
+        "require_feature_domain_declaration": bool,
+        "report_burden_before_feature_use": bool,
+        "depth_evidence_policy": str,
+    },
 }
 ```
 
@@ -194,6 +228,54 @@ Current prior order:
 3. protocol_height_lateral_width_alignment
 4. anthropometric_skeleton_prior
 ```
+
+### 5.1 Promoted Corrected-3D-Hypothesis Candidate
+
+The stable notebook-16 squat stack is the first promoted corrected-3D-hypothesis
+candidate surface for ⑤ Normalization. Promotion means the candidate family,
+burden ledger, residuals, and readiness gates are part of the normalization
+review artifact. It does not mean the corrected coordinates are calibrated 3D,
+ground truth, a good-movement template, or scoring input.
+
+Current promoted stack:
+
+```text
+1. common-subject skeleton envelope from aggregate anthropometry
+2. within-session stable segment-memory table from reference-worthy frames
+3. squat closed-chain support context
+4. recording-view-constrained skeleton placement: rv_skeleton_fit
+5. bounded recording-view residual variant: rv_skeleton_fit_bounded_xy
+6. visible-support mirrored anchor prior
+7. bounded pre/post standing support-anchor blend
+8. whole-video planted support temporal memory
+9. scoring-readiness and bend-flip provenance gates
+```
+
+The current p01 review profile emits
+`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory` as a named candidate
+family and keeps downstream coordinate mode on `norm`.
+
+Retired review-only candidates are no longer active code/config branches:
+
+```text
+paired target unification
+strong segment projection
+support-body corridor pull
+support-locked or knee-led support projection
+support-width projection variants
+lower-body knee-heading and knee-lane priors
+foot-heading / toe-fixed adjustment templates
+standalone support-height leveling
+visual or ideal symmetry templates
+knee-over-foot and knee-bend templates
+phase-specific norm blend
+far-side decompression
+post-correction smoothing
+```
+
+They may be reintroduced only through the docs-first path: define the research
+need in `docs_eng/`, sync `docs/`, add config/report fields, and compare ON/OFF
+behavior across multiple recordings or exercises.
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder
@@ -401,8 +483,11 @@ unit = dimensionless_ratio
 
 - ⑥ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, and ⑩ Biomarker
   Scoring consume `norm` coordinates by default.
-- `canon` coordinates are review candidates until promotion criteria are written
-  and tested.
+- Downstream features must declare `recording_view_only`,
+  `corrected_3d_hypothesis`, or `dual_domain_compare` before using corrected
+  coordinates.
+- Corrected-3D-hypothesis coordinates are score-excluded while
+  `feature_depth_gravity = 0.0`.
 - Corrected-coordinate magnitude and residuals are data-confidence/provenance
   signals, not movement-quality penalties.
 - ④ Preprocessing may mark reliability violations before scale computation, but
@@ -410,8 +495,8 @@ unit = dimensionless_ratio
 - ⑨ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
   moment-arm, and load-shift proxies. It must not infer absolute force, torque,
   or calibrated physical distances from this step.
-- Anthropometric skeleton prior outputs are not used downstream until notebook
-  review and robustness evaluation define explicit promotion rules.
+- Corrected candidate outputs are not used downstream until feature-specific
+  burden, residual, and norm-vs-corrected sensitivity gates are documented.
 
 ---
 
@@ -423,6 +508,7 @@ unit = dimensionless_ratio
   measurements become available.
 - Visibility-weighted scale estimation and torso-length outlier handling.
 - Per-exercise canonicalization prior selection from exercise definition fields.
-- Robustness evaluation before any `canon` coordinate promotion.
+- Robustness evaluation before any corrected coordinate is used for scoring or
+  before `feature_depth_gravity` is raised above `0.0`.
 - Gradual de-emphasis of the legacy `floor_relative_correction` key once local
   configs no longer depend on it.

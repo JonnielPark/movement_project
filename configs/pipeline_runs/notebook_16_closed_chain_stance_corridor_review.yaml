@@ -1,0 +1,500 @@
+# Pipeline run profile for notebook 16 closed-chain stance-corridor review.
+# This profile now carries the first promoted squat corrected-3D-hypothesis
+# candidate surface while keeping corrected depth excluded from scoring.
+
+profile:
+  name: notebook_16_closed_chain_stance_corridor_review
+  mode: notebook_review
+  description: p01 squat normalization review for the promoted corrected-3D-hypothesis candidate stack.
+
+base_pipeline_config: configs/pipeline_default.yaml
+
+input:
+  recording_id: p01_squat_set1
+  session_id: 20260517_no_consent_dev
+  pose_csv: data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv
+  pose_video: data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output.mp4
+  annotation_csv: data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv
+
+exercise:
+  id: squat
+  definitions_dir: data/definitions/exercises
+
+recording_context:
+  observed_camera_zone: Z8
+  observed_camera_height_level: H2
+  reference_mat_used: false
+  filming_protocol_status: no_anchor
+
+participant:
+  sex: male
+  height_cm: 175
+  height_bin: 171-175cm
+  common_subject_skeleton_matrix_path: data/reference/anthropometry/common_subject_skeleton_matrix.yaml
+  common_subject_skeleton_profile_id: male_175cm
+
+playback:
+  speed: 1.0
+  stride: 2
+
+pipeline_overrides:
+  preprocessing:
+    enabled: true
+    interpolation:
+      enabled: true
+    smoothing:
+      enabled: true
+      method: rolling_median
+      window_size: 3
+    far_side_stabilization:
+      enabled: true
+      jitter_threshold_torso_per_sec: 1.0
+      acceleration_threshold_torso_per_sec2: 30.0
+  normalization:
+    model_depth_scale: 0.5
+    corrected_3d_hypothesis:
+      enabled: true
+      output_family: rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory
+      downstream_coordinate_mode: norm
+      feature_depth_gravity: 0.0
+      report_burden_before_feature_use: true
+      require_feature_domain_declaration: true
+
+visualization:
+  closed_chain_stance_corridor:
+    enabled: true
+    review_rep_id: 1
+    review_display:
+      visual_focus: support_surface_height
+      show_legacy_visualizations: false
+      show_support_surface_playback: true
+      show_final_playback: true
+      show_audit_plots: false
+      playback_anchor:
+        enabled: true
+        mode: bilateral_ankle_midpoint
+        family: bounded_candidate
+        landmarks: [left_ankle, right_ankle]
+        include_height: true
+    correction_stack_audit:
+      enabled: true
+      mode: report_only
+      active_review_stack:
+        - rv_skeleton_fit
+        - rv_skeleton_fit_bounded_xy
+        - within_session_segment_memory
+        - closed_chain_support_context
+        - support_width_guard
+        - soft_bend_side_guard
+        - support_surface_height_guard
+        - visible_support_mirrored_anchor_prior
+        - bounded_pre_post_standing_anchor_blend
+        - planted_support_temporal_memory
+        - score_readiness_review
+        - bend_flip_provenance_review
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: very_low
+    support_body_hypothesis_diagnostic:
+      enabled: true
+      mode: report_only
+      source_family: norm
+      strict_candidate_family: rv_skeleton_fit
+      bounded_candidate_family: rv_skeleton_fit_bounded_xy
+      review_rep_id: 1
+      include_ready_window: true
+      support_landmarks:
+        - left_ankle
+        - right_ankle
+        - left_heel
+        - right_heel
+        - left_foot_index
+        - right_foot_index
+      primary_support_landmarks:
+        - left_ankle
+        - right_ankle
+      body_landmarks:
+        - left_hip
+        - right_hip
+        - left_shoulder
+        - right_shoulder
+      lower_limb_landmarks:
+        - left_hip
+        - right_hip
+        - left_knee
+        - right_knee
+        - left_ankle
+        - right_ankle
+      support_burden_concentration_warn_ratio: 0.60
+      large_shift_warn_ratio: 0.08
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: very_low
+    standing_endpoint_support_anchor_compare:
+      enabled: true
+      mode: report_only
+      review_rep_id: 1
+      start_window_before_frames: 2
+      end_window_before_frames: 2
+      families:
+        - norm
+        - rv_skeleton_fit
+        - rv_skeleton_fit_bounded_xy
+      support_landmark_suffixes: [ankle, heel, foot_index]
+      support_pair: [left_ankle, right_ankle]
+      body_center_landmarks: [left_hip, right_hip]
+      thresholds:
+        support_width_delta_ratio: 0.030
+        support_height_range_delta_ratio: 0.030
+        pelvis_support_offset_delta_ratio: 0.040
+        support_anchor_z_delta_ratio: 0.050
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: very_low
+    bounded_pre_post_standing_anchor_blend:
+      enabled: true
+      mode: start_endpoint_to_end_support_anchor_z_blend
+      review_rep_id: 1
+      source_family: rv_skeleton_fit_bounded_xy
+      family: rv_skeleton_fit_bounded_xy_endpoint_blend
+      playback_norm_family: norm
+      start_window_before_frames: 2
+      start_window_after_frames: 0
+      end_window_before_frames: 2
+      ramp_after_start_frames: 1
+      target_anchor_source: end_window_median
+      sides: [left, right]
+      support_landmark_suffixes: [ankle, heel, foot_index]
+      primary_suffixes: [ankle]
+      body_center_landmarks: [left_hip, right_hip]
+      axes: [z]
+      strength: 0.50
+      max_z_shift_ratio: 0.050
+      support_width_no_worsen:
+        enabled: true
+        target_source: end_window_median
+        tolerance_ratio: 0.005
+      report_only: false
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: very_low
+    planted_support_temporal_memory:
+      enabled: true
+      mode: whole_video_support_anchor_memory_z_only
+      scope: whole_video
+      review_only_candidate: false
+      source_family: rv_skeleton_fit_bounded_xy_endpoint_blend
+      family: rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory
+      playback_norm_family: norm
+      playback_view:
+        axis_range_source: annotated_reps
+        rep_id_start: 1
+        rep_id_end: 1
+        robust_percentile_low: 0.5
+        robust_percentile_high: 99.5
+        padding_ratio: 0.15
+      sides: [left, right]
+      support_landmark_suffixes: [ankle, heel, foot_index]
+      primary_suffixes: [ankle]
+      support_pair: [left_ankle, right_ankle]
+      axes: [z]
+      strength: 0.15
+      max_z_shift_ratio: 0.020
+      reference:
+        source: whole_video_stable_trimmed_median
+        trim_quantile: 0.10
+        min_visibility: 0.55
+        max_frame_to_frame_jump_ratio: 0.030
+        min_reference_frames: 12
+      support_width_no_worsen:
+        enabled: true
+        target_source: whole_video_trimmed_median
+        tolerance_ratio: 0.005
+      bend_side_no_worsen:
+        enabled: true
+        reference_family: norm
+        planes: [xz_recording_depth, yz_height_depth, xy_recording_plane]
+        epsilon: 0.010
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: very_low
+    score_readiness_review:
+      enabled: true
+      mode: report_only
+      rep_id_start: 1
+      rep_id_end: 10
+      reference_family: norm
+      candidate_family: final_review_output
+      bend_epsilon: 0.020
+      critical_landmarks_by_side:
+        left: [left_hip, left_knee, left_ankle]
+        right: [right_hip, right_knee, right_ankle]
+      thresholds:
+        min_visibility_p10: 0.50
+        min_visibility_median: 0.65
+        max_bend_flip_frames: 0
+        max_knee_flexion_median_abs_delta_deg: 3.0
+        max_knee_flexion_p95_abs_delta_deg: 8.0
+        max_shank_angle_median_abs_delta_deg: 3.0
+        max_shank_angle_p95_abs_delta_deg: 8.0
+        max_segment_length_cv: 0.080
+        max_joint_step_p95_ratio: 0.120
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: review_gate_only
+    bend_flip_provenance_review:
+      enabled: true
+      mode: report_only
+      rep_id_start: 1
+      rep_id_end: 10
+      reference_family: norm
+      family_sequence:
+        - label: norm
+          family: norm
+        - label: rv_skeleton_fit
+          family: rv_skeleton_fit
+        - label: rv_skeleton_fit_bounded_xy
+          family: rv_skeleton_fit_bounded_xy
+        - label: endpoint_blend
+          family: rv_skeleton_fit_bounded_xy_endpoint_blend
+        - label: support_memory_final
+          family: final_review_output
+      planes: [xz_recording_depth, yz_height_depth, xy_recording_plane]
+      epsilon: 0.020
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: review_gate_only
+    scene_camera:
+      projection_type: orthographic
+      eye:
+        x: 1.45
+        y: -2.25
+        z: 1.05
+      up:
+        x: 0.0
+        y: 0.0
+        z: 1.0
+      top_down_eye:
+        x: 0.0
+        y: 0.0
+        z: 2.6
+      top_down_up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+    lower_body_direction_reference:
+      method: pelvis_line_normal
+      source_axis: pelvis
+      anterior_sign_hint: face_or_metadata
+      fixed_reference_source: ready_window
+      show_fixed_direction: false
+      show_dynamic_direction: false
+      show_lateral_axis_guides: false
+    accepted_side: left
+    target_side: right
+    reference_window:
+      source: first_rep_ready_window
+      frames_before_first_rep: 20
+      frames_after_first_rep_start: 0
+      exclude_baseline_before_frame: 93
+    recording_view_constrained_skeleton_fit:
+      enabled: true
+      family: rv_skeleton_fit
+      source_family: norm
+      review_rep_id: 1
+      include_ready_window: true
+      preserve_recording_axes: [x, y]
+      correction_axes: [z]
+      target_policy:
+        skeleton_matrix_path: participant.common_subject_skeleton_matrix_path
+        sex_source: participant.sex
+        length_unit: torso_length_ratio
+      chains:
+        - id: left_leg
+          proximal: left_hip
+          joint: left_knee
+          distal: left_ankle
+          proximal_segment: thigh
+          distal_segment: shank
+        - id: right_leg
+          proximal: right_hip
+          joint: right_knee
+          distal: right_ankle
+          proximal_segment: thigh
+          distal_segment: shank
+      width_segments:
+        - id: hip_width
+          left: left_hip
+          right: right_hip
+          segment: hip_width
+      solver:
+        strength: 0.85
+        tolerance_ratio: 0.015
+        max_joint_z_shift_ratio: 0.45
+        max_width_z_shift_ratio: 0.25
+        bend_side_guard:
+          enabled: true
+          mode: soft_reject_candidate_shift
+          source_family: norm
+          planes: [yz_height_depth, xz_recording_depth]
+          near_neutral_tolerance_ratio: 0.010
+          soft_flip_tolerance_ratio: 0.012
+          allow_source_reverse_bend: true
+          report_only: false
+      closed_chain_support_context:
+        enabled: true
+        source_family: norm
+        reference_source: ready_window_median
+        apply_to_review_rep: true
+        include_ready_window: true
+        center_landmark_suffixes: [ankle, heel, foot_index]
+        movable_landmark_suffixes: [ankle, heel, foot_index]
+        sides: [left, right]
+        side_strength:
+          left: 0.15
+          right: 0.70
+        strength:
+          x: 0.00
+          y: 0.00
+          z: 0.80
+        max_shift_ratio:
+          x: 0.00
+          y: 0.00
+          z: 0.18
+        support_width_guard:
+          enabled: true
+          pair: [left_ankle, right_ankle]
+          target_source: ready_window_median
+          trim_quantile: 0.10
+          tolerance_ratio: 0.005
+          reject_shift_when_residual_worsens: true
+        reporting:
+          used_for_features_or_scores: false
+          confidence_when_applied: low
+      within_session_segment_memory:
+        enabled: true
+        source_family: norm
+        review_rep_id: 1
+        include_ready_window: true
+        include_review_rep: true
+        min_endpoint_visibility: 0.55
+        min_stable_frames: 12
+        trim_quantile: 0.10
+        max_p95_p05_ratio: 0.30
+        max_frame_to_frame_jump_ratio: 0.16
+        max_memory_deviation_from_anthropometric_ratio: 0.25
+        blend_with_anthropometric:
+          enabled: true
+          memory_weight: 0.65
+        segments:
+          - id: left_thigh
+            segment: thigh
+            proximal: left_hip
+            distal: left_knee
+          - id: right_thigh
+            segment: thigh
+            proximal: right_hip
+            distal: right_knee
+          - id: left_shank
+            segment: shank
+            proximal: left_knee
+            distal: left_ankle
+          - id: right_shank
+            segment: shank
+            proximal: right_knee
+            distal: right_ankle
+          - id: hip_width
+            segment: hip_width
+            proximal: left_hip
+            distal: right_hip
+      support_residual:
+        enabled: true
+        pair: [left_ankle, right_ankle]
+        target_source: ready_window_median
+        trim_quantile: 0.10
+      bounded_recording_view_residual:
+        enabled: true
+        family: rv_skeleton_fit_bounded_xy
+        source_family: norm
+        baseline_family: rv_skeleton_fit
+        review_rep_id: 1
+        include_ready_window: true
+        correction_axes: [x, y, z]
+        solver:
+          strength: 0.70
+          tolerance_ratio: 0.015
+          max_joint_xy_shift_ratio: 0.025
+          max_joint_z_shift_ratio: 0.45
+          max_width_xy_shift_ratio: 0.015
+          max_width_z_shift_ratio: 0.25
+          bend_side_guard:
+            enabled: true
+            mode: soft_reject_candidate_shift
+            source_family: norm
+            planes: [yz_height_depth, xz_recording_depth]
+            near_neutral_tolerance_ratio: 0.010
+            soft_flip_tolerance_ratio: 0.012
+            allow_source_reverse_bend: true
+            report_only: false
+          support_surface_height_guard:
+            enabled: true
+            exercise_definition_gate: true
+            required_kinetic_chain: closed_chain
+            required_base_of_support: bilateral_feet
+            required_support_surface: floor
+            source_family: norm
+            reference_source: ready_window_median
+            axis: y
+            sides: [left, right]
+            landmark_suffixes: [ankle, heel, foot_index]
+            primary_suffixes: [ankle]
+            strength: 0.55
+            side_strength:
+              left: 0.30
+              right: 0.65
+            max_shift_ratio: 0.040
+            residual_tolerance_ratio: 0.012
+            trim_quantile: 0.10
+            reject_shift_when_residual_worsens: true
+            report_only: false
+            show_reference_patch: true
+            patch_contact_suffixes: [heel, foot_index]
+          visible_support_mirrored_anchor_prior:
+            enabled: true
+            mode: ready_window_mirrored_support_anchor
+            exercise_definition_gate: true
+            required_kinetic_chain: closed_chain
+            required_base_of_support: bilateral_feet
+            required_support_surface: floor
+            source_family: norm
+            trusted_side_source: visibility_stability
+            fallback_trusted_side: left
+            target_side: auto_opposite
+            candidate_sides: [left, right]
+            body_frame_source: ready_window_median
+            body_center_landmarks: [left_hip, right_hip]
+            support_landmark_suffixes: [ankle, heel, foot_index]
+            primary_suffixes: [ankle]
+            reference_source: ready_window_median
+            axes: [z]
+            tolerance_ratio: 0.005
+            strength: 1.00
+            max_z_shift_ratio: 0.060
+            trim_quantile: 0.10
+            min_reference_frames: 8
+            support_width_no_worsen:
+              enabled: true
+              target_source: ready_window_median
+              trim_quantile: 0.10
+              tolerance_ratio: 0.005
+            report_only: false
+            reporting:
+              used_for_features_or_scores: false
+              confidence_when_applied: very_low
+        reporting:
+          used_for_features_or_scores: false
+          confidence_when_applied: very_low
+          exclude_from_recording_view_only_features: true
+      reporting:
+        used_for_features_or_scores: false
+        confidence_when_applied: low

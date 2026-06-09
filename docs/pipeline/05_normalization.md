@@ -1,11 +1,12 @@
 # 05. 정규화 (Normalization)
 
-**문서 버전:** 1.4.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.12.0
+**최종 갱신:** 2026-06-10
 **영문 동기화:** `docs_eng/pipeline/05_normalization.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑤는 원시 pose 좌표를 신체 상대 좌표계로 변환한다. 명시적으로 켠 경우에는
-단안 pose의 일관된 관찰 편향을 줄이는 검토용 canonical 좌표도 생성할 수 있다.
+단안 pose의 일관된 관찰 편향을 줄이는 corrected-3D-hypothesis 후보 좌표와 burden report도
+생성할 수 있다.
 
 이 단계는 절대 힘, 절대 토크, calibrated 3D, 절대 신체 치수를 추정하지 않는다. ⑧ Feature
 Extraction과 ⑨ Biomechanical Proxy의 좌표 기반을 제공한다.
@@ -40,6 +41,7 @@ Pose CSV
 ```text
 평행이동 기준 : 프레임별 골반 중심
 척도 기준     : 시퀀스 단위 몸통 길이 중앙값
+모델 depth gain: model_depth_scale, 기본 1.0
 출력 단위     : torso_length_ratio (무차원)
 ```
 
@@ -57,8 +59,15 @@ p_translated_i(t) = p_i(t) - hip_center(t)
 shoulder_center(t) = (left_shoulder(t) + right_shoulder(t)) / 2
 torso_length(t)    = distance(hip_center(t), shoulder_center(t))
 s                  = median(valid torso_length)
-p_norm_i(t)        = (p_i(t) - hip_center(t)) / s
+p_translated_i(t)  = p_i(t) - hip_center(t)
+p_norm_x_i(t)      = p_translated_x_i(t) / s
+p_norm_y_i(t)      = p_translated_y_i(t) / s
+p_norm_z_i(t)      = p_translated_z_i(t) * model_depth_scale / s
 ```
+
+`model_depth_scale`은 단안 모델 depth에 대한 좌표 gain이며 camera calibration이 아니다. 기본값은
+`1.0`이다. 검토 run에서는 model depth를 약화할 수 있지만, 반드시 report해야 하며 여전히
+low-confidence evidence로 취급한다.
 
 원시 좌표는 절대 덮어쓰지 않는다.
 
@@ -87,6 +96,14 @@ normalization:
   enabled: true
   method: hip_torso
   keep_reference_columns: true
+  model_depth_scale: 1.0
+  corrected_3d_hypothesis:
+    enabled: false
+    output_family: corrected_3d_hypothesis
+    downstream_coordinate_mode: norm
+    feature_depth_gravity: 0.0
+    report_burden_before_feature_use: true
+    require_feature_domain_declaration: true
   canonicalization:
     enabled: false
     coordinate_mode: norm
@@ -108,6 +125,11 @@ normalization:
 `support_plane_alignment`의 하위 호환 alias로 취급하며, 새 작업에서는 canonicalization key를
 우선 사용한다.
 
+`corrected_3d_hypothesis.feature_depth_gravity`는 depth-derived 후보 evidence의 명시적 scoring
+gate다. 기본값 `0.0`은 후보 좌표 계열을 review용으로 생성하더라도 corrected depth가 feature scoring에서
+제외된다는 뜻이다. 이후 여러 recording과 여러 운동에서 sensitivity review가 feature별 burden threshold를
+정의한 뒤에만 이 값을 높일 수 있다.
+
 ---
 
 ## 4. 리포트 계약 (Report Contract)
@@ -125,6 +147,17 @@ normalization:
     "median_torso_length": float,
     "num_invalid_torso_frames": int,
     "num_normalized_landmarks": int,
+    "model_depth_scale": float,
+    "corrected_3d_hypothesis": {
+        "enabled": bool,
+        "output_family": str,
+        "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
+        "feature_depth_gravity": float,
+        "used_for_features_or_scores": bool,
+        "require_feature_domain_declaration": bool,
+        "report_burden_before_feature_use": bool,
+        "depth_evidence_policy": str,
+    },
 }
 ```
 
@@ -185,6 +218,52 @@ Canonicalization은 선택 기능이며 기본 비활성화 상태다. 이는 ca
 3. protocol_height_lateral_width_alignment
 4. anthropometric_skeleton_prior
 ```
+
+### 5.1 승격된 corrected-3D-hypothesis 후보
+
+안정화된 notebook 16 squat stack은 ⑤ Normalization의 첫 번째 formal
+corrected-3D-hypothesis candidate surface다. 여기서 승격은 candidate family, burden ledger,
+residual, readiness gate가 normalization review artifact에 포함된다는 뜻이다. 보정 좌표가
+calibrated 3D, ground truth, 좋은 동작 template, 또는 scoring input이라는 뜻은 아니다.
+
+현재 승격 stack:
+
+```text
+1. aggregate anthropometry 기반 common-subject skeleton envelope
+2. reference-worthy frame 기반 within-session stable segment-memory table
+3. squat closed-chain support context
+4. recording-view-constrained skeleton placement: rv_skeleton_fit
+5. bounded recording-view residual variant: rv_skeleton_fit_bounded_xy
+6. visible-support mirrored anchor prior
+7. bounded pre/post standing support-anchor blend
+8. whole-video planted support temporal memory
+9. scoring-readiness 및 bend-flip provenance gate
+```
+
+현재 p01 review profile은
+`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory`를 named candidate family로 방출하며,
+후속 coordinate mode는 `norm`으로 유지한다.
+
+Retired review-only 후보는 더 이상 active code/config branch로 남기지 않는다:
+
+```text
+paired target unification
+strong segment projection
+support-body corridor pull
+support-locked 또는 knee-led support projection
+support-width projection variants
+lower-body knee-heading 및 knee-lane priors
+foot-heading / toe-fixed adjustment templates
+standalone support-height leveling
+visual 또는 ideal symmetry templates
+knee-over-foot 및 knee-bend templates
+phase-specific norm blend
+far-side decompression
+post-correction smoothing
+```
+
+이들은 `docs_eng/`에서 연구 필요성을 정의하고, `docs/`를 동기화하고, config/report field를 추가하고,
+여러 recording 또는 여러 운동에서 ON/OFF behavior를 비교한 뒤에만 다시 도입할 수 있다.
 
 Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 축 정렬은 너무 일찍 적용하면
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
@@ -387,15 +466,17 @@ unit = dimensionless_ratio
 
 - ⑥ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, ⑩ Biomarker Scoring은 기본적으로
   `norm` 좌표를 소비한다.
-- `canon` 좌표는 승격 기준이 작성되고 테스트되기 전까지 검토용 후보 좌표다.
+- 후속 feature는 보정 좌표를 사용하기 전에 `recording_view_only`,
+  `corrected_3d_hypothesis`, 또는 `dual_domain_compare`를 선언해야 한다.
+- `feature_depth_gravity = 0.0`인 동안 corrected-3D-hypothesis 좌표는 score에서 제외된다.
 - Corrected-coordinate magnitude와 residual은 movement-quality 감점이 아니라
   data-confidence/provenance signal이다.
 - ④ Preprocessing은 scale 계산 전에 reliability violation을 표시할 수 있지만, 신체 상대 척도화와
   canonical 후보 좌표 생성은 ⑤ Normalization의 책임이다.
 - ⑨ Biomechanical Proxy는 정규화 좌표로 상대 CoM, moment-arm, load-shift proxy를 계산한다.
   이 단계로부터 절대 힘, 토크, calibrated physical distance를 추론하지 않는다.
-- Anthropometric skeleton prior 출력은 명시적 승격 규칙이 notebook review와 robustness evaluation으로
-  정의되기 전까지 후속 단계에서 사용하지 않는다.
+- Corrected candidate 출력은 feature별 burden, residual, norm-vs-corrected sensitivity gate가
+  문서화되기 전까지 후속 단계에서 사용하지 않는다.
 
 ---
 
@@ -407,5 +488,6 @@ unit = dimensionless_ratio
   추가한다.
 - visibility-weighted scale estimation과 torso-length outlier handling.
 - exercise definition field 기반 운동별 canonicalization prior 선택.
-- `canon` coordinate 승격 전 robustness evaluation.
+- corrected coordinate를 scoring에 사용하거나 `feature_depth_gravity`를 `0.0`보다 높이기 전
+  robustness evaluation.
 - local config가 더 이상 의존하지 않으면 legacy `floor_relative_correction` key 점진 축소.
