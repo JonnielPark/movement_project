@@ -69,6 +69,14 @@ normalization:
   enabled: true
   method: hip_torso           # hip center translation + sequence median torso scale
   keep_reference_columns: true  # preserve hip_center, shoulder_center, torso_length columns
+  model_depth_scale: 1.0        # z residual gain before torso scaling; 1.0 preserves legacy behavior
+  corrected_3d_hypothesis:
+    enabled: false
+    output_family: corrected_3d_hypothesis
+    downstream_coordinate_mode: norm
+    feature_depth_gravity: 0.0
+    report_burden_before_feature_use: true
+    require_feature_domain_declaration: true
   # Optional analysis-space canonicalization inside ⑤ Normalization.
   # Disabled by default. Creates separate <landmark>_canon_x/y/z columns and
   # a canonicalization_report when enabled; downstream stages still use norm

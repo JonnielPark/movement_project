@@ -6,7 +6,8 @@ removing camera position, subject position, and body size effects.
 
 Method (hip_torso):
     Translation reference : frame-wise hip center
-    Scale reference       : sequence-wise median torso length
+Scale reference       : sequence-wise median torso length
+Model-depth gain      : optional z residual scale before torso normalization
 
 Raw coordinates are preserved. Normalized coordinates are added as new columns:
     <landmark>_norm_x
@@ -207,18 +208,79 @@ def compute_sequence_median_scale(
     return scale_value, report
 
 
+def build_corrected_3d_hypothesis_report(
+    enabled: bool = False,
+    output_family: str = "corrected_3d_hypothesis",
+    downstream_coordinate_mode: str = "norm",
+    feature_depth_gravity: float = 0.0,
+    report_burden_before_feature_use: bool = True,
+    require_feature_domain_declaration: bool = True,
+) -> Dict[str, Any]:
+    """
+    Build the normalization policy report for corrected-3D-hypothesis candidates.
+
+    Biomechanical meaning:
+        Corrected coordinates are low-confidence structure hypotheses for
+        burden review, not calibrated 3D evidence or movement-quality scores.
+    """
+    feature_depth_gravity = float(feature_depth_gravity)
+    if not np.isfinite(feature_depth_gravity):
+        raise ValueError("feature_depth_gravity must be finite.")
+    if feature_depth_gravity < 0.0 or feature_depth_gravity > 1.0:
+        raise ValueError("feature_depth_gravity must be between 0.0 and 1.0.")
+
+    downstream_coordinate_mode = str(downstream_coordinate_mode)
+    if downstream_coordinate_mode not in {"norm", "corrected_3d_hypothesis"}:
+        raise ValueError(
+            "downstream_coordinate_mode must be 'norm' or " "'corrected_3d_hypothesis'."
+        )
+
+    output_family = str(output_family).strip()
+    if not output_family:
+        raise ValueError("output_family must be a non-empty string.")
+
+    used_for_features_or_scores = bool(
+        enabled
+        and downstream_coordinate_mode == "corrected_3d_hypothesis"
+        and feature_depth_gravity > 0.0
+    )
+
+    return {
+        "enabled": bool(enabled),
+        "output_family": output_family,
+        "downstream_coordinate_mode": downstream_coordinate_mode,
+        "feature_depth_gravity": feature_depth_gravity,
+        "used_for_features_or_scores": used_for_features_or_scores,
+        "require_feature_domain_declaration": bool(require_feature_domain_declaration),
+        "report_burden_before_feature_use": bool(report_burden_before_feature_use),
+        "depth_evidence_policy": (
+            "excluded_from_scoring"
+            if feature_depth_gravity == 0.0
+            else "feature_gated_low_confidence"
+        ),
+    }
+
+
 def normalize_pose_by_hip_torso(
     df: pd.DataFrame,
     landmarks: List[str],
     min_scale: float = 1e-6,
     keep_reference_columns: bool = True,
+    model_depth_scale: float = 1.0,
+    corrected_3d_hypothesis: Dict[str, Any] | None = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Normalize pose coordinates using hip-centered translation and
     sequence-wise median torso scale.
 
     Formula:
-        p_norm_i(t) = (p_i(t) - hip_center(t)) / median_torso_length
+        x/y_norm_i(t) = (x/y_i(t) - hip_center_x/y(t)) / median_torso_length
+        z_norm_i(t) = ((z_i(t) - hip_center_z(t)) * model_depth_scale) / median_torso_length
+
+    Biomechanical meaning:
+        Keeps coordinates body-relative while allowing review runs to attenuate
+        low-confidence monocular model depth without changing recording-plane
+        x/y evidence.
 
     Parameters
     ----------
@@ -230,6 +292,13 @@ def normalize_pose_by_hip_torso(
         Minimum valid torso length.
     keep_reference_columns:
         If True, keep hip_center, shoulder_center, and torso_length columns.
+    model_depth_scale:
+        Multiplicative gain for translated model-depth residuals. Default 1.0
+        preserves legacy behavior; values below 1.0 attenuate <landmark>_norm_z.
+    corrected_3d_hypothesis:
+        Optional report policy for a separate corrected-3D-hypothesis candidate
+        family. This function records the policy but does not create corrected
+        coordinates.
 
     Returns
     -------
@@ -241,6 +310,10 @@ def normalize_pose_by_hip_torso(
     _check_landmark_columns(df, landmarks)
 
     result = add_body_reference_columns(df)
+
+    model_depth_scale = float(model_depth_scale)
+    if not np.isfinite(model_depth_scale) or model_depth_scale <= 0:
+        raise ValueError("model_depth_scale must be a positive finite number.")
 
     scale_value, scale_report = compute_sequence_median_scale(
         result,
@@ -263,7 +336,7 @@ def normalize_pose_by_hip_torso(
         ) / scale_value
 
         normalized_data[norm_cols[2]] = (
-            result[raw_cols[2]] - result["hip_center_z"]
+            (result[raw_cols[2]] - result["hip_center_z"]) * model_depth_scale
         ) / scale_value
 
     normalized_df = pd.DataFrame(
@@ -292,10 +365,30 @@ def normalize_pose_by_hip_torso(
         "method": "hip_centered_sequence_median_torso_scale",
         "num_frames": int(len(df)),
         "num_normalized_landmarks": int(len(landmarks)),
+        "model_depth_scale": model_depth_scale,
         "normalized_columns": [
             col for landmark in landmarks for col in _norm_coord_cols(landmark)
         ],
     }
+    corrected_policy = corrected_3d_hypothesis or {}
+    report["corrected_3d_hypothesis"] = build_corrected_3d_hypothesis_report(
+        enabled=bool(corrected_policy.get("enabled", False)),
+        output_family=corrected_policy.get(
+            "output_family",
+            "corrected_3d_hypothesis",
+        ),
+        downstream_coordinate_mode=corrected_policy.get(
+            "downstream_coordinate_mode",
+            "norm",
+        ),
+        feature_depth_gravity=corrected_policy.get("feature_depth_gravity", 0.0),
+        report_burden_before_feature_use=bool(
+            corrected_policy.get("report_burden_before_feature_use", True)
+        ),
+        require_feature_domain_declaration=bool(
+            corrected_policy.get("require_feature_domain_declaration", True)
+        ),
+    )
 
     report.update(scale_report)
 

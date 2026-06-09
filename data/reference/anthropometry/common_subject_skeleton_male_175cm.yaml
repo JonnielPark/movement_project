@@ -1,0 +1,787 @@
+common_subject_skeleton_model:
+  schema_version: '0.1'
+  artifact_status: matrix_derived_development_fixture
+  model_id: common_subject_skeleton_male_175cm
+  subject_profile:
+    sex: male
+    height_cm: 175.0
+    height_bin: 171-175cm
+  ratio_selection:
+    source: Size Korea 8th Korean Anthropometric Survey
+    prior_artifact_path: data/reference/anthropometry/size_korea8_3d_auto_skeleton_prior.yaml
+    tolerance_ranges_path: data/reference/anthropometry/size_korea8_3d_auto_stage_a_tolerance_ranges.csv
+    segment_constraints_path: data/reference/anthropometry/quasi_rigid_segment_constraints.yaml
+    selected_ratio_level: sex_specific_mean_ratio_to_stature
+    height_bin_override_active: false
+    matrix_artifact_path: data/reference/anthropometry/common_subject_skeleton_matrix.yaml
+    matrix_profile_id: male_175cm
+    source_prior: Aggregate Engineering Skeleton Prior
+    output_model_path: data/reference/anthropometry/common_subject_skeleton_male_175cm.yaml
+  unit_policy:
+    ratio_unit: dimensionless_ratio_to_stature
+    nominal_length_unit: cm
+    nominal_lengths_are_design_references_only: true
+    metric_coordinate_output: false
+    coordinate_rescaling_from_height: false
+  cap_policy:
+    target: sex_specific_mean_segment_to_stature_ratio
+    soft_envelope: target_ratio +/- soft_margin_scale * aggregate_engineering_relative_margin
+    hard_envelope: target_ratio +/- 1.0 * aggregate_engineering_relative_margin
+    soft_margin_scale: 0.5
+    empirical_percentile_claim: false
+  segments:
+    shoulder_width_centerline:
+      anthropometric_segment: shoulder_width
+      pose_segment: shoulder_width
+      instance: centerline
+      endpoints:
+      - left_shoulder
+      - right_shoulder
+      available: true
+      status: available
+      target_ratio_to_stature: 0.227011
+      target_length_cm: 39.727
+      soft_margin_relative: 0.125
+      soft_lower_ratio_to_stature: 0.198635
+      soft_upper_ratio_to_stature: 0.255387
+      soft_lower_length_cm: 34.761
+      soft_upper_length_cm: 44.693
+      hard_margin_relative: 0.25
+      hard_lower_ratio_to_stature: 0.170258
+      hard_upper_ratio_to_stature: 0.283764
+      hard_lower_length_cm: 29.795
+      hard_upper_length_cm: 49.659
+      lower_ratio_to_stature: 0.170258
+      upper_ratio_to_stature: 0.283764
+      lower_length_cm: 29.795
+      upper_length_cm: 49.659
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy_close
+      reference: stature
+      formula: m299
+      component_items:
+      - m299:어깨가쪽사이너비
+      rigidity_class: quasi_rigid_width
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Seated shoulder-outside breadth proxy; closer to transverse shoulder
+        landmark distance than shoulder length. Compare m298 as sensitivity.
+      constraint_notes: Shoulder width is a transverse width proxy, not an internal
+        shoulder-joint distance.
+    hip_width_centerline:
+      anthropometric_segment: hip_width
+      pose_segment: hip_width
+      instance: centerline
+      endpoints:
+      - left_hip
+      - right_hip
+      available: true
+      status: available
+      target_ratio_to_stature: 0.204023
+      target_length_cm: 35.704
+      soft_margin_relative: 0.2
+      soft_lower_ratio_to_stature: 0.163218
+      soft_upper_ratio_to_stature: 0.244828
+      soft_lower_length_cm: 28.563
+      soft_upper_length_cm: 42.845
+      hard_margin_relative: 0.4
+      hard_lower_ratio_to_stature: 0.122414
+      hard_upper_ratio_to_stature: 0.285632
+      hard_lower_length_cm: 21.422
+      hard_upper_length_cm: 49.986
+      lower_ratio_to_stature: 0.122414
+      upper_ratio_to_stature: 0.285632
+      lower_length_cm: 21.422
+      upper_length_cm: 49.986
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy
+      reference: stature
+      formula: m265
+      component_items:
+      - m265:엉덩이너비
+      rigidity_class: quasi_rigid_width
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Surface hip breadth proxy; can exceed pose-model internal hip-joint distance.
+      constraint_notes: Hip width is a surface-width proxy and should use a broad
+        tolerance.
+    torso_shoulder_hip_vertical_centerline:
+      anthropometric_segment: torso_shoulder_hip_vertical
+      pose_segment: torso_shoulder_hip_vertical
+      instance: centerline
+      endpoints:
+      - shoulder_center
+      - hip_center
+      available: true
+      status: available
+      target_ratio_to_stature: 0.320115
+      target_length_cm: 56.02
+      soft_margin_relative: 0.175
+      soft_lower_ratio_to_stature: 0.264095
+      soft_upper_ratio_to_stature: 0.376135
+      soft_lower_length_cm: 46.217
+      soft_upper_length_cm: 65.824
+      hard_margin_relative: 0.35
+      hard_lower_ratio_to_stature: 0.208075
+      hard_upper_ratio_to_stature: 0.432155
+      hard_lower_length_cm: 36.413
+      hard_upper_length_cm: 75.627
+      lower_ratio_to_stature: 0.208075
+      upper_ratio_to_stature: 0.432155
+      lower_length_cm: 36.413
+      upper_length_cm: 75.627
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: vertical_proxy
+      reference: stature
+      formula: m145 - m155
+      component_items:
+      - m145:어깨가쪽높이
+      - m155:엉덩이높이
+      rigidity_class: semi_rigid_review_only
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Standing vertical proxy; not 3D Euclidean shoulder-center to hip-center
+        segment.
+      constraint_notes: Torso relation can change with trunk flexion; use as review
+        context, not a hard correction driver.
+    trunk_vertical:
+      anthropometric_segment: trunk_vertical
+      pose_segment: null
+      instance: global
+      endpoints: null
+      available: true
+      status: available
+      target_ratio_to_stature: 0.397126
+      target_length_cm: 69.497
+      soft_margin_relative: 0.2
+      soft_lower_ratio_to_stature: 0.317701
+      soft_upper_ratio_to_stature: 0.476551
+      soft_lower_length_cm: 55.598
+      soft_upper_length_cm: 83.396
+      hard_margin_relative: 0.4
+      hard_lower_ratio_to_stature: 0.238276
+      hard_upper_ratio_to_stature: 0.555976
+      hard_lower_length_cm: 41.698
+      hard_upper_length_cm: 97.296
+      lower_ratio_to_stature: 0.238276
+      upper_ratio_to_stature: 0.555976
+      lower_length_cm: 41.698
+      upper_length_cm: 97.296
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy
+      reference: stature
+      formula: m192
+      component_items:
+      - m192:몸통수직길이
+      rigidity_class: auxiliary_scale_proxy
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: not_applicable
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: review_only_auxiliary_scale_proxy
+      notes: Trunk vertical length proxy; do not collapse with shoulder-hip vertical
+        proxy until validated.
+      constraint_notes: No direct pose endpoint mapping.
+    left_upper_arm:
+      anthropometric_segment: upper_arm
+      pose_segment: upper_arm
+      instance: left
+      endpoints:
+      - left_shoulder
+      - left_elbow
+      available: true
+      status: available
+      target_ratio_to_stature: 0.192529
+      target_length_cm: 33.693
+      soft_margin_relative: 0.125
+      soft_lower_ratio_to_stature: 0.168463
+      soft_upper_ratio_to_stature: 0.216595
+      soft_lower_length_cm: 29.481
+      soft_upper_length_cm: 37.904
+      hard_margin_relative: 0.25
+      hard_lower_ratio_to_stature: 0.144397
+      hard_upper_ratio_to_stature: 0.240661
+      hard_lower_length_cm: 25.269
+      hard_upper_length_cm: 42.116
+      lower_ratio_to_stature: 0.144397
+      upper_ratio_to_stature: 0.240661
+      lower_length_cm: 25.269
+      upper_length_cm: 42.116
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy_close
+      reference: stature
+      formula: m189
+      component_items:
+      - m189:위팔길이(어깨가쪽점)
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark
+        convention.
+      constraint_notes: Apparent length should be stable, but shoulder/elbow landmark
+        drift is expected in monocular pose.
+    right_upper_arm:
+      anthropometric_segment: upper_arm
+      pose_segment: upper_arm
+      instance: right
+      endpoints:
+      - right_shoulder
+      - right_elbow
+      available: true
+      status: available
+      target_ratio_to_stature: 0.192529
+      target_length_cm: 33.693
+      soft_margin_relative: 0.125
+      soft_lower_ratio_to_stature: 0.168463
+      soft_upper_ratio_to_stature: 0.216595
+      soft_lower_length_cm: 29.481
+      soft_upper_length_cm: 37.904
+      hard_margin_relative: 0.25
+      hard_lower_ratio_to_stature: 0.144397
+      hard_upper_ratio_to_stature: 0.240661
+      hard_lower_length_cm: 25.269
+      hard_upper_length_cm: 42.116
+      lower_ratio_to_stature: 0.144397
+      upper_ratio_to_stature: 0.240661
+      lower_length_cm: 25.269
+      upper_length_cm: 42.116
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy_close
+      reference: stature
+      formula: m189
+      component_items:
+      - m189:위팔길이(어깨가쪽점)
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark
+        convention.
+      constraint_notes: Apparent length should be stable, but shoulder/elbow landmark
+        drift is expected in monocular pose.
+    left_forearm:
+      anthropometric_segment: forearm
+      pose_segment: forearm
+      instance: left
+      endpoints:
+      - left_elbow
+      - left_wrist
+      available: true
+      status: available
+      target_ratio_to_stature: 0.144828
+      target_length_cm: 25.345
+      soft_margin_relative: 0.15
+      soft_lower_ratio_to_stature: 0.123104
+      soft_upper_ratio_to_stature: 0.166552
+      soft_lower_length_cm: 21.543
+      soft_upper_length_cm: 29.147
+      hard_margin_relative: 0.3
+      hard_lower_ratio_to_stature: 0.10138
+      hard_upper_ratio_to_stature: 0.188276
+      hard_lower_length_cm: 17.741
+      hard_upper_length_cm: 32.948
+      lower_ratio_to_stature: 0.10138
+      upper_ratio_to_stature: 0.188276
+      lower_length_cm: 17.741
+      upper_length_cm: 32.948
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: derived_proxy
+      reference: stature
+      formula: m191 - m189
+      component_items:
+      - m191:팔길이(어깨가쪽점)
+      - m189:위팔길이(어깨가쪽점)
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Row-level derivation is discussion-only; aggregate mean difference is
+        used here.
+      constraint_notes: Wrist landmark noise and hand occlusion may cause apparent
+        length variation.
+    right_forearm:
+      anthropometric_segment: forearm
+      pose_segment: forearm
+      instance: right
+      endpoints:
+      - right_elbow
+      - right_wrist
+      available: true
+      status: available
+      target_ratio_to_stature: 0.144828
+      target_length_cm: 25.345
+      soft_margin_relative: 0.15
+      soft_lower_ratio_to_stature: 0.123104
+      soft_upper_ratio_to_stature: 0.166552
+      soft_lower_length_cm: 21.543
+      soft_upper_length_cm: 29.147
+      hard_margin_relative: 0.3
+      hard_lower_ratio_to_stature: 0.10138
+      hard_upper_ratio_to_stature: 0.188276
+      hard_lower_length_cm: 17.741
+      hard_upper_length_cm: 32.948
+      lower_ratio_to_stature: 0.10138
+      upper_ratio_to_stature: 0.188276
+      lower_length_cm: 17.741
+      upper_length_cm: 32.948
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: derived_proxy
+      reference: stature
+      formula: m191 - m189
+      component_items:
+      - m191:팔길이(어깨가쪽점)
+      - m189:위팔길이(어깨가쪽점)
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: medium
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Row-level derivation is discussion-only; aggregate mean difference is
+        used here.
+      constraint_notes: Wrist landmark noise and hand occlusion may cause apparent
+        length variation.
+    left_thigh:
+      anthropometric_segment: thigh
+      pose_segment: thigh
+      instance: left
+      endpoints:
+      - left_hip
+      - left_knee
+      available: true
+      status: available
+      target_ratio_to_stature: 0.227011
+      target_length_cm: 39.727
+      soft_margin_relative: 0.175
+      soft_lower_ratio_to_stature: 0.187284
+      soft_upper_ratio_to_stature: 0.266738
+      soft_lower_length_cm: 32.775
+      soft_upper_length_cm: 46.679
+      hard_margin_relative: 0.35
+      hard_lower_ratio_to_stature: 0.147557
+      hard_upper_ratio_to_stature: 0.306465
+      hard_lower_length_cm: 25.822
+      hard_upper_length_cm: 53.631
+      lower_ratio_to_stature: 0.147557
+      upper_ratio_to_stature: 0.306465
+      lower_length_cm: 25.822
+      upper_length_cm: 53.631
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: vertical_proxy
+      reference: stature
+      formula: m155 - m159
+      component_items:
+      - m155:엉덩이높이
+      - m159:무릎높이
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee
+        height; vertical-only, not Euclidean 3D segment.
+      constraint_notes: Hip and knee landmarks are depth-sensitive in squat and lunge
+        views.
+    right_thigh:
+      anthropometric_segment: thigh
+      pose_segment: thigh
+      instance: right
+      endpoints:
+      - right_hip
+      - right_knee
+      available: true
+      status: available
+      target_ratio_to_stature: 0.227011
+      target_length_cm: 39.727
+      soft_margin_relative: 0.175
+      soft_lower_ratio_to_stature: 0.187284
+      soft_upper_ratio_to_stature: 0.266738
+      soft_lower_length_cm: 32.775
+      soft_upper_length_cm: 46.679
+      hard_margin_relative: 0.35
+      hard_lower_ratio_to_stature: 0.147557
+      hard_upper_ratio_to_stature: 0.306465
+      hard_lower_length_cm: 25.822
+      hard_upper_length_cm: 53.631
+      lower_ratio_to_stature: 0.147557
+      upper_ratio_to_stature: 0.306465
+      lower_length_cm: 25.822
+      upper_length_cm: 53.631
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: vertical_proxy
+      reference: stature
+      formula: m155 - m159
+      component_items:
+      - m155:엉덩이높이
+      - m159:무릎높이
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee
+        height; vertical-only, not Euclidean 3D segment.
+      constraint_notes: Hip and knee landmarks are depth-sensitive in squat and lunge
+        views.
+    left_shank:
+      anthropometric_segment: shank
+      pose_segment: shank
+      instance: left
+      endpoints:
+      - left_knee
+      - left_ankle
+      available: true
+      status: available
+      target_ratio_to_stature: 0.221839
+      target_length_cm: 38.822
+      soft_margin_relative: 0.175
+      soft_lower_ratio_to_stature: 0.183017
+      soft_upper_ratio_to_stature: 0.260661
+      soft_lower_length_cm: 32.028
+      soft_upper_length_cm: 45.616
+      hard_margin_relative: 0.35
+      hard_lower_ratio_to_stature: 0.144195
+      hard_upper_ratio_to_stature: 0.299483
+      hard_lower_length_cm: 25.234
+      hard_upper_length_cm: 52.41
+      lower_ratio_to_stature: 0.144195
+      upper_ratio_to_stature: 0.299483
+      lower_length_cm: 25.234
+      upper_length_cm: 52.41
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: vertical_proxy
+      reference: stature
+      formula: m159 - m161
+      component_items:
+      - m159:무릎높이
+      - m161:가쪽복사높이
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
+      constraint_notes: Ankle visibility and far-side overlap can create apparent
+        shank length changes.
+    right_shank:
+      anthropometric_segment: shank
+      pose_segment: shank
+      instance: right
+      endpoints:
+      - right_knee
+      - right_ankle
+      available: true
+      status: available
+      target_ratio_to_stature: 0.221839
+      target_length_cm: 38.822
+      soft_margin_relative: 0.175
+      soft_lower_ratio_to_stature: 0.183017
+      soft_upper_ratio_to_stature: 0.260661
+      soft_lower_length_cm: 32.028
+      soft_upper_length_cm: 45.616
+      hard_margin_relative: 0.35
+      hard_lower_ratio_to_stature: 0.144195
+      hard_upper_ratio_to_stature: 0.299483
+      hard_lower_length_cm: 25.234
+      hard_upper_length_cm: 52.41
+      lower_ratio_to_stature: 0.144195
+      upper_ratio_to_stature: 0.299483
+      lower_length_cm: 25.234
+      upper_length_cm: 52.41
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: vertical_proxy
+      reference: stature
+      formula: m159 - m161
+      component_items:
+      - m159:무릎높이
+      - m161:가쪽복사높이
+      rigidity_class: quasi_rigid
+      active_for_depth_correction: true
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: depth_correction_candidate
+      notes: Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
+      constraint_notes: Ankle visibility and far-side overlap can create apparent
+        shank length changes.
+    sitting_height:
+      anthropometric_segment: sitting_height
+      pose_segment: null
+      instance: global
+      endpoints: null
+      available: true
+      status: available
+      target_ratio_to_stature: 0.540805
+      target_length_cm: 94.641
+      soft_margin_relative: 0.2
+      soft_lower_ratio_to_stature: 0.432644
+      soft_upper_ratio_to_stature: 0.648966
+      soft_lower_length_cm: 75.713
+      soft_upper_length_cm: 113.569
+      hard_margin_relative: 0.4
+      hard_lower_ratio_to_stature: 0.324483
+      hard_upper_ratio_to_stature: 0.757127
+      hard_lower_length_cm: 56.785
+      hard_upper_length_cm: 132.497
+      lower_ratio_to_stature: 0.324483
+      upper_ratio_to_stature: 0.757127
+      lower_length_cm: 56.785
+      upper_length_cm: 132.497
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy
+      reference: stature
+      formula: m290
+      component_items:
+      - m290:앉은키
+      rigidity_class: auxiliary_scale_proxy
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: not_applicable
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: review_only_auxiliary_scale_proxy
+      notes: Includes head/neck; not torso segment.
+      constraint_notes: No direct pose endpoint mapping.
+    crotch_height:
+      anthropometric_segment: crotch_height
+      pose_segment: null
+      instance: global
+      endpoints: null
+      available: true
+      status: available
+      target_ratio_to_stature: 0.452874
+      target_length_cm: 79.253
+      soft_margin_relative: 0.2
+      soft_lower_ratio_to_stature: 0.362299
+      soft_upper_ratio_to_stature: 0.543449
+      soft_lower_length_cm: 63.402
+      soft_upper_length_cm: 95.104
+      hard_margin_relative: 0.4
+      hard_lower_ratio_to_stature: 0.271724
+      hard_upper_ratio_to_stature: 0.634024
+      hard_lower_length_cm: 47.552
+      hard_upper_length_cm: 110.954
+      lower_ratio_to_stature: 0.271724
+      upper_ratio_to_stature: 0.634024
+      lower_length_cm: 47.552
+      upper_length_cm: 110.954
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy
+      reference: stature
+      formula: m156
+      component_items:
+      - m156:샅높이
+      rigidity_class: auxiliary_scale_proxy
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: not_applicable
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: review_only_auxiliary_scale_proxy
+      notes: Inseam/crotch-height proxy; useful for lower-limb scale.
+      constraint_notes: No direct pose endpoint mapping.
+    outside_leg_length:
+      anthropometric_segment: outside_leg_length
+      pose_segment: null
+      instance: global
+      endpoints: null
+      available: true
+      status: available
+      target_ratio_to_stature: 0.61092
+      target_length_cm: 106.911
+      soft_margin_relative: 0.2
+      soft_lower_ratio_to_stature: 0.488736
+      soft_upper_ratio_to_stature: 0.733104
+      soft_lower_length_cm: 85.529
+      soft_upper_length_cm: 128.293
+      hard_margin_relative: 0.4
+      hard_lower_ratio_to_stature: 0.366552
+      hard_upper_ratio_to_stature: 0.855288
+      hard_lower_length_cm: 64.147
+      hard_upper_length_cm: 149.675
+      lower_ratio_to_stature: 0.366552
+      upper_ratio_to_stature: 0.855288
+      lower_length_cm: 64.147
+      upper_length_cm: 149.675
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: proxy
+      reference: stature
+      formula: m278
+      component_items:
+      - m278:다리가쪽길이
+      rigidity_class: auxiliary_scale_proxy
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: not_applicable
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: review_only_auxiliary_scale_proxy
+      notes: Whole outside leg length; not a single pose segment.
+      constraint_notes: No direct pose endpoint mapping.
+    left_foot:
+      anthropometric_segment: foot
+      pose_segment: foot
+      instance: left
+      endpoints:
+      - left_ankle
+      - left_foot_index
+      available: false
+      status: unavailable
+      target_ratio_to_stature: null
+      target_length_cm: null
+      soft_margin_relative: null
+      soft_lower_ratio_to_stature: null
+      soft_upper_ratio_to_stature: null
+      soft_lower_length_cm: null
+      soft_upper_length_cm: null
+      hard_margin_relative: null
+      hard_lower_ratio_to_stature: null
+      hard_upper_ratio_to_stature: null
+      hard_lower_length_cm: null
+      hard_upper_length_cm: null
+      lower_ratio_to_stature: null
+      upper_ratio_to_stature: null
+      lower_length_cm: null
+      upper_length_cm: null
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: not_available
+      reference: stature
+      formula: not_available
+      component_items: []
+      rigidity_class: unavailable
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: disabled_or_unavailable
+      notes: Requires 3D foot auto or another foot measurement source; excluded by
+        auto-only scope.
+      constraint_notes: Foot remains unavailable under the current Size Korea 3D full-body-auto-only
+        source scope.
+    right_foot:
+      anthropometric_segment: foot
+      pose_segment: foot
+      instance: right
+      endpoints:
+      - right_ankle
+      - right_foot_index
+      available: false
+      status: unavailable
+      target_ratio_to_stature: null
+      target_length_cm: null
+      soft_margin_relative: null
+      soft_lower_ratio_to_stature: null
+      soft_upper_ratio_to_stature: null
+      soft_lower_length_cm: null
+      soft_upper_length_cm: null
+      hard_margin_relative: null
+      hard_lower_ratio_to_stature: null
+      hard_upper_ratio_to_stature: null
+      hard_lower_length_cm: null
+      hard_upper_length_cm: null
+      lower_ratio_to_stature: null
+      upper_ratio_to_stature: null
+      lower_length_cm: null
+      upper_length_cm: null
+      cap_policy:
+        soft_envelope_role: bounded_correction_pressure
+        hard_envelope_role: invalid_or_not_assessed_boundary
+        soft_margin_scale: 0.5
+        empirical_percentile_claim: false
+      proxy_level: not_available
+      reference: stature
+      formula: not_available
+      component_items: []
+      rigidity_class: unavailable
+      active_for_depth_correction: false
+      occlusion_swap_sensitivity: high
+      evidence_level: aggregate_engineering_preview
+      range_status: aggregate_engineering_conservative_range
+      range_role: disabled_or_unavailable
+      notes: Requires 3D foot auto or another foot measurement source; excluded by
+        auto-only scope.
+      constraint_notes: Foot remains unavailable under the current Size Korea 3D full-body-auto-only
+        source scope.
+  unavailable_segments:
+  - left_foot
+  - right_foot
