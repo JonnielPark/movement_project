@@ -229,13 +229,13 @@ Current prior order:
 4. anthropometric_skeleton_prior
 ```
 
-### 5.1 Promoted Corrected-3D-Hypothesis Candidate
+### 5.1 Promoted Corrected-3D-Hypothesis Candidate Policy
 
-The stable notebook-16 squat stack is the first promoted corrected-3D-hypothesis
-candidate surface for ⑤ Normalization. Promotion means the candidate family,
-burden ledger, residuals, and readiness gates are part of the normalization
-review artifact. It does not mean the corrected coordinates are calibrated 3D,
-ground truth, a good-movement template, or scoring input.
+The p01 squat correction review established the first promoted
+corrected-3D-hypothesis candidate policy for ⑤ Normalization. Promotion means the
+candidate family, burden ledger, residuals, and readiness gates are formal
+normalization artifact requirements. It does not mean the corrected coordinates
+are calibrated 3D, ground truth, a good-movement template, or scoring input.
 
 Current promoted stack:
 
@@ -251,9 +251,12 @@ Current promoted stack:
 9. scoring-readiness and bend-flip provenance gates
 ```
 
-The current p01 review profile emits
-`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory` as a named candidate
-family and keeps downstream coordinate mode on `norm`.
+The last reviewed p01 candidate family was
+`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory`. The public evaluation
+notebooks do not run this solver yet; they keep downstream coordinate mode on
+`norm` until the solver is moved into `src/movement/` with a tested contract.
+The reviewed parameter values are preserved as a historical snapshot in
+`docs_eng/pipeline/05_normalization_p01_squat_review_snapshot.md`.
 
 Retired review-only candidates are no longer active code/config branches:
 

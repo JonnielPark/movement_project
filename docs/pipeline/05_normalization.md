@@ -219,12 +219,12 @@ Canonicalization은 선택 기능이며 기본 비활성화 상태다. 이는 ca
 4. anthropometric_skeleton_prior
 ```
 
-### 5.1 승격된 corrected-3D-hypothesis 후보
+### 5.1 승격된 corrected-3D-hypothesis 후보 정책
 
-안정화된 notebook 16 squat stack은 ⑤ Normalization의 첫 번째 formal
-corrected-3D-hypothesis candidate surface다. 여기서 승격은 candidate family, burden ledger,
-residual, readiness gate가 normalization review artifact에 포함된다는 뜻이다. 보정 좌표가
-calibrated 3D, ground truth, 좋은 동작 template, 또는 scoring input이라는 뜻은 아니다.
+p01 squat correction review는 ⑤ Normalization의 첫 formal corrected-3D-hypothesis candidate
+policy를 확립했다. 여기서 승격은 candidate family, burden ledger, residual, readiness gate가
+formal normalization artifact 요구사항이라는 뜻이다. 보정 좌표가 calibrated 3D, ground truth,
+좋은 동작 template, 또는 scoring input이라는 뜻은 아니다.
 
 현재 승격 stack:
 
@@ -240,9 +240,12 @@ calibrated 3D, ground truth, 좋은 동작 template, 또는 scoring input이라�
 9. scoring-readiness 및 bend-flip provenance gate
 ```
 
-현재 p01 review profile은
-`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory`를 named candidate family로 방출하며,
+마지막으로 검토된 p01 candidate family는
+`rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory`였다. Public evaluation notebook은 아직
+이 solver를 실행하지 않는다. Solver가 tested contract와 함께 `src/movement/`로 이관되기 전까지
 후속 coordinate mode는 `norm`으로 유지한다.
+검토 당시의 parameter value는 historical snapshot으로
+`docs/pipeline/05_normalization_p01_squat_review_snapshot.md`에 보존한다.
 
 Retired review-only 후보는 더 이상 active code/config branch로 남기지 않는다:
 
