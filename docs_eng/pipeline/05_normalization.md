@@ -1,6 +1,6 @@
 # 05. Normalization
 
-**Document Version:** 1.14.0
+**Document Version:** 1.15.0
 **Last Updated:** 2026-06-10
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
@@ -105,6 +105,8 @@ normalization:
     output_family: corrected_3d_hypothesis
     downstream_coordinate_mode: norm
     feature_depth_gravity: 0.0
+    emit_sensitivity_report: true
+    support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true
     require_feature_domain_declaration: true
   canonicalization:
@@ -159,6 +161,8 @@ report.
         "output_family": str,
         "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
         "feature_depth_gravity": float,
+        "emit_sensitivity_report": bool,
+        "support_pair": list[str],
         "used_for_features_or_scores": bool,
         "require_feature_domain_declaration": bool,
         "report_burden_before_feature_use": bool,
@@ -445,6 +449,64 @@ used_for_score = false
 missing ledger makes the row `low_confidence` even if candidate columns are
 present. High burden or non-finite values keep the row report-only and can lower
 availability to `low_confidence` or `not_assessed`.
+
+### 5.4 Pipeline Review Surface
+
+When `normalization.corrected_3d_hypothesis.enabled = true` and
+`emit_sensitivity_report = true`, `run_pipeline` emits a top-level report block:
+
+```python
+{
+    "corrected_3d_hypothesis_review": {
+        "num_candidate_rows": int,
+        "num_burden_rows": int,
+        "residual_report": dict,
+        "norm_vs_corrected_sensitivity_report": list[dict],
+        "num_sensitivity_rows": int,
+        "readiness_provenance": {
+            "status": "report_only",
+            "used_for_features_or_scores": False,
+            "downstream_coordinate_mode": "norm",
+            "feature_depth_gravity": float,
+        },
+    }
+}
+```
+
+This block is a review surface only. It must not alter `df`, downstream
+coordinate mode, feature extraction, biomechanical proxies, biomarker records, or
+scores. If the configured candidate family columns are absent, the sensitivity
+row is still emitted as `not_assessed` so the reason is visible in the report.
+`readiness_provenance.feature_depth_gravity` records the configured gate value for
+review provenance; it does not by itself promote corrected candidates into
+feature or score computation.
+
+### 5.5 Multi-Recording / Multi-Exercise Sensitivity Surface
+
+Multi-recording review starts by aggregating already generated pipeline reports.
+The aggregation helper reads `corrected_3d_hypothesis_review` blocks and returns
+grouped report-only rows. Required grouping fields:
+
+```text
+feature_id
+exercise_id
+n_recordings
+n_rows
+n_assessed
+n_low_confidence
+n_not_assessed
+median_norm_value
+median_corrected_candidate_value
+median_delta_abs
+max_correction_burden
+used_for_score = false
+```
+
+The summary does not decide whether a feature is ready for scoring. It only shows
+whether enough recordings exist to review stability, availability, burden, and
+norm-vs-candidate sensitivity. Raising `feature_depth_gravity` above `0.0`
+remains deferred until this summary is reviewed across multiple recordings and
+exercises.
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder

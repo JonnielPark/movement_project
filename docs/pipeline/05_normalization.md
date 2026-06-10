@@ -1,6 +1,6 @@
 # 05. 정규화 (Normalization)
 
-**문서 버전:** 1.14.0
+**문서 버전:** 1.15.0
 **최종 갱신:** 2026-06-10
 **영문 동기화:** `docs_eng/pipeline/05_normalization.md`는 동일 버전의 영문 번역본이다.
 
@@ -102,6 +102,8 @@ normalization:
     output_family: corrected_3d_hypothesis
     downstream_coordinate_mode: norm
     feature_depth_gravity: 0.0
+    emit_sensitivity_report: true
+    support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true
     require_feature_domain_declaration: true
   canonicalization:
@@ -153,6 +155,8 @@ gate다. 기본값 `0.0`은 후보 좌표 계열을 review용으로 생성하더
         "output_family": str,
         "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
         "feature_depth_gravity": float,
+        "emit_sensitivity_report": bool,
+        "support_pair": list[str],
         "used_for_features_or_scores": bool,
         "require_feature_domain_declaration": bool,
         "report_burden_before_feature_use": bool,
@@ -424,6 +428,61 @@ used_for_score = false
 `correction_burden`은 가능하면 제공된 burden ledger에서 가져온다. Candidate column이 있어도 ledger가
 없으면 row는 `low_confidence`다. Burden이 높거나 값이 finite하지 않으면 report-only로 유지하고,
 availability를 `low_confidence` 또는 `not_assessed`로 낮출 수 있다.
+
+### 5.4 Pipeline Review Surface
+
+`normalization.corrected_3d_hypothesis.enabled = true`이고 `emit_sensitivity_report = true`이면
+`run_pipeline`은 top-level report block을 emit한다:
+
+```python
+{
+    "corrected_3d_hypothesis_review": {
+        "num_candidate_rows": int,
+        "num_burden_rows": int,
+        "residual_report": dict,
+        "norm_vs_corrected_sensitivity_report": list[dict],
+        "num_sensitivity_rows": int,
+        "readiness_provenance": {
+            "status": "report_only",
+            "used_for_features_or_scores": False,
+            "downstream_coordinate_mode": "norm",
+            "feature_depth_gravity": float,
+        },
+    }
+}
+```
+
+이 block은 review surface일 뿐이다. `df`, downstream coordinate mode, feature extraction,
+biomechanical proxy, biomarker record, score를 바꾸면 안 된다. 설정된 candidate family column이
+없으면 sensitivity row는 `not_assessed`로 emit하여 report에서 이유가 보이게 한다.
+`readiness_provenance.feature_depth_gravity`는 설정된 gate 값을 provenance로 기록할 뿐이며,
+그 자체로 corrected candidate를 feature 또는 score 계산에 승격하지 않는다.
+
+### 5.5 Multi-Recording / Multi-Exercise Sensitivity Surface
+
+Multi-recording review는 이미 생성된 pipeline report를 모으는 것에서 시작한다. Aggregation helper는
+`corrected_3d_hypothesis_review` block을 읽고 grouped report-only row를 반환한다. 필수 grouping
+field:
+
+```text
+feature_id
+exercise_id
+n_recordings
+n_rows
+n_assessed
+n_low_confidence
+n_not_assessed
+median_norm_value
+median_corrected_candidate_value
+median_delta_abs
+max_correction_burden
+used_for_score = false
+```
+
+Summary는 feature가 scoring 준비가 되었는지 결정하지 않는다. 충분한 recording이 있어 stability,
+availability, burden, norm-vs-candidate sensitivity를 검토할 수 있는지만 보여준다.
+`feature_depth_gravity`를 `0.0`보다 높이는 일은 이 summary를 여러 recording과 여러 운동에서 검토할
+때까지 보류한다.
 
 Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 축 정렬은 너무 일찍 적용하면
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
