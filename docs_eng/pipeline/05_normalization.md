@@ -1,6 +1,6 @@
 # 05. Normalization
 
-**Document Version:** 1.12.0
+**Document Version:** 1.13.0
 **Last Updated:** 2026-06-10
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
@@ -279,6 +279,128 @@ post-correction smoothing
 They may be reintroduced only through the docs-first path: define the research
 need in `docs_eng/`, sync `docs/`, add config/report fields, and compare ON/OFF
 behavior across multiple recordings or exercises.
+
+### 5.2 Corrected-3D-Hypothesis Solver Promotion Contract
+
+Before the former p01 correction solver is moved into `src/movement/`, it must be
+implemented as a report-first candidate generator with the following minimal
+contract. This is a solver contract, not a scoring contract.
+
+Required input:
+
+```text
+norm_pose_df
+  DataFrame with one row per frame and existing <landmark>_norm_x/y/z columns.
+  Raw and base norm columns are read-only.
+
+landmarks
+  Ordered landmark names used by the pipeline run.
+
+common_subject_skeleton_profile
+  Selected profile id, source matrix path, sex/bin provenance, and segment target
+  ratios. Height may be used for readable nominal lengths only; coordinates are
+  not rescaled to cm or m.
+
+exercise_support_context
+  Exercise id, kinetic chain, base of support, support surface, support-contact
+  landmarks, primary support pair, and any rep/phase/ready-window labels.
+
+solver_config
+  Source family, output family, correction caps, strengths, visibility gates,
+  support-width no-worsen guard, bend-side guard, and report settings. The p01
+  review values are preserved in
+  `05_normalization_p01_squat_review_snapshot.md`.
+```
+
+Required output:
+
+```text
+corrected_candidate_df
+  Same frame index and row order as norm_pose_df.
+  Candidate columns must be additive only. A family-specific convention such as
+  <landmark>_<output_family>_<axis> is allowed only when the result report also
+  exposes the exact coordinate-column map.
+
+burden_ledger
+  Frame/stage/landmark or segment-level correction burden table.
+
+residual_report
+  Segment-length, support-width, support-surface, bend-side, and visibility
+  residuals before and after candidate generation.
+
+norm_vs_corrected_sensitivity_report
+  Feature-level comparison table for any feature considered for
+  corrected-3D-hypothesis use.
+
+readiness_provenance
+  Score-exclusion, availability, confidence, status, and rejection reasons.
+```
+
+The burden ledger must contain at least:
+
+```text
+frame
+rep_id or phase label when available
+candidate_family
+stage
+landmark_or_segment
+axis
+delta_torso_ratio
+cap_torso_ratio
+cap_fraction
+residual_before_torso
+residual_after_torso
+accepted
+rejection_reason
+visibility_min
+confidence
+used_for_features_or_scores = false
+```
+
+The sensitivity report must contain at least:
+
+```text
+feature_id
+evaluation_domain
+source_evidence
+norm_value
+corrected_candidate_value
+delta
+delta_abs
+correction_burden
+residual
+availability
+confidence
+used_for_score = false
+```
+
+Promotion gates:
+
+```text
+1. raw, norm, and existing canon columns are never overwritten.
+2. No candidate is emitted without burden and residual reports.
+3. No feature may consume a candidate unless its evaluation_domain is declared as
+   corrected_3d_hypothesis or dual_domain_compare.
+4. While feature_depth_gravity = 0.0, every corrected candidate remains
+   score-excluded even if a sensitivity report is present.
+5. A correction step must be rejected or marked not_assessed when it worsens a
+   configured hard residual gate such as support width, bend-side consistency, or
+   support-surface plausibility.
+6. Impossible caps are availability gates when trusted depth is absent; they are
+   not hidden correction targets.
+7. Readiness is per feature and per recording. A successful p01 review does not
+   imply readiness for another exercise, camera view, or participant.
+```
+
+Minimum implementation target for the first module extraction:
+
+```text
+module path      src/movement/stages/corrected_3d_hypothesis.py
+primary function build_corrected_3d_hypothesis_candidates(...)
+return object    Corrected3DHypothesisResult
+default mode     report_only, downstream_coordinate_mode = norm
+first feature    candidate.support_width_stability sensitivity only
+```
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder
