@@ -1,6 +1,6 @@
 # 05. Normalization
 
-**Document Version:** 1.13.0
+**Document Version:** 1.14.0
 **Last Updated:** 2026-06-10
 **Korean Sync:** `docs/pipeline/05_normalization.md` is the same-version Korean source.
 
@@ -401,6 +401,50 @@ return object    Corrected3DHypothesisResult
 default mode     report_only, downstream_coordinate_mode = norm
 first feature    candidate.support_width_stability sensitivity only
 ```
+
+### 5.3 First Sensitivity Target: `candidate.support_width_stability`
+
+The first code-backed sensitivity target is a report-only comparison of support
+width stability. It does not create corrected coordinates. It only compares an
+existing candidate coordinate family with the base `norm` family.
+
+Definition:
+
+```text
+support_pair          left_ankle, right_ankle by default
+norm_width(t)         distance between support_pair in norm axes [x, y]
+candidate_width(t)    distance between support_pair in candidate axes [x, y, z]
+stability_value       P95(width) - P05(width), in torso-length ratio
+delta                 candidate_stability_value - norm_stability_value
+```
+
+The `norm` value intentionally uses recording-plane axes only. The candidate
+value may include model-depth or corrected-depth axes, but remains
+low-confidence corrected-3D-hypothesis evidence. When candidate coordinate
+columns are absent, the feature is `not_assessed`; the function must not create a
+candidate by itself.
+
+Required output row:
+
+```text
+feature_id = candidate.support_width_stability
+evaluation_domain = corrected_3d_hypothesis
+source_evidence = norm support-pair width versus existing candidate family
+norm_value
+corrected_candidate_value
+delta
+delta_abs
+correction_burden
+residual
+availability
+confidence
+used_for_score = false
+```
+
+`correction_burden` is taken from the supplied burden ledger when available. A
+missing ledger makes the row `low_confidence` even if candidate columns are
+present. High burden or non-finite values keep the row report-only and can lower
+availability to `low_confidence` or `not_assessed`.
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder
