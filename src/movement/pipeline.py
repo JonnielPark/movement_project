@@ -197,6 +197,8 @@ class Corrected3DHypothesisConfig:
     output_family: str = "corrected_3d_hypothesis"
     downstream_coordinate_mode: str = "norm"
     feature_depth_gravity: float = 0.0
+    emit_sensitivity_report: bool = True
+    support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
     report_burden_before_feature_use: bool = True
     require_feature_domain_declaration: bool = True
 
@@ -520,6 +522,19 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 feature_depth_gravity=float(
                     corrected_3d.get("feature_depth_gravity", 0.0)
                 ),
+                emit_sensitivity_report=bool(
+                    corrected_3d.get("emit_sensitivity_report", True)
+                ),
+                support_pair=tuple(
+                    str(item)
+                    for item in (
+                        corrected_3d.get(
+                            "support_pair",
+                            ["left_ankle", "right_ankle"],
+                        )
+                        or []
+                    )
+                ),
                 report_burden_before_feature_use=bool(
                     corrected_3d.get("report_burden_before_feature_use", True)
                 ),
@@ -798,6 +813,12 @@ def run_pipeline(
                 "feature_depth_gravity": (
                     config.normalization.corrected_3d_hypothesis.feature_depth_gravity
                 ),
+                "emit_sensitivity_report": (
+                    config.normalization.corrected_3d_hypothesis.emit_sensitivity_report
+                ),
+                "support_pair": list(
+                    config.normalization.corrected_3d_hypothesis.support_pair
+                ),
                 "report_burden_before_feature_use": (
                     config.normalization.corrected_3d_hypothesis.report_burden_before_feature_use
                 ),
@@ -893,6 +914,36 @@ def run_pipeline(
             config=floor_config,
         )
         report["floor_relative_correction"] = floor_report.as_dict()
+
+    corrected_policy = config.normalization.corrected_3d_hypothesis
+    if (
+        config.normalization.enabled
+        and corrected_policy.enabled
+        and corrected_policy.emit_sensitivity_report
+    ):
+        from movement.stages.corrected_3d_hypothesis import (
+            build_corrected_3d_hypothesis_candidates,
+        )
+
+        corrected_review = build_corrected_3d_hypothesis_candidates(
+            df,
+            landmarks=landmarks,
+            exercise_support_context={
+                "exercise_id": (
+                    exercise_def.exercise_id if exercise_def is not None else None
+                ),
+            },
+            solver_config={
+                "output_family": corrected_policy.output_family,
+                "support_pair": list(corrected_policy.support_pair),
+                "feature_depth_gravity": corrected_policy.feature_depth_gravity,
+            },
+        )
+        review_dict = corrected_review.as_dict()
+        report["corrected_3d_hypothesis_review"] = review_dict
+        report.setdefault("normalization", {}).setdefault(
+            "corrected_3d_hypothesis", {}
+        )["review_status"] = review_dict["readiness_provenance"]["status"]
 
     # ── ⑥ Segmentation: Rep Boundaries ───────────────────────────────────────
     if config.rep_segmentation.enabled:

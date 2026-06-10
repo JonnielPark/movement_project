@@ -213,6 +213,8 @@ def build_corrected_3d_hypothesis_report(
     output_family: str = "corrected_3d_hypothesis",
     downstream_coordinate_mode: str = "norm",
     feature_depth_gravity: float = 0.0,
+    emit_sensitivity_report: bool = True,
+    support_pair: List[str] | None = None,
     report_burden_before_feature_use: bool = True,
     require_feature_domain_declaration: bool = True,
 ) -> Dict[str, Any]:
@@ -239,6 +241,10 @@ def build_corrected_3d_hypothesis_report(
     if not output_family:
         raise ValueError("output_family must be a non-empty string.")
 
+    support_pair = list(support_pair or ["left_ankle", "right_ankle"])
+    if len(support_pair) != 2:
+        raise ValueError("support_pair must contain exactly two landmarks.")
+
     used_for_features_or_scores = bool(
         enabled
         and downstream_coordinate_mode == "corrected_3d_hypothesis"
@@ -250,6 +256,8 @@ def build_corrected_3d_hypothesis_report(
         "output_family": output_family,
         "downstream_coordinate_mode": downstream_coordinate_mode,
         "feature_depth_gravity": feature_depth_gravity,
+        "emit_sensitivity_report": bool(emit_sensitivity_report),
+        "support_pair": [str(item) for item in support_pair],
         "used_for_features_or_scores": used_for_features_or_scores,
         "require_feature_domain_declaration": bool(require_feature_domain_declaration),
         "report_burden_before_feature_use": bool(report_burden_before_feature_use),
@@ -382,6 +390,13 @@ def normalize_pose_by_hip_torso(
             "norm",
         ),
         feature_depth_gravity=corrected_policy.get("feature_depth_gravity", 0.0),
+        emit_sensitivity_report=bool(
+            corrected_policy.get("emit_sensitivity_report", True)
+        ),
+        support_pair=corrected_policy.get(
+            "support_pair",
+            ["left_ankle", "right_ankle"],
+        ),
         report_burden_before_feature_use=bool(
             corrected_policy.get("report_burden_before_feature_use", True)
         ),

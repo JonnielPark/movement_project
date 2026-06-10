@@ -7,6 +7,7 @@ template, calibrated 3D reconstruction, or scoring input.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -49,11 +50,14 @@ class Corrected3DHypothesisResult:
     readiness_provenance: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
-        """Return serializable report metadata without expanding dataframes."""
+        """Return serializable review artifacts for pipeline reports."""
         return {
             "num_candidate_rows": int(len(self.corrected_candidate_df)),
             "num_burden_rows": int(len(self.burden_ledger)),
             "residual_report": dict(self.residual_report),
+            "norm_vs_corrected_sensitivity_report": (
+                self.norm_vs_corrected_sensitivity_report.to_dict(orient="records")
+            ),
             "num_sensitivity_rows": int(len(self.norm_vs_corrected_sensitivity_report)),
             "readiness_provenance": dict(self.readiness_provenance),
         }
@@ -301,6 +305,11 @@ def build_corrected_3d_hypothesis_candidates(
     )
     if len(support_pair) != 2:
         raise ValueError("support_pair must contain exactly two landmarks.")
+    feature_depth_gravity = float(solver_config.get("feature_depth_gravity", 0.0))
+    if not np.isfinite(feature_depth_gravity):
+        raise ValueError("feature_depth_gravity must be finite.")
+    if feature_depth_gravity < 0.0 or feature_depth_gravity > 1.0:
+        raise ValueError("feature_depth_gravity must be between 0.0 and 1.0.")
 
     sensitivity_config = SupportWidthStabilityConfig(
         candidate_family=candidate_family,
@@ -319,7 +328,7 @@ def build_corrected_3d_hypothesis_candidates(
         "has_common_subject_skeleton_profile": common_subject_skeleton_profile
         is not None,
         "has_exercise_support_context": exercise_support_context is not None,
-        "feature_depth_gravity": 0.0,
+        "feature_depth_gravity": feature_depth_gravity,
     }
     return Corrected3DHypothesisResult(
         corrected_candidate_df=norm_pose_df.copy(),
@@ -332,9 +341,101 @@ def build_corrected_3d_hypothesis_candidates(
     )
 
 
+def _review_blocks_from_report(report: dict[str, Any]) -> list[dict[str, Any]]:
+    review = report.get("corrected_3d_hypothesis_review")
+    if isinstance(review, dict):
+        return [review]
+    reviews = report.get("corrected_3d_hypothesis_reviews")
+    if isinstance(reviews, list):
+        return [item for item in reviews if isinstance(item, dict)]
+    return []
+
+
+def collect_corrected_3d_sensitivity_rows(
+    reports: Iterable[dict[str, Any]],
+) -> pd.DataFrame:
+    """Collect report-only sensitivity rows from multiple pipeline reports."""
+
+    rows: list[dict[str, Any]] = []
+    for index, report in enumerate(reports):
+        exercise = report.get("exercise_definition", {}) or {}
+        recording_id = report.get("recording_id", f"report_{index}")
+        exercise_id = exercise.get("exercise_id", "unknown")
+        for review in _review_blocks_from_report(report):
+            for row in review.get("norm_vs_corrected_sensitivity_report", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                item = dict(row)
+                item.setdefault("recording_id", recording_id)
+                item.setdefault("exercise_id", exercise_id)
+                item["used_for_score"] = False
+                rows.append(item)
+    return pd.DataFrame(rows)
+
+
+def summarize_corrected_3d_sensitivity_reports(
+    reports: Iterable[dict[str, Any]],
+) -> pd.DataFrame:
+    """Summarize corrected-3D sensitivity rows across recordings/exercises."""
+
+    rows = collect_corrected_3d_sensitivity_rows(reports)
+    if rows.empty:
+        return pd.DataFrame(
+            columns=[
+                "feature_id",
+                "exercise_id",
+                "n_recordings",
+                "n_rows",
+                "n_assessed",
+                "n_low_confidence",
+                "n_not_assessed",
+                "median_norm_value",
+                "median_corrected_candidate_value",
+                "median_delta_abs",
+                "max_correction_burden",
+                "used_for_score",
+            ]
+        )
+
+    summaries: list[dict[str, Any]] = []
+    for (feature_id, exercise_id), group in rows.groupby(
+        ["feature_id", "exercise_id"], dropna=False
+    ):
+        availability = group.get("availability", pd.Series(dtype=object)).astype(str)
+        summaries.append(
+            {
+                "feature_id": feature_id,
+                "exercise_id": exercise_id,
+                "n_recordings": int(group["recording_id"].nunique()),
+                "n_rows": int(len(group)),
+                "n_assessed": int((availability == "assessed").sum()),
+                "n_low_confidence": int((availability == "low_confidence").sum()),
+                "n_not_assessed": int((availability == "not_assessed").sum()),
+                "median_norm_value": float(
+                    pd.to_numeric(group.get("norm_value"), errors="coerce").median()
+                ),
+                "median_corrected_candidate_value": float(
+                    pd.to_numeric(
+                        group.get("corrected_candidate_value"), errors="coerce"
+                    ).median()
+                ),
+                "median_delta_abs": float(
+                    pd.to_numeric(group.get("delta_abs"), errors="coerce").median()
+                ),
+                "max_correction_burden": float(
+                    pd.to_numeric(group.get("correction_burden"), errors="coerce").max()
+                ),
+                "used_for_score": False,
+            }
+        )
+    return pd.DataFrame(summaries)
+
+
 __all__ = [
     "Corrected3DHypothesisResult",
     "SupportWidthStabilityConfig",
     "build_corrected_3d_hypothesis_candidates",
     "build_support_width_stability_sensitivity_report",
+    "collect_corrected_3d_sensitivity_rows",
+    "summarize_corrected_3d_sensitivity_reports",
 ]
