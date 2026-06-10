@@ -1,6 +1,6 @@
 # 05. 정규화 (Normalization)
 
-**문서 버전:** 1.13.0
+**문서 버전:** 1.14.0
 **최종 갱신:** 2026-06-10
 **영문 동기화:** `docs_eng/pipeline/05_normalization.md`는 동일 버전의 영문 번역본이다.
 
@@ -382,6 +382,48 @@ return object    Corrected3DHypothesisResult
 default mode     report_only, downstream_coordinate_mode = norm
 first feature    candidate.support_width_stability sensitivity only
 ```
+
+### 5.3 첫 Sensitivity Target: `candidate.support_width_stability`
+
+첫 code-backed sensitivity target은 support width stability의 report-only comparison이다.
+이는 corrected coordinate를 생성하지 않는다. 기존 candidate coordinate family와 base `norm` family를
+비교만 한다.
+
+정의:
+
+```text
+support_pair          기본 left_ankle, right_ankle
+norm_width(t)         norm axes [x, y]에서 support_pair 사이 거리
+candidate_width(t)    candidate axes [x, y, z]에서 support_pair 사이 거리
+stability_value       P95(width) - P05(width), torso-length ratio
+delta                 candidate_stability_value - norm_stability_value
+```
+
+`norm` 값은 의도적으로 recording-plane axis만 사용한다. Candidate 값은 model-depth 또는
+corrected-depth axis를 포함할 수 있지만, 여전히 low-confidence corrected-3D-hypothesis evidence다.
+Candidate coordinate column이 없으면 feature는 `not_assessed`다. 이 함수 자체가 candidate를 만들면
+안 된다.
+
+필수 output row:
+
+```text
+feature_id = candidate.support_width_stability
+evaluation_domain = corrected_3d_hypothesis
+source_evidence = norm support-pair width versus existing candidate family
+norm_value
+corrected_candidate_value
+delta
+delta_abs
+correction_burden
+residual
+availability
+confidence
+used_for_score = false
+```
+
+`correction_burden`은 가능하면 제공된 burden ledger에서 가져온다. Candidate column이 있어도 ledger가
+없으면 row는 `low_confidence`다. Burden이 높거나 값이 finite하지 않으면 report-only로 유지하고,
+availability를 `low_confidence` 또는 `not_assessed`로 낮출 수 있다.
 
 Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 축 정렬은 너무 일찍 적용하면
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
