@@ -1,6 +1,6 @@
 # 05. 정규화 (Normalization)
 
-**문서 버전:** 1.12.0
+**문서 버전:** 1.13.0
 **최종 갱신:** 2026-06-10
 **영문 동기화:** `docs_eng/pipeline/05_normalization.md`는 동일 버전의 영문 번역본이다.
 
@@ -267,6 +267,121 @@ post-correction smoothing
 
 이들은 `docs_eng/`에서 연구 필요성을 정의하고, `docs/`를 동기화하고, config/report field를 추가하고,
 여러 recording 또는 여러 운동에서 ON/OFF behavior를 비교한 뒤에만 다시 도입할 수 있다.
+
+### 5.2 Corrected-3D-Hypothesis Solver 승격 Contract
+
+이전 p01 correction solver를 `src/movement/`로 옮기기 전, 다음 최소 contract를 만족하는
+report-first candidate generator로 구현해야 한다. 이는 solver contract이지 scoring contract가 아니다.
+
+필수 input:
+
+```text
+norm_pose_df
+  frame별 1행과 기존 <landmark>_norm_x/y/z column을 가진 DataFrame.
+  raw와 base norm column은 read-only다.
+
+landmarks
+  pipeline run에서 사용한 ordered landmark name.
+
+common_subject_skeleton_profile
+  선택된 profile id, source matrix path, sex/bin provenance, segment target
+  ratio. Height는 readable nominal length에만 사용할 수 있으며, 좌표를 cm 또는 m로 rescale하지 않는다.
+
+exercise_support_context
+  exercise id, kinetic chain, base of support, support surface, support-contact
+  landmark, primary support pair, rep/phase/ready-window label.
+
+solver_config
+  source family, output family, correction cap, strength, visibility gate,
+  support-width no-worsen guard, bend-side guard, report setting. p01 review 값은
+  `05_normalization_p01_squat_review_snapshot.md`에 보존한다.
+```
+
+필수 output:
+
+```text
+corrected_candidate_df
+  norm_pose_df와 같은 frame index 및 row order.
+  candidate column은 additive only다. <landmark>_<output_family>_<axis> 같은
+  family-specific convention은 result report가 정확한 coordinate-column map을 함께 제공할 때만 허용한다.
+
+burden_ledger
+  frame/stage/landmark 또는 segment 단위 correction burden table.
+
+residual_report
+  candidate 생성 전후 segment-length, support-width, support-surface, bend-side,
+  visibility residual.
+
+norm_vs_corrected_sensitivity_report
+  corrected-3D-hypothesis 사용을 검토하는 feature별 comparison table.
+
+readiness_provenance
+  score-exclusion, availability, confidence, status, rejection reason.
+```
+
+Burden ledger는 최소 다음 field를 포함해야 한다:
+
+```text
+frame
+rep_id 또는 phase label when available
+candidate_family
+stage
+landmark_or_segment
+axis
+delta_torso_ratio
+cap_torso_ratio
+cap_fraction
+residual_before_torso
+residual_after_torso
+accepted
+rejection_reason
+visibility_min
+confidence
+used_for_features_or_scores = false
+```
+
+Sensitivity report는 최소 다음 field를 포함해야 한다:
+
+```text
+feature_id
+evaluation_domain
+source_evidence
+norm_value
+corrected_candidate_value
+delta
+delta_abs
+correction_burden
+residual
+availability
+confidence
+used_for_score = false
+```
+
+승격 gate:
+
+```text
+1. raw, norm, 기존 canon column은 절대 overwrite하지 않는다.
+2. burden 및 residual report 없이 candidate를 만들지 않는다.
+3. feature가 candidate를 소비하려면 evaluation_domain이 corrected_3d_hypothesis 또는
+   dual_domain_compare로 선언되어야 한다.
+4. feature_depth_gravity = 0.0인 동안 sensitivity report가 있어도 모든 corrected candidate는
+   score-excluded다.
+5. support width, bend-side consistency, support-surface plausibility 같은 configured hard residual
+   gate를 악화시키는 correction step은 reject하거나 not_assessed로 둔다.
+6. Trusted depth가 없을 때 impossible cap은 availability gate일 뿐이며 hidden correction target이 아니다.
+7. Readiness는 feature별, recording별 판단이다. p01 review 성공이 다른 운동, camera view, participant의
+   readiness를 뜻하지 않는다.
+```
+
+첫 module extraction의 최소 구현 목표:
+
+```text
+module path      src/movement/stages/corrected_3d_hypothesis.py
+primary function build_corrected_3d_hypothesis_candidates(...)
+return object    Corrected3DHypothesisResult
+default mode     report_only, downstream_coordinate_mode = norm
+first feature    candidate.support_width_stability sensitivity only
+```
 
 Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 축 정렬은 너무 일찍 적용하면
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
