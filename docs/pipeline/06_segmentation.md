@@ -1,7 +1,7 @@
 # 06. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.3.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.3.1
+**최종 갱신:** 2026-06-10
 **영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑥은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
@@ -132,6 +132,9 @@ rep_segmentation_source / phase_segmentation_source = manual_override
 실제 one-take MediaPipe recording에서는 confirmed annotation으로 승격하기 전에 annotation 파일
 옆에 recording-plane phase split을 만들 수 있다. MediaPipe `z`가 height가 아니라 depth proxy일
 때 raw image/recording-plane signal이 visual QC에 더 안전할 수 있기 때문이다.
+
+승격 전의 `<recording_id>_phase_split.csv`는 해당 recording을 점검하기 위한 가이드일 뿐이다.
+이를 ground-truth phase annotation이나 scoring 입력으로 취급하지 않는다.
 
 ```text
 source annotation    <recording_id>_annotation.csv
