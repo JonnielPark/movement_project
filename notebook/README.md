@@ -32,8 +32,8 @@ For a new user, start with:
 13_user_movement_evaluation.ipynb
 ```
 
-Then open the individual 01-12 notebooks only when you need to inspect a
-specific stage.
+For the current local research review, open the individual 01-12 notebooks in
+order when you need to inspect each stage on the p01 squat recording.
 
 ## Important Boundary
 
@@ -47,16 +47,24 @@ from feature/scoring use through `feature_depth_gravity: 0.0`.
 
 ## User Inputs
 
-The user-facing evaluation notebook starts from:
+The current local notebook defaults start from:
 
 ```text
-data/pose/sample/mediapipe_squat_synthetic.csv
-data/pose/sample/mediapipe_squat_synthetic_annotation.csv
+data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv
+data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv
 ```
 
+If present, `p01_squat_set1_phase_split.csv` is loaded only as a
+recording-specific visual/QC guideline in the phase-segmentation notebook. It is
+not confirmed phase annotation and is not used for scoring.
+
 To evaluate another movement recording, edit the pose CSV path, optional
-annotation CSV path, and `EXERCISE_ID` in the input cell of
-`13_user_movement_evaluation.ipynb`.
+annotation CSV path, and `EXERCISE_ID` in the input cell of the relevant
+notebook or in `13_user_movement_evaluation.ipynb`.
+
+The p01 recording is real review data, not a clean synthetic baseline. Validation
+or phase-segmentation failures in the stage notebooks should be read as
+data-quality or readiness provenance unless a structural assertion fails.
 
 ## Outputs
 

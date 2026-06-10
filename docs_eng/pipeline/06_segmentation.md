@@ -1,7 +1,7 @@
 # 06. Segmentation
 
-**Document Version:** 1.3.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.3.1
+**Last Updated:** 2026-06-10
 **Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑥ confirms repetition boundaries and intra-rep phase labels. It is
@@ -141,6 +141,10 @@ For real one-take MediaPipe recordings, a recording-plane phase split may be
 created beside the annotation file before being promoted to confirmed annotation.
 This is useful when MediaPipe `z` is a depth proxy and raw image/recording-plane
 signals are safer for visual QC.
+
+Before promotion, `<recording_id>_phase_split.csv` is a recording-specific guide
+for inspection only. It must not be treated as ground-truth phase annotation or
+used for scoring.
 
 ```text
 source annotation    <recording_id>_annotation.csv
