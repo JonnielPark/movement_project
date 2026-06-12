@@ -42,8 +42,9 @@ surface for corrected-3D-hypothesis exploration. Its coordinate solver has not
 yet been promoted to `src/movement/`, so it is not part of the public evaluation
 notebook path.
 
-Current public scoring uses `norm` coordinates. Corrected depth remains excluded
-from feature/scoring use through `feature_depth_gravity: 0.0`.
+Current public scoring uses `norm` coordinates. Corrected-depth candidates remain
+normalization evidence only; any nonzero score gravity is deferred to a later
+scoring-policy task.
 
 ## User Inputs
 
@@ -52,11 +53,16 @@ The current local notebook defaults start from:
 ```text
 data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv
 data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv
+data/participants/no_consent/p01.yaml
 ```
 
 If present, `p01_squat_set1_phase_split.csv` is loaded only as a
 recording-specific visual/QC guideline in the phase-segmentation notebook. It is
 not confirmed phase annotation and is not used for scoring.
+
+The participant YAML is de-identified provenance/review metadata. It records
+anthropometry and common-subject skeleton selection but is not used for scoring
+or coordinate rescaling.
 
 To evaluate another movement recording, edit the pose CSV path, optional
 annotation CSV path, and `EXERCISE_ID` in the input cell of the relevant

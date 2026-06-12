@@ -57,6 +57,7 @@
 | 가시성 기반 신뢰도 가중 (Visibility-based confidence weighting) | 생체역학 프록시 계산에서 주요 랜드마크 가시성을 프레임 가중치로 사용하는 방식. 낮은 가시성 프레임은 지표 계산 영향이 줄거나 제외된다. |
 | 시점-지표 신뢰도 (View-metric reliability) | 특정 camera zone이 특정 metric family를 얼마나 잘 뒷받침하는지 나타내는 운동 정의 수준의 prior. 좌표 보정이나 landmark 품질과 분리되며, `high`, `moderate`, `low`, `not_assessed` 같은 값으로 보고와 scoring eligibility를 안내한다. |
 | 피처 산출 가능성 (Feature availability) | landmark coverage, geometry plausibility, swap risk, view-metric reliability를 확인한 뒤, 계산 가능한 값이 scoring에 들어갈 수 있는지 결정하는 피처별 판정. 숫자값을 계산할 수 있다는 사실과 구분한다. |
+| 후보 근거 (Candidate evidence) | Availability, confidence, visibility, burden, residual, sensitivity 정보를 담는 계산 후보 좌표 family 또는 후보 비교. Scoring 전에 생성되며 score gravity나 final-score contribution을 정의하지 않는다. |
 | 카메라 근측/원측 (Near-side / far-side) | 카메라 기준 visibility context. `Near-side`는 카메라에 더 가까운 landmark 또는 body side, `far-side`는 카메라에서 더 먼 쪽을 뜻한다. 해부학적 품질 라벨이 아니라 관측 신뢰도 판단에 사용한다. |
 | 원측 jitter (Far-side jitter) | 카메라에서 먼 쪽 landmark의 불안정성. visibility drop, velocity/acceleration spike, segment-length inconsistency, swap risk로 요약한다. 보상 움직임 지표가 아니라 data-confidence signal이다. |
 
@@ -71,11 +72,11 @@
 | Pseudo-floor reference | 실제 바닥의 물리적 위치가 아니라, 단안 pose 좌표계 안에서 접지 랜드마크로 추정한 apparent floor 기준. 카메라 캘리브레이션이나 절대 3D 복원이 아니다. |
 | 바닥 기준 보정 (Floor-relative correction) | 정적 접지 운동에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
 | 접지 랜드마크 (Support-contact landmark) | 스쿼트의 발, 플랭크의 손/발처럼 운동 정의상 바닥 또는 지지면과 접촉한다고 기대되는 랜드마크. 실제 보상 움직임을 지울 위험이 있으므로, 항상 고정 anchor로 쓰지 않고 visibility와 안정성 조건을 통과한 경우에만 pseudo-floor 추정에 사용한다. |
-| 프로토콜 높이 기반 좌우폭 정렬 (Protocol-height lateral-width alignment) | 관찰된 카메라 높이가 운동별 촬영 프로토콜과 맞는지 먼저 확인한 뒤, 해당 height level에 맞는 신체 anchor를 사용해 depth-dependent lateral-width bias를 완화하는 review-only canonicalization prior. H1은 지지/발목 높이 anchor, H2는 골반/hip-center anchor, H3는 어깨선 anchor를 사용한다. 렌즈 캘리브레이션, perspective reprojection, template fitting이 아니다. |
+| 프로토콜 높이 기반 좌우폭 정렬 (Protocol-height lateral-width alignment) | 관찰된 카메라 높이가 운동별 촬영 프로토콜과 맞는지 먼저 확인한 뒤, 해당 height level에 맞는 신체 anchor를 사용해 depth-dependent lateral-width bias를 완화하는 candidate-evidence canonicalization prior. H1은 지지/발목 높이 anchor, H2는 골반/hip-center anchor, H3는 어깨선 anchor를 사용한다. 렌즈 캘리브레이션, perspective reprojection, template fitting이 아니다. |
 | 인체계측 스켈레톤 prior (Anthropometric skeleton prior) | 단안 depth 동작을 검토하기 위한 느슨한 신체 분절 길이 plausibility envelope. Stage A에서는 Size Korea aggregate ratio를 engineering envelope로만 사용할 수 있으며, empirical percentile prior, calibrated 3D reconstruction, subject-specific skeleton fitting이 아니다. |
 | 보수적 engineering range (Conservative engineering range) | aggregate anthropometric ratio 주변에 연구자가 넓게 정의한 tolerance. impossible skeleton behavior와 data-confidence 문제를 잡기 위한 것이며 population P5/P95 추정이 아니다. |
 | 개인별 empirical 인체계측 prior (Row-level empirical anthropometric prior) | 비식별 개인별 anthropometric row가 있어야 가능한 향후 upgrade. 같은 개인 안에서 segment/stature ratio를 계산한 뒤 P1/P99 또는 P5/P95를 요약한다. |
-| Depth residual correction | x/y evidence, segment-length plausibility, visibility, correction cap이 모두 허용할 때만 시도할 수 있는 bounded review-only depth-axis 후보 보정. raw 또는 base normalized coordinate를 덮어쓰지 않는다. |
+| Depth residual correction | x/y evidence, segment-length plausibility, visibility, correction cap이 모두 허용할 때만 시도할 수 있는 bounded candidate-evidence depth-axis 후보 보정. raw 또는 base normalized coordinate를 덮어쓰지 않으며, ⑤ Normalization 안에서 score gravity를 정의하지 않는다. |
 | 관절 plausibility (Articulation plausibility) | 불가능한 joint-angle 또는 reverse-bending configuration을 다루는 별도 guard. data confidence를 낮추거나 feature를 unavailable로 표시하며, movement-quality를 직접 감점하지 않는다. |
 
 ---

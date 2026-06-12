@@ -212,7 +212,6 @@ def build_corrected_3d_hypothesis_report(
     enabled: bool = False,
     output_family: str = "corrected_3d_hypothesis",
     downstream_coordinate_mode: str = "norm",
-    feature_depth_gravity: float = 0.0,
     emit_sensitivity_report: bool = True,
     support_pair: List[str] | None = None,
     report_burden_before_feature_use: bool = True,
@@ -223,14 +222,9 @@ def build_corrected_3d_hypothesis_report(
 
     Biomechanical meaning:
         Corrected coordinates are low-confidence structure hypotheses for
-        burden review, not calibrated 3D evidence or movement-quality scores.
+        burden, residual, and sensitivity evidence. Score gravity belongs to a
+        later scoring policy, not to normalization.
     """
-    feature_depth_gravity = float(feature_depth_gravity)
-    if not np.isfinite(feature_depth_gravity):
-        raise ValueError("feature_depth_gravity must be finite.")
-    if feature_depth_gravity < 0.0 or feature_depth_gravity > 1.0:
-        raise ValueError("feature_depth_gravity must be between 0.0 and 1.0.")
-
     downstream_coordinate_mode = str(downstream_coordinate_mode)
     if downstream_coordinate_mode not in {"norm", "corrected_3d_hypothesis"}:
         raise ValueError(
@@ -246,26 +240,19 @@ def build_corrected_3d_hypothesis_report(
         raise ValueError("support_pair must contain exactly two landmarks.")
 
     used_for_features_or_scores = bool(
-        enabled
-        and downstream_coordinate_mode == "corrected_3d_hypothesis"
-        and feature_depth_gravity > 0.0
+        enabled and downstream_coordinate_mode == "corrected_3d_hypothesis"
     )
 
     return {
         "enabled": bool(enabled),
         "output_family": output_family,
         "downstream_coordinate_mode": downstream_coordinate_mode,
-        "feature_depth_gravity": feature_depth_gravity,
         "emit_sensitivity_report": bool(emit_sensitivity_report),
         "support_pair": [str(item) for item in support_pair],
         "used_for_features_or_scores": used_for_features_or_scores,
         "require_feature_domain_declaration": bool(require_feature_domain_declaration),
         "report_burden_before_feature_use": bool(report_burden_before_feature_use),
-        "depth_evidence_policy": (
-            "excluded_from_scoring"
-            if feature_depth_gravity == 0.0
-            else "feature_gated_low_confidence"
-        ),
+        "depth_evidence_policy": "candidate_evidence_only",
     }
 
 
@@ -389,7 +376,6 @@ def normalize_pose_by_hip_torso(
             "downstream_coordinate_mode",
             "norm",
         ),
-        feature_depth_gravity=corrected_policy.get("feature_depth_gravity", 0.0),
         emit_sensitivity_report=bool(
             corrected_policy.get("emit_sensitivity_report", True)
         ),
