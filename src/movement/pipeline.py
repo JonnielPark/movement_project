@@ -196,7 +196,6 @@ class Corrected3DHypothesisConfig:
     enabled: bool = False
     output_family: str = "corrected_3d_hypothesis"
     downstream_coordinate_mode: str = "norm"
-    feature_depth_gravity: float = 0.0
     emit_sensitivity_report: bool = True
     support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
     report_burden_before_feature_use: bool = True
@@ -519,9 +518,6 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 downstream_coordinate_mode=str(
                     corrected_3d.get("downstream_coordinate_mode", "norm")
                 ),
-                feature_depth_gravity=float(
-                    corrected_3d.get("feature_depth_gravity", 0.0)
-                ),
                 emit_sensitivity_report=bool(
                     corrected_3d.get("emit_sensitivity_report", True)
                 ),
@@ -810,9 +806,6 @@ def run_pipeline(
                 "downstream_coordinate_mode": (
                     config.normalization.corrected_3d_hypothesis.downstream_coordinate_mode
                 ),
-                "feature_depth_gravity": (
-                    config.normalization.corrected_3d_hypothesis.feature_depth_gravity
-                ),
                 "emit_sensitivity_report": (
                     config.normalization.corrected_3d_hypothesis.emit_sensitivity_report
                 ),
@@ -936,7 +929,6 @@ def run_pipeline(
             solver_config={
                 "output_family": corrected_policy.output_family,
                 "support_pair": list(corrected_policy.support_pair),
-                "feature_depth_gravity": corrected_policy.feature_depth_gravity,
             },
         )
         review_dict = corrected_review.as_dict()

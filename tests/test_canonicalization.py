@@ -121,6 +121,11 @@ def test_disabled_canonicalization_preserves_dataframe_without_canon_columns():
     )
 
     assert report["status"] == "disabled"
+    assert report["candidate_available"] is False
+    assert report["candidate_confidence"] == "not_available"
+    assert report["burden_level"] == "none"
+    assert "score_gravity" not in report
+    assert "score_contribution_enabled" not in report
     assert out is not df
     assert list(out.columns) == list(df.columns)
     assert "left_heel_canon_y" not in out.columns
@@ -143,6 +148,9 @@ def test_canonicalization_wraps_support_plane_alignment_as_canon_columns():
     )
 
     assert report["status"] == "applied"
+    assert report["candidate_available"] is True
+    assert report["candidate_confidence"] in {"high", "moderate", "low"}
+    assert report["burden_level"] in {"none", "low", "moderate", "high"}
     assert report["applied_priors"] == ["support_plane_alignment"]
     assert report["prior_reports"]["support_plane_alignment"]["status"] == "applied"
     assert report["data_confidence"]["level"] in {"high", "moderate", "low"}
@@ -150,6 +158,9 @@ def test_canonicalization_wraps_support_plane_alignment_as_canon_columns():
     assert "left_heel_canon_y" in out.columns
     assert "left_heel_floor_y" not in out.columns
     assert "left_heel_canon_support_plane_height" in out.columns
+    assert out["canonicalization_candidate_available"].all()
+    assert "canonicalization_score_gravity" not in out.columns
+    assert "canonicalization_score_contribution_enabled" not in out.columns
 
 
 def test_canonicalization_keeps_canon_equal_to_norm_when_target_prior_matches():
@@ -170,6 +181,7 @@ def test_canonicalization_keeps_canon_equal_to_norm_when_target_prior_matches():
     )
 
     assert report["status"] == "applied"
+    assert report["candidate_available"] is True
     for landmark in LANDMARKS:
         assert out[f"{landmark}_canon_y"].equals(out[f"{landmark}_norm_y"])
 
@@ -193,6 +205,7 @@ def test_movement_plane_alignment_rotates_primary_motion_toward_canon_plane():
 
     movement_report = report["prior_reports"]["movement_plane_alignment"]
     assert report["status"] == "applied"
+    assert report["candidate_available"] is True
     assert report["applied_priors"] == ["movement_plane_alignment"]
     assert movement_report["status"] == "applied"
     assert movement_report["num_motion_vectors"] > 0
@@ -266,6 +279,9 @@ def test_protocol_height_lateral_width_alignment_uses_h2_pelvis_anchor():
 
     protocol_report = report["prior_reports"]["protocol_height_lateral_width_alignment"]
     assert report["status"] == "applied"
+    assert report["candidate_available"] is True
+    assert report["candidate_confidence"] in {"high", "moderate", "low"}
+    assert report["burden_level"] in {"none", "low", "moderate", "high"}
     assert report["applied_priors"] == ["protocol_height_lateral_width_alignment"]
     assert protocol_report["status"] == "applied"
     assert protocol_report["observed_height_level"] == "H2"
@@ -302,6 +318,9 @@ def test_protocol_height_lateral_width_alignment_skips_when_height_mismatches():
 
     protocol_report = report["prior_reports"]["protocol_height_lateral_width_alignment"]
     assert report["status"] == "rejected"
+    assert report["candidate_available"] is False
+    assert report["candidate_confidence"] == "not_available"
+    assert report["burden_level"] == "none"
     assert report["skipped_priors"] == {
         "protocol_height_lateral_width_alignment": "skipped"
     }
@@ -345,6 +364,9 @@ def test_pipeline_uses_exercise_recommended_height_for_protocol_prior():
     protocol_report = report["canonicalization"]["prior_reports"][
         "protocol_height_lateral_width_alignment"
     ]
+    assert report["canonicalization"]["candidate_available"] is True
+    assert "score_gravity" not in report["canonicalization"]
+    assert "score_contribution_enabled" not in report["canonicalization"]
     assert protocol_report["status"] == "applied"
     assert protocol_report["recommended_height_level"] == "H2"
     assert (out["left_wrist_canon_x"] > df["left_wrist_norm_x"]).all()

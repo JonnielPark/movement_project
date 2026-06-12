@@ -74,7 +74,6 @@ normalization:
     enabled: false
     output_family: corrected_3d_hypothesis
     downstream_coordinate_mode: norm
-    feature_depth_gravity: 0.0
     emit_sensitivity_report: true
     support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true

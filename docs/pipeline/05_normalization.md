@@ -23,7 +23,7 @@ Pose CSV
 → ④ Preprocessing
 → ⑤ Normalization          ← 본 단계
    ├─ base normalization: hip-center translation + torso-length scale
-   └─ optional canonicalization: review-only candidate coordinates
+   └─ optional canonicalization: candidate-evidence coordinates
 → ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
@@ -101,7 +101,6 @@ normalization:
     enabled: false
     output_family: corrected_3d_hypothesis
     downstream_coordinate_mode: norm
-    feature_depth_gravity: 0.0
     emit_sensitivity_report: true
     support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true
@@ -127,10 +126,11 @@ normalization:
 `support_plane_alignment`의 하위 호환 alias로 취급하며, 새 작업에서는 canonicalization key를
 우선 사용한다.
 
-`corrected_3d_hypothesis.feature_depth_gravity`는 depth-derived 후보 evidence의 명시적 scoring
-gate다. 기본값 `0.0`은 후보 좌표 계열을 review용으로 생성하더라도 corrected depth가 feature scoring에서
-제외된다는 뜻이다. 이후 여러 recording과 여러 운동에서 sensitivity review가 feature별 burden threshold를
-정의한 뒤에만 이 값을 높일 수 있다.
+⑤ Normalization은 score gravity를 할당하지 않는다. Corrected-depth 및 canonicalization 후보는
+availability, confidence, visibility, residual, correction burden, norm-vs-candidate sensitivity 같은
+evidence만 노출한다. Score gravity는 이후 biomarker/scoring policy의 책임이다. 현재 개발 정책은 그
+단계에서 corrected-depth contribution을 0으로 유지하지만, 이를 normalization output field로 encode하지
+않는다.
 
 ---
 
@@ -154,7 +154,6 @@ gate다. 기본값 `0.0`은 후보 좌표 계열을 review용으로 생성하더
         "enabled": bool,
         "output_family": str,
         "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
-        "feature_depth_gravity": float,
         "emit_sensitivity_report": bool,
         "support_pair": list[str],
         "used_for_features_or_scores": bool,
@@ -170,11 +169,14 @@ canonicalization이 켜진 경우 `canonicalization_report`를 normalization rep
 ```python
 {
     "enabled": bool,
-    "status": "skipped" | "applied" | "partial" | "rejected",
+    "candidate_available": bool,
+    "candidate_confidence": "not_available" | "high" | "moderate" | "low",
+    "burden_level": "none" | "low" | "moderate" | "high",
     "coordinate_mode": "norm",
     "output_prefix": "canon",
     "report_only": bool,
     "downstream_coordinate_mode": "norm" | "canon",
+    "status": "disabled" | "skipped" | "applied" | "partial" | "rejected",
     "active_priors": list[str],
     "applied_priors": list[str],
     "skipped_priors": dict[str, str],
@@ -194,6 +196,30 @@ canonicalization이 켜진 경우 `canonicalization_report`를 normalization rep
 }
 ```
 
+Public canonicalization summary는 `candidate_available`, `candidate_confidence`, `burden_level`을
+우선 사용한다. Legacy `status`와 prior-level status는 이전 report 해석과 debugging/provenance를 위해
+남기지만, prototype review 이후의 primary readiness surface로 쓰지 않는다. Score gravity와 final-score
+contribution flag는 ⑤ Normalization report에서 의도적으로 제외한다.
+
+일상적인 노트북 review에서는 prior count보다 prior evidence table을 보여준다. 이 table은
+`canonicalization_report.prior_reports`와 active `CanonicalizationConfig`에서 만든다:
+
+```text
+prior_id
+configured_on
+candidate_available
+confidence
+burden_level
+reason
+key_metric
+```
+
+`configured_on`은 각 prior config의 `enabled` flag에서 가져온다. `candidate_available`은 prior report
+status가 `applied` 또는 `warning`이면 true다. `reason`은 짧은 사람이 읽을 수 있는 status 또는
+confidence-note summary다. `key_metric`은 support anchor frame, movement rotation/residual, protocol
+camera height match처럼 prior별 가장 중요한 diagnostic을 노출한다. Prior count는 full provenance에서
+계산할 수 있지만 primary review surface로 쓰지 않는다.
+
 `data_confidence.level`은 movement-quality score가 아니다. 낮은 confidence는 자동 감점이 아니라
 주의, withheld, provenance로 표현한다.
 
@@ -211,7 +237,7 @@ Canonicalization은 선택 기능이며 기본 비활성화 상태다. 이는 ca
 |---|---|---|---|
 | `support_plane_alignment` | 구현됨, 기본 비활성 | 접지 landmark 기반 pose 내부 pseudo-floor/support-plane 검토. 기존 `floor_relative_correction` 로직을 감싼다. | 발을 바닥에 고정하지 않으며 camera calibration이 아니다. |
 | `movement_plane_alignment` | prototype, 기본 비활성 | hip-knee-ankle 주 운동 방향을 이용한 수직축 기준 capped rigid rotation. | out-of-plane residual을 보존해 보상 움직임 검토에 남긴다. |
-| `protocol_height_lateral_width_alignment` | prototype, 기본 비활성 | H1/H2/H3 body anchor 주변의 보수적 lateral-width attenuation 전에 camera-height metadata를 gate로 사용한다. | 렌즈 보정, reprojection, far-side 좌표 생성이 아니다. |
+| `protocol_height_lateral_width_alignment` | prototype, 기본 비활성 | H1/H2/H3 body anchor 주변의 보수적 lateral-width attenuation 전에 camera-height metadata를 gate로 사용한다. | Zero-gravity scoring candidate이며 렌즈 보정, reprojection, far-side 좌표 생성이 아니다. |
 | `anthropometric_skeleton_prior` | 계획됨, 기본 비활성 | 느슨한 신체 분절 길이 plausibility range를 단안 depth 검토용 engineering envelope로 사용한다. | raw row-level 자료 전에는 경험적 P5/P95가 아니며 skeleton template fitting이 아니다. |
 
 현재 prior 순서:
@@ -320,7 +346,7 @@ norm_vs_corrected_sensitivity_report
   corrected-3D-hypothesis 사용을 검토하는 feature별 comparison table.
 
 readiness_provenance
-  score-exclusion, availability, confidence, status, rejection reason.
+  candidate availability, confidence, status, rejection reason.
 ```
 
 Burden ledger는 최소 다음 field를 포함해야 한다:
@@ -358,7 +384,6 @@ correction_burden
 residual
 availability
 confidence
-used_for_score = false
 ```
 
 승격 gate:
@@ -368,8 +393,8 @@ used_for_score = false
 2. burden 및 residual report 없이 candidate를 만들지 않는다.
 3. feature가 candidate를 소비하려면 evaluation_domain이 corrected_3d_hypothesis 또는
    dual_domain_compare로 선언되어야 한다.
-4. feature_depth_gravity = 0.0인 동안 sensitivity report가 있어도 모든 corrected candidate는
-   score-excluded다.
+4. Normalization은 score gravity 또는 final-score contribution을 결정하지 않는다.
+   이후 scoring policy가 사용할 candidate evidence만 emit한다.
 5. support width, bend-side consistency, support-surface plausibility 같은 configured hard residual
    gate를 악화시키는 correction step은 reject하거나 not_assessed로 둔다.
 6. Trusted depth가 없을 때 impossible cap은 availability gate일 뿐이며 hidden correction target이 아니다.
@@ -383,15 +408,15 @@ used_for_score = false
 module path      src/movement/stages/corrected_3d_hypothesis.py
 primary function build_corrected_3d_hypothesis_candidates(...)
 return object    Corrected3DHypothesisResult
-default mode     report_only, downstream_coordinate_mode = norm
+default mode     candidate evidence only, downstream_coordinate_mode = norm
 first feature    candidate.support_width_stability sensitivity only
 ```
 
 ### 5.3 첫 Sensitivity Target: `candidate.support_width_stability`
 
-첫 code-backed sensitivity target은 support width stability의 report-only comparison이다.
-이는 corrected coordinate를 생성하지 않는다. 기존 candidate coordinate family와 base `norm` family를
-비교만 한다.
+첫 code-backed sensitivity target은 support width stability의 candidate-evidence comparison이다. 이는
+corrected coordinate를 생성하지 않는다. 기존 candidate coordinate family와 base `norm` family를 비교만
+한다.
 
 정의:
 
@@ -422,12 +447,11 @@ correction_burden
 residual
 availability
 confidence
-used_for_score = false
 ```
 
 `correction_burden`은 가능하면 제공된 burden ledger에서 가져온다. Candidate column이 있어도 ledger가
-없으면 row는 `low_confidence`다. Burden이 높거나 값이 finite하지 않으면 report-only로 유지하고,
-availability를 `low_confidence` 또는 `not_assessed`로 낮출 수 있다.
+없으면 row는 `low_confidence`다. Burden이 높거나 값이 finite하지 않으면 low-confidence candidate
+evidence로 유지하고, availability를 `low_confidence` 또는 `not_assessed`로 낮출 수 있다.
 
 ### 5.4 Pipeline Review Surface
 
@@ -443,26 +467,24 @@ availability를 `low_confidence` 또는 `not_assessed`로 낮출 수 있다.
         "norm_vs_corrected_sensitivity_report": list[dict],
         "num_sensitivity_rows": int,
         "readiness_provenance": {
-            "status": "report_only",
+            "status": "candidate_evidence",
             "used_for_features_or_scores": False,
             "downstream_coordinate_mode": "norm",
-            "feature_depth_gravity": float,
         },
     }
 }
 ```
 
-이 block은 review surface일 뿐이다. `df`, downstream coordinate mode, feature extraction,
-biomechanical proxy, biomarker record, score를 바꾸면 안 된다. 설정된 candidate family column이
-없으면 sensitivity row는 `not_assessed`로 emit하여 report에서 이유가 보이게 한다.
-`readiness_provenance.feature_depth_gravity`는 설정된 gate 값을 provenance로 기록할 뿐이며,
-그 자체로 corrected candidate를 feature 또는 score 계산에 승격하지 않는다.
+이 block은 candidate-evidence surface다. `df`, downstream coordinate mode, feature extraction,
+biomechanical proxy, biomarker record, 최종 score를 바꾸면 안 된다. 설정된 candidate family column이
+없으면 sensitivity row는 `not_assessed`로 emit하여 report에서 이유가 보이게 한다. Score gravity는 이후
+scoring policy로 의도적으로 미룬다.
 
 ### 5.5 Multi-Recording / Multi-Exercise Sensitivity Surface
 
 Multi-recording review는 이미 생성된 pipeline report를 모으는 것에서 시작한다. Aggregation helper는
-`corrected_3d_hypothesis_review` block을 읽고 grouped report-only row를 반환한다. 필수 grouping
-field:
+`corrected_3d_hypothesis_review` block을 읽고 grouped candidate-evidence row를 반환한다.
+필수 grouping field:
 
 ```text
 feature_id
@@ -476,13 +498,12 @@ median_norm_value
 median_corrected_candidate_value
 median_delta_abs
 max_correction_burden
-used_for_score = false
 ```
 
-Summary는 feature가 scoring 준비가 되었는지 결정하지 않는다. 충분한 recording이 있어 stability,
-availability, burden, norm-vs-candidate sensitivity를 검토할 수 있는지만 보여준다.
-`feature_depth_gravity`를 `0.0`보다 높이는 일은 이 summary를 여러 recording과 여러 운동에서 검토할
-때까지 보류한다.
+Summary는 feature가 최종 score에 영향을 주어야 하는지 결정하지 않는다. 충분한 recording이 있어
+stability, availability, burden, norm-vs-candidate sensitivity를 검토할 수 있는지만 보여준다.
+Nonzero score gravity 할당은 여러 recording과 여러 운동에서 이 summary를 검토한 뒤의 scoring-policy
+작업으로 보류한다.
 
 Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 축 정렬은 너무 일찍 적용하면
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
@@ -501,7 +522,7 @@ Anthropometric skeleton prior는 단안 pose depth를 위한 **느슨한 해부�
 
 ```text
 - 정규화 이후 anatomically implausible한 segment length 표시
-- bounded하고 작은 경우에만 review-only candidate depth residual correction 생성
+- bounded하고 작은 경우에만 candidate depth residual evidence 생성
 - 영향받은 segment/frame/feature record의 data confidence downgrade
 - depth-sensitive feature가 withheld 또는 low confidence가 된 이유 문서화
 ```
@@ -541,7 +562,7 @@ Two-stage evidence model:
 
 | Stage | Data level | Allowed claim | Use |
 |---|---|---|---|
-| Stage A | file design + aggregate statistics | aggregate ratio 주변의 conservative engineering range | plausibility flag, low-confidence marking, review-only candidate residual |
+| Stage A | file design + aggregate statistics | aggregate ratio 주변의 conservative engineering range | plausibility flag, low-confidence marking, candidate residual evidence |
 | Stage B | de-identified row-level 3D full-body automatic raw data | empirical row-level ratio distribution, P1/P99, P5/P95, stratified checks | narrower prior, height-bin validation, model comparison |
 
 ### 6.3 Aggregate-Only Segment Map
@@ -687,7 +708,8 @@ unit = dimensionless_ratio
   `norm` 좌표를 소비한다.
 - 후속 feature는 보정 좌표를 사용하기 전에 `recording_view_only`,
   `corrected_3d_hypothesis`, 또는 `dual_domain_compare`를 선언해야 한다.
-- `feature_depth_gravity = 0.0`인 동안 corrected-3D-hypothesis 좌표는 score에서 제외된다.
+- Corrected-3D-hypothesis 좌표는 ⑤ 안에서 candidate evidence로 남긴다. 이후 scoring policy가 score
+  gravity를 결정하며, 현재 개발 계획은 그 단계에서 corrected-depth contribution을 0으로 유지한다.
 - Corrected-coordinate magnitude와 residual은 movement-quality 감점이 아니라
   data-confidence/provenance signal이다.
 - ④ Preprocessing은 scale 계산 전에 reliability violation을 표시할 수 있지만, 신체 상대 척도화와
@@ -707,6 +729,5 @@ unit = dimensionless_ratio
   추가한다.
 - visibility-weighted scale estimation과 torso-length outlier handling.
 - exercise definition field 기반 운동별 canonicalization prior 선택.
-- corrected coordinate를 scoring에 사용하거나 `feature_depth_gravity`를 `0.0`보다 높이기 전
-  robustness evaluation.
+- corrected coordinate가 이후 scoring policy에서 nonzero score gravity를 받기 전 robustness evaluation.
 - local config가 더 이상 의존하지 않으면 legacy `floor_relative_correction` key 점진 축소.

@@ -65,7 +65,7 @@ _COMPAT_MODULES = {
 for _name, _module in _COMPAT_MODULES.items():
     _sys.modules[f"{__name__}.{_name}"] = _module
 
-from movement.io import load_pose_csv  # noqa: E402
+from movement.io import load_participant_profile_yaml, load_pose_csv  # noqa: E402
 from movement.validation import run_basic_validation  # noqa: E402
 from movement.annotation import apply_annotation, load_annotation_csv  # noqa: E402
 from movement.exercise_definition import (  # noqa: E402
@@ -121,6 +121,7 @@ del _name, _module, _COMPAT_MODULES, _sys
 __all__ = [
     # I/O
     "load_pose_csv",
+    "load_participant_profile_yaml",
     # ① validation
     "run_basic_validation",
     # ② annotation

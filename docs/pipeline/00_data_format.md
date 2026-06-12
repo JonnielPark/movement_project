@@ -1,7 +1,7 @@
 # 00. 데이터 포맷 (Data Format)
 
-**문서 버전:** 1.1.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.2.0
+**최종 갱신:** 2026-06-12
 **영문 동기화:** `docs_eng/pipeline/00_data_format.md`는 동일 버전의 영문 번역본이다.
 
 단안 3D pose time-series CSV 입력 규격.
@@ -60,7 +60,41 @@ Sample file:
 data/pose/sample/mediapipe_squat_synthetic.csv
 ```
 
-## 5. 좌표와 단위 정책 (Coordinate And Unit Policy)
+## 5. Participant Profile YAML
+
+Participant 정보는 선택적인 de-identified analysis metadata다. 이름, 생년월일, 연락처,
+원본 영상 참조 같은 직접 식별자는 포함하지 않는다.
+
+권장 위치:
+
+```text
+data/participants/<scope>/<participant_id>.yaml
+```
+
+최소 schema:
+
+```yaml
+participant_profile:
+  schema_version: "0.1.0"
+  participant_id: p01
+  anthropometry:
+    sex: male
+    height_cm: 175
+    height_bin: 171-175cm
+  common_subject_skeleton:
+    profile_id: male_175cm
+    matrix_path: data/reference/anthropometry/common_subject_skeleton_matrix.yaml
+    model_path: data/reference/anthropometry/common_subject_skeleton_male_175cm.yaml
+  policy:
+    deidentified: true
+    used_for_scoring: false
+```
+
+현재 단계에서 participant YAML은 provenance와 review input일 뿐이다. Height는 pose 좌표를
+cm/m로 rescale하는 데 사용하지 않으며, common-subject skeleton은 subject-specific body
+reconstruction이 아니다.
+
+## 6. 좌표와 단위 정책 (Coordinate And Unit Policy)
 
 입력 좌표는 ⑤ Normalization 전까지 pose engine의 native coordinate convention을 유지한다.
 후속 feature와 biomarker는 body-relative unit을 사용한다:
@@ -74,10 +108,11 @@ second
 
 절대 힘, 토크, 질량, 물리 길이 출력은 사용하지 않는다.
 
-## 6. 데이터 위치 (Data Locations)
+## 7. 데이터 위치 (Data Locations)
 
 ```text
 data/pose/          joint-point CSV input
+data/participants/  optional de-identified participant profile YAML
 data/definitions/   exercise definitions and interpretation YAML
 data/protocols/     performance and camera protocol YAML
 data/reference/     reference statistics

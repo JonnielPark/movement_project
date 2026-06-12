@@ -143,6 +143,8 @@ def validate_visibility(
     if len(existing_cols) == 0:
         return {
             "passed": False,
+            "severity": "warning",
+            "policy": "warning_provenance_only",
             "error": "No visibility columns found.",
             "missing_visibility_columns": missing_cols,
         }
@@ -150,8 +152,12 @@ def validate_visibility(
     visibility = df[existing_cols].astype(float)
     low_visibility_ratio = (visibility < threshold).mean()
 
+    passed = bool((low_visibility_ratio < 0.2).all())
+
     return {
-        "passed": bool((low_visibility_ratio < 0.2).all()),
+        "passed": passed,
+        "severity": "ok" if passed else "warning",
+        "policy": "warning_provenance_only",
         "threshold": threshold,
         "num_visibility_columns": len(existing_cols),
         "missing_visibility_columns": missing_cols,
@@ -190,10 +196,29 @@ def run_basic_validation(
             visibility_columns=visibility_columns,
         )
 
-    report["passed"] = all(
-        section.get("passed", False)
-        for section in report.values()
-        if isinstance(section, dict)
+    structural_checks = (
+        "required_columns",
+        "frame_continuity",
+        "timestamp",
+        "missing_values",
     )
+    report["structural_passed"] = all(
+        report[name].get("passed", False) for name in structural_checks
+    )
+    report["passed"] = report["structural_passed"]
+    report["warnings"] = []
+
+    visibility_report = report.get("visibility")
+    if isinstance(visibility_report, dict) and not visibility_report.get(
+        "passed", True
+    ):
+        report["warnings"].append(
+            {
+                "check": "visibility",
+                "severity": visibility_report.get("severity", "warning"),
+                "policy": visibility_report.get("policy", "warning_provenance_only"),
+                "message": "Low or unavailable visibility is handled by downstream reliability gates.",
+            }
+        )
 
     return report

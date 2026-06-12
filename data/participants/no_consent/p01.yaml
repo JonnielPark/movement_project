@@ -1,0 +1,27 @@
+participant_profile:
+  schema_version: "0.1.0"
+  participant_id: p01
+  display_label: p01 development participant
+  data_scope: no_consent_dev
+  anthropometry:
+    sex: male
+    height_cm: 175
+    height_bin: 171-175cm
+    height_policy: nominal_readable_length_only
+  common_subject_skeleton:
+    profile_id: male_175cm
+    matrix_path: data/reference/anthropometry/common_subject_skeleton_matrix.yaml
+    model_path: data/reference/anthropometry/common_subject_skeleton_male_175cm.yaml
+    selection_policy: sex_mean_ratio_with_height_bin_metadata
+  linked_recordings:
+    - session_id: 20260517_no_consent_dev
+      recording_id: p01_squat_set1
+      pose_path: data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv
+      annotation_path: data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv
+      exercise_id: squat
+  policy:
+    deidentified: true
+    contains_direct_identifiers: false
+    used_for_scoring: false
+    coordinate_rescale_from_height: false
+    note: Height and skeleton profile are provenance for review priors, not subject-specific reconstruction.

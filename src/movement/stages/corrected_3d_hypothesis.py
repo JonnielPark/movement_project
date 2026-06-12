@@ -1,8 +1,9 @@
-"""Report-only corrected-3D-hypothesis candidate review helpers.
+"""Corrected-3D-hypothesis candidate-evidence helpers.
 
 Corrected coordinates are low-confidence structural hypotheses. This module
-starts with sensitivity reporting only; it does not create a good-movement
-template, calibrated 3D reconstruction, or scoring input.
+emits availability, burden, residual, and norm-vs-candidate sensitivity evidence.
+It does not create a good-movement template, calibrated 3D reconstruction, or
+final-score contribution.
 """
 
 from __future__ import annotations
@@ -20,10 +21,11 @@ _VALID_AXES = {"x", "y", "z"}
 
 @dataclass(frozen=True)
 class SupportWidthStabilityConfig:
-    """Configuration for support-width sensitivity review.
+    """Configuration for support-width candidate-evidence sensitivity audit.
 
     The metric checks whether a closed-chain support pair stays stable across
-    frames; this is a data-confidence review signal, not a movement score.
+    frames. The result is data-confidence evidence, not a movement-quality score
+    contribution.
     """
 
     feature_id: str = "candidate.support_width_stability"
@@ -182,7 +184,7 @@ def build_support_width_stability_sensitivity_report(
 
     The support-width value is a robust range of the left/right support distance
     in torso-length ratio units. The norm side uses recording-plane x/y axes;
-    the candidate side may include depth, but remains score-excluded.
+    the candidate side may include depth, but remains candidate evidence.
     """
 
     config = config or SupportWidthStabilityConfig()
@@ -275,7 +277,6 @@ def build_support_width_stability_sensitivity_report(
         "availability": availability,
         "confidence": confidence,
         "availability_reasons": "|".join(dict.fromkeys(reasons)),
-        "used_for_score": False,
     }
     return pd.DataFrame([row])
 
@@ -290,10 +291,11 @@ def build_corrected_3d_hypothesis_candidates(
     burden_ledger: pd.DataFrame | None = None,
     residual_report: dict[str, Any] | None = None,
 ) -> Corrected3DHypothesisResult:
-    """Build report-only corrected-3D-hypothesis review artifacts.
+    """Build corrected-3D-hypothesis candidate-evidence artifacts.
 
     This first extraction does not alter coordinates. It verifies that the
-    required reporting surface can be generated before any solver is promoted.
+    required evidence surface can be generated before any solver is considered
+    by later scoring policy.
     """
 
     solver_config = dict(solver_config or {})
@@ -305,11 +307,6 @@ def build_corrected_3d_hypothesis_candidates(
     )
     if len(support_pair) != 2:
         raise ValueError("support_pair must contain exactly two landmarks.")
-    feature_depth_gravity = float(solver_config.get("feature_depth_gravity", 0.0))
-    if not np.isfinite(feature_depth_gravity):
-        raise ValueError("feature_depth_gravity must be finite.")
-    if feature_depth_gravity < 0.0 or feature_depth_gravity > 1.0:
-        raise ValueError("feature_depth_gravity must be between 0.0 and 1.0.")
 
     sensitivity_config = SupportWidthStabilityConfig(
         candidate_family=candidate_family,
@@ -321,14 +318,13 @@ def build_corrected_3d_hypothesis_candidates(
         burden_ledger=burden_ledger,
     )
     readiness = {
-        "status": "report_only",
+        "status": "candidate_evidence",
         "used_for_features_or_scores": False,
         "downstream_coordinate_mode": "norm",
         "landmarks": list(landmarks or []),
         "has_common_subject_skeleton_profile": common_subject_skeleton_profile
         is not None,
         "has_exercise_support_context": exercise_support_context is not None,
-        "feature_depth_gravity": feature_depth_gravity,
     }
     return Corrected3DHypothesisResult(
         corrected_candidate_df=norm_pose_df.copy(),
@@ -354,7 +350,7 @@ def _review_blocks_from_report(report: dict[str, Any]) -> list[dict[str, Any]]:
 def collect_corrected_3d_sensitivity_rows(
     reports: Iterable[dict[str, Any]],
 ) -> pd.DataFrame:
-    """Collect report-only sensitivity rows from multiple pipeline reports."""
+    """Collect corrected-3D candidate-evidence rows from multiple reports."""
 
     rows: list[dict[str, Any]] = []
     for index, report in enumerate(reports):
@@ -368,7 +364,6 @@ def collect_corrected_3d_sensitivity_rows(
                 item = dict(row)
                 item.setdefault("recording_id", recording_id)
                 item.setdefault("exercise_id", exercise_id)
-                item["used_for_score"] = False
                 rows.append(item)
     return pd.DataFrame(rows)
 
@@ -393,7 +388,6 @@ def summarize_corrected_3d_sensitivity_reports(
                 "median_corrected_candidate_value",
                 "median_delta_abs",
                 "max_correction_burden",
-                "used_for_score",
             ]
         )
 
@@ -425,7 +419,6 @@ def summarize_corrected_3d_sensitivity_reports(
                 "max_correction_burden": float(
                     pd.to_numeric(group.get("correction_burden"), errors="coerce").max()
                 ),
-                "used_for_score": False,
             }
         )
     return pd.DataFrame(summaries)

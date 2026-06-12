@@ -44,7 +44,7 @@ def test_model_depth_scale_attenuates_norm_z_only():
     assert out.loc[0, "left_knee_norm_z"] == 1.0
 
 
-def test_corrected_3d_hypothesis_policy_defaults_to_no_scoring_use():
+def test_corrected_3d_hypothesis_policy_defaults_to_candidate_evidence_only():
     df = pd.DataFrame(
         {
             "left_hip_x": [0.0],
@@ -68,7 +68,6 @@ def test_corrected_3d_hypothesis_policy_defaults_to_no_scoring_use():
         corrected_3d_hypothesis={
             "enabled": True,
             "output_family": "rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory",
-            "feature_depth_gravity": 0.0,
         },
     )
 
@@ -77,6 +76,8 @@ def test_corrected_3d_hypothesis_policy_defaults_to_no_scoring_use():
     assert policy["output_family"] == (
         "rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory"
     )
-    assert policy["feature_depth_gravity"] == 0.0
     assert policy["used_for_features_or_scores"] is False
-    assert policy["depth_evidence_policy"] == "excluded_from_scoring"
+    assert policy["depth_evidence_policy"] == "candidate_evidence_only"
+    assert "feature_depth_gravity" not in policy
+    assert "score_gravity" not in policy
+    assert "score_contribution_enabled" not in policy

@@ -25,7 +25,7 @@ Pose CSV
 → ④ Preprocessing
 → ⑤ Normalization          ← this step
    ├─ base normalization: hip-center translation + torso-length scale
-   └─ optional canonicalization: review-only candidate coordinates
+   └─ optional canonicalization: candidate-evidence coordinates
 → ⑥ Segmentation
 → ⑦ Motion Attribution
 → ⑧ Feature Extraction
@@ -104,7 +104,6 @@ normalization:
     enabled: false
     output_family: corrected_3d_hypothesis
     downstream_coordinate_mode: norm
-    feature_depth_gravity: 0.0
     emit_sensitivity_report: true
     support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true
@@ -131,11 +130,12 @@ evidence, and an explicit docs update before code promotion.
 is treated as a backward-compatible alias for `support_plane_alignment`; new work
 should prefer the canonicalization key.
 
-`corrected_3d_hypothesis.feature_depth_gravity` is the explicit scoring gate for
-depth-derived candidate evidence. The default value is `0.0`, meaning corrected
-depth is excluded from feature scoring even when a candidate coordinate family is
-produced for review. Future work may raise this value only after multi-recording
-and multi-exercise sensitivity review defines feature-specific burden thresholds.
+⑤ Normalization does not assign score gravity. Corrected-depth and
+canonicalization candidates expose evidence only: availability, confidence,
+visibility, residuals, correction burden, and norm-vs-candidate sensitivity.
+Scoring gravity belongs to the later biomarker/scoring policy. The current
+development policy keeps corrected-depth contribution at zero there, but that
+policy is intentionally not encoded as a normalization output field.
 
 ---
 
@@ -160,7 +160,6 @@ report.
         "enabled": bool,
         "output_family": str,
         "downstream_coordinate_mode": "norm" | "corrected_3d_hypothesis",
-        "feature_depth_gravity": float,
         "emit_sensitivity_report": bool,
         "support_pair": list[str],
         "used_for_features_or_scores": bool,
@@ -177,11 +176,14 @@ normalization report.
 ```python
 {
     "enabled": bool,
-    "status": "skipped" | "applied" | "partial" | "rejected",
+    "candidate_available": bool,
+    "candidate_confidence": "not_available" | "high" | "moderate" | "low",
+    "burden_level": "none" | "low" | "moderate" | "high",
     "coordinate_mode": "norm",
     "output_prefix": "canon",
     "report_only": bool,
     "downstream_coordinate_mode": "norm" | "canon",
+    "status": "disabled" | "skipped" | "applied" | "partial" | "rejected",
     "active_priors": list[str],
     "applied_priors": list[str],
     "skipped_priors": dict[str, str],
@@ -200,6 +202,35 @@ normalization report.
     },
 }
 ```
+
+The public canonicalization summary should prefer `candidate_available`,
+`candidate_confidence`, and `burden_level`. The legacy `status` and prior-level
+statuses remain as debugging/provenance fields so earlier reports can still be
+interpreted, but they are not the primary readiness surface after prototype
+review. Score gravity and final-score contribution flags are intentionally absent
+from ⑤ Normalization reports.
+
+Routine notebook review should show a prior evidence table rather than prior
+counts. The table is derived from `canonicalization_report.prior_reports` and the
+active `CanonicalizationConfig`:
+
+```text
+prior_id
+configured_on
+candidate_available
+confidence
+burden_level
+reason
+key_metric
+```
+
+`configured_on` comes from each prior config's `enabled` flag.
+`candidate_available` is true when the prior report status is `applied` or
+`warning`. `reason` should be a short human-readable status or confidence-note
+summary. `key_metric` should expose the most relevant prior-specific diagnostic,
+such as support anchor frames, movement rotation/residual, or protocol camera
+height match. Prior counts may remain derivable from full provenance, but they
+are not the primary review surface.
 
 `data_confidence.level` is not a movement-quality score. Low confidence should
 surface as caution, withholding, or provenance rather than automatic score
@@ -221,7 +252,7 @@ Current active or planned priors:
 |---|---|---|---|
 | `support_plane_alignment` | implemented, disabled by default | Pose-internal pseudo-floor/support-plane review from support-contact landmarks. Wraps the older `floor_relative_correction` logic. | Does not lock feet to the floor; not camera calibration. |
 | `movement_plane_alignment` | prototype, disabled by default | Capped rigid rotation around the vertical axis using the dominant hip-knee-ankle movement direction. | Preserves out-of-plane residuals for compensation review. |
-| `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Not lens correction, reprojection, or far-side coordinate invention. |
+| `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Zero-gravity scoring candidate; not lens correction, reprojection, or far-side coordinate invention. |
 | `anthropometric_skeleton_prior` | planned, disabled by default | Uses loose body-segment length plausibility ranges as an engineering envelope for monocular-depth review. | Not empirical P5/P95 until raw row-level data are available; not skeleton template fitting. |
 
 Current prior order:
@@ -337,7 +368,7 @@ norm_vs_corrected_sensitivity_report
   corrected-3D-hypothesis use.
 
 readiness_provenance
-  Score-exclusion, availability, confidence, status, and rejection reasons.
+  Candidate availability, confidence, status, and rejection reasons.
 ```
 
 The burden ledger must contain at least:
@@ -375,7 +406,6 @@ correction_burden
 residual
 availability
 confidence
-used_for_score = false
 ```
 
 Promotion gates:
@@ -385,8 +415,8 @@ Promotion gates:
 2. No candidate is emitted without burden and residual reports.
 3. No feature may consume a candidate unless its evaluation_domain is declared as
    corrected_3d_hypothesis or dual_domain_compare.
-4. While feature_depth_gravity = 0.0, every corrected candidate remains
-   score-excluded even if a sensitivity report is present.
+4. Normalization must not decide score gravity or final-score contribution.
+   It emits only candidate evidence for the later scoring policy.
 5. A correction step must be rejected or marked not_assessed when it worsens a
    configured hard residual gate such as support width, bend-side consistency, or
    support-surface plausibility.
@@ -402,15 +432,16 @@ Minimum implementation target for the first module extraction:
 module path      src/movement/stages/corrected_3d_hypothesis.py
 primary function build_corrected_3d_hypothesis_candidates(...)
 return object    Corrected3DHypothesisResult
-default mode     report_only, downstream_coordinate_mode = norm
+default mode     candidate evidence only, downstream_coordinate_mode = norm
 first feature    candidate.support_width_stability sensitivity only
 ```
 
 ### 5.3 First Sensitivity Target: `candidate.support_width_stability`
 
-The first code-backed sensitivity target is a report-only comparison of support
-width stability. It does not create corrected coordinates. It only compares an
-existing candidate coordinate family with the base `norm` family.
+The first code-backed sensitivity target is a candidate-evidence comparison of
+support width stability. It does not create corrected coordinates.
+It only compares an existing candidate coordinate family with the base `norm`
+family.
 
 Definition:
 
@@ -442,13 +473,13 @@ correction_burden
 residual
 availability
 confidence
-used_for_score = false
 ```
 
 `correction_burden` is taken from the supplied burden ledger when available. A
 missing ledger makes the row `low_confidence` even if candidate columns are
-present. High burden or non-finite values keep the row report-only and can lower
-availability to `low_confidence` or `not_assessed`.
+present. High burden or non-finite values keep the row as low-confidence
+candidate evidence and can lower availability to `low_confidence` or
+`not_assessed`.
 
 ### 5.4 Pipeline Review Surface
 
@@ -464,28 +495,25 @@ When `normalization.corrected_3d_hypothesis.enabled = true` and
         "norm_vs_corrected_sensitivity_report": list[dict],
         "num_sensitivity_rows": int,
         "readiness_provenance": {
-            "status": "report_only",
+            "status": "candidate_evidence",
             "used_for_features_or_scores": False,
             "downstream_coordinate_mode": "norm",
-            "feature_depth_gravity": float,
         },
     }
 }
 ```
 
-This block is a review surface only. It must not alter `df`, downstream
-coordinate mode, feature extraction, biomechanical proxies, biomarker records, or
-scores. If the configured candidate family columns are absent, the sensitivity
-row is still emitted as `not_assessed` so the reason is visible in the report.
-`readiness_provenance.feature_depth_gravity` records the configured gate value for
-review provenance; it does not by itself promote corrected candidates into
-feature or score computation.
+This block is a candidate-evidence surface. It must not alter `df`, downstream
+coordinate mode, feature extraction, biomechanical proxies, biomarker records,
+or final scores. If the configured candidate family columns are absent, the
+sensitivity row is still emitted as `not_assessed` so the reason is visible in
+the report. Score gravity is intentionally deferred to the later scoring policy.
 
 ### 5.5 Multi-Recording / Multi-Exercise Sensitivity Surface
 
 Multi-recording review starts by aggregating already generated pipeline reports.
 The aggregation helper reads `corrected_3d_hypothesis_review` blocks and returns
-grouped report-only rows. Required grouping fields:
+grouped candidate-evidence rows. Required grouping fields:
 
 ```text
 feature_id
@@ -499,14 +527,13 @@ median_norm_value
 median_corrected_candidate_value
 median_delta_abs
 max_correction_burden
-used_for_score = false
 ```
 
-The summary does not decide whether a feature is ready for scoring. It only shows
-whether enough recordings exist to review stability, availability, burden, and
-norm-vs-candidate sensitivity. Raising `feature_depth_gravity` above `0.0`
-remains deferred until this summary is reviewed across multiple recordings and
-exercises.
+The summary does not decide whether a feature should affect the final score. It
+only shows whether enough recordings exist to review stability, availability,
+burden, and norm-vs-candidate sensitivity. Assigning nonzero score gravity
+remains deferred to a later scoring-policy task after this summary is reviewed
+across multiple recordings and exercises.
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder
@@ -526,7 +553,7 @@ Allowed uses:
 
 ```text
 - flag segment lengths that are anatomically implausible after normalization
-- create review-only candidate depth residual corrections when bounded and small
+- create candidate depth residual evidence when bounded and small
 - downgrade data confidence for affected segment/frame/feature records
 - document why a depth-sensitive feature is withheld or marked low confidence
 ```
@@ -566,7 +593,7 @@ Two-stage evidence model:
 
 | Stage | Data level | Allowed claim | Use |
 |---|---|---|---|
-| Stage A | file design + aggregate statistics | conservative engineering range around aggregate ratios | plausibility flag, low-confidence marking, review-only candidate residual |
+| Stage A | file design + aggregate statistics | conservative engineering range around aggregate ratios | plausibility flag, low-confidence marking, candidate residual evidence |
 | Stage B | de-identified row-level 3D full-body automatic raw data | empirical row-level ratio distribution, P1/P99, P5/P95, stratified checks | narrower prior, height-bin validation, model comparison |
 
 ### 6.3 Aggregate-Only Segment Map
@@ -717,8 +744,9 @@ unit = dimensionless_ratio
 - Downstream features must declare `recording_view_only`,
   `corrected_3d_hypothesis`, or `dual_domain_compare` before using corrected
   coordinates.
-- Corrected-3D-hypothesis coordinates are score-excluded while
-  `feature_depth_gravity = 0.0`.
+- Corrected-3D-hypothesis coordinates remain candidate evidence in ⑤. The later
+  scoring policy decides any score gravity; the current development plan keeps
+  corrected-depth contribution at zero there.
 - Corrected-coordinate magnitude and residuals are data-confidence/provenance
   signals, not movement-quality penalties.
 - ④ Preprocessing may mark reliability violations before scale computation, but
@@ -739,7 +767,7 @@ unit = dimensionless_ratio
   measurements become available.
 - Visibility-weighted scale estimation and torso-length outlier handling.
 - Per-exercise canonicalization prior selection from exercise definition fields.
-- Robustness evaluation before any corrected coordinate is used for scoring or
-  before `feature_depth_gravity` is raised above `0.0`.
+- Robustness evaluation before any corrected coordinate receives nonzero score
+  gravity in a later scoring policy.
 - Gradual de-emphasis of the legacy `floor_relative_correction` key once local
   configs no longer depend on it.

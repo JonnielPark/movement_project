@@ -184,6 +184,47 @@ def _confidence_level(
     return {"level": level, "reasons": reasons}
 
 
+def _canonicalization_burden_level(
+    *,
+    max_correction: float,
+    config: CanonicalizationDataConfidenceConfig,
+) -> str:
+    if not np.isfinite(max_correction) or max_correction <= 0.0:
+        return "none"
+    if max_correction >= config.correction_magnitude_fail_torso:
+        return "high"
+    if max_correction >= config.correction_magnitude_warn_torso:
+        return "moderate"
+    return "low"
+
+
+def _canonicalization_candidate_summary(
+    *,
+    status: str,
+    max_correction: float,
+    data_confidence: dict[str, Any],
+    config: CanonicalizationDataConfidenceConfig,
+) -> dict[str, Any]:
+    candidate_available = status in {"applied", "partial"}
+    candidate_confidence = (
+        str(data_confidence.get("level", "not_available"))
+        if candidate_available
+        else "not_available"
+    )
+    return {
+        "candidate_available": candidate_available,
+        "candidate_confidence": candidate_confidence,
+        "burden_level": (
+            _canonicalization_burden_level(
+                max_correction=max_correction,
+                config=config,
+            )
+            if candidate_available
+            else "none"
+        ),
+    }
+
+
 def _series_from_column_data(values: Any, index: pd.Index) -> pd.Series:
     return pd.Series(values, index=index).astype(float)
 
@@ -903,8 +944,16 @@ def _apply_protocol_height_lateral_width_alignment(
 
 
 def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]:
+    data_confidence = {"level": "high", "reasons": []}
+    candidate_summary = _canonicalization_candidate_summary(
+        status=status,
+        max_correction=0.0,
+        data_confidence=data_confidence,
+        config=config.data_confidence,
+    )
     return {
         "enabled": config.enabled,
+        **candidate_summary,
         "status": status,
         "coordinate_mode": config.coordinate_mode,
         "output_prefix": config.output_prefix,
@@ -916,7 +965,7 @@ def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]
         "max_correction_torso": 0.0,
         "median_correction_torso": 0.0,
         "residual_after_fit_torso": None,
-        "data_confidence": {"level": "high", "reasons": []},
+        "data_confidence": data_confidence,
         "prior_reports": {
             "support_plane_alignment": None,
             "movement_plane_alignment": None,
@@ -1137,9 +1186,16 @@ def apply_canonicalization(
         if config.data_confidence.emit
         else {"level": "not_emitted", "reasons": []}
     )
+    candidate_summary = _canonicalization_candidate_summary(
+        status=status,
+        max_correction=max_correction,
+        data_confidence=data_confidence,
+        config=config.data_confidence,
+    )
 
     report = {
         "enabled": True,
+        **candidate_summary,
         "status": status,
         "coordinate_mode": config.coordinate_mode,
         "output_prefix": config.output_prefix,
@@ -1158,6 +1214,15 @@ def apply_canonicalization(
     }
 
     canonical_columns["canonicalization_valid"] = status in {"applied", "partial"}
+    canonical_columns["canonicalization_candidate_available"] = candidate_summary[
+        "candidate_available"
+    ]
+    canonical_columns["canonicalization_candidate_confidence"] = candidate_summary[
+        "candidate_confidence"
+    ]
+    canonical_columns["canonicalization_burden_level"] = candidate_summary[
+        "burden_level"
+    ]
     canonical_columns["canonicalization_status"] = status
     canonical_columns["canonicalization_confidence"] = data_confidence["level"]
     canonical_columns["canonicalization_note"] = "; ".join(confidence_notes)

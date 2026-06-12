@@ -1,7 +1,7 @@
 # 01. Validation
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.2.0
+**Last Updated:** 2026-06-12
 **Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
 Pipeline step ① checks structural integrity of input pose data. It does not
@@ -46,12 +46,14 @@ report = run_basic_validation(
 Report top-level keys:
 
 ```text
-passed
+passed                  structural pass/fail only
+structural_passed       same blocking decision, explicit for readability
 required_columns
 frame_continuity
 timestamp
 missing_values
 visibility     # only when visibility columns are provided
+warnings
 ```
 
 ## 4. Policy
@@ -64,6 +66,11 @@ noisy trajectories  handled later by ④ smoothing
 low visibility      handled later by reliability gates
 failed validation   manual-review signal, not automatic discard
 ```
+
+Visibility quality is warning/provenance only. A low-visibility report may set
+`visibility.passed = false`, but it does not make the top-level `passed` value
+false by itself. Downstream reliability gates decide whether individual frames,
+landmarks, features, or proxy records are usable.
 
 ## 5. Thresholds
 
