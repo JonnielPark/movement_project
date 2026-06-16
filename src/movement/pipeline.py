@@ -7,15 +7,15 @@ Documented analysis stages:
     ③ exercise_definition    biomechanical property object loading
     ④ preprocessing          monocular data quality correction
     ⑤ normalization          body-relative coordinate normalization
-       canonicalization optional analysis-space alignment
-    ⑥ segmentation           semi-automatic rep splitting + intra-rep phase splitting
-    ⑦ motion_attribution     per-rep active-side consistency
-    ⑧ features               spatial / temporal / control feature extraction
-    ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
-    ⑩ biomarker              interpretable digital biomarkers with provenance
+    ⑥ canonicalization       optional analysis-space candidate evidence
+    ⑦ segmentation           semi-automatic rep splitting + intra-rep phase splitting
+    ⑧ motion_attribution     per-rep active-side consistency
+    ⑨ features               spatial / temporal / control feature extraction
+    ⑩ biomech                biomechanical proxy modeling (CoM, moment arm)
+    ⑪ biomarker              interpretable digital biomarkers with provenance
 
-The current runner supports implemented stages ①–⑩; optional canonicalization
-remains disabled unless explicitly enabled.
+The current runner supports implemented stages ①–⑪; canonicalization remains
+disabled unless explicitly enabled.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from movement.stages.validation import run_basic_validation
 from movement.stages.canonicalization import (
     CanonicalizationConfig,
     CanonicalizationDataConfidenceConfig,
+    Corrected3DHypothesisConfig,
     MovementPlaneAlignmentConfig,
     ProtocolHeightLateralWidthAlignmentConfig,
     apply_canonicalization,
@@ -192,25 +193,11 @@ class PreprocessingConfig:
 
 
 @dataclass
-class Corrected3DHypothesisConfig:
-    enabled: bool = False
-    output_family: str = "corrected_3d_hypothesis"
-    downstream_coordinate_mode: str = "norm"
-    emit_sensitivity_report: bool = True
-    support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
-    report_burden_before_feature_use: bool = True
-    require_feature_domain_declaration: bool = True
-
-
-@dataclass
 class NormalizationConfig:
     enabled: bool = True
     method: str = "hip_torso"
     keep_reference_columns: bool = True
     model_depth_scale: float = 1.0
-    corrected_3d_hypothesis: Corrected3DHypothesisConfig = field(
-        default_factory=Corrected3DHypothesisConfig
-    )
 
 
 @dataclass
@@ -410,15 +397,23 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sm = pre.get("smoothing", {})
     fss = pre.get("far_side_stabilization", {})
     nor = raw.get("normalization", {})
-    corrected_3d = nor.get("corrected_3d_hypothesis", {}) or {}
-    can = nor.get("canonicalization", {})
+    can = raw.get("canonicalization", nor.get("canonicalization", {})) or {}
+    corrected_3d = (
+        can.get(
+            "corrected_3d_hypothesis",
+            nor.get("corrected_3d_hypothesis", {}),
+        )
+        or {}
+    )
     can_conf = can.get("data_confidence", {})
     can_support = can.get("support_plane_alignment", {})
     can_movement = can.get("movement_plane_alignment", {})
     can_protocol_height = can.get("protocol_height_lateral_width_alignment", {}) or {}
-    # floor_relative_correction belongs to the normalization family in YAML. The top-level key remains
-    # a backward-compatible fallback for older local configs.
-    frc = nor.get("floor_relative_correction", raw.get("floor_relative_correction", {}))
+    # floor_relative_correction is a legacy alias for the ⑥ support-plane prior.
+    frc = can.get(
+        "floor_relative_correction",
+        nor.get("floor_relative_correction", raw.get("floor_relative_correction", {})),
+    )
     support_alias = can_support or frc
     rsg = raw.get("rep_segmentation", {})
     psg = raw.get("phase_segmentation", {})
@@ -510,34 +505,6 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
             model_depth_scale=float(nor.get("model_depth_scale", 1.0)),
-            corrected_3d_hypothesis=Corrected3DHypothesisConfig(
-                enabled=bool(corrected_3d.get("enabled", False)),
-                output_family=str(
-                    corrected_3d.get("output_family", "corrected_3d_hypothesis")
-                ),
-                downstream_coordinate_mode=str(
-                    corrected_3d.get("downstream_coordinate_mode", "norm")
-                ),
-                emit_sensitivity_report=bool(
-                    corrected_3d.get("emit_sensitivity_report", True)
-                ),
-                support_pair=tuple(
-                    str(item)
-                    for item in (
-                        corrected_3d.get(
-                            "support_pair",
-                            ["left_ankle", "right_ankle"],
-                        )
-                        or []
-                    )
-                ),
-                report_burden_before_feature_use=bool(
-                    corrected_3d.get("report_burden_before_feature_use", True)
-                ),
-                require_feature_domain_declaration=bool(
-                    corrected_3d.get("require_feature_domain_declaration", True)
-                ),
-            ),
         ),
         canonicalization=CanonicalizationConfig(
             enabled=bool(can.get("enabled", False)),
@@ -605,6 +572,34 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             ),
             protocol_height_lateral_width_alignment=(
                 _protocol_height_lateral_width_alignment_config(can_protocol_height)
+            ),
+            corrected_3d_hypothesis=Corrected3DHypothesisConfig(
+                enabled=bool(corrected_3d.get("enabled", False)),
+                output_family=str(
+                    corrected_3d.get("output_family", "corrected_3d_hypothesis")
+                ),
+                downstream_coordinate_mode=str(
+                    corrected_3d.get("downstream_coordinate_mode", "norm")
+                ),
+                emit_sensitivity_report=bool(
+                    corrected_3d.get("emit_sensitivity_report", True)
+                ),
+                support_pair=tuple(
+                    str(item)
+                    for item in (
+                        corrected_3d.get(
+                            "support_pair",
+                            ["left_ankle", "right_ankle"],
+                        )
+                        or []
+                    )
+                ),
+                report_burden_before_feature_use=bool(
+                    corrected_3d.get("report_burden_before_feature_use", True)
+                ),
+                require_feature_domain_declaration=bool(
+                    corrected_3d.get("require_feature_domain_declaration", True)
+                ),
             ),
         ),
         floor_relative_correction=FloorRelativeCorrectionConfig(
@@ -798,31 +793,10 @@ def run_pipeline(
             landmarks=landmarks,
             keep_reference_columns=config.normalization.keep_reference_columns,
             model_depth_scale=config.normalization.model_depth_scale,
-            corrected_3d_hypothesis={
-                "enabled": config.normalization.corrected_3d_hypothesis.enabled,
-                "output_family": (
-                    config.normalization.corrected_3d_hypothesis.output_family
-                ),
-                "downstream_coordinate_mode": (
-                    config.normalization.corrected_3d_hypothesis.downstream_coordinate_mode
-                ),
-                "emit_sensitivity_report": (
-                    config.normalization.corrected_3d_hypothesis.emit_sensitivity_report
-                ),
-                "support_pair": list(
-                    config.normalization.corrected_3d_hypothesis.support_pair
-                ),
-                "report_burden_before_feature_use": (
-                    config.normalization.corrected_3d_hypothesis.report_burden_before_feature_use
-                ),
-                "require_feature_domain_declaration": (
-                    config.normalization.corrected_3d_hypothesis.require_feature_domain_declaration
-                ),
-            },
         )
         report["normalization"] = norm_report
 
-    # ── ⑤ Optional Canonicalization ──────────────────────────────────────────
+    # ── ⑥ Canonicalization ──────────────────────────────────────────────────
     if config.canonicalization.enabled:
         canonicalization_config = config.canonicalization
         protocol_height_config = (
@@ -853,22 +827,19 @@ def run_pipeline(
             config=canonicalization_config,
         )
         report["canonicalization"] = canonicalization_report
-        report.setdefault("normalization", {})[
-            "canonicalization_report"
-        ] = canonicalization_report
 
         if (
             not canonicalization_config.report_only
             and canonicalization_config.downstream_coordinate_mode == "canon"
         ):
             warnings.warn(
-                "[Step ⑤] downstream_coordinate_mode='canon' is recorded but "
+                "[Step ⑥] downstream_coordinate_mode='canon' is recorded but "
                 "downstream stages still read their documented normalized "
                 "coordinate inputs in this implementation pass.",
                 stacklevel=2,
             )
 
-    # ── ⑤ Legacy Normalization Filter: Floor-Relative Correction ─────────────
+    # ── ⑥ Legacy Canonicalization Alias: Floor-Relative Correction ───────────
     if not config.canonicalization.enabled and config.floor_relative_correction.enabled:
         from movement.stages.floor_reference import (
             FloorReferenceConfig,
@@ -908,9 +879,9 @@ def run_pipeline(
         )
         report["floor_relative_correction"] = floor_report.as_dict()
 
-    corrected_policy = config.normalization.corrected_3d_hypothesis
+    corrected_policy = config.canonicalization.corrected_3d_hypothesis
     if (
-        config.normalization.enabled
+        config.canonicalization.enabled
         and corrected_policy.enabled
         and corrected_policy.emit_sensitivity_report
     ):
@@ -933,14 +904,14 @@ def run_pipeline(
         )
         review_dict = corrected_review.as_dict()
         report["corrected_3d_hypothesis_review"] = review_dict
-        report.setdefault("normalization", {}).setdefault(
+        report.setdefault("canonicalization", {}).setdefault(
             "corrected_3d_hypothesis", {}
         )["review_status"] = review_dict["readiness_provenance"]["status"]
 
-    # ── ⑥ Segmentation: Rep Boundaries ───────────────────────────────────────
+    # ── ⑦ Segmentation: Rep Boundaries ───────────────────────────────────────
     if config.rep_segmentation.enabled:
         if exercise_def is None:
-            print("[Step ⑥] Rep Segmentation: exercise_def not available — skipped.")
+            print("[Step ⑦] Rep Segmentation: exercise_def not available — skipped.")
         else:
             from movement.stages.segmentation import segment_reps
 
@@ -952,17 +923,17 @@ def run_pipeline(
             report["rep_segmentation"] = rep_report.as_dict()
             if rep_report.status == "skipped":
                 print(
-                    f"[Step ⑥] Rep Segmentation: exercise "
+                    f"[Step ⑦] Rep Segmentation: exercise "
                     f"'{exercise_def.exercise_id}' has no rep_segmentation block — skipped."
                 )
 
-    # ── ⑥ Segmentation: Intra-Rep Phases ─────────────────────────────────────
+    # ── ⑦ Segmentation: Intra-Rep Phases ─────────────────────────────────────
     if config.phase_segmentation.enabled:
         if exercise_def is None:
-            print("[Step ⑥] Phase Segmentation: exercise_def not available — skipped.")
+            print("[Step ⑦] Phase Segmentation: exercise_def not available — skipped.")
         elif getattr(exercise_def, "phase_segmentation", None) is None:
             print(
-                f"[Step ⑥] Phase Segmentation: exercise '{exercise_def.exercise_id}' "
+                f"[Step ⑦] Phase Segmentation: exercise '{exercise_def.exercise_id}' "
                 "has no phase_segmentation block — skipped."
             )
         else:
@@ -970,7 +941,7 @@ def run_pipeline(
                 "segment_type" in df.columns and (df["segment_type"] == "rep").any()
             )
             if not _has_reps:
-                print("[Step ⑥] Phase Segmentation: no rep frames found — skipped.")
+                print("[Step ⑦] Phase Segmentation: no rep frames found — skipped.")
             else:
                 from movement.stages.segmentation import segment_phases
 
@@ -981,9 +952,9 @@ def run_pipeline(
                 )
                 report["phase_segmentation"] = [r.as_dict() for r in phase_reports]
     else:
-        pass  # ⑥ disabled — phase column stays NA (set by ② Annotation)
+        pass  # ⑦ disabled — phase column stays NA (set by ② Annotation)
 
-    # ── ⑦ Motion Attribution ─────────────────────────────────────────────────
+    # ── ⑧ Motion Attribution ─────────────────────────────────────────────────
     if config.motion_attribution.enabled:
         from movement.stages.motion_attribution import (
             AttributionThresholds,
@@ -996,7 +967,7 @@ def run_pipeline(
             swap=config.motion_attribution.tau_swap,
         )
         if exercise_def is None:
-            print("[Step ⑦] Motion Attribution: exercise_def not available — skipped.")
+            print("[Step ⑧] Motion Attribution: exercise_def not available — skipped.")
         else:
             df, attr_report = attribute_motion(
                 df=df,
@@ -1006,7 +977,7 @@ def run_pipeline(
             )
             report["motion_attribution"] = attr_report.as_dict()
 
-    # ── ⑧ Feature Extraction ─────────────────────────────────────────────────
+    # ── ⑨ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
         from movement.features import (
@@ -1016,7 +987,7 @@ def run_pipeline(
         )
 
         if exercise_def is None:
-            print("[Step ⑧] Feature Extraction: exercise_def not available — skipped.")
+            print("[Step ⑨] Feature Extraction: exercise_def not available — skipped.")
         else:
             coverage_report = audit_feature_registry(exercise_def)
             report["feature_registry_coverage"] = coverage_report.as_dict()
@@ -1044,11 +1015,11 @@ def run_pipeline(
                 for r in feat_records
             ]
 
-    # ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────
+    # ── ⑩ Biomechanical Proxy Modeling ───────────────────────────────────────
     biomech_records: list[Any] = []
     if config.biomech.enabled:
         if exercise_def is None:
-            print("[Step ⑨] Biomech Proxy: exercise_def not available — skipped.")
+            print("[Step ⑩] Biomech Proxy: exercise_def not available — skipped.")
         else:
             from movement.biomech import extract_rep_biomech
 
@@ -1070,11 +1041,11 @@ def run_pipeline(
                 for r in biomech_records
             ]
 
-    # ── ⑩ Biomarker Derivation ────────────────────────────────────────────────
+    # ── ⑪ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
         if exercise_def is None:
             print(
-                "[Step ⑩] Biomarker Derivation: exercise_def not available — skipped."
+                "[Step ⑪] Biomarker Derivation: exercise_def not available — skipped."
             )
         else:
             from movement.biomarker.scoring import derive_biomarkers

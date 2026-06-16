@@ -1,5 +1,5 @@
 """
-⑥ Segmentation (semi-automatic)
+⑦ Segmentation (semi-automatic)
 
 Confirms repetition boundaries with the exercise definition's `rep_segmentation`
 block, then splits each confirmed rep into kinematic phases (e.g., Descent /
@@ -12,7 +12,7 @@ Output : the same dataframe with the `phase` column populated for rows where
          `segment_type == 'rep'`. Rows outside reps are left as NA.
          Expert-provided phase values (non-NA on entry) are never overwritten.
 
-Pipeline position: after optional floor-relative normalization filter, before ⑦ Motion Attribution.
+Pipeline position: after ⑥ Canonicalization, before ⑧ Motion Attribution.
 
 Phase labels are kinematic (trajectory-based), not kinetic (muscle-action-based).
 They describe the reference-landmark trajectory direction, not muscle activation
@@ -725,7 +725,7 @@ def segment_phases(
 
     if "segment_type" not in df.columns or "rep_id" not in df.columns:
         warnings.warn(
-            "[Step ⑥] Phase Segmentation: annotation columns (segment_type, rep_id) "
+            "[Step ⑦] Phase Segmentation: annotation columns (segment_type, rep_id) "
             "not found — skipped.",
             stacklevel=2,
         )

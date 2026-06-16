@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from movement.exercise_definition import load_exercise_definition
+from movement.exercise_definition import load_exercise_context, load_exercise_definition
 from movement.pipeline import (
     ExerciseDefinitionConfig,
     NormalizationConfig,
@@ -15,14 +15,13 @@ from movement.pipeline import (
 
 
 DEFINITIONS_DIR = Path("data/definitions/exercises")
-ANALYSIS_DIR = Path("data/definitions/analysis_profiles")
 PERFORMANCE_DIR = Path("data/protocols/performance")
 CAMERA_DIR = Path("data/protocols/camera")
 
 
 def _write_modified_squat(tmp_path: Path, **camera_updates: object) -> None:
     raw = yaml.safe_load((DEFINITIONS_DIR / "squat.yaml").read_text(encoding="utf-8"))
-    analysis = yaml.safe_load((ANALYSIS_DIR / "squat.yaml").read_text(encoding="utf-8"))
+    analysis = load_exercise_context("squat", DEFINITIONS_DIR).analysis_profile
     performance = yaml.safe_load(
         (PERFORMANCE_DIR / "squat.yaml").read_text(encoding="utf-8")
     )

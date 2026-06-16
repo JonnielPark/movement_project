@@ -1,18 +1,16 @@
-# 05 Normalization — p01 Squat Review Parameter Snapshot
+# 06 Canonicalization — p01 Squat Review Parameter Snapshot
 
 **Version:** 0.1.0  
-**Last Updated:** 2026-06-10  
-**Status:** historical review snapshot, not an executable pipeline profile.
+**Last Updated:** 2026-06-16  
+**Status:** 과거 review snapshot이며 실행 가능한 pipeline profile이 아니다.
 
-This file preserves the key parameters from the retired
-`notebook_16_closed_chain_stance_corridor_review` profile. The original YAML was
-used to review the p01 squat corrected-3D-hypothesis candidate surface. It is no
-longer kept under `configs/pipeline_runs/` because retired review settings must
-not look like active or dormant pipeline branches.
+이 파일은 제거된 `notebook_16_closed_chain_stance_corridor_review` profile의 핵심 파라미터를
+보존한다. 원래 YAML은 p01 squat corrected-3D-hypothesis candidate surface를 검토하는 데
+사용했다. Retired review setting이 active 또는 dormant pipeline branch처럼 보이면 안 되므로
+`configs/pipeline_runs/` 아래에는 더 이상 두지 않는다.
 
-The snapshot is for reproducibility of research reasoning only. It does not make
-corrected coordinates a ground truth, a good-movement template, calibrated 3D, or
-a scoring input.
+이 snapshot은 연구 판단의 재현성을 위한 기록이다. 보정 좌표가 ground truth, 좋은 동작 template,
+calibrated 3D, 또는 scoring input이라는 뜻이 아니다.
 
 ## 1. Review Boundary
 
@@ -20,7 +18,7 @@ a scoring input.
 profile:
   name: notebook_16_closed_chain_stance_corridor_review
   mode: notebook_review
-  description: p01 squat normalization review for the promoted corrected-3D-hypothesis candidate stack
+  description: p01 squat canonicalization review for the promoted corrected-3D-hypothesis candidate stack
 
 recording_context:
   observed_camera_zone: Z8
@@ -35,9 +33,8 @@ participant:
   common_subject_skeleton_profile_id: male_175cm
 ```
 
-Input pose/video paths are intentionally omitted from this snapshot. The review
-parameters below are the part that should survive after the notebook 16 review
-surface is removed from the public path.
+Input pose/video path는 이 snapshot에서 의도적으로 제외한다. Notebook 16 review surface를 public
+path에서 제거한 뒤에도 남아야 할 부분은 아래 보정/검토 파라미터다.
 
 ## 2. Pipeline Overrides
 
@@ -57,11 +54,12 @@ preprocessing:
 
 normalization:
   model_depth_scale: 0.5
+
+canonicalization:
   corrected_3d_hypothesis:
     enabled: true
     output_family: rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory
     downstream_coordinate_mode: norm
-    feature_depth_gravity: 0.0
     report_burden_before_feature_use: true
     require_feature_domain_declaration: true
 ```
@@ -404,4 +402,3 @@ scene_camera:
   top_down_eye: {x: 0.0, y: 0.0, z: 2.6}
   top_down_up: {x: 0.0, y: 1.0, z: 0.0}
 ```
-

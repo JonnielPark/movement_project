@@ -44,7 +44,7 @@ def test_model_depth_scale_attenuates_norm_z_only():
     assert out.loc[0, "left_knee_norm_z"] == 1.0
 
 
-def test_corrected_3d_hypothesis_policy_defaults_to_candidate_evidence_only():
+def test_normalization_report_does_not_define_corrected_3d_policy():
     df = pd.DataFrame(
         {
             "left_hip_x": [0.0],
@@ -65,19 +65,8 @@ def test_corrected_3d_hypothesis_policy_defaults_to_candidate_evidence_only():
     _, report = normalize_pose_by_hip_torso(
         df,
         landmarks=["left_hip", "right_hip", "left_shoulder", "right_shoulder"],
-        corrected_3d_hypothesis={
-            "enabled": True,
-            "output_family": "rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory",
-        },
     )
 
-    policy = report["corrected_3d_hypothesis"]
-    assert policy["enabled"] is True
-    assert policy["output_family"] == (
-        "rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory"
-    )
-    assert policy["used_for_features_or_scores"] is False
-    assert policy["depth_evidence_policy"] == "candidate_evidence_only"
-    assert "feature_depth_gravity" not in policy
-    assert "score_gravity" not in policy
-    assert "score_contribution_enabled" not in policy
+    assert "corrected_3d_hypothesis" not in report
+    assert "canonicalization_report" not in report
+    assert "score_gravity" not in report

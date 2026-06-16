@@ -27,7 +27,7 @@ Phase-level variants are emitted only for `spatial.rom`, `spatial.shape`, and
 the full rep trajectory.
 
 `spatial.symmetry.*` is interpreted only after the feature-availability gate in
-[08_feature_extraction.md](../pipeline/08_feature_extraction.md). A side-view
+[09_feature_extraction.md](../pipeline/09_feature_extraction.md). A side-view
 monocular rendering is not direct frontal evidence; unsupported symmetry features
 must be reported as `low_confidence` or `not_assessed`.
 
@@ -88,8 +88,8 @@ Pending candidates remain research notes, not hidden score components.
 ```text
 src/movement/features/
 data/definitions/clinical/feature_meanings.yaml
-docs_eng/pipeline/08_feature_extraction.md
-docs_eng/pipeline/10_biomarker_scoring.md
+docs_eng/pipeline/09_feature_extraction.md
+docs_eng/pipeline/11_biomarker_scoring.md
 ```
 
 When a feature family, unit, or interpretation boundary changes, update

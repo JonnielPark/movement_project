@@ -1,5 +1,5 @@
 """
-⑦ Motion Attribution
+⑧ Motion Attribution
 
 Compares per-rep observed motion energy against the expected active side
 (from annotation pattern / starting_side) and flags label consistency.
@@ -11,7 +11,7 @@ Activation by laterality:
     alternating          → per-rep attribution
     unilateral_*         → declared side is the expected active side
 
-Pipeline position: after ⑥ segmentation, before ⑧ feature extraction.
+Pipeline position: after ⑦ segmentation, before ⑨ feature extraction.
 Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
 Column convention: <landmark>_norm_x/y/z (normalized coordinates).
 """
@@ -351,7 +351,7 @@ def attribute_motion(
     custom_landmark_pairs: list[tuple[str, str]] | None = None,
 ) -> tuple[pd.DataFrame, AttributionReport]:
     """
-    ⑦ Motion Attribution
+    ⑧ Motion Attribution
 
     Computes per-rep motion energy and flags active-side label consistency.
 

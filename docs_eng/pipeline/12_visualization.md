@@ -1,10 +1,10 @@
-# 11. Visualization
+# 12. Visualization
 
 **Document Version:** 1.1.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/12_visualization.md` is the same-version Korean source.
 
-Pipeline step ⑪ is called outside the ①-⑩ runner. It renders pose data,
+Pipeline step ⑫ is called outside the ①-⑪ runner. It renders pose data,
 intermediate reports, features, biomech proxies, and biomarker outputs for
 diagnostic review and dissertation figures.
 
@@ -34,13 +34,14 @@ metrics.
 
 ```text
 ④ Preprocessing       reliability overlay and before/after quality views
-⑤ Normalization       raw/norm/canon comparison
-⑥ Segmentation        rep/phase boundaries and failure points
-⑦ Motion Attribution  active-side and correction logs
-⑧ Feature Extraction  joint angles, ROM, feature availability
-⑨ Biomech Proxy       CoM and moment-arm/load-shift proxies
-⑩ Biomarker Scoring   domain scores, deductions, withheld features
-⑫ Simulation          robustness sensitivity curves
+⑤ Normalization       raw/norm comparison
+⑥ Canonicalization    norm/canon/candidate comparison
+⑦ Segmentation        rep/phase boundaries and failure points
+⑧ Motion Attribution  active-side and correction logs
+⑨ Feature Extraction  joint angles, ROM, feature availability
+⑩ Biomech Proxy       CoM and moment-arm/load-shift proxies
+⑪ Biomarker Scoring   domain scores, deductions, withheld features
+⑬ Simulation          robustness sensitivity curves
 ```
 
 ---
@@ -123,10 +124,11 @@ Language                   Korean/English labels should be runtime-selectable la
 src/movement/reporting/visualization.py  implemented animations + planned stubs
 src/movement/core/utils.py               frame extraction, plot ranges,
                                          landmark-column validation
-notebook/03_raw_visualization_test.ipynb raw pose animation
-notebook/04_normalization_test.ipynb     raw/norm/canon review
-notebook/07_preprocessing_test.ipynb     reliability review
-notebook/10_feature_extraction_test.ipynb feature review
+notebook/setup_02_raw_visualization_test.ipynb raw pose animation
+notebook/04_preprocessing_test.ipynb     reliability review
+notebook/05_normalization_test.ipynb     raw/norm review
+notebook/06_canonicalization_test.ipynb  norm/canon candidate review
+notebook/09_feature_extraction_test.ipynb feature review
 ```
 
 ---

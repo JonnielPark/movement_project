@@ -1,12 +1,12 @@
-# 08. Feature Extraction
+# 09. Feature Extraction
 
 **Document Version:** 1.2.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/09_feature_extraction.md` is the same-version Korean source.
 
-Pipeline step ⑧ computes movement-quality features from normalized pose data. It
+Pipeline step ⑨ computes movement-quality features from normalized pose data. It
 does not modify pose coordinates. Every output is a `FeatureRecord` with numeric
-value, unit, `source_fields`, and availability/reliability metadata for ⑩
+value, unit, `source_fields`, and availability/reliability metadata for ⑪
 Biomarker Derivation.
 
 ---
@@ -14,9 +14,9 @@ Biomarker Derivation.
 ## 1. Pipeline Position
 
 ```text
-⑤ Normalization → ⑥ Segmentation → ⑦ Motion Attribution
-→ ⑧ Feature Extraction     ← this step
-→ ⑨ Biomech Proxy → ⑩ Biomarker Derivation
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation → ⑧ Motion Attribution
+→ ⑨ Feature Extraction     ← this step
+→ ⑩ Biomech Proxy → ⑪ Biomarker Derivation
 ```
 
 Required inputs:
@@ -24,7 +24,7 @@ Required inputs:
 ```text
 <landmark>_norm_x/y/z       normalized coordinates
 rep_id                      confirmed repetition labels
-phase                       optional phase labels from ⑥
+phase                       optional phase labels from ⑦
 exercise_definition         feature_domains, angle_definitions,
                             compensation_candidates, view_metric_reliability
 recording provenance        camera_zone, camera_height_level when available
@@ -75,8 +75,8 @@ control.*
     pelvis_rotation.
 ```
 
-`feature_domains.biomechanical_proxy` is routed to ⑨ Biomech Proxy, not consumed
-as a missing ⑧ extractor.
+`feature_domains.biomechanical_proxy` is routed to ⑩ Biomech Proxy, not consumed
+as a missing ⑨ extractor.
 
 ---
 
@@ -84,7 +84,7 @@ as a missing ⑧ extractor.
 
 Feature extraction may compute a numeric value even when the camera view or pose
 model does not support scoring that value. Therefore `FeatureRecord.availability`
-is the scoring gate for ⑩.
+is the scoring gate for ⑪.
 
 ```text
 assessed
@@ -105,7 +105,7 @@ view_reliability             exercise_definition.view_metric_reliability
 landmark_quality             visibility / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
-swap or far-side risk         from ④ Preprocessing and ⑦ Motion Attribution
+swap or far-side risk         from ④ Preprocessing and ⑧ Motion Attribution
 camera_zone                  from annotation or recording metadata
 role_context                 active/support/near/far side when available
 ```
@@ -123,7 +123,7 @@ raw anatomical left/right alone.
 
 ## 5. Phase-Aware Features
 
-When ⑥ provides a `phase` column, these families may emit both rep-level and
+When ⑦ provides a `phase` column, these families may emit both rep-level and
 phase-level records:
 
 ```text
@@ -177,7 +177,7 @@ preserving phase, availability, camera-zone, and provenance fields.
 
 ## 7. Audits
 
-⑧ may emit diagnostic audits beside the feature records.
+⑨ may emit diagnostic audits beside the feature records.
 
 ```text
 Feature registry coverage
@@ -213,19 +213,19 @@ feat_df = features_to_dataframe(records)
 
 ## 9. Relationship To Other Steps
 
-- ⑥ Segmentation provides `rep_id` and optional `phase`; missing phase labels
+- ⑦ Segmentation provides `rep_id` and optional `phase`; missing phase labels
   produce rep-level features only.
-- ⑦ Motion Attribution provides side/consistency context for role-aware features.
-- ⑨ Biomech Proxy consumes the same normalized coordinates but emits
+- ⑧ Motion Attribution provides side/consistency context for role-aware features.
+- ⑩ Biomech Proxy consumes the same normalized coordinates but emits
   `BiomechRecord`, not `FeatureRecord`.
-- ⑩ Biomarker Derivation wraps all features as pass-through biomarkers and uses
+- ⑪ Biomarker Derivation wraps all features as pass-through biomarkers and uses
   only `availability == assessed` features for composite scoring.
-- ⑫ Simulation may later use pose-detectable audit entries as perturbation
+- ⑬ Simulation may later use pose-detectable audit entries as perturbation
   candidates.
 
 ---
 
-## 10. Code Mapping
+## 11. Code Mapping
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
@@ -243,7 +243,7 @@ tests/test_features_phase_grouping.py    phase-level feature behavior
 
 ---
 
-## 11. Planned Extensions
+## 12. Planned Extensions
 
 - More compensation rules after source fields, visibility policy, and tests exist.
 - Per-feature landmark coverage instead of coarse preprocessing summaries.

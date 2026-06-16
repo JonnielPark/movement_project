@@ -14,8 +14,8 @@ Raw coordinates are preserved. Normalized coordinates are added as new columns:
     <landmark>_norm_y
     <landmark>_norm_z
 
-Pipeline position: after ④ preprocessing, before optional floor-relative normalization filter
-and ⑥ segmentation.
+Pipeline position: after ④ preprocessing, before ⑥ canonicalization and
+⑦ segmentation.
 """
 
 from typing import Any, Dict, List, Tuple
@@ -208,61 +208,12 @@ def compute_sequence_median_scale(
     return scale_value, report
 
 
-def build_corrected_3d_hypothesis_report(
-    enabled: bool = False,
-    output_family: str = "corrected_3d_hypothesis",
-    downstream_coordinate_mode: str = "norm",
-    emit_sensitivity_report: bool = True,
-    support_pair: List[str] | None = None,
-    report_burden_before_feature_use: bool = True,
-    require_feature_domain_declaration: bool = True,
-) -> Dict[str, Any]:
-    """
-    Build the normalization policy report for corrected-3D-hypothesis candidates.
-
-    Biomechanical meaning:
-        Corrected coordinates are low-confidence structure hypotheses for
-        burden, residual, and sensitivity evidence. Score gravity belongs to a
-        later scoring policy, not to normalization.
-    """
-    downstream_coordinate_mode = str(downstream_coordinate_mode)
-    if downstream_coordinate_mode not in {"norm", "corrected_3d_hypothesis"}:
-        raise ValueError(
-            "downstream_coordinate_mode must be 'norm' or " "'corrected_3d_hypothesis'."
-        )
-
-    output_family = str(output_family).strip()
-    if not output_family:
-        raise ValueError("output_family must be a non-empty string.")
-
-    support_pair = list(support_pair or ["left_ankle", "right_ankle"])
-    if len(support_pair) != 2:
-        raise ValueError("support_pair must contain exactly two landmarks.")
-
-    used_for_features_or_scores = bool(
-        enabled and downstream_coordinate_mode == "corrected_3d_hypothesis"
-    )
-
-    return {
-        "enabled": bool(enabled),
-        "output_family": output_family,
-        "downstream_coordinate_mode": downstream_coordinate_mode,
-        "emit_sensitivity_report": bool(emit_sensitivity_report),
-        "support_pair": [str(item) for item in support_pair],
-        "used_for_features_or_scores": used_for_features_or_scores,
-        "require_feature_domain_declaration": bool(require_feature_domain_declaration),
-        "report_burden_before_feature_use": bool(report_burden_before_feature_use),
-        "depth_evidence_policy": "candidate_evidence_only",
-    }
-
-
 def normalize_pose_by_hip_torso(
     df: pd.DataFrame,
     landmarks: List[str],
     min_scale: float = 1e-6,
     keep_reference_columns: bool = True,
     model_depth_scale: float = 1.0,
-    corrected_3d_hypothesis: Dict[str, Any] | None = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Normalize pose coordinates using hip-centered translation and
@@ -290,11 +241,6 @@ def normalize_pose_by_hip_torso(
     model_depth_scale:
         Multiplicative gain for translated model-depth residuals. Default 1.0
         preserves legacy behavior; values below 1.0 attenuate <landmark>_norm_z.
-    corrected_3d_hypothesis:
-        Optional report policy for a separate corrected-3D-hypothesis candidate
-        family. This function records the policy but does not create corrected
-        coordinates.
-
     Returns
     -------
     norm_df:
@@ -365,32 +311,6 @@ def normalize_pose_by_hip_torso(
             col for landmark in landmarks for col in _norm_coord_cols(landmark)
         ],
     }
-    corrected_policy = corrected_3d_hypothesis or {}
-    report["corrected_3d_hypothesis"] = build_corrected_3d_hypothesis_report(
-        enabled=bool(corrected_policy.get("enabled", False)),
-        output_family=corrected_policy.get(
-            "output_family",
-            "corrected_3d_hypothesis",
-        ),
-        downstream_coordinate_mode=corrected_policy.get(
-            "downstream_coordinate_mode",
-            "norm",
-        ),
-        emit_sensitivity_report=bool(
-            corrected_policy.get("emit_sensitivity_report", True)
-        ),
-        support_pair=corrected_policy.get(
-            "support_pair",
-            ["left_ankle", "right_ankle"],
-        ),
-        report_burden_before_feature_use=bool(
-            corrected_policy.get("report_burden_before_feature_use", True)
-        ),
-        require_feature_domain_declaration=bool(
-            corrected_policy.get("require_feature_domain_declaration", True)
-        ),
-    )
-
     report.update(scale_report)
 
     return result, report

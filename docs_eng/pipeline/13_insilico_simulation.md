@@ -1,10 +1,10 @@
-# 12. In-Silico Simulation
+# 13. In-Silico Simulation
 
 **Document Version:** 1.1.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/12_insilico_simulation.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/13_insilico_simulation.md` is the same-version Korean source.
 
-Pipeline step ⑫ is an external robustness harness. It injects controlled
+Pipeline step ⑬ is an external robustness harness. It injects controlled
 distortions into synthetic or reference pose data, reruns the analysis pipeline,
 and summarizes how metrics respond.
 
@@ -15,7 +15,7 @@ This is engineering verification, not clinical validation or diagnostic accuracy
 ## 1. Pipeline Position
 
 ```text
-Base pose sample → distortion copy → ①-⑩ pipeline replay → robustness summary
+Base pose sample → distortion copy → ①-⑪ pipeline replay → robustness summary
 ```
 
 Simulation is not invoked by `run_pipeline()`.
@@ -38,7 +38,7 @@ Allowed:
 distortion injection on a copy of the DataFrame
 log of applied condition and level
 metric responsiveness / monotonicity / specificity checks
-long-format outputs for ⑪ visualization
+long-format outputs for ⑫ visualization
 ```
 
 Not allowed:
@@ -111,7 +111,7 @@ scripts/run_robustness_experiment.py
     load config and base samples
     build condition grid
     apply each distortion
-    run ①-⑩ pipeline
+    run ①-⑪ pipeline
     collect FeatureRecord, BiomechRecord, BiomarkerScoreRecord summaries
     write long-format CSV and markdown summary
 ```

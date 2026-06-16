@@ -1,11 +1,11 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.5.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.6.0
+**최종 갱신:** 2026-06-16
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③은 `exercise_id`로 exercise YAML artifact를 로드하고 `ExerciseContext`를
-조립한 뒤, 후속 단계 ④-⑩이 사용하는 하위 호환 `ExerciseDefinition` 객체를 반환한다.
+조립한 뒤, 후속 단계 ④-⑪이 사용하는 하위 호환 `ExerciseDefinition` 객체를 반환한다.
 
 운동 정의는 동작이 무엇을 의미하는가를 기술한다. Annotation은 녹화 안에서 그 동작이 어디서
 발생했는가를 기술한다.
@@ -21,11 +21,12 @@ Pose CSV + annotation + exercise YAML artifacts
 → ③ Exercise Definition           ← 본 단계
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
-→ ⑥ Segmentation                  rep/phase settings
-→ ⑦ Motion Attribution            laterality, side_sequence
-→ ⑧ Feature Extraction            feature_domains, joint_actions
-→ ⑨ Biomech Proxy                 biomechanical_focus
-→ ⑩ Biomarker Derivation          compensation_candidates
+→ ⑥ Canonicalization              coordinate-candidate priors
+→ ⑦ Segmentation                  rep/phase settings
+→ ⑧ Motion Attribution            laterality, side_sequence
+→ ⑨ Feature Extraction            feature_domains, joint_actions
+→ ⑩ Biomech Proxy                 biomechanical_focus
+→ ⑪ Biomarker Derivation          compensation_candidates
 ```
 
 운동별 동작은 가능한 한 Python 분기가 아니라 YAML 데이터로 표현한다.
@@ -44,6 +45,10 @@ data/definitions/analysis_profiles/<exercise_id>.yaml
     분석 동작: landmarks, angle definitions, segmentation settings,
     feature domains, biomechanical focus, compensation candidates, quality rules.
 
+data/definitions/analysis_presets.yaml
+    segmentation, landmark/angle set, quality rule을 재사용하기 위한 분석 block.
+    Preset은 반복 YAML을 줄이지만 운동 정체성을 숨기면 안 된다.
+
 data/protocols/performance/<exercise_id>.yaml
     피험자 안내 프로토콜: planned sets/counts, count unit, side sequence,
     completion policy, cues, analysis-disrupting performance patterns.
@@ -54,6 +59,27 @@ data/protocols/camera/<exercise_id>.yaml
 
 Loader는 이 artifact들을 runtime `ExerciseDefinition` 형태로 병합한다. Legacy combined YAML은
 하위 호환 목적으로만 허용하며, 새 작업은 split artifact를 사용한다.
+
+Analysis profile은 재사용 preset block을 선택할 수 있다.
+
+```yaml
+exercise_id: squat
+version: 0.5.2
+presets:
+  segmentation: resistance_vertical_hip
+  landmark_set: lower_body_hip_knee_ankle
+  quality_rules: lower_body_standard
+
+biomechanical_focus: ...
+compensation_candidates: ...
+feature_domains: ...
+```
+
+Preset expansion은 validation 전에 일어난다. 운동별 profile에 명시된 field는 선택한 preset
+field를 override한다. Dict는 재귀적으로 merge하고, list와 scalar 값은 preset 값을 대체한다.
+Preset은 반복되는 분석 mechanics에만 허용한다. `classification`, `support`, `phase_model`,
+피험자 안내 protocol, camera protocol, scoring policy는 각자의 artifact에 남겨야 하며, 그래야
+향후 운동이 hidden Python branch 없이 달라질 수 있다.
 
 ---
 
@@ -325,7 +351,7 @@ quality_rules:
   allow_partial_feature_output: bool
 ```
 
-이 threshold는 ④ Preprocessing과 ⑧ Feature Extraction에서 소비한다.
+이 threshold는 ④ Preprocessing과 ⑨ Feature Extraction에서 소비한다.
 
 ---
 

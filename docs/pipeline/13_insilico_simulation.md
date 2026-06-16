@@ -1,10 +1,10 @@
-# 12. In-Silico Simulation
+# 13. In-Silico Simulation
 
 **문서 버전:** 1.1.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/12_insilico_simulation.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/13_insilico_simulation.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑫은 외부 robustness harness다. Synthetic 또는 reference pose data에 통제된
+파이프라인 단계 ⑬은 외부 robustness harness다. Synthetic 또는 reference pose data에 통제된
 distortion을 주입하고 analysis pipeline을 다시 실행해 metric이 어떻게 반응하는지 요약한다.
 
 이는 공학적 검증이며 clinical validation 또는 diagnostic accuracy가 아니다.
@@ -14,7 +14,7 @@ distortion을 주입하고 analysis pipeline을 다시 실행해 metric이 어�
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-Base pose sample → distortion copy → ①-⑩ pipeline replay → robustness summary
+Base pose sample → distortion copy → ①-⑪ pipeline replay → robustness summary
 ```
 
 Simulation은 `run_pipeline()`에서 호출하지 않는다.
@@ -37,7 +37,7 @@ configs/pipeline_default.yaml의 simulation settings
 DataFrame 사본에 distortion injection
 적용된 condition과 level log
 metric responsiveness / monotonicity / specificity check
-⑪ visualization을 위한 long-format output
+⑫ visualization을 위한 long-format output
 ```
 
 금지:
@@ -109,7 +109,7 @@ scripts/run_robustness_experiment.py
     config와 base sample 로드
     condition grid 구성
     distortion 적용
-    ①-⑩ pipeline 실행
+    ①-⑪ pipeline 실행
     FeatureRecord, BiomechRecord, BiomarkerScoreRecord summary 수집
     long-format CSV와 markdown summary 작성
 ```

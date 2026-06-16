@@ -1,10 +1,10 @@
-# 07. Motion Attribution
+# 08. Motion Attribution
 
 **Document Version:** 1.1.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/07_motion_attribution.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/08_motion_attribution.md` is the same-version Korean source.
 
-Pipeline step ⑦ checks whether the observed moving limb in each rep matches the
+Pipeline step ⑧ checks whether the observed moving limb in each rep matches the
 expected active side. The expected side is derived from
 `performance_protocol.side_sequence` when available, then from annotation
 `pattern` / `starting_side`. This step does not modify coordinates; it adds
@@ -21,9 +21,10 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Segmentation
-→ ⑦ Motion Attribution     ← this step
-→ ⑧ Feature Extraction
+→ ⑥ Canonicalization
+→ ⑦ Segmentation
+→ ⑧ Motion Attribution     ← this step
+→ ⑨ Feature Extraction
 ```
 
 Required inputs:
@@ -164,7 +165,7 @@ motion_attribution:
 
 ## 8. Downstream Use
 
-⑧ Feature Extraction uses attribution metadata to assign or qualify side-specific
+⑨ Feature Extraction uses attribution metadata to assign or qualify side-specific
 features:
 
 ```text
@@ -174,7 +175,7 @@ auto-corrected swap   → compute features on corrected side assignment
 ambiguous/bilateral   → avoid strong side-specific interpretation
 ```
 
-⑦ complements ④ Preprocessing: ④ handles short frame-level L/R swaps, while ⑦
+⑧ complements ④ Preprocessing: ④ handles short frame-level L/R swaps, while ⑧
 checks rep-level side consistency using segmentation and exercise context.
 
 ## 9. Code Mapping

@@ -15,7 +15,7 @@ movement-quality pattern을 바꾸면 안 된다.
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-③ Exercise Definition → ④ Preprocessing ← 본 단계 → ⑤ Normalization
+③ Exercise Definition → ④ Preprocessing ← 본 단계 → ⑤ Normalization → ⑥ Canonicalization
 ```
 
 ③ 이후에 실행되므로 laterality, landmarks, camera protocol, quality rules를 사용할 수 있다.
@@ -79,7 +79,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     해부학적으로 불가능한 configuration만 표시한다.
-    운동별 ROM 평가는 ⑧ Feature Extraction의 책임이다.
+    운동별 ROM 평가는 ⑨ Feature Extraction의 책임이다.
 
 velocity outliers
     body-scale-normalized frame-to-frame jump가 threshold를 초과.
@@ -103,7 +103,7 @@ generic fallback     skip
 ```
 
 High-confidence swap candidate는 해당 frame의 paired landmark label을 교환한다. Coordinate value는
-바꾸지 않는다. Low-confidence case는 표시만 하고 ⑦ Motion Attribution 또는 manual review로 남긴다.
+바꾸지 않는다. Low-confidence case는 표시만 하고 ⑧ Motion Attribution 또는 manual review로 남긴다.
 
 ### Short-Gap Interpolation
 
@@ -182,7 +182,7 @@ view_reliability
 }
 ```
 
-Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑧ Feature Extraction과 ⑩ Biomarker
+Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑨ Feature Extraction과 ⑪ Biomarker
 Scoring에서 결정한다.
 
 ---

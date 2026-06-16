@@ -10,15 +10,15 @@ Pipeline steps:
     ③  exercise_definition    biomechanical property object loading
     ④  preprocessing          monocular data quality correction
     ⑤  normalization          body-relative coordinate normalization
-       canonicalization optional analysis-space alignment
-    ⑥  segmentation           semi-automatic rep splitter + intra-rep phase splitter
-    ⑦  motion_attribution     per-rep active-side consistency
-    ⑧  features               spatial / temporal / control feature extraction
-                               (rep-level and phase-level when ⑥ has populated phase column)
-    ⑨  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
-    ⑩  biomarker              interpretable digital biomarkers with provenance
-    ⑪  visualization          per-step visualization and reporting
-    ⑫  simulation             robustness simulation (outside run_pipeline)
+    ⑥  canonicalization       optional analysis-space candidate evidence
+    ⑦  segmentation           semi-automatic rep splitter + intra-rep phase splitter
+    ⑧  motion_attribution     per-rep active-side consistency
+    ⑨  features               spatial / temporal / control feature extraction
+                               (rep-level and phase-level when ⑦ has populated phase column)
+    ⑩  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
+    ⑪  biomarker              interpretable digital biomarkers with provenance
+    ⑫  visualization          per-step visualization and reporting
+    ⑬  simulation             robustness simulation (outside run_pipeline)
 
 Step activation: enabled flags in configs/pipeline_default.yaml.
 Terminology: docs/terminology.md.
@@ -90,6 +90,7 @@ from movement.floor_reference import (  # noqa: E402
 )
 from movement.canonicalization import (  # noqa: E402
     CanonicalizationConfig,
+    Corrected3DHypothesisConfig,
     apply_canonicalization,
 )
 from movement.segmentation import segment_phases, segment_reps  # noqa: E402
@@ -141,30 +142,31 @@ __all__ = [
     "preprocess_pose_dataframe",
     # ⑤ normalization
     "normalize_pose_by_hip_torso",
-    # ⑤ normalization canonicalization and floor-relative support prior
+    # ⑥ canonicalization and floor-relative support prior
     "CanonicalizationConfig",
+    "Corrected3DHypothesisConfig",
     "apply_canonicalization",
     "FloorReferenceConfig",
     "FloorReferenceReport",
     "apply_floor_relative_correction",
-    # ⑥ segmentation
+    # ⑦ segmentation
     "segment_reps",
     "segment_phases",
-    # ⑦ motion attribution
+    # ⑧ motion attribution
     "attribute_motion",
     "AttributionThresholds",
-    # ⑧ features (prefer direct import from submodules)
+    # ⑨ features (prefer direct import from submodules)
     "FeatureRecord",
     "summarize_phase_to_rep",
-    # ⑨ biomech proxy (prefer direct import from submodules)
+    # ⑩ biomech proxy (prefer direct import from submodules)
     "BiomechRecord",
-    # ⑩ biomarker
+    # ⑪ biomarker
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
     "load_fms_mapping",
     "traffic_light_for_score",
-    # ⑪ visualization
+    # ⑫ visualization
     "create_pose_animation",
     "create_pose_comparison_animation",
     "plot_reliability_overlay",

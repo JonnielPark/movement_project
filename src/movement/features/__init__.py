@@ -1,11 +1,11 @@
 """
-⑧ Feature Extraction
+⑨ Feature Extraction
 
 Computes spatial, temporal, and control domain features from normalized pose data.
 Each feature is returned as a FeatureRecord with (value, unit, source_fields)
-so that downstream biomarker derivation (⑩) can trace provenance.
+so that downstream biomarker derivation (⑪) can trace provenance.
 
-When the `phase` column is populated by ⑥ Segmentation, features are
+When the `phase` column is populated by ⑦ Segmentation, features are
 emitted at both rep-level (phase=None) and phase-level (phase='Descent', etc.),
 enabling the hierarchical analysis structure described in dissertation §5.5.
 
@@ -499,7 +499,7 @@ _FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
     },
 }
 _FEATURE_DOMAIN_EXTERNAL_STEPS: dict[str, str] = {
-    "biomechanical_proxy": "09_biomechanical_proxy",
+    "biomechanical_proxy": "10_biomechanical_proxy",
 }
 
 _DEFERRED_COMPENSATION_FEATURE_DESIGN: frozenset[str] = frozenset(
@@ -1093,7 +1093,7 @@ def extract_rep_features(
     Rep boundaries are read from annotation columns (segment_type, rep_id).
     When annotation columns are absent, all features are computed sequence-level.
 
-    When the `phase` column is populated by ⑥ Segmentation, features
+    When the `phase` column is populated by ⑦ Segmentation, features
     in PHASE_AWARE_FEATURE_FAMILIES are also emitted for each (rep_id, phase)
     segment.  The rep-level records (phase=None) are always emitted regardless.
 

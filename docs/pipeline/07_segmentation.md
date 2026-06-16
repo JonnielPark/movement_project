@@ -1,10 +1,10 @@
-# 06. 세그멘테이션 (Segmentation)
+# 07. 세그멘테이션 (Segmentation)
 
 **문서 버전:** 1.3.1
 **최종 갱신:** 2026-06-10
-**영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/07_segmentation.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑥은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
+파이프라인 단계 ⑦은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
 단계명은 `Segmentation`이다. 기존 `phase_segmentation` YAML/code key는 phase splitting 전용으로
 유지하고, `rep_segmentation`이 반복 경계를 담당한다.
 
@@ -15,7 +15,7 @@
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑤ Normalization → ⑥ Segmentation ← 본 단계 → ⑦ Motion Attribution
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← 본 단계 → ⑧ Motion Attribution
 ```
 
 입력:
@@ -160,12 +160,12 @@ pipeline default가 아니라 annotation-adjacent QC workflow로 유지한다.
 ## 7. 후속 단계 규칙 (Downstream Rules)
 
 ```text
-⑦ Motion Attribution   확정된 rep_id를 사용.
-⑧ Feature Extraction   확정 rep에는 rep-level feature를, successful/manual phase에는
+⑧ Motion Attribution   확정된 rep_id를 사용.
+⑨ Feature Extraction   확정 rep에는 rep-level feature를, successful/manual phase에는
                        phase-level feature를 방출.
-⑨ Biomech Proxy        unresolved rep-boundary failure는 제외.
-⑩ Biomarker Scoring    failure/exclusion provenance를 보존.
-⑪ Visualization        failure point와 manual boundary를 표시.
+⑩ Biomech Proxy        unresolved rep-boundary failure는 제외.
+⑪ Biomarker Scoring    failure/exclusion provenance를 보존.
+⑫ Visualization        failure point와 manual boundary를 표시.
 ```
 
 ---

@@ -1,8 +1,8 @@
 """
-⑪ Visualization
+⑫ Visualization
 
 Interactive visualization and diagnostic reporting functions for pose data and analysis results.
-Called independently outside the ①–⑩ pipeline steps.
+Called independently outside the ①–⑪ pipeline steps.
 
 Implemented:
     create_pose_animation()            — Plotly interactive 3D pose animation
@@ -258,7 +258,7 @@ def plot_joint_angle_timeseries(
 ) -> "go.Figure":
     """Plot joint angle time series per frame (unit: degree).
 
-    Rep ranges are shown as background shading for comparison with ⑧ ROM features.
+    Rep ranges are shown as background shading for comparison with ⑨ ROM features.
 
     Parameters
     ----------
@@ -318,7 +318,7 @@ def plot_attribution_chart(
     height: int = 300,
     width: int = 900,
 ) -> "go.Figure":
-    """Chart ⑦ motion attribution results per frame.
+    """Chart ⑧ motion attribution results per frame.
 
     Shows detected vs. expected active side and attribution confidence.
 
@@ -345,7 +345,7 @@ def plot_biomarker_radar(
     height: int = 500,
     width: int = 600,
 ) -> "go.Figure":
-    """Radar chart of ⑩ biomarker derivation results.
+    """Radar chart of ⑪ biomarker derivation results.
 
     Each axis is one biomarker. If reference_records is provided,
     a comparison overlay is added.

@@ -1,21 +1,21 @@
-# 08. 피처 추출 (Feature Extraction)
+# 09. 피처 추출 (Feature Extraction)
 
 **문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/09_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑧은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
+파이프라인 단계 ⑨은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
 수정하지 않는다. 모든 출력은 numeric value, unit, `source_fields`, availability/reliability
-metadata를 가진 `FeatureRecord`이며, ⑩ Biomarker Derivation이 provenance를 추적할 수 있게 한다.
+metadata를 가진 `FeatureRecord`이며, ⑪ Biomarker Derivation이 provenance를 추적할 수 있게 한다.
 
 ---
 
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑤ Normalization → ⑥ Segmentation → ⑦ Motion Attribution
-→ ⑧ Feature Extraction     ← 본 단계
-→ ⑨ Biomech Proxy → ⑩ Biomarker Derivation
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation → ⑧ Motion Attribution
+→ ⑨ Feature Extraction     ← 본 단계
+→ ⑩ Biomech Proxy → ⑪ Biomarker Derivation
 ```
 
 필수 입력:
@@ -23,7 +23,7 @@ metadata를 가진 `FeatureRecord`이며, ⑩ Biomarker Derivation이 provenance
 ```text
 <landmark>_norm_x/y/z       정규화 좌표
 rep_id                      확정된 반복 label
-phase                       ⑥에서 온 선택 phase label
+phase                       ⑦에서 온 선택 phase label
 exercise_definition         feature_domains, angle_definitions,
                             compensation_candidates, view_metric_reliability
 recording provenance        camera_zone, camera_height_level이 있으면 사용
@@ -73,7 +73,7 @@ control.*
     excessive_trunk_flexion, heel_lift, pelvis_rotation 같은 compensation candidate.
 ```
 
-`feature_domains.biomechanical_proxy`는 ⑧ extractor 누락이 아니라 ⑨ Biomech Proxy로 전달되는
+`feature_domains.biomechanical_proxy`는 ⑨ extractor 누락이 아니라 ⑩ Biomech Proxy로 전달되는
 항목이다.
 
 ---
@@ -81,7 +81,7 @@ control.*
 ## 4. Availability And View Reliability
 
 Feature extraction은 camera view 또는 pose model이 scoring을 뒷받침하지 않는 값도 계산할 수
-있다. 따라서 `FeatureRecord.availability`가 ⑩ scoring gate다.
+있다. 따라서 `FeatureRecord.availability`가 ⑪ scoring gate다.
 
 ```text
 assessed
@@ -101,7 +101,7 @@ view_reliability             exercise_definition.view_metric_reliability
 landmark_quality             visibility / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
-swap or far-side risk         ④ Preprocessing과 ⑦ Motion Attribution에서 제공
+swap or far-side risk         ④ Preprocessing과 ⑧ Motion Attribution에서 제공
 camera_zone                  annotation 또는 recording metadata
 role_context                 active/support/near/far side가 있으면 사용
 ```
@@ -117,7 +117,7 @@ frontal/front-oblique evidence가 없으면 `low_confidence` 또는 `not_assesse
 
 ## 5. Phase-Aware Features
 
-⑥이 `phase` column을 제공하면 다음 계열은 rep-level과 phase-level record를 모두 방출할 수 있다.
+⑦이 `phase` column을 제공하면 다음 계열은 rep-level과 phase-level record를 모두 방출할 수 있다.
 
 ```text
 spatial.rom
@@ -170,7 +170,7 @@ camera-zone, provenance field를 보존한다.
 
 ## 7. 감사 리포트 (Audits)
 
-⑧은 feature record 옆에 diagnostic audit를 방출할 수 있다.
+⑨은 feature record 옆에 diagnostic audit를 방출할 수 있다.
 
 ```text
 Feature registry coverage
@@ -205,18 +205,18 @@ feat_df = features_to_dataframe(records)
 
 ## 9. 다른 단계와의 관계 (Relationship To Other Steps)
 
-- ⑥ Segmentation은 `rep_id`와 선택 `phase`를 제공한다. Phase label이 없으면 rep-level feature만
+- ⑦ Segmentation은 `rep_id`와 선택 `phase`를 제공한다. Phase label이 없으면 rep-level feature만
   산출한다.
-- ⑦ Motion Attribution은 role-aware feature를 위한 side/consistency context를 제공한다.
-- ⑨ Biomech Proxy는 같은 정규화 좌표를 사용하지만 `FeatureRecord`가 아니라 `BiomechRecord`를
+- ⑧ Motion Attribution은 role-aware feature를 위한 side/consistency context를 제공한다.
+- ⑩ Biomech Proxy는 같은 정규화 좌표를 사용하지만 `FeatureRecord`가 아니라 `BiomechRecord`를
   방출한다.
-- ⑩ Biomarker Derivation은 모든 feature를 pass-through biomarker로 감싸고,
+- ⑪ Biomarker Derivation은 모든 feature를 pass-through biomarker로 감싸고,
   `availability == assessed`인 feature만 composite scoring에 사용한다.
-- ⑫ Simulation은 pose-detectable audit entry를 perturbation candidate로 사용할 수 있다.
+- ⑬ Simulation은 pose-detectable audit entry를 perturbation candidate로 사용할 수 있다.
 
 ---
 
-## 10. 코드 매핑 (Code Mapping)
+## 11. 코드 매핑 (Code Mapping)
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
@@ -234,7 +234,7 @@ tests/test_features_phase_grouping.py    phase-level feature behavior
 
 ---
 
-## 11. 향후 확장 (Planned Extensions)
+## 12. 향후 확장 (Planned Extensions)
 
 - source fields, visibility policy, test가 준비된 compensation rule 추가.
 - coarse preprocessing summary 대신 per-feature landmark coverage 사용.

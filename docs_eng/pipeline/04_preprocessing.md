@@ -16,7 +16,7 @@ patterns such as depth, knee valgus, trunk lean, or compensatory asymmetry.
 ## 1. Pipeline Position
 
 ```text
-③ Exercise Definition → ④ Preprocessing ← this step → ⑤ Normalization
+③ Exercise Definition → ④ Preprocessing ← this step → ⑤ Normalization → ⑥ Canonicalization
 ```
 
 Runs after ③ so laterality, landmarks, camera protocol, and quality rules are
@@ -82,7 +82,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     flags anatomically impossible configurations only.
-    Exercise-specific ROM assessment belongs to ⑧ Feature Extraction.
+    Exercise-specific ROM assessment belongs to ⑨ Feature Extraction.
 
 velocity outliers
     body-scale-normalized frame-to-frame jumps above threshold.
@@ -107,7 +107,7 @@ generic fallback     skip
 
 High-confidence swap candidates exchange paired landmark labels for the affected
 frame. Coordinate values are not modified. Low-confidence cases are flagged only
-and left for ⑦ Motion Attribution or manual review.
+and left for ⑧ Motion Attribution or manual review.
 
 ### Short-Gap Interpolation
 
@@ -189,7 +189,7 @@ DataFrame and a report.
 ```
 
 Frames are never silently deleted. Exact feature-level exclusion is decided later
-by ⑧ Feature Extraction and ⑩ Biomarker Scoring.
+by ⑨ Feature Extraction and ⑪ Biomarker Scoring.
 
 ---
 

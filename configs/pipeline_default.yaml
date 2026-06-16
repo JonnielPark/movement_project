@@ -1,11 +1,11 @@
 # Movement Project — Pipeline Configuration
 # Step order:
 #   ①  validation           ②  annotation          ③  exercise_definition
-#   ④  preprocessing        ⑤  normalization        (optional canonicalization)
-#   ⑥  segmentation         ⑦  motion_attribution   ⑧  features
-#   ⑨  biomech              ⑩  biomarker
-#   ⑪  visualization        (called outside the runner)
-#   ⑫  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
+#   ④  preprocessing        ⑤  normalization        ⑥  canonicalization
+#   ⑦  segmentation         ⑧  motion_attribution   ⑨  features
+#   ⑩  biomech              ⑪  biomarker
+#   ⑫  visualization        (called outside the runner)
+#   ⑬  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
 # Toggle each step with enabled: true / false
 
 input:
@@ -70,6 +70,17 @@ normalization:
   method: hip_torso           # hip center translation + sequence median torso scale
   keep_reference_columns: true  # preserve hip_center, shoulder_center, torso_length columns
   model_depth_scale: 1.0        # z residual gain before torso scaling; 1.0 preserves legacy behavior
+
+# ── ⑥ Canonicalization ───────────────────────────────────────────────────────
+# Disabled by default. Creates separate candidate coordinate columns and reports
+# when enabled; downstream stages still use norm coordinates unless explicitly
+# promoted after notebook/robustness review.
+canonicalization:
+  enabled: false
+  coordinate_mode: norm
+  output_prefix: canon
+  report_only: true
+  downstream_coordinate_mode: norm
   corrected_3d_hypothesis:
     enabled: false
     output_family: corrected_3d_hypothesis
@@ -78,66 +89,55 @@ normalization:
     support_pair: [left_ankle, right_ankle]
     report_burden_before_feature_use: true
     require_feature_domain_declaration: true
-  # Optional analysis-space canonicalization inside ⑤ Normalization.
-  # Disabled by default. Creates separate <landmark>_canon_x/y/z columns and
-  # a canonicalization_report when enabled; downstream stages still use norm
-  # coordinates unless explicitly promoted after notebook/robustness review.
-  canonicalization:
+  data_confidence:
+    emit: true
+    correction_magnitude_warn_torso: 0.15
+    correction_magnitude_fail_torso: 0.30
+    residual_warn_torso: 0.08
+  support_plane_alignment:
     enabled: false
-    coordinate_mode: norm
-    output_prefix: canon
-    report_only: true
-    downstream_coordinate_mode: norm
-    data_confidence:
-      emit: true
-      correction_magnitude_warn_torso: 0.15
-      correction_magnitude_fail_torso: 0.30
-      residual_warn_torso: 0.08
-    support_plane_alignment:
-      enabled: false
-      method: support_contact_plane
-      vertical_axis: y
-      support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
-      diagnostic_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
-      visibility_threshold: 0.7
-      stability_window_frames: 5
-      max_anchor_residual_torso: 0.08
-      correction_transform: rigid_rotation  # rigid_rotation | vertical_shear
-      camera_pitch_deg: 0.0
-      camera_roll_deg: 0.0
-      correction_strength: 1.0
-      max_correction_torso: 0.25
-    movement_plane_alignment:
-      enabled: false
-      method: principal_motion_plane
-      fit_landmarks: [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle]
-      minimum_visible_landmark_ratio: 0.7
-      correction_strength: 0.5
-      max_rotation_deg: 20.0
-      preserve_out_of_plane_residual: true
-    protocol_height_lateral_width_alignment:
-      enabled: false
-      method: height_anchor_lateral_width
-      observed_height_level: null
-      observed_height_column: camera_height_level
-      recommended_height_level: null
-      require_height_match: true
-      height_anchor_map:
-        H1: [left_ankle, right_ankle]
-        H2: [left_hip, right_hip]
-        H3: [left_shoulder, right_shoulder]
-      near_depth_sign: negative
-      correction_mode: near_side_attenuation
-      correction_strength: 0.3
-      max_scale_change: 0.20
-      max_correction_torso: 0.15
-      min_depth_offset_torso: 0.05
-      visibility_threshold: 0.6
-      apply_to_landmarks: []
-      preserve_anchor_landmarks: true
-
+    method: support_contact_plane
+    vertical_axis: y
+    support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
+    diagnostic_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
+    visibility_threshold: 0.7
+    stability_window_frames: 5
+    max_anchor_residual_torso: 0.08
+    correction_transform: rigid_rotation  # rigid_rotation | vertical_shear
+    camera_pitch_deg: 0.0
+    camera_roll_deg: 0.0
+    correction_strength: 1.0
+    max_correction_torso: 0.25
+  movement_plane_alignment:
+    enabled: false
+    method: principal_motion_plane
+    fit_landmarks: [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle]
+    minimum_visible_landmark_ratio: 0.7
+    correction_strength: 0.5
+    max_rotation_deg: 20.0
+    preserve_out_of_plane_residual: true
+  protocol_height_lateral_width_alignment:
+    enabled: false
+    method: height_anchor_lateral_width
+    observed_height_level: null
+    observed_height_column: camera_height_level
+    recommended_height_level: null
+    require_height_match: true
+    height_anchor_map:
+      H1: [left_ankle, right_ankle]
+      H2: [left_hip, right_hip]
+      H3: [left_shoulder, right_shoulder]
+    near_depth_sign: negative
+    correction_mode: near_side_attenuation
+    correction_strength: 0.3
+    max_scale_change: 0.20
+    max_correction_torso: 0.15
+    min_depth_offset_torso: 0.05
+    visibility_threshold: 0.6
+    apply_to_landmarks: []
+    preserve_anchor_landmarks: true
   # Backward-compatible legacy key. New development should prefer
-  # canonicalization.support_plane_alignment.
+  # support_plane_alignment.
   floor_relative_correction:
     enabled: false
     method: support_contact_plane
@@ -157,14 +157,14 @@ normalization:
     correction_strength: 1.0
     max_correction_torso: 0.25
 
-# ── ⑥ Rep Segmentation ───────────────────────────────────────────────────────
+# ── ⑦ Rep Segmentation ───────────────────────────────────────────────────────
 # Estimates rep boundaries from joint-motion tracking and fills `rep_id`.
 # Auto-skips when the exercise definition has no `rep_segmentation` block.
 rep_segmentation:
   enabled: false              # set to true when rep_id is not supplied by annotation
   fps_default: 30.0           # used when df.attrs["fps"] is absent
 
-# ── ⑥ Phase Segmentation ─────────────────────────────────────────────────────
+# ── ⑦ Phase Segmentation ─────────────────────────────────────────────────────
 # Inserts kinematic phase labels (e.g., Descent / Ascent) into the `phase` column
 # for each confirmed rep. Auto-skips when the exercise definition has no
 # `phase_segmentation` block (e.g., generic.yaml) or when no rep frames are present.
@@ -174,7 +174,7 @@ phase_segmentation:
   multi_inflection_policy: global_extremum   # global_extremum | first | reject_rep
   minimum_rep_length_frames: 8
 
-# ── ⑦ Motion Attribution ─────────────────────────────────────────────────────
+# ── ⑧ Motion Attribution ─────────────────────────────────────────────────────
 motion_attribution:
   enabled: false
   thresholds:
@@ -183,7 +183,7 @@ motion_attribution:
     swap: 0.85                # minimum confidence to perform swap in auto_correct mode
   mode: conservative          # conservative | auto_correct
 
-# ── ⑧ Feature Extraction ─────────────────────────────────────────────────────
+# ── ⑨ Feature Extraction ─────────────────────────────────────────────────────
 # extract_rep_features() runs all spatial / temporal / control features.
 # When phase_segmentation is enabled and the phase column is populated,
 # features in PHASE_AWARE_FEATURE_FAMILIES are also emitted per (rep_id, phase).
@@ -196,7 +196,7 @@ features:
     enabled: true
     registry: COMPENSATION_RULES   # dispatched via features/compensation.py
 
-# ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────────
+# ── ⑩ Biomechanical Proxy Modeling ───────────────────────────────────────────
 biomech:
   enabled: false
   anthropometric_model: winter_1990   # segment mass ratio reference (Winter 1990)
@@ -206,7 +206,7 @@ biomech:
   use_visibility_weight: true
   minimum_visible_landmark_ratio: 0.6
 
-# ── ⑩ Biomarker Derivation ───────────────────────────────────────────────────
+# ── ⑪ Biomarker Derivation ───────────────────────────────────────────────────
 biomarker:
   enabled: false
   emit_provenance: true       # attach source_fields to all biomarkers
@@ -231,8 +231,8 @@ output:
   save_report: false
   report_path: "data/processed/report.json"
 
-# ── ⑫ Robustness Simulation ──────────────────────────────────────────────────
-# Called separately via scripts/run_robustness_experiment.py, outside ①–⑩.
+# ── ⑬ Robustness Simulation ──────────────────────────────────────────────────
+# Called separately via scripts/run_robustness_experiment.py, outside ①–⑪.
 # Mirrors the documented robustness condition matrix.
 simulation:
   enabled: false

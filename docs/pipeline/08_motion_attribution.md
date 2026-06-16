@@ -1,10 +1,10 @@
-# 07. 모션 어트리뷰션 (Motion Attribution)
+# 08. 모션 어트리뷰션 (Motion Attribution)
 
 **문서 버전:** 1.1.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/07_motion_attribution.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/08_motion_attribution.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑦은 각 반복에서 실제로 움직인 사지가 기대 활성 측과 일치하는지 점검한다.
+파이프라인 단계 ⑧은 각 반복에서 실제로 움직인 사지가 기대 활성 측과 일치하는지 점검한다.
 기대 측은 `performance_protocol.side_sequence`가 있으면 이를 먼저 사용하고, 없으면 annotation의
 `pattern` / `starting_side`에서 도출한다. 본 단계는 좌표를 수정하지 않으며, 후속 피처 귀속을
 위한 반복 단위 메타데이터 칼럼만 추가한다.
@@ -20,9 +20,10 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Segmentation
-→ ⑦ Motion Attribution     ← 본 단계
-→ ⑧ Feature Extraction
+→ ⑥ Canonicalization
+→ ⑦ Segmentation
+→ ⑧ Motion Attribution     ← 본 단계
+→ ⑨ Feature Extraction
 ```
 
 필수 입력:
@@ -160,7 +161,7 @@ motion_attribution:
 
 ## 8. 후속 사용 (Downstream Use)
 
-⑧ Feature Extraction은 attribution metadata를 사용해 측별 피처를 귀속하거나 신뢰도를 표시한다:
+⑨ Feature Extraction은 attribution metadata를 사용해 측별 피처를 귀속하거나 신뢰도를 표시한다:
 
 ```text
 consistent true       → 기대 활성 측에 피처 귀속
@@ -169,7 +170,7 @@ auto-corrected swap   → 보정된 측 할당으로 피처 계산
 ambiguous/bilateral   → 강한 측별 해석을 피함
 ```
 
-⑦은 ④ Preprocessing을 보완한다. ④는 짧은 frame-level L/R swap을 다루고, ⑦은 segmentation과
+⑧은 ④ Preprocessing을 보완한다. ④는 짧은 frame-level L/R swap을 다루고, ⑧은 segmentation과
 운동 컨텍스트를 사용해 rep-level side consistency를 점검한다.
 
 ## 9. 코드 매핑 (Code Mapping)
