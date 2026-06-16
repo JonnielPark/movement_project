@@ -33,7 +33,7 @@
 
 | 용어 | 본 연구에서의 고정 의미 |
 |---|---|
-| 구간 (Phase) | 한 반복(rep) 내부의 하위 구간. 본 연구에서는 두 체계를 분리한다: `phase_model.expected_ratio`의 운동학적(kinetic) 라벨과, ⑥ Segmentation이 `phase` 칼럼에 쓰는 기구학적(kinematic) 라벨. |
+| 구간 (Phase) | 한 반복(rep) 내부의 하위 구간. 본 연구에서는 두 체계를 분리한다: `phase_model.expected_ratio`의 운동학적(kinetic) 라벨과, ⑦ Segmentation이 `phase` 칼럼에 쓰는 기구학적(kinematic) 라벨. |
 | 기구학적 구간 (Kinematic phase) | 기준 랜드마크의 움직임 방향으로 정의되는 phase. 예: `Descent`, `Ascent`, `Turnaround_Hold`, `Lift`, `Tap`, `Return`. `eccentric`, `concentric` 같은 kinetic 라벨과 혼용하지 않는다. |
 | 반복 분할 (Rep segmentation) | `rep_segmentation` 설정을 사용해 반복 시작·종료 경계를 반자동으로 확정하고 `rep_id`를 만드는 절차. |
 | 구간 분할 (Phase segmentation) | 기존 `phase_segmentation` 코드 식별자와 YAML 키를 유지하며, 확정된 반복 내부에서 기구학적 phase 경계를 나누는 절차. |
@@ -67,7 +67,7 @@
 
 | 용어 | 본 연구에서의 고정 의미 |
 |---|---|
-| 분석 좌표 표준화 (Analysis-space canonicalization) | 단안 pose가 실제 3D 공간과 다르게 삐뚤어진 경우에도, 일관된 관찰 편향을 줄여 운동 패턴 평가에 적합한 canonical analysis space로 재표현하는 ⑤ 정규화 내부의 선택 층. 좋은 동작으로 맞추는 template fitting이나 절대 3D 복원이 아니다. |
+| 분석 좌표 표준화 (Analysis-space canonicalization) | ⑤의 `norm` 좌표를 입력으로 받아 일관된 단안 관찰 편향을 줄이기 위한 후보 좌표 계열을 추가할 수 있는 파이프라인 단계 ⑥. 좋은 동작으로 맞추는 template fitting이나 절대 3D 복원이 아니다. |
 | 표준 분석 좌표계 (Canonical analysis space) | 골반 중심, 몸통 길이, 운동별 주 운동 평면, 지지면 prior 등을 이용해 정의하는 분석용 좌표계. 해부학적 절대 좌표나 calibrated world coordinate가 아니라, 관절의 상대 궤적과 시간적 변화량을 비교하기 위한 좌표 표현이다. |
 | Pseudo-floor reference | 실제 바닥의 물리적 위치가 아니라, 단안 pose 좌표계 안에서 접지 랜드마크로 추정한 apparent floor 기준. 카메라 캘리브레이션이나 절대 3D 복원이 아니다. |
 | 바닥 기준 보정 (Floor-relative correction) | 정적 접지 운동에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
@@ -76,7 +76,7 @@
 | 인체계측 스켈레톤 prior (Anthropometric skeleton prior) | 단안 depth 동작을 검토하기 위한 느슨한 신체 분절 길이 plausibility envelope. Stage A에서는 Size Korea aggregate ratio를 engineering envelope로만 사용할 수 있으며, empirical percentile prior, calibrated 3D reconstruction, subject-specific skeleton fitting이 아니다. |
 | 보수적 engineering range (Conservative engineering range) | aggregate anthropometric ratio 주변에 연구자가 넓게 정의한 tolerance. impossible skeleton behavior와 data-confidence 문제를 잡기 위한 것이며 population P5/P95 추정이 아니다. |
 | 개인별 empirical 인체계측 prior (Row-level empirical anthropometric prior) | 비식별 개인별 anthropometric row가 있어야 가능한 향후 upgrade. 같은 개인 안에서 segment/stature ratio를 계산한 뒤 P1/P99 또는 P5/P95를 요약한다. |
-| Depth residual correction | x/y evidence, segment-length plausibility, visibility, correction cap이 모두 허용할 때만 시도할 수 있는 bounded candidate-evidence depth-axis 후보 보정. raw 또는 base normalized coordinate를 덮어쓰지 않으며, ⑤ Normalization 안에서 score gravity를 정의하지 않는다. |
+| Depth residual correction | x/y evidence, segment-length plausibility, visibility, correction cap이 모두 허용할 때만 시도할 수 있는 bounded candidate-evidence depth-axis 후보 보정. raw 또는 base normalized coordinate를 덮어쓰지 않으며, ⑥ Canonicalization 안에서 score gravity를 정의하지 않는다. |
 | 관절 plausibility (Articulation plausibility) | 불가능한 joint-angle 또는 reverse-bending configuration을 다루는 별도 guard. data confidence를 낮추거나 feature를 unavailable로 표시하며, movement-quality를 직접 감점하지 않는다. |
 
 ---

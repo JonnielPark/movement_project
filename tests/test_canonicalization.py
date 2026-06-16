@@ -379,26 +379,29 @@ def test_load_pipeline_config_reads_canonicalization_block():
             """
 normalization:
   enabled: true
-  canonicalization:
+canonicalization:
+  enabled: true
+  output_prefix: canon
+  report_only: true
+  corrected_3d_hypothesis:
     enabled: true
-    output_prefix: canon
-    report_only: true
-    support_plane_alignment:
-      enabled: true
-      correction_transform: rigid_rotation
-      support_landmarks: [left_heel, right_heel]
-    movement_plane_alignment:
-      enabled: true
-      fit_landmarks: [left_hip, left_knee, left_ankle]
-      correction_strength: 0.75
-      max_rotation_deg: 12.0
-    protocol_height_lateral_width_alignment:
-      enabled: true
-      observed_height_level: H2
-      recommended_height_level: H2
-      correction_strength: 0.4
-      height_anchor_map:
-        H2: [left_hip, right_hip]
+    output_family: review
+  support_plane_alignment:
+    enabled: true
+    correction_transform: rigid_rotation
+    support_landmarks: [left_heel, right_heel]
+  movement_plane_alignment:
+    enabled: true
+    fit_landmarks: [left_hip, left_knee, left_ankle]
+    correction_strength: 0.75
+    max_rotation_deg: 12.0
+  protocol_height_lateral_width_alignment:
+    enabled: true
+    observed_height_level: H2
+    recommended_height_level: H2
+    correction_strength: 0.4
+    height_anchor_map:
+      H2: [left_hip, right_hip]
 """,
             encoding="utf-8",
         )
@@ -407,6 +410,8 @@ normalization:
 
         assert config.canonicalization.enabled is True
         assert config.canonicalization.output_prefix == "canon"
+        assert config.canonicalization.corrected_3d_hypothesis.enabled is True
+        assert config.canonicalization.corrected_3d_hypothesis.output_family == "review"
         assert config.canonicalization.support_plane_alignment.enabled is True
         assert config.canonicalization.support_plane_alignment.support_landmarks == [
             "left_heel",

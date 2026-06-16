@@ -11,7 +11,7 @@ Repository: <https://github.com/JonnielPark/movement_project>
 ![Interpretable digital biomarker framework overview](docs/assets/framework_overview.png)
 
 *Figure. Conceptual overview of the monocular-vision movement-quality analysis
-framework. The six macro-stages summarize the detailed 12-stage pipeline below;
+framework. The six macro-stages summarize the detailed 13-stage pipeline below;
 scores and labels on the right are illustrative examples, not validation results.*
 
 ---
@@ -45,14 +45,15 @@ Pose CSV  +  annotation CSV  +  exercise YAML artifacts
 ②  Annotation           frame-level segment metadata (`phase` column reserved)
 ③  Exercise Definition  biomechanical property object loading
 ④  Preprocessing        monocular data quality correction
-⑤  Normalization        body-relative coordinate normalization + optional canonicalization
-⑥  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
-⑦  Motion Attribution   per-rep active-side consistency
-⑧  Feature Extraction   spatial / temporal / control features, rep and phase level
-⑨  Biomech Proxy        CoM, moment arms, load-shift trend
-⑩  Biomarker Derivation interpretable digital biomarkers and interpretation rules
-⑪  Visualization        per-step visualization and reporting      [partial]
-⑫  Simulation           robustness condition injection            [partial]
+⑤  Normalization        body-relative coordinate normalization
+⑥  Canonicalization     optional candidate-evidence coordinate families
+⑦  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
+⑧  Motion Attribution   per-rep active-side consistency
+⑨  Feature Extraction   spatial / temporal / control features, rep and phase level
+⑩  Biomech Proxy        CoM, moment arms, load-shift trend
+⑪  Biomarker Derivation interpretable digital biomarkers and interpretation rules
+⑫  Visualization        per-step visualization and reporting      [partial]
+⑬  Simulation           robustness condition injection            [partial]
 ```
 
 Stage activation is controlled by the `enabled` flags in
@@ -60,7 +61,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-05-16)
+## Implementation Status (2026-06-16)
 
 ### Complete
 
@@ -69,20 +70,21 @@ Stage activation is controlled by the `enabled` flags in
 | Pose I/O and config | `core/io.py`, `core/config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `stages/validation.py` | Structural integrity report |
 | ② Annotation | `stages/annotation.py` | Frame-level metadata merge; filming/performance provenance and observed protocol metadata preserved; performance/failure provenance summarized in the annotation report |
-| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` loader + validator + generic fallback; split exercise identity / analysis profile / performance protocol / camera protocol YAML; legacy combined YAML remains supported |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` loader + validator + generic fallback; split exercise identity / analysis profile / performance protocol / camera protocol YAML; reusable analysis presets; legacy combined YAML remains supported |
 | ④ Preprocessing | `stages/preprocessing.py` | Visibility gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
-| ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py` | Hip-center translation + median torso-length scale; optional `canonicalization` reduces consistent monocular-observation bias into an analysis coordinate space (raw/norm/canon); current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
-| ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
-| ⑦ Motion Attribution | `stages/motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
-| ⑧ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
-| ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
+| ⑤ Normalization | `stages/normalization.py` | Hip-center translation + median torso-length scale; emits `norm` coordinates only |
+| ⑥ Canonicalization | `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | Optional candidate-evidence coordinate families; current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
+| ⑦ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
+| ⑧ Motion Attribution | `stages/motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
+| ⑨ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
+| ⑩ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
+| ⑪ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
-| Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑩ connected; optional `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
+| Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑪ connected; optional ⑥ `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `stages/motion_attribution.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
 | Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
-| Unit tests | `tests/` | Latest full run passes 133/133 |
+| Unit tests | `tests/` | Latest full run passes 153/153 |
 
 ### Partial
 
@@ -91,7 +93,7 @@ Stage activation is controlled by the `enabled` flags in
 | Far-side preprocessing evidence | `stages/preprocessing.py` | Side-view far-side landmark jitter stabilization, feature availability, data-confidence hook (→ Task B) |
 | Motion attribution evidence | `stages/motion_attribution.py` | Structured correction log, false-correction metrics, and ambiguous-repetition reporting (→ Task C) |
 | Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
-| ⑪ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
+| ⑫ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
 
 ### Plan (Before Defense)
 
@@ -104,7 +106,7 @@ Stage activation is controlled by the `enabled` flags in
 | E — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
 | F — Maintenance and repository hygiene | Focused test runs, full `python -m pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
 | G — Optional visibility-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after motion-attribution, robustness, and reporting |
-| H — Deferred canonicalization promotion gate | Keep `canon` review-only unless notebook and robustness evidence justify downstream promotion | Conditional / deferred |
+| H — Deferred canonicalization scoring-policy gate | Keep candidate coordinates additive and downstream-neutral unless multi-recording evidence justifies nonzero scoring contribution | Conditional / deferred |
 
 Dashboard / Phantom 3D work is deferred behind the Task E gate and is not an active
 implementation task unless selected as a dissertation output.
@@ -124,6 +126,7 @@ movement_project/
 │   ├── definitions/                 # YAML-based analysis definitions
 │   │   ├── exercises/               # exercise identity YAML + generic fallback
 │   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
+│   │   ├── analysis_presets.yaml    # reusable analysis-profile blocks
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
 │   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
 │   ├── protocols/
@@ -141,15 +144,15 @@ movement_project/
 │   │   ├── camera_protocol.md
 │   │   ├── exercise_performance_protocol.md
 │   │   └── exercise_authoring_notebook.md
-│   ├── pipeline/                    # pipeline stage documents ① ~ ⑫
-│   │   └── 00_data_format.md ~ 12_insilico_simulation.md
+│   ├── pipeline/                    # pipeline stage documents ① ~ ⑬
+│   │   └── 00_data_format.md ~ 13_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
-├── notebook/                        # exploratory notebooks (00-16)
+├── notebook/                        # setup_* + stage-check notebooks (01-14; 15-16 local review)
 ├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
-│   ├── test_biomech_load_shift.py   # ⑨ load-shift slope sign + guards (17 cases)
-│   └── test_interpretation.py       # ⑩ rule loader + 3 scenarios (20 cases)
+│   ├── test_biomech_load_shift.py   # ⑩ load-shift slope sign + guards (17 cases)
+│   └── test_interpretation.py       # ⑪ rule loader + 3 scenarios (20 cases)
 └── src/movement/
     ├── biomech/
     │   ├── __init__.py              # BiomechRecord · extract_rep_biomech()
@@ -181,6 +184,7 @@ movement_project/
     ├── simulation/
     └── stages/
         ├── annotation.py
+        ├── canonicalization.py
         ├── floor_reference.py
         ├── motion_attribution.py
         ├── normalization.py

@@ -1,10 +1,10 @@
-# 06. Segmentation
+# 07. Segmentation
 
 **Document Version:** 1.3.1
 **Last Updated:** 2026-06-10
-**Korean Sync:** `docs/pipeline/06_segmentation.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/07_segmentation.md` is the same-version Korean source.
 
-Pipeline step ⑥ confirms repetition boundaries and intra-rep phase labels. It is
+Pipeline step ⑦ confirms repetition boundaries and intra-rep phase labels. It is
 named `Segmentation` because it covers both reps and phases. The existing
 `phase_segmentation` YAML/code key remains dedicated to phase splitting, while
 `rep_segmentation` handles repetition boundaries.
@@ -16,7 +16,7 @@ This step does not modify coordinates or delete frames.
 ## 1. Pipeline Position
 
 ```text
-⑤ Normalization → ⑥ Segmentation ← this step → ⑦ Motion Attribution
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← this step → ⑧ Motion Attribution
 ```
 
 Inputs:
@@ -171,12 +171,12 @@ workflow rather than the generic pipeline default.
 ## 7. Downstream Rules
 
 ```text
-⑦ Motion Attribution   uses confirmed rep_id.
-⑧ Feature Extraction   emits rep-level features for confirmed reps and phase-level
+⑧ Motion Attribution   uses confirmed rep_id.
+⑨ Feature Extraction   emits rep-level features for confirmed reps and phase-level
                        features only for successful/manual phases.
-⑨ Biomech Proxy        excludes unresolved rep-boundary failures.
-⑩ Biomarker Scoring    keeps failure/exclusion provenance.
-⑪ Visualization        shows failure points and manual boundaries.
+⑩ Biomech Proxy        excludes unresolved rep-boundary failures.
+⑪ Biomarker Scoring    keeps failure/exclusion provenance.
+⑫ Visualization        shows failure points and manual boundaries.
 ```
 
 ---

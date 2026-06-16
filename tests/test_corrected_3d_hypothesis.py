@@ -146,8 +146,9 @@ def test_pipeline_emits_corrected_3d_review_without_scoring_use():
     config.exercise_definition.enabled = False
     config.preprocessing.enabled = False
     config.normalization.enabled = True
-    config.normalization.corrected_3d_hypothesis.enabled = True
-    config.normalization.corrected_3d_hypothesis.output_family = "review"
+    config.canonicalization.enabled = True
+    config.canonicalization.corrected_3d_hypothesis.enabled = True
+    config.canonicalization.corrected_3d_hypothesis.output_family = "review"
     config.rep_segmentation.enabled = False
     config.phase_segmentation.enabled = False
     config.motion_attribution.enabled = False
@@ -178,7 +179,7 @@ def test_pipeline_emits_corrected_3d_review_without_scoring_use():
     assert "used_for_score" not in row
     assert review["readiness_provenance"]["status"] == "candidate_evidence"
     assert review["readiness_provenance"]["used_for_features_or_scores"] is False
-    assert report["normalization"]["corrected_3d_hypothesis"]["review_status"] == (
+    assert report["canonicalization"]["corrected_3d_hypothesis"]["review_status"] == (
         "candidate_evidence"
     )
 

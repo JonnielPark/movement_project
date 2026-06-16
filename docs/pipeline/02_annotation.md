@@ -8,7 +8,7 @@
 수동 라벨, 촬영 provenance, 수행 provenance를 보존한다.
 rep/phase 경계를 추정하거나 프레임을 삭제하거나 좌표를 수정하지 않는다.
 rep/phase 경계 추정과 segmentation failure 처리는
-[06_segmentation.md](06_segmentation.md)에서 담당한다.
+[07_segmentation.md](07_segmentation.md)에서 담당한다.
 
 ---
 

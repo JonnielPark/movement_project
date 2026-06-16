@@ -34,7 +34,7 @@ appear in an output, treat it as a documentation or code error.
 
 | Term | Fixed Meaning in This Study |
 |---|---|
-| Phase | A sub-interval within one rep. This study separates two schemes: kinetic labels in `phase_model.expected_ratio`, and kinematic labels written to the `phase` column by ⑥ Segmentation. |
+| Phase | A sub-interval within one rep. This study separates two schemes: kinetic labels in `phase_model.expected_ratio`, and kinematic labels written to the `phase` column by ⑦ Segmentation. |
 | Kinematic phase | A phase defined by the movement direction of a reference landmark. Examples: `Descent`, `Ascent`, `Turnaround_Hold`, `Lift`, `Tap`, `Return`. Never mix these with kinetic labels such as `eccentric` or `concentric`. |
 | Rep segmentation | The semi-automatic procedure that uses `rep_segmentation` settings to confirm repetition start/end boundaries and create `rep_id`. |
 | Phase segmentation | The intra-rep phase-splitting procedure that keeps the existing `phase_segmentation` code identifier and YAML key. |
@@ -68,7 +68,7 @@ appear in an output, treat it as a documentation or code error.
 
 | Term | Fixed Meaning in This Study |
 |---|---|
-| Analysis-space canonicalization | An optional layer inside ⑤ Normalization that reduces consistent monocular-observation bias and re-expresses the pose in a canonical analysis space for movement-pattern evaluation. It is not template fitting to a good movement and not absolute 3D reconstruction. |
+| Analysis-space canonicalization | Pipeline step ⑥, which consumes ⑤ `norm` coordinates and may add candidate coordinate families to reduce consistent monocular-observation bias for movement-pattern evaluation. It is not template fitting to a good movement and not absolute 3D reconstruction. |
 | Canonical analysis space | An analysis coordinate representation defined from hip center, torso scale, exercise-specific movement-plane priors, support-plane priors, and related constraints. It is not an anatomical absolute coordinate system or calibrated world coordinate; it supports comparison of relative joint trajectories and temporal change. |
 | Pseudo-floor reference | An apparent floor reference estimated from support-contact landmarks inside the monocular pose coordinate system. It is not the physical location of the real floor, camera calibration, or absolute 3D reconstruction. |
 | Floor-relative correction | A support-plane prior for static support-contact exercises that attenuates apparent floor artifacts using the pseudo-floor reference. It is currently treated as the `support_plane_alignment` sub-filter of analysis-space canonicalization. Raw/norm coordinates are preserved, and canon coordinates plus residuals are added only as new columns. |
@@ -77,7 +77,7 @@ appear in an output, treat it as a documentation or code error.
 | Anthropometric skeleton prior | A loose body-segment length plausibility envelope used to review monocular-depth behavior. In Stage A it may use aggregate Size Korea ratios only as an engineering envelope; it is not an empirical percentile prior, calibrated 3D reconstruction, or subject-specific skeleton fitting. |
 | Conservative engineering range | A researcher-defined wide tolerance around aggregate anthropometric ratios. It is used to catch impossible skeleton behavior and data-confidence problems, not to estimate population P5/P95. |
 | Row-level empirical anthropometric prior | A future upgrade that requires de-identified individual-level anthropometric rows so segment/stature ratios can be computed within each person before summarizing P1/P99 or P5/P95. |
-| Depth residual correction | A bounded candidate-evidence adjustment of the depth axis that may be attempted only when x/y evidence, segment-length plausibility, visibility, and correction caps allow it. It never overwrites raw or base normalized coordinates, and it does not define score gravity inside ⑤ Normalization. |
+| Depth residual correction | A bounded candidate-evidence adjustment of the depth axis that may be attempted only when x/y evidence, segment-length plausibility, visibility, and correction caps allow it. It never overwrites raw or base normalized coordinates, and it does not define score gravity inside ⑥ Canonicalization. |
 | Articulation plausibility | A separate guard for impossible joint-angle or reverse-bending configurations. It downgrades data confidence or marks features unavailable; it is not a direct movement-quality penalty. |
 
 ---

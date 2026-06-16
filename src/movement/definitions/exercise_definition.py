@@ -213,6 +213,9 @@ _DEFAULT_CAMERA_ZONES_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.y
 _DEFAULT_ANALYSIS_PROFILES_DIR = (
     _PROJECT_ROOT / "data" / "definitions" / "analysis_profiles"
 )
+_DEFAULT_ANALYSIS_PRESETS_PATH = (
+    _PROJECT_ROOT / "data" / "definitions" / "analysis_presets.yaml"
+)
 _DEFAULT_PERFORMANCE_PROTOCOLS_DIR = (
     _PROJECT_ROOT / "data" / "protocols" / "performance"
 )
@@ -1019,6 +1022,12 @@ def _default_analysis_profiles_dir(definitions_dir: Path) -> Path:
     return _DEFAULT_ANALYSIS_PROFILES_DIR
 
 
+def _default_analysis_presets_path(definitions_dir: Path) -> Path:
+    if definitions_dir.name == "exercises":
+        return definitions_dir.parent / "analysis_presets.yaml"
+    return _DEFAULT_ANALYSIS_PRESETS_PATH
+
+
 def _default_protocol_dir(definitions_dir: Path, protocol_name: str) -> Path:
     if (
         definitions_dir.name == "exercises"
@@ -1040,6 +1049,68 @@ def _unwrap_named_block(raw: dict, key: str) -> dict:
     if isinstance(block, dict):
         return block
     return raw
+
+
+def _deep_merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = deepcopy(base)
+    for key, value in override.items():
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            merged[key] = _deep_merge_dict(existing, value)
+        else:
+            merged[key] = deepcopy(value)
+    return merged
+
+
+def _preset_names(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return list(value)
+    raise ValueError("analysis profile preset selection must be a string or list")
+
+
+def _expand_analysis_profile_presets(
+    analysis_profile: dict[str, Any],
+    *,
+    presets_path: Path,
+    exercise_id: str,
+) -> dict[str, Any]:
+    selections = analysis_profile.get("presets") or {}
+    if not selections:
+        return deepcopy(analysis_profile)
+    if not isinstance(selections, dict):
+        raise ValueError(
+            f"[{exercise_id}] analysis profile 'presets' must be a mapping"
+        )
+    if not presets_path.exists():
+        raise FileNotFoundError(
+            f"Analysis profile '{exercise_id}' selected presets, but no preset "
+            f"catalog was found at: '{presets_path}'"
+        )
+
+    catalog = _load_raw(presets_path)
+    expanded: dict[str, Any] = {}
+    for group_name, selected in selections.items():
+        group = catalog.get(group_name)
+        if not isinstance(group, dict):
+            raise ValueError(
+                f"[{exercise_id}] analysis preset group '{group_name}' "
+                f"was not found in '{presets_path}'"
+            )
+        for preset_name in _preset_names(selected):
+            block = group.get(preset_name)
+            if not isinstance(block, dict):
+                raise ValueError(
+                    f"[{exercise_id}] analysis preset '{group_name}."
+                    f"{preset_name}' was not found in '{presets_path}'"
+                )
+            expanded = _deep_merge_dict(expanded, block)
+
+    explicit_profile = {
+        key: value for key, value in analysis_profile.items() if key != "presets"
+    }
+    return _deep_merge_dict(expanded, explicit_profile)
 
 
 def _compose_split_raw(
@@ -1092,6 +1163,7 @@ def load_exercise_context(
     definitions_dir: Path | str,
     *,
     analysis_profiles_dir: Path | str | None = None,
+    analysis_presets_path: Path | str | None = None,
     performance_protocols_dir: Path | str | None = None,
     camera_protocols_dir: Path | str | None = None,
 ) -> ExerciseContext:
@@ -1100,8 +1172,9 @@ def load_exercise_context(
 
     The loader accepts both the legacy combined exercise YAML and the split YAML
     layout introduced for notebook-first exercise authoring. In split mode, the
-    companion analysis profile is required, while performance and camera protocol
-    files are optional metadata.
+    companion analysis profile is required. Analysis profiles may select reusable
+    preset blocks before exercise-specific overrides are applied. Performance and
+    camera protocol files are optional metadata.
     """
     definitions_dir = Path(definitions_dir)
     is_fallback = False
@@ -1156,6 +1229,11 @@ def load_exercise_context(
             if camera_protocols_dir is not None
             else _default_protocol_dir(definitions_dir, "camera")
         )
+        resolved_presets_path = (
+            Path(analysis_presets_path)
+            if analysis_presets_path is not None
+            else _default_analysis_presets_path(definitions_dir)
+        )
 
         analysis_path = resolved_analysis_dir / f"{exercise_id}.yaml"
         performance_path = resolved_performance_dir / f"{exercise_id}.yaml"
@@ -1169,6 +1247,13 @@ def load_exercise_context(
 
         analysis_profile = _load_raw(analysis_path)
         source_paths["analysis_profile"] = analysis_path
+        if analysis_profile.get("presets"):
+            analysis_profile = _expand_analysis_profile_presets(
+                analysis_profile,
+                presets_path=resolved_presets_path,
+                exercise_id=exercise_id,
+            )
+            source_paths["analysis_presets"] = resolved_presets_path
 
         if performance_path.exists():
             performance_protocol = _load_raw(performance_path)
@@ -1211,6 +1296,7 @@ def load_exercise_definition(
     definitions_dir: Path | str,
     *,
     analysis_profiles_dir: Path | str | None = None,
+    analysis_presets_path: Path | str | None = None,
     performance_protocols_dir: Path | str | None = None,
     camera_protocols_dir: Path | str | None = None,
 ) -> ExerciseDefinition:
@@ -1244,6 +1330,7 @@ def load_exercise_definition(
         exercise_id,
         definitions_dir,
         analysis_profiles_dir=analysis_profiles_dir,
+        analysis_presets_path=analysis_presets_path,
         performance_protocols_dir=performance_protocols_dir,
         camera_protocols_dir=camera_protocols_dir,
     ).exercise_definition
@@ -1253,6 +1340,7 @@ def load_all_exercise_definitions(
     definitions_dir: Path | str,
     *,
     analysis_profiles_dir: Path | str | None = None,
+    analysis_presets_path: Path | str | None = None,
     performance_protocols_dir: Path | str | None = None,
     camera_protocols_dir: Path | str | None = None,
 ) -> dict[str, ExerciseDefinition]:
@@ -1283,6 +1371,7 @@ def load_all_exercise_definitions(
                 ex_id,
                 definitions_dir,
                 analysis_profiles_dir=analysis_profiles_dir,
+                analysis_presets_path=analysis_presets_path,
                 performance_protocols_dir=performance_protocols_dir,
                 camera_protocols_dir=camera_protocols_dir,
             )

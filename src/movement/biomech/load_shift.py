@@ -1,5 +1,5 @@
 """
-⑨ Biomechanical Load Shift — within-set joint load migration trend.
+⑩ Biomechanical Load Shift — within-set joint load migration trend.
 
 Dissertation §6.5: as reps accumulate within a set, load redistributes
 between joints (e.g. knee moment-arm decreases while hip moment-arm increases),

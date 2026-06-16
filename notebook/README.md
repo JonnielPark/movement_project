@@ -5,34 +5,41 @@ pipeline after cloning the repository.
 
 ## Current Public Path
 
-The code-backed evaluation path is the base ①-⑩ pipeline:
+The code-backed evaluation path is the base ①-⑪ pipeline:
 
 ```text
-00 environment check
-01 data loading
-02 validation
-03 raw visualization
-04 normalization
-05 annotation mask
-06 exercise definition
-07 preprocessing
-08 phase segmentation
-09 motion attribution
-10 feature extraction
-11 biomechanical proxy
-12 biomarker scoring
-13 user movement evaluation
-14 robustness simulation
+Setup / data inspection
+setup_00_environment_check.ipynb
+setup_01_data_loading_test.ipynb
+setup_02_raw_visualization_test.ipynb
+
+Pipeline stage checks
+01 validation
+02 annotation mask
+03 exercise definition
+04 preprocessing
+05 normalization
+06 canonicalization
+07 segmentation
+08 motion attribution
+09 feature extraction
+10 biomechanical proxy
+11 biomarker scoring
+12 visualization
+13 robustness simulation
+14 user movement evaluation
 ```
 
 For a new user, start with:
 
 ```text
-00_environment_check.ipynb
-13_user_movement_evaluation.ipynb
+setup_00_environment_check.ipynb
+setup_01_data_loading_test.ipynb
+01_validation_test.ipynb
+14_user_movement_evaluation.ipynb
 ```
 
-For the current local research review, open the individual 01-12 notebooks in
+For the current local research review, open the individual stage notebooks in
 order when you need to inspect each stage on the p01 squat recording.
 
 ## Important Boundary
@@ -43,7 +50,7 @@ yet been promoted to `src/movement/`, so it is not part of the public evaluation
 notebook path.
 
 Current public scoring uses `norm` coordinates. Corrected-depth candidates remain
-normalization evidence only; any nonzero score gravity is deferred to a later
+⑥ canonicalization candidate evidence only; any nonzero score gravity is deferred to a later
 scoring-policy task.
 
 ## User Inputs
@@ -66,7 +73,7 @@ or coordinate rescaling.
 
 To evaluate another movement recording, edit the pose CSV path, optional
 annotation CSV path, and `EXERCISE_ID` in the input cell of the relevant
-notebook or in `13_user_movement_evaluation.ipynb`.
+notebook or in `14_user_movement_evaluation.ipynb`.
 
 The p01 recording is real review data, not a clean synthetic baseline. Validation
 or phase-segmentation failures in the stage notebooks should be read as

@@ -1,12 +1,12 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.5.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.6.0
+**Last Updated:** 2026-06-16
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
 `ExerciseContext`, and returns the backward-compatible `ExerciseDefinition` object
-used by downstream stages ④-⑩.
+used by downstream stages ④-⑪.
 
 Exercise definitions describe what the movement means. Annotation describes where
 the movement happened in a recording.
@@ -22,11 +22,12 @@ Pose CSV + annotation + exercise YAML artifacts
 → ③ Exercise Definition           ← this step
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
-→ ⑥ Segmentation                  rep/phase settings
-→ ⑦ Motion Attribution            laterality, side_sequence
-→ ⑧ Feature Extraction            feature_domains, joint_actions
-→ ⑨ Biomech Proxy                 biomechanical_focus
-→ ⑩ Biomarker Derivation          compensation_candidates
+→ ⑥ Canonicalization              coordinate-candidate priors
+→ ⑦ Segmentation                  rep/phase settings
+→ ⑧ Motion Attribution            laterality, side_sequence
+→ ⑨ Feature Extraction            feature_domains, joint_actions
+→ ⑩ Biomech Proxy                 biomechanical_focus
+→ ⑪ Biomarker Derivation          compensation_candidates
 ```
 
 Exercise-specific behavior should be represented as YAML data rather than Python
@@ -46,6 +47,10 @@ data/definitions/analysis_profiles/<exercise_id>.yaml
     Analysis behavior: landmarks, angle definitions, segmentation settings,
     feature domains, biomechanical focus, compensation candidates, quality rules.
 
+data/definitions/analysis_presets.yaml
+    Reusable analysis blocks for segmentation, landmark/angle sets, and quality
+    rules. Presets reduce repeated YAML but must not hide exercise identity.
+
 data/protocols/performance/<exercise_id>.yaml
     Participant-facing protocol: planned sets/counts, count unit, side sequence,
     completion policy, cues, analysis-disrupting performance patterns.
@@ -57,6 +62,29 @@ data/protocols/camera/<exercise_id>.yaml
 The loader merges these artifacts into the runtime `ExerciseDefinition` shape.
 Legacy combined YAML remains accepted only for backward compatibility; new work
 should use split artifacts.
+
+Analysis profiles may select reusable preset blocks:
+
+```yaml
+exercise_id: squat
+version: 0.5.2
+presets:
+  segmentation: resistance_vertical_hip
+  landmark_set: lower_body_hip_knee_ankle
+  quality_rules: lower_body_standard
+
+biomechanical_focus: ...
+compensation_candidates: ...
+feature_domains: ...
+```
+
+Preset expansion happens before validation. Explicit fields in the exercise
+profile override the selected preset fields; dictionaries merge recursively,
+while lists and scalar values replace the preset value. Presets are allowed for
+repeated analysis mechanics only. `classification`, `support`, `phase_model`,
+participant-facing protocol, camera protocol, and scoring policy must remain in
+their own artifacts so future exercises can differ without hidden Python
+branches.
 
 ---
 
@@ -338,7 +366,7 @@ quality_rules:
   allow_partial_feature_output: bool
 ```
 
-These thresholds are consumed by ④ Preprocessing and ⑧ Feature Extraction.
+These thresholds are consumed by ④ Preprocessing and ⑨ Feature Extraction.
 
 ---
 

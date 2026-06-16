@@ -1,37 +1,9 @@
 exercise_id: plank_shoulder_tap
 version: 0.5.2
-rep_segmentation:
-  reference_landmark: right_wrist
-  reference_axis: vertical
-  boundary_logic: local_minimum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 5
-    polyorder: 3
-  minimum_rep_length_frames: 6
-  minimum_boundary_distance_frames: 6
-  minimum_reps: 1
-  boundary_prominence: null
-  include_endpoints: true
-phase_segmentation:
-  reference_landmark: right_wrist
-  reference_axis: vertical
-  phase_sequence:
-  - Lift
-  - Tap
-  - Return
-  split_logic:
-  - local_maximum
-  - local_minimum
-  smoothing:
-    method: savitzky_golay
-    window_frames: 5
-    polyorder: 3
-  turnaround_hold:
-    enabled: false
-    half_window_frames: 2
-  minimum_rep_length_frames: 6
-  multi_inflection_policy: global_extremum
+presets:
+  segmentation: task_vertical_right_wrist_tap
+  landmark_set: upper_body_push
+  quality_rules: plank_occlusion_prone
 landmarks:
   model: mediapipe_pose_33
   primary_joints:
@@ -60,51 +32,6 @@ landmarks:
   - 26
   - 27
   - 28
-angle_definitions:
-  left_shoulder_angle:
-    points:
-    - 23
-    - 11
-    - 13
-    vertex: 11
-  right_shoulder_angle:
-    points:
-    - 24
-    - 12
-    - 14
-    vertex: 12
-  left_elbow_angle:
-    points:
-    - 11
-    - 13
-    - 15
-    vertex: 13
-  right_elbow_angle:
-    points:
-    - 12
-    - 14
-    - 16
-    vertex: 14
-  left_hip_angle:
-    points:
-    - 11
-    - 23
-    - 25
-    vertex: 23
-  right_hip_angle:
-    points:
-    - 12
-    - 24
-    - 26
-    vertex: 24
-  shoulder_line_angle:
-    points:
-    - 11
-    - 12
-  pelvis_line_angle:
-    points:
-    - 23
-    - 24
 biomechanical_focus:
   expected_com_motion: medial_lateral
   stability_requirement: very_high
@@ -168,11 +95,3 @@ feature_domains:
   - support_moment_proxy
   - load_distribution_proxy
   - compensation_load_shift_proxy
-quality_rules:
-  minimum_visible_landmark_ratio: 0.75
-  minimum_critical_landmark_ratio: 0.85
-  max_missing_gap_frames: 10
-  max_interpolation_gap_frames: 3
-  exclude_rep_if_critical_landmark_missing: true
-  exclude_rep_if_phase_missing: false
-  allow_partial_feature_output: true

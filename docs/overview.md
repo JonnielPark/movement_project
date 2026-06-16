@@ -24,14 +24,15 @@
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
 | 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.4.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, 선택 canonicalization 스키마 포함 |
-| 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.1.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.2.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.2.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.2.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.1.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
-| 1.1.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+| 2.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
+| 2.0.0 | [06_canonicalization.md](pipeline/06_canonicalization.md) | ⑥ Canonicalization |
+| 1.3.0 | [07_segmentation.md](pipeline/07_segmentation.md) | ⑦ Segmentation |
+| 1.1.0 | [08_motion_attribution.md](pipeline/08_motion_attribution.md) | ⑧ Motion Attribution |
+| 1.2.0 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
+| 1.2.0 | [10_biomechanical_proxy.md](pipeline/10_biomechanical_proxy.md) | ⑩ Biomech Proxy |
+| 1.2.0 | [11_biomarker_scoring.md](pipeline/11_biomarker_scoring.md) | ⑪ Biomarker Scoring |
+| 1.1.0 | [12_visualization.md](pipeline/12_visualization.md) | ⑫ Visualization |
+| 1.1.0 | [13_insilico_simulation.md](pipeline/13_insilico_simulation.md) | ⑬ In-silico Simulation |
 
 ---
 
@@ -120,14 +121,14 @@ view_metric_reliability  zone별 metric-family reliability prior
     ③  Exercise Definition  ExerciseDefinition 객체 로드(미존재 시 generic 폴백)
     ④  Preprocessing        신뢰도 검출, 좌·우 스왑(swap) 보정, 보간(interpolation), 평활화(smoothing)
     ⑤  Normalization        골반 중심 평행이동 + 몸통 길이 중앙값 척도화
-        canonicalization    선택: 분석 좌표 표준화(raw/norm 보존)
-    ⑥  Segmentation         관절 움직임 추적 기반 rep/phase 반자동 분할
-    ⑦  Motion Attribution   반복별 활성 측(active-side) 일관성 검사
-    ⑧  Feature Extraction   공간/시간/제어 피처(반복 단위 + 구간 단위) + audit reports
-    ⑨  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
-    ⑩  Biomarker Derivation BiomarkerRecord(개별 지표) + BiomarkerScoreRecord(반복 단위 종합)
-    ⑪  Visualization        ①–⑩ 러너(runner) 외부에서 호출; 진단 및 결과 차트
-    ⑫  Simulation           강건성 시뮬레이션, 러너 외부에서 호출
+    ⑥  Canonicalization     선택 analysis-space 후보 좌표(raw/norm 보존)
+    ⑦  Segmentation         관절 움직임 추적 기반 rep/phase 반자동 분할
+    ⑧  Motion Attribution   반복별 활성 측(active-side) 일관성 검사
+    ⑨  Feature Extraction   공간/시간/제어 피처(반복 단위 + 구간 단위) + audit reports
+    ⑩  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
+    ⑪  Biomarker Derivation BiomarkerRecord(개별 지표) + BiomarkerScoreRecord(반복 단위 종합)
+    ⑫  Visualization        ①–⑪ 러너(runner) 외부에서 호출; 진단 및 결과 차트
+    ⑬  Simulation           강건성 시뮬레이션, 러너 외부에서 호출
 
 출력
     단계별 데이터프레임(DataFrame) (칼럼 누적)
@@ -158,14 +159,15 @@ view_metric_reliability  zone별 metric-family reliability prior
 | ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼, performance/failure provenance 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
 | ③ Exercise Definition | `exercise_type`, split YAML 산출물 또는 legacy combined YAML | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
-| ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. 필요 시 선택 `canonicalization` 층에서 support plane, movement plane, protocol-height lateral-width prior를 이용해 단안 pose의 일관된 관찰 편향을 완화한다. 현재 구현된 floor-relative 보정은 support-plane prior로 취급하며, raw/norm/canon 좌표 계열을 분리한다. | Normalized DataFrame; 선택 canonical coordinate columns, correction diagnostics, data-confidence/correction report |
-| ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
-| ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
-| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. 좌표 보정량과 관측 품질은 movement quality score와 분리된 data-confidence/provenance로 해석한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
-| ⑪ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
-| ⑫ Simulation | 정상 또는 기준 시퀀스, injector 설정 | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등 조건을 주입하고 지표 반응성을 평가한다. | synthetic dataset, robustness report |
+| ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
+| ⑥ Canonicalization | Normalized DataFrame, 운동/카메라/지지면 prior | support-plane, movement-plane, protocol-height, anthropometric prior를 이용해 선택 analysis-space 후보 좌표 계열을 방출할 수 있다. raw/norm/candidate 좌표 계열은 분리하고 모든 후보는 confidence, burden, residual, sensitivity provenance와 함께 보고한다. | 선택 후보 좌표 columns, canonicalization report, correction diagnostics |
+| ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
+| ⑧ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
+| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
+| ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
+| ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. 좌표 보정량과 관측 품질은 movement quality score와 분리된 data-confidence/provenance로 해석한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑫ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
+| ⑬ Simulation | 정상 또는 기준 시퀀스, injector 설정 | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등 조건을 주입하고 지표 반응성을 평가한다. | synthetic dataset, robustness report |
 
 ---
 
@@ -193,13 +195,13 @@ Feature availability와 관측 신뢰도는 movement quality와 분리한다. �
   제공한다. [02_annotation.md](pipeline/02_annotation.md) 참조.
 - Segmentation은 확정된 `rep_id`와 `phase`를 방출한다. 실패 지점은 수동 확인 전까지 해당
   구간이 반복 단위 또는 구간 단위 지표를 구동하지 않게 한다.
-  [06_segmentation.md](pipeline/06_segmentation.md) 참조.
+  [07_segmentation.md](pipeline/07_segmentation.md) 참조.
 - Normalization은 프레임별 골반 중심 평행이동과 시퀀스 단위 몸통 길이 중앙값 척도화를
   사용한다. 후속 값은 무차원 `torso_length_ratio` 또는 도(degree) 단위로 유지하며,
   절대 힘/길이 단위는 사용하지 않는다. [05_normalization.md](pipeline/05_normalization.md) 참조.
 - 선택 `canonicalization`은 raw/norm 좌표를 보존하고 별도 후보 좌표와 confidence/correction
   report를 방출한다. 좋은 동작 template에 맞추거나 실제 보상 움직임을 지우는 용도로 사용하지
-  않는다.
+  않는다. [06_canonicalization.md](pipeline/06_canonicalization.md) 참조.
 
 ---
 
@@ -207,8 +209,8 @@ Feature availability와 관측 신뢰도는 movement quality와 분리한다. �
 
 ```text
 구현됨
-    ①-⑩ pipeline runner, split exercise YAML loading, annotation, preprocessing,
-    normalization, segmentation, motion attribution, features, biomech proxy,
+    ①-⑪ pipeline runner, split exercise YAML loading, annotation, preprocessing,
+    normalization, canonicalization candidate reports, segmentation, motion attribution, features, biomech proxy,
     biomarker scoring, interpretation rules, synthetic-normal baseline.
 
 Review-only / 기본 비활성
@@ -218,7 +220,7 @@ Review-only / 기본 비활성
 
 부분 구현
     far-side landmark stabilization, simulation injector, visualization scaffolding.
-    Visualization stub은 ⑪ Visualization 착수 전까지 의도적으로 유지한다.
+    Visualization stub은 ⑫ Visualization 착수 전까지 의도적으로 유지한다.
 
 다음 설계 gate
     Size Korea 8차 3D full-body automatic aggregate ratio를 느슨한 engineering envelope로

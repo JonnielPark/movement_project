@@ -8,7 +8,7 @@ Pipeline step ② merges user-prepared segment metadata into the pose dataframe.
 It preserves manual labels, filming provenance, and performance provenance.
 It does not estimate rep/phase boundaries, delete frames, or modify coordinates.
 Rep/phase boundary estimation and segmentation failure handling belong to
-[06_segmentation.md](06_segmentation.md).
+[07_segmentation.md](07_segmentation.md).
 
 ---
 

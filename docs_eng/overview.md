@@ -24,14 +24,15 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
 | 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
-| 1.4.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization, including optional canonicalization schema |
-| 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
-| 1.1.0 | [07_motion_attribution.md](pipeline/07_motion_attribution.md) | ⑦ Motion Attribution |
-| 1.2.0 | [08_feature_extraction.md](pipeline/08_feature_extraction.md) | ⑧ Feature Extraction |
-| 1.2.0 | [09_biomechanical_proxy.md](pipeline/09_biomechanical_proxy.md) | ⑨ Biomech Proxy |
-| 1.2.0 | [10_biomarker_scoring.md](pipeline/10_biomarker_scoring.md) | ⑩ Biomarker Scoring |
-| 1.1.0 | [11_visualization.md](pipeline/11_visualization.md) | ⑪ Visualization |
-| 1.1.0 | [12_insilico_simulation.md](pipeline/12_insilico_simulation.md) | ⑫ In-silico Simulation |
+| 2.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
+| 2.0.0 | [06_canonicalization.md](pipeline/06_canonicalization.md) | ⑥ Canonicalization |
+| 1.3.0 | [07_segmentation.md](pipeline/07_segmentation.md) | ⑦ Segmentation |
+| 1.1.0 | [08_motion_attribution.md](pipeline/08_motion_attribution.md) | ⑧ Motion Attribution |
+| 1.2.0 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
+| 1.2.0 | [10_biomechanical_proxy.md](pipeline/10_biomechanical_proxy.md) | ⑩ Biomech Proxy |
+| 1.2.0 | [11_biomarker_scoring.md](pipeline/11_biomarker_scoring.md) | ⑪ Biomarker Scoring |
+| 1.1.0 | [12_visualization.md](pipeline/12_visualization.md) | ⑫ Visualization |
+| 1.1.0 | [13_insilico_simulation.md](pipeline/13_insilico_simulation.md) | ⑬ In-silico Simulation |
 
 ---
 
@@ -131,14 +132,14 @@ Steps
     ③  Exercise Definition  load ExerciseDefinition object (generic fallback if not found)
     ④  Preprocessing        reliability detection, swap correction, interpolation, smoothing
     ⑤  Normalization        hip-center translation + median torso-length scale
-        canonicalization    optional analysis-space alignment (raw/norm preserved)
-    ⑥  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
-    ⑦  Motion Attribution   per-rep active-side consistency check
-    ⑧  Feature Extraction   spatial / temporal / control features (rep-level + phase-level) + audit reports
-    ⑨  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
-    ⑩  Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
-    ⑪  Visualization        called outside the ①–⑩ runner; diagnostic and result charts
-    ⑫  Simulation           robustness simulation, called outside the runner
+    ⑥  Canonicalization     optional analysis-space candidate coordinates (raw/norm preserved)
+    ⑦  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
+    ⑧  Motion Attribution   per-rep active-side consistency check
+    ⑨  Feature Extraction   spatial / temporal / control features (rep-level + phase-level) + audit reports
+    ⑩  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
+    ⑪  Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
+    ⑫  Visualization        called outside the ①–⑪ runner; diagnostic and result charts
+    ⑬  Simulation           robustness simulation, called outside the runner
 
 Output
     Per-step dataframes (columns accumulate)
@@ -169,14 +170,15 @@ Output
 | ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
 | ③ Exercise Definition | `exercise_type`, split YAML artifacts or legacy combined YAML | Loads an `ExerciseContext` and returns a backward-compatible `ExerciseDefinition`; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as metadata for filming recommendations and warning policy. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
-| ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. When needed, optional `canonicalization` attenuates consistent monocular-observation bias using support-plane, movement-plane, or protocol-height lateral-width priors. The current floor-relative correction is treated as a support-plane prior, and raw/norm/canon coordinate families remain separate. | Normalized DataFrame; optional canonical coordinate columns, correction diagnostics, data-confidence/correction report |
-| ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑦ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
-| ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
-| ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
-| ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
-| ⑫ Simulation | Normal or reference sequence, injector settings | Injects conditions such as noise, occlusion, ROM restriction, and velocity spikes, then evaluates metric responsiveness. | synthetic dataset, robustness report |
+| ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
+| ⑥ Canonicalization | Normalized DataFrame, exercise/camera/support priors | Optionally emits analysis-space candidate coordinate families using support-plane, movement-plane, protocol-height, or anthropometric priors. Raw/norm/candidate coordinate families remain separate and every candidate is reported with confidence, burden, residual, and sensitivity provenance. | Optional candidate coordinate columns, canonicalization report, correction diagnostics |
+| ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
+| ⑧ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
+| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
+| ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
+| ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
+| ⑫ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
+| ⑬ Simulation | Normal or reference sequence, injector settings | Injects conditions such as noise, occlusion, ROM restriction, and velocity spikes, then evaluates metric responsiveness. | synthetic dataset, robustness report |
 
 ---
 
@@ -206,7 +208,7 @@ penalty.
   and recording provenance. See [02_annotation.md](pipeline/02_annotation.md).
 - Segmentation emits confirmed `rep_id` and `phase` labels. Failure points require
   manual confirmation before affected ranges drive rep-level or phase-level metrics.
-  See [06_segmentation.md](pipeline/06_segmentation.md).
+  See [07_segmentation.md](pipeline/07_segmentation.md).
 - Normalization uses frame-wise hip-center translation and sequence-wise median
   torso-length scaling. Downstream values remain dimensionless
   `torso_length_ratio` units or degrees; absolute force/length units are not used.
@@ -214,6 +216,7 @@ penalty.
 - Optional canonicalization preserves raw/norm coordinates and emits separate
   candidate coordinates plus confidence/correction reports. It must not fit the
   pose to a good-movement template or erase true compensation patterns.
+  See [06_canonicalization.md](pipeline/06_canonicalization.md).
 
 ---
 
@@ -221,8 +224,8 @@ penalty.
 
 ```text
 Implemented
-    ①-⑩ pipeline runner, split exercise YAML loading, annotation, preprocessing,
-    normalization, segmentation, motion attribution, features, biomech proxies,
+    ①-⑪ pipeline runner, split exercise YAML loading, annotation, preprocessing,
+    normalization, canonicalization candidate reports, segmentation, motion attribution, features, biomech proxies,
     biomarker scoring, interpretation rules, and synthetic-normal baseline.
 
 Review-only / disabled by default
@@ -232,7 +235,7 @@ Review-only / disabled by default
 
 Partial
     far-side landmark stabilization, simulation injectors, and visualization
-    scaffolding. Visualization stubs are intentionally retained until ⑪ begins.
+    scaffolding. Visualization stubs are intentionally retained until ⑫ begins.
 
 Next design gate
     Stage A anthropometric skeleton prior for depth plausibility using Size Korea

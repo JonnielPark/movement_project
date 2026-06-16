@@ -149,7 +149,7 @@ coordinate reprojection        적용하지 않음
 view_metric_reliability        confidence/provenance gate, 좌표 보정 아님
 ```
 
-⑤ Normalization은 review-only 좌표에서 pose-internal floor 또는 height prior를 적용할 수 있다.
+⑥ Canonicalization은 pose-internal floor 또는 height prior를 candidate evidence로 추가할 수 있다.
 이 prior는 side view를 실제 frontal observation으로 만들지 않는다. Bilateral symmetry feature는
 충분한 visibility, plausible segment geometry, 낮은 swap risk, 지지 가능한 view가 확인될 때만
 scoring에 들어간다.
@@ -160,4 +160,5 @@ scoring에 들어간다.
 - [02_annotation.md](../pipeline/02_annotation.md)
 - [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
 - [05_normalization.md](../pipeline/05_normalization.md)
-- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)
+- [06_canonicalization.md](../pipeline/06_canonicalization.md)
+- [13_insilico_simulation.md](../pipeline/13_insilico_simulation.md)

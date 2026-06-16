@@ -156,11 +156,11 @@ coordinate reprojection        not applied
 view_metric_reliability        confidence/provenance gate, not coordinate correction
 ```
 
-⑤ Normalization may apply pose-internal floor or height priors in review-only
-coordinates. These priors do not create a true frontal observation from a side
-view. Bilateral symmetry features enter scoring only when the feature-availability
-gate confirms sufficient visibility, plausible segment geometry, low swap risk,
-and a supportive view.
+⑥ Canonicalization may add pose-internal floor or height priors as candidate
+evidence. These priors do not create a true frontal observation from a side view.
+Bilateral symmetry features enter scoring only when the feature-availability gate
+confirms sufficient visibility, plausible segment geometry, low swap risk, and a
+supportive view.
 
 Related documents:
 
@@ -168,4 +168,5 @@ Related documents:
 - [02_annotation.md](../pipeline/02_annotation.md)
 - [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
 - [05_normalization.md](../pipeline/05_normalization.md)
-- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)
+- [06_canonicalization.md](../pipeline/06_canonicalization.md)
+- [13_insilico_simulation.md](../pipeline/13_insilico_simulation.md)

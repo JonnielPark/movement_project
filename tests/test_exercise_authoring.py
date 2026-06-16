@@ -135,6 +135,7 @@ def test_split_exercise_context_loads_backward_compatible_definition():
     assert set(context.source_paths) == {
         "exercise_definition",
         "analysis_profile",
+        "analysis_presets",
         "performance_protocol",
         "camera_protocol",
     }
@@ -147,6 +148,35 @@ def test_split_exercise_context_loads_backward_compatible_definition():
     assert definition.performance_protocol is not None
     assert definition.camera_protocol is not None
     assert definition.feature_domains.spatial[:2] == ["rom", "symmetry"]
+    assert context.analysis_profile["rep_segmentation"]["reference_landmark"] == (
+        "hip_center"
+    )
+    assert (
+        context.analysis_profile["quality_rules"]["minimum_visible_landmark_ratio"]
+        == 0.8
+    )
+
+
+def test_analysis_profile_presets_expand_before_definition_parse():
+    pike = load_exercise_context("pike_pushup", DEFINITIONS_DIR)
+    plank = load_exercise_context("plank_shoulder_tap", DEFINITIONS_DIR)
+
+    assert pike.exercise_definition.rep_segmentation is not None
+    assert pike.exercise_definition.rep_segmentation.reference_landmark == "nose"
+    assert (
+        pike.exercise_definition.angle_definitions["left_elbow_angle"]["vertex"] == 13
+    )
+    assert pike.exercise_definition.quality_rules.minimum_visible_landmark_ratio == 0.75
+
+    assert plank.exercise_definition.phase_segmentation is not None
+    assert plank.exercise_definition.phase_segmentation.phase_sequence == [
+        "Lift",
+        "Tap",
+        "Return",
+    ]
+    assert (
+        plank.exercise_definition.quality_rules.minimum_critical_landmark_ratio == 0.85
+    )
 
 
 def test_target_exercise_identity_yaml_keeps_only_identity_fields():

@@ -1,5 +1,5 @@
 """
-⑥ Spatial Features
+⑨ Spatial Features
 
 Computes ROM (joint range of motion), left/right symmetry index, and trajectory shape.
 

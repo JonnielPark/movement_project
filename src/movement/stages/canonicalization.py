@@ -1,8 +1,8 @@
 """Analysis-space canonicalization for monocular pose coordinates.
 
-This optional layer runs inside ⑤ Normalization. It does not reconstruct physical
-3D or fit the pose to a good-movement template. It preserves raw/norm coordinates
-and emits separate canon coordinates plus confidence/provenance reports.
+Pipeline step ⑥ consumes ⑤ norm coordinates. It does not reconstruct physical 3D
+or fit the pose to a good-movement template. It preserves raw/norm coordinates and
+emits separate candidate coordinates plus confidence/provenance reports.
 """
 
 from __future__ import annotations
@@ -80,6 +80,17 @@ class ProtocolHeightLateralWidthAlignmentConfig:
 
 
 @dataclass
+class Corrected3DHypothesisConfig:
+    enabled: bool = False
+    output_family: str = "corrected_3d_hypothesis"
+    downstream_coordinate_mode: str = "norm"
+    emit_sensitivity_report: bool = True
+    support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
+    report_burden_before_feature_use: bool = True
+    require_feature_domain_declaration: bool = True
+
+
+@dataclass
 class CanonicalizationConfig:
     enabled: bool = False
     coordinate_mode: str = "norm"
@@ -98,6 +109,9 @@ class CanonicalizationConfig:
     protocol_height_lateral_width_alignment: (
         ProtocolHeightLateralWidthAlignmentConfig
     ) = field(default_factory=ProtocolHeightLateralWidthAlignmentConfig)
+    corrected_3d_hypothesis: Corrected3DHypothesisConfig = field(
+        default_factory=Corrected3DHypothesisConfig
+    )
 
 
 def _source_columns(landmark: str, coordinate_mode: str) -> dict[str, str]:
