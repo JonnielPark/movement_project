@@ -138,4 +138,9 @@ or readiness provenance unless a structural assertion fails.
 ## Outputs
 
 Generated files should go under `data/processed/`. This directory is ignored by
-git unless a future documented example artifact policy says otherwise.
+git and is appropriate for local review artifacts.
+
+Commit-ready authoring examples should be copied or generated under
+`data/examples/exercise_authoring/<exercise_id>/` using the same nested
+split-YAML layout documented in
+`docs_eng/practical_protocols/exercise_authoring_notebook.md`.
