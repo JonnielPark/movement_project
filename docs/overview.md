@@ -17,7 +17,7 @@
 | 1.4.34 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 0.2.0 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
+| 0.2.22 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
 | 1.1.0 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 | 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |

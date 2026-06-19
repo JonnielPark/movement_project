@@ -124,11 +124,11 @@ Language                   Korean/English labels should be runtime-selectable la
 src/movement/reporting/visualization.py  implemented animations + planned stubs
 src/movement/core/utils.py               frame extraction, plot ranges,
                                          landmark-column validation
-notebook/setup_02_raw_visualization_test.ipynb raw pose animation
-notebook/04_preprocessing_test.ipynb     reliability review
-notebook/05_normalization_test.ipynb     raw/norm review
-notebook/06_canonicalization_test.ipynb  norm/canon candidate review
-notebook/09_feature_extraction_test.ipynb feature review
+notebook/00_setup/setup_02_raw_visualization_test.ipynb          raw pose animation
+notebook/20_stage_checks/04_preprocessing_test.ipynb             reliability review
+notebook/20_stage_checks/05_normalization_test.ipynb             raw/norm review
+notebook/20_stage_checks/06_canonicalization_test.ipynb          norm/canon candidate review
+notebook/20_stage_checks/09_feature_extraction_test.ipynb        feature review
 ```
 
 ---

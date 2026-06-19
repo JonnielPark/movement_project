@@ -34,7 +34,7 @@ use_for_analysis    bool      분석 포함 여부
 segment_type        str       full_sequence | baseline | idle | rep | rest | transition | excluded
 set_id              Int64     nullable 세트 식별자
 rep_id              Int64     nullable 반복 식별자
-phase               object    선택 수동 phase 라벨; ⑥에서 확정
+phase               object    선택 수동 phase 라벨; ⑦에서 확정
 note                str       선택 구간 기록
 exercise_type       str       운동 정의 식별자
 pattern             str       bilateral | alternating
@@ -63,7 +63,7 @@ protocol_cycle_id   Int64     원자 반복을 묶는 사용자 안내 기준 cy
 ```text
 exercise_type                 → ③ exercise definition 로딩
 pattern / starting_side        → ④ L/R 점검 및 ⑦ motion attribution
-phase                          → 본 단계에서 보존, ⑥에서 수용/거부
+phase                          → 본 단계에서 보존, ⑦에서 수용/거부
 filming provenance             → warning/report 컨텍스트만 제공
 performance provenance         → warning/report 컨텍스트만 제공
 rep_side_sequence 계열          → ③ performance_protocol과 비교

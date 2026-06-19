@@ -4,23 +4,30 @@ required_fields:
   - display_name
   - movement_pattern
   - posture_type
+  - body_geometry
   - laterality
   - support_template
   - primary_body_regions
+  - primary_joint_actions
   - primary_plane
   - phase_template
   - counting_template
-  - camera_template
+  - camera_view_family
+  - camera_height_level
   - analysis_template
 optional_fields:
   - description
   - tags
   - secondary_planes
+  - secondary_joint_actions
   - author_notes
+  - movement_pattern_source
+  - target_sets
+  - target_count_per_set
+  - rest_between_sets_s
 output_artifacts:
   exercise_definition: data/definitions/exercises/<exercise_id>.yaml
   analysis_profile: data/definitions/analysis_profiles/<exercise_id>.yaml
   performance_protocol: data/protocols/performance/<exercise_id>.yaml
   camera_protocol: data/protocols/camera/<exercise_id>.yaml
 draft_root: data/processed/authoring_drafts
-

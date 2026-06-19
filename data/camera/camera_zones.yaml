@@ -1,5 +1,5 @@
-version: 1.1.1
-last_updated: 2026-05-08
+version: 1.2.0
+last_updated: 2026-06-19
 coordinate_reference: reference_origin
 zone_model: polar_camera_ring
 origin:
@@ -57,6 +57,33 @@ zones:
     azimuth_tolerance_deg: 10
     distance_cm: [200, 250]
     observation_plane: frontal_sagittal_mixed
+
+view_families:
+  front:
+    label: frontal
+    member_zones: [Z1]
+    observation_plane: frontal
+    mirror_equivalent: false
+  front_oblique:
+    label: front oblique
+    member_zones: [Z2, Z8]
+    observation_plane: frontal_sagittal_mixed
+    mirror_equivalent: true
+  side:
+    label: side sagittal
+    member_zones: [Z3, Z7]
+    observation_plane: sagittal
+    mirror_equivalent: true
+  rear_oblique:
+    label: rear oblique
+    member_zones: [Z4, Z6]
+    observation_plane: posterior_sagittal_mixed
+    mirror_equivalent: true
+  rear:
+    label: rear
+    member_zones: [Z5]
+    observation_plane: posterior_frontal
+    mirror_equivalent: false
 
 height_levels:
   H1:

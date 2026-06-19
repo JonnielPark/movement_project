@@ -1,0 +1,27 @@
+status: draft
+generated_by: exercise_authoring_notebook
+requires_review:
+- participant_cues
+- analysis_disrupting_patterns
+exercise_id: draft_squat
+counting_template: repeated_repetition
+performance_protocol:
+  implementation_status: implemented
+  prescription:
+    target_count_per_set: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  counting:
+    target_count: 10
+    count_unit: repetition
+    segmentation_reps_per_count: 1
+  side_sequence:
+    mode: none
+    block_size_counts: null
+    first_side_source: null
+  allowed_side_sequence_modes:
+  - none
+  completion:
+    allow_partial_completion: false
+  participant_cues: []
+  analysis_disrupting_patterns: []

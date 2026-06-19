@@ -148,7 +148,12 @@ movement_project/
 │   │   └── 00_data_format.md ~ 13_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
-├── notebook/                        # setup_* + stage-check notebooks (01-14; 15-16 local review)
+├── notebook/                        # role-grouped notebooks
+│   ├── 00_setup/                    # environment, data loading, raw visualization
+│   ├── 10_manual_preparation/       # annotation/exercise authoring and review gates
+│   ├── 20_stage_checks/             # pipeline stage checks 01-13
+│   ├── 30_user_evaluation/          # end-to-end user recording evaluation
+│   └── 90_local_research_review/    # local p01 research review surfaces
 ├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
 │   ├── test_biomech_load_shift.py   # ⑩ load-shift slope sign + guards (17 cases)

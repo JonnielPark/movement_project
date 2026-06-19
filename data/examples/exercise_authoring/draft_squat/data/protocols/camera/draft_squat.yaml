@@ -1,0 +1,107 @@
+status: draft
+generated_by: exercise_authoring_notebook
+requires_review:
+- view_metric_reliability
+- primary_observation_purpose
+exercise_id: draft_squat
+camera_protocol:
+  selected_view: &id001
+    view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H2
+    position_id: front_oblique/H2
+    recommendation_status: recommended
+  recommended_view_positions: &id002
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H2
+  non_recommended_view_positions: &id003
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H1
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H1
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H1
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H1
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H1
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H2
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H2
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H2
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H2
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H3
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H3
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H3
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H3
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H3
+  recommendation_source: authoring_axes
+  recommended_zones:
+  - Z2
+  - Z8
+  recommended_height: H2
+  anchor: reference_mat
+  distance_cm:
+  - 200
+  - 250
+  primary_observation_purpose:
+  - frontal_knee_alignment
+  - hip_flexion_depth
+  - bilateral_support_symmetry
+  out_of_zone_policy: warn_and_continue
+  coordinate_correction: none
+view_metric_reliability:
+  structure: bilateral_symmetric
+  position_recommendation:
+    selected: *id001
+    recommended_view_positions: *id002
+    non_recommended_view_positions: *id003

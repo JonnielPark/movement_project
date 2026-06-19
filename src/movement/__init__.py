@@ -77,8 +77,14 @@ from movement.exercise_definition import (  # noqa: E402
 from movement.exercise_authoring import (  # noqa: E402
     ExerciseAuthoringSpec,
     artifact_to_yaml,
+    derive_movement_pattern_from_authoring_axes,
     generate_authoring_artifacts,
     load_authoring_registries,
+    recommend_analysis_templates_for_authoring_axes,
+    recommend_camera_positions_for_authoring_axes,
+    recommend_counting_templates_for_authoring_axes,
+    recommend_phase_templates_for_authoring_axes,
+    suggest_body_regions_from_joint_actions,
     write_authoring_draft_artifacts,
 )
 from movement.preprocessing import preprocess_pose_dataframe  # noqa: E402
@@ -135,8 +141,14 @@ __all__ = [
     "ExerciseContext",
     "ExerciseAuthoringSpec",
     "artifact_to_yaml",
+    "derive_movement_pattern_from_authoring_axes",
     "generate_authoring_artifacts",
     "load_authoring_registries",
+    "recommend_analysis_templates_for_authoring_axes",
+    "recommend_camera_positions_for_authoring_axes",
+    "recommend_counting_templates_for_authoring_axes",
+    "recommend_phase_templates_for_authoring_axes",
+    "suggest_body_regions_from_joint_actions",
     "write_authoring_draft_artifacts",
     # ④ preprocessing
     "preprocess_pose_dataframe",
