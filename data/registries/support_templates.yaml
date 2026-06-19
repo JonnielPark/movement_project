@@ -6,6 +6,12 @@ templates:
     support_surface: floor
     weight_bearing_regions: [left_foot, right_foot]
 
+  single_foot:
+    base_of_support: single_foot
+    contact_points: [active_foot]
+    support_surface: floor
+    weight_bearing_regions: [active_foot]
+
   split_stance:
     base_of_support: split_stance
     contact_points: [left_foot, right_foot]
@@ -18,9 +24,62 @@ templates:
     support_surface: floor
     weight_bearing_regions: [left_hand, right_hand, left_foot, right_foot]
 
+  forearms_and_feet:
+    base_of_support: forearms_and_feet
+    contact_points: [left_forearm, right_forearm, left_foot, right_foot]
+    support_surface: floor
+    weight_bearing_regions: [left_forearm, right_forearm, left_foot, right_foot]
+
+  hands_and_knees:
+    base_of_support: hands_and_knees
+    contact_points: [left_hand, right_hand, left_knee, right_knee]
+    support_surface: floor
+    weight_bearing_regions: [left_hand, right_hand, left_knee, right_knee]
+
   hands_and_feet_with_trunk:
     base_of_support: hands_and_feet
     contact_points: [left_hand, right_hand, left_foot, right_foot]
     support_surface: floor
     weight_bearing_regions: [left_hand, right_hand, left_foot, right_foot, trunk]
 
+  knees_floor:
+    base_of_support: knees_floor
+    contact_points: [left_knee, right_knee]
+    support_surface: floor
+    weight_bearing_regions: [left_knee, right_knee]
+
+  one_knee_one_foot:
+    base_of_support: one_knee_one_foot
+    contact_points: [front_foot, rear_knee]
+    support_surface: floor
+    weight_bearing_regions: [front_foot, rear_knee]
+
+  seated_base:
+    base_of_support: seated_base
+    contact_points: [pelvis]
+    support_surface: seat_or_floor
+    weight_bearing_regions: [pelvis]
+
+  supine_body_floor:
+    base_of_support: supine_body_floor
+    contact_points: [trunk, pelvis]
+    support_surface: floor
+    weight_bearing_regions: [trunk, pelvis]
+
+  side_body_floor:
+    base_of_support: side_body_floor
+    contact_points: [side_trunk, pelvis]
+    support_surface: floor
+    weight_bearing_regions: [side_trunk, pelvis]
+
+  overhead_hang:
+    base_of_support: overhead_hang
+    contact_points: [left_hand, right_hand]
+    support_surface: overhead_bar
+    weight_bearing_regions: [left_hand, right_hand]
+
+  external_object:
+    base_of_support: external_object
+    contact_points: [external_object_contact]
+    support_surface: external_object
+    weight_bearing_regions: [external_object_contact]

@@ -1,0 +1,109 @@
+status: draft
+generated_by: exercise_authoring_notebook
+requires_review:
+- biomechanical_identity
+exercise_id: draft_squat
+display_name: Draft Squat
+description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and
+  ankle coordination.
+version: draft
+tags:
+- bodyweight
+- lower_body
+- closed_chain
+- bilateral
+- strength
+classification:
+  family: lower_body
+  equipment: none
+  load_type: bodyweight
+  external_load_position: none
+  kinetic_chain: closed_chain
+  movement_pattern: squat
+  complexity: compound
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: bilateral_symmetric
+  movement_pattern_source: derived_from_joint_actions_and_context
+  primary_plane: sagittal
+  secondary_planes:
+  - frontal
+  - transverse
+support:
+  base_of_support: bilateral_feet
+  contact_points:
+  - left_foot
+  - right_foot
+  support_surface: floor
+  weight_bearing_regions:
+  - left_foot
+  - right_foot
+primary_body_regions:
+- hip
+- knee
+- ankle
+phase_model:
+  type: resistance_phase
+  expected_ratio:
+    eccentric: 0.4
+    isometric: 0.1
+    concentric: 0.5
+joint_actions:
+  primary:
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
+  secondary:
+  - trunk_flexion_extension
+biomechanical_identity:
+  expected_com_motion: vertical
+  stability_requirement: medium
+  primary_constraints:
+  - maintain_foot_contact
+  - maintain_trunk_alignment
+  - avoid_knee_valgus
+  - avoid_heel_lift
+  primary_body_regions:
+  - hip
+  - knee
+  - ankle
+  primary_joint_actions:
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
+  secondary_joint_actions:
+  - trunk_flexion_extension
+authoring_spec:
+  exercise_id: draft_squat
+  display_name: Draft Squat
+  movement_pattern: squat
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: bilateral_symmetric
+  support_template: bilateral_feet
+  primary_body_regions:
+  - hip
+  - knee
+  - ankle
+  primary_joint_actions:
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
+  primary_plane: sagittal
+  secondary_planes:
+  - frontal
+  - transverse
+  secondary_joint_actions:
+  - trunk_flexion_extension
+  phase_template: descent_ascent_hip_center
+  counting_template: repeated_repetition
+  target_sets: null
+  target_count_per_set: 10
+  rest_between_sets_s: []
+  camera_view_family: front_oblique
+  camera_height_level: H2
+  analysis_template: bilateral_lower_body_closed_chain
+  description: ''
+  tags: []
+  author_notes: ''

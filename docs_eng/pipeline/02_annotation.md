@@ -34,7 +34,7 @@ use_for_analysis    bool      include this frame in analysis
 segment_type        str       full_sequence | baseline | idle | rep | rest | transition | excluded
 set_id              Int64     nullable set identifier
 rep_id              Int64     nullable repetition identifier
-phase               object    optional manual phase label; confirmed later by ⑥
+phase               object    optional manual phase label; confirmed later by ⑦
 note                str       optional segment note
 exercise_type       str       exercise definition identifier
 pattern             str       bilateral | alternating
@@ -63,7 +63,7 @@ Downstream use:
 ```text
 exercise_type                 → ③ exercise definition loading
 pattern / starting_side        → ④ L/R checks and ⑦ motion attribution
-phase                          → preserved here, accepted/rejected by ⑥
+phase                          → preserved here, accepted/rejected by ⑦
 filming provenance             → warning/report context only
 performance provenance         → warning/report context only
 rep_side_sequence fields       → compared with ③ performance_protocol

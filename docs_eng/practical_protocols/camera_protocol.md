@@ -1,7 +1,7 @@
 # Camera Filming Protocol per Exercise
 
-**Document Version:** 1.4.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.4.3
+**Last Updated:** 2026-06-19
 **Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
 This document defines minimum filming conditions for reproducible monocular pose
@@ -70,7 +70,14 @@ metadata stored                         reference_mat_used, filming warnings
 If no mat is available, the recording is still accepted and the condition is
 recorded as metadata.
 
-## 3. Recommended Settings
+## 3. Recommended View-Family/H Settings
+
+Camera authoring is based on view-family/H combinations rather than exact
+left/right `Z` choices or exercise-name camera presets. The exercise-authoring
+notebook recommends combinations from posture, support, laterality, joint
+actions, and primary movement plane. Non-recommended combinations remain
+selectable; they are recorded as provenance and should lower view-metric
+reliability rather than exclude the recording.
 
 | Exercise | Recommended zone | Height | Main observation purpose |
 |---|---|---|---|
@@ -81,6 +88,28 @@ recorded as metadata.
 
 The recommended setting is a reliability prior, not an inclusion rule. The same
 recording may support one metric family well and another poorly.
+
+Left and right mirror zones are equivalent for exercise-definition
+recommendation. For example, `Z2` and `Z8` are both front-oblique views, `Z3`
+and `Z7` are both sagittal side views, and `Z4` and `Z6` are both rear-oblique
+views. Exercise definitions should store the view family, while concrete
+recording metadata may store the observed exact `Z` when it is known.
+
+Recommended and non-recommended positions may be exported together:
+
+```yaml
+camera_protocol:
+  selected_view:
+    view_family: front_oblique
+    member_zones: [Z2, Z8]
+    height: H2
+    recommendation_status: recommended
+  recommended_view_positions:
+    - {view_family: front_oblique, member_zones: [Z2, Z8], height: H2}
+  non_recommended_view_positions:
+    - {view_family: side, member_zones: [Z3, Z7], height: H2}
+  recommended_zones: [Z2, Z8]
+```
 
 ## 4. View Reliability
 

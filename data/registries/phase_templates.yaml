@@ -1,6 +1,7 @@
 version: 0.1.0
 templates:
   descent_ascent_hip_center:
+    implementation_status: implemented
     phase_model:
       type: resistance_phase
       expected_ratio:
@@ -28,6 +29,7 @@ templates:
       multi_inflection_policy: global_extremum
 
   descent_ascent_nose:
+    implementation_status: implemented
     phase_model:
       type: resistance_phase
       expected_ratio:
@@ -55,6 +57,7 @@ templates:
       multi_inflection_policy: global_extremum
 
   lift_tap_return_wrist:
+    implementation_status: implemented
     phase_model:
       type: task_phase
       expected_ratio:
@@ -82,3 +85,114 @@ templates:
       minimum_rep_length_frames: 6
       multi_inflection_policy: global_extremum
 
+  static_hold_center:
+    implementation_status: planned
+    authoring_warning: "Planned descriptor only; static-hold segmentation requires review before canonical use."
+    phase_model:
+      type: static_hold
+      expected_ratio:
+        hold: 1.0
+    rep_segmentation:
+      reference_landmark: hip_center
+      reference_axis: vertical
+      boundary_logic: full_interval_or_manual
+      smoothing: {method: none, window_frames: null, polyorder: null}
+      minimum_rep_length_frames: 1
+      minimum_boundary_distance_frames: 1
+      minimum_reps: 1
+      boundary_prominence: null
+      include_endpoints: true
+    phase_segmentation:
+      reference_landmark: hip_center
+      reference_axis: vertical
+      phase_sequence: [Hold]
+      split_logic: none
+      smoothing: {method: none, window_frames: null, polyorder: null}
+      turnaround_hold: {enabled: false, half_window_frames: 0}
+      minimum_rep_length_frames: 1
+      multi_inflection_policy: not_applicable
+
+  reach_return_wrist:
+    implementation_status: planned
+    authoring_warning: "Planned descriptor only; reach/return segmentation requires review before canonical use."
+    phase_model:
+      type: task_phase
+      expected_ratio:
+        reach: 0.5
+        return: 0.5
+    rep_segmentation:
+      reference_landmark: right_wrist
+      reference_axis: task_direction
+      boundary_logic: local_minimum
+      smoothing: {method: savitzky_golay, window_frames: 5, polyorder: 3}
+      minimum_rep_length_frames: 6
+      minimum_boundary_distance_frames: 6
+      minimum_reps: 1
+      boundary_prominence: null
+      include_endpoints: true
+    phase_segmentation:
+      reference_landmark: right_wrist
+      reference_axis: task_direction
+      phase_sequence: [Reach, Return]
+      split_logic: local_extremum
+      smoothing: {method: savitzky_golay, window_frames: 5, polyorder: 3}
+      turnaround_hold: {enabled: false, half_window_frames: 2}
+      minimum_rep_length_frames: 6
+      multi_inflection_policy: global_extremum
+
+  rotate_return_trunk:
+    implementation_status: planned
+    authoring_warning: "Planned descriptor only; trunk rotation segmentation requires review before canonical use."
+    phase_model:
+      type: task_phase
+      expected_ratio:
+        rotate: 0.5
+        return: 0.5
+    rep_segmentation:
+      reference_landmark: trunk_center
+      reference_axis: transverse_rotation
+      boundary_logic: local_minimum
+      smoothing: {method: savitzky_golay, window_frames: 5, polyorder: 3}
+      minimum_rep_length_frames: 6
+      minimum_boundary_distance_frames: 6
+      minimum_reps: 1
+      boundary_prominence: null
+      include_endpoints: true
+    phase_segmentation:
+      reference_landmark: trunk_center
+      reference_axis: transverse_rotation
+      phase_sequence: [Rotate, Return]
+      split_logic: local_extremum
+      smoothing: {method: savitzky_golay, window_frames: 5, polyorder: 3}
+      turnaround_hold: {enabled: false, half_window_frames: 2}
+      minimum_rep_length_frames: 6
+      multi_inflection_policy: global_extremum
+
+  bridge_lift_lower_hip_center:
+    implementation_status: planned
+    authoring_warning: "Planned descriptor only; bridge lift/lower segmentation requires review before canonical use."
+    phase_model:
+      type: resistance_phase
+      expected_ratio:
+        lift: 0.45
+        top_hold: 0.1
+        lower: 0.45
+    rep_segmentation:
+      reference_landmark: hip_center
+      reference_axis: vertical
+      boundary_logic: local_minimum
+      smoothing: {method: savitzky_golay, window_frames: 7, polyorder: 3}
+      minimum_rep_length_frames: 8
+      minimum_boundary_distance_frames: 8
+      minimum_reps: 1
+      boundary_prominence: null
+      include_endpoints: true
+    phase_segmentation:
+      reference_landmark: hip_center
+      reference_axis: vertical
+      phase_sequence: [Lift, Lower]
+      split_logic: local_maximum
+      smoothing: {method: savitzky_golay, window_frames: 7, polyorder: 3}
+      turnaround_hold: {enabled: true, half_window_frames: 3}
+      minimum_rep_length_frames: 8
+      multi_inflection_policy: global_extremum

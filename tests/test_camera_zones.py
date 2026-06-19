@@ -51,6 +51,19 @@ def test_camera_zone_azimuths_match_expected_viewpoints():
     }
 
 
+def test_camera_view_families_group_mirror_equivalent_zones():
+    config = yaml.safe_load(CAMERA_ZONES_PATH.read_text(encoding="utf-8"))
+
+    families = config["view_families"]
+
+    assert families["front_oblique"]["member_zones"] == ["Z2", "Z8"]
+    assert families["front_oblique"]["mirror_equivalent"] is True
+    assert families["side"]["member_zones"] == ["Z3", "Z7"]
+    assert families["side"]["mirror_equivalent"] is True
+    assert families["rear_oblique"]["member_zones"] == ["Z4", "Z6"]
+    assert families["rear_oblique"]["mirror_equivalent"] is True
+
+
 def test_target_exercise_camera_protocol_recommended_zones():
     expected_zones = {
         "squat": ["Z2", "Z8"],

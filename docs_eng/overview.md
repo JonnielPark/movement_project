@@ -17,7 +17,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 1.4.34 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 0.2.0 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | Notebook-first exercise authoring and YAML generation plan |
+| 0.2.22 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | Notebook-first exercise authoring and YAML generation plan |
 | 1.1.0 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 | 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |

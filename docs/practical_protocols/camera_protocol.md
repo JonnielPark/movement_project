@@ -1,7 +1,7 @@
 # 대상 운동별 촬영 프로토콜 (Camera Filming Protocol per Exercise)
 
-**문서 버전:** 1.4.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.4.3
+**최종 갱신:** 2026-06-19
 **영문 동기화:** [docs_eng/practical_protocols/camera_protocol.md](../../docs_eng/practical_protocols/camera_protocol.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 단안 포즈 분석을 재현 가능하게 만들기 위한 최소 촬영 조건을 정의한다.
@@ -64,7 +64,13 @@ metadata stored                         reference_mat_used, filming warnings
 
 매트가 없어도 recording은 수용하며, 해당 조건을 metadata로 기록한다.
 
-## 3. 권장 세팅 (Recommended Settings)
+## 3. 권장 View-Family/H 세팅 (Recommended View-Family/H Settings)
+
+Camera authoring은 exact left/right `Z` 선택이나 운동 이름별 camera preset이 아니라
+view-family/H 조합을 기준으로 한다. Exercise authoring notebook은 posture, support, laterality,
+joint actions, primary movement plane에서 권장 조합을 산출한다. 추천되지 않은 조합도 계속 선택
+가능하며, 제외 규칙이 아니라 provenance로 기록하고 view-metric reliability를 낮추는 근거로
+사용한다.
 
 | Exercise | 권장 zone | Height | 주 관찰 목적 |
 |---|---|---|---|
@@ -75,6 +81,27 @@ metadata stored                         reference_mat_used, filming warnings
 
 권장 세팅은 reliability prior이지 포함/제외 규칙이 아니다. 같은 recording 안에서도 어떤 metric
 family는 잘 지지되고, 다른 metric family는 제한될 수 있다.
+
+좌우 mirror zone은 운동 정의의 추천 관점에서는 equivalent로 취급한다. 예를 들어 `Z2`와 `Z8`은
+모두 front-oblique view이고, `Z3`와 `Z7`은 모두 sagittal side view이며, `Z4`와 `Z6`은 모두
+rear-oblique view이다. Exercise definition은 view family를 저장하고, concrete recording metadata는
+관측된 exact `Z`를 알고 있을 때만 저장하면 된다.
+
+Recommended position과 non-recommended position은 함께 export될 수 있다:
+
+```yaml
+camera_protocol:
+  selected_view:
+    view_family: front_oblique
+    member_zones: [Z2, Z8]
+    height: H2
+    recommendation_status: recommended
+  recommended_view_positions:
+    - {view_family: front_oblique, member_zones: [Z2, Z8], height: H2}
+  non_recommended_view_positions:
+    - {view_family: side, member_zones: [Z3, Z7], height: H2}
+  recommended_zones: [Z2, Z8]
+```
 
 ## 4. 시점 신뢰도 (View Reliability)
 
