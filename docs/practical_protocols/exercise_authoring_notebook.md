@@ -1,7 +1,7 @@
 # 운동 작성 노트북 (Exercise Authoring Notebook)
 
-**문서 버전:** 0.2.22
-**최종 갱신:** 2026-06-19
+**문서 버전:** 0.2.25
+**최종 갱신:** 2026-06-20
 **영문 동기화:** [docs_eng/practical_protocols/exercise_authoring_notebook.md](../../docs_eng/practical_protocols/exercise_authoring_notebook.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 새 운동 추가를 위한 임시 notebook-first workflow를 정의한다.
@@ -42,8 +42,10 @@ Notebook atomic selections
 → exercise_authoring_spec
 → deterministic generator
 → draft YAML preview
+→ draft bundle export
+→ canonical loader-view preview
 → researcher review
-→ canonical YAML files
+→ canonical YAML install
 ```
 
 Core rules:
@@ -51,12 +53,23 @@ Core rules:
 ```text
 UI input은 작고 연구자 친화적이어야 함
 동일 input은 동일 YAML을 생성
-draft는 data/processed/authoring_drafts/<exercise_id>/ 아래 작성
+draft bundle은 data/processed/authoring_drafts/<exercise_id>/ 아래 작성
 git에 올릴 예시는 data/examples/exercise_authoring/<exercise_id>/ 아래 보관
 canonical YAML은 명시 승인 없이 덮어쓰지 않음
 generated fields와 review-required fields를 분리
 생성 text는 임상 진단, 임상 효과 주장, 절대 힘/토크 표현을 피함
 ```
+
+Notebook은 세 가지 authoring mode를 구분한다:
+
+| Mode | 목적 | File 정책 | Metadata 정책 |
+|---|---|---|---|
+| `draft_bundle` | Preview와 연구자 검토를 위한 local generated draft. | `data/processed/authoring_drafts/<exercise_id>/` | Top-level `status: draft`, `generated_by`, `requires_review`를 유지한다. |
+| `canonical_loader_view` | 기존 hand-authored 운동 정의가 없었다고 가정하고 pipeline 실행을 시험할 수 있도록 draft bundle을 intended canonical exercise처럼 읽는 loader-time view. | Draft bundle을 재사용하며 duplicate candidate file은 작성하지 않는다. | Draft top-level metadata를 runtime `authoring_provenance`로 이동한다. |
+| `canonical_install` | 향후 검토 완료 후 runtime `data/definitions/`와 `data/protocols/`로 승격. | Main runtime directories. | 명시적인 연구자 승인이 필요하며 notebook의 기본 동작이 아니다. |
+
+현재 prototype은 `draft_bundle`과 `canonical_loader_view`를 구현한다.
+`canonical_install`은 equivalence check와 review gate가 안정화될 때까지 수동 승격 단계로 둔다.
 
 ## 3. Authoring Spec
 
@@ -174,6 +187,11 @@ primary와 secondary anatomical plane의 unique plane이 2개 이상일 때 나�
 수 있지만, 선택 시 notebook에서 warning을 표시해야 한다. Planned template은 canonical pipeline
 input이 되기 전에 segmentation review가 필요하다.
 
+Phase template은 boundary detection에 사용할 coordinate family를 선언할 수 있다. 예를 들어
+squat 계열 template은 descent/ascent detection에 recording-view raw `hip_center` `image_y`를
+사용하면서도, 후속 feature와 scoring 단계는 여전히 normalized coordinate를 소비하게 할 수 있다.
+Report contract는 `docs/pipeline/07_segmentation.md`를 따른다.
+
 Notebook은 `phase_template`을 hard-filter하지 않고 앞선 authoring axis로 추천하고 정렬한다.
 추천에는 `posture_type`, `body_geometry`, `support_template`, 선택된 joint actions,
 `primary_plane`을 사용할 수 있다. 추천 template은 먼저 보여주고, 예외 운동 작성을 위해 다른
@@ -246,6 +264,14 @@ axis로 추천하고 정렬해야 한다. 추천에는 posture, body geometry, s
 일회성 운동 preset을 계속 늘리는 대신 기존 analysis family를 재사용하거나 필요한 경우 새 family를
 추가하는 구조로 확장할 수 있다.
 
+Analysis family가 선택된 뒤 generator는 같은 authoring axis에서 보수적 context inference를 적용할 수
+있다. 이 추론으로 추가되는 항목은 좁고 설명 가능해야 하며 review label을 유지해야 한다. 예를 들어
+standing, bilateral-feet, bilateral lower-body bend이고 primary motion이 sagittal이며 보조 plane이
+frontal/transverse이면 pelvis tilt/rotation proxy action, foot external-rotation compensation,
+joint-tracking error, compensation load-shift proxy availability를 유추할 수 있다. Generator는 운동
+이름만으로 이런 항목을 유추하면 안 되며, posture, support, laterality, joint action, plane 조건이
+받쳐주지 않는 운동에는 추가하면 안 된다.
+
 ## 4. 생성 산출물 (Generated Artifacts)
 
 하나의 spec은 네 artifact family를 생성한다:
@@ -269,8 +295,9 @@ data/protocols/camera/<exercise_id>.yaml
 Interpretation rules와 feature-meaning text는 별도 display layer로 유지한다.
 Loader는 split YAML artifact와 legacy combined exercise YAML을 모두 지원한다.
 
-Authoring notebook은 기본적으로 `data/processed/authoring_drafts/<exercise_id>/`에
-작성한다. 이 위치는 local review artifact용이다. Git에 포함할 예시는 다음 위치에 둔다:
+Authoring notebook은 기본적으로 `draft_bundle`을
+`data/processed/authoring_drafts/<exercise_id>/`에 작성한다. 이 위치는 local review
+artifact용이다. Git에 포함할 예시는 다음 위치에 둔다:
 
 ```text
 data/examples/exercise_authoring/<exercise_id>/
@@ -300,6 +327,26 @@ exercise_definition:
 `data/protocols/camera`에 있는 sibling split artifact를 찾는다. Draft bundle은
 `status: draft`, `requires_review` metadata를 유지하므로, 연구자 검토를 거쳐 main
 `data/definitions`와 `data/protocols`로 승격하기 전까지 canonical definition으로 취급하지 않는다.
+
+`canonical_loader_view`는 두 번째 candidate bundle을 작성하지 않는다. 같은 draft file을
+재사용하고, loader에게 intended canonical `exercise_id`로 노출하라고 요청한다. 예를 들어
+`draft_squat` bundle은 네 개 YAML file을 복사하지 않고 runtime `squat`처럼 평가할 수 있다:
+
+```python
+context = load_exercise_context(
+    exercise_id="draft_squat",
+    definitions_dir="data/processed/authoring_drafts/draft_squat/data/definitions/exercises",
+    authoring_mode="canonical_view",
+    canonical_exercise_id="squat",
+    canonical_display_name="Bodyweight Squat",
+)
+```
+
+Loader는 draft source path를 그대로 기록하지만, 반환되는 `ExerciseContext.exercise_id`와 parsed
+`ExerciseDefinition.exercise_id`는 canonical view id를 사용한다. Top-level draft metadata는
+in-memory view의 `authoring_provenance`로 이동한다. 이 방식은 기존 canonical `squat` file이
+없었다고 가정하고 pipeline을 보여주되, 중복 YAML artifact를 만들지 않기 위한 것이다. 단, 이는
+아직 검토 완료된 canonical install이 아니다.
 
 ## 5. 검토 경계 (Review Boundary)
 
@@ -338,6 +385,20 @@ requires_review:
   - clinical_meaning
 ```
 
+Canonical loader-view artifact는 이 세 field를 in-memory artifact top level에 유지하지
+않는다. 같은 review boundary를 provenance로 보존한다:
+
+```yaml
+authoring_provenance:
+  authoring_mode: canonical_view
+  generated_by: exercise_authoring_notebook
+  source_authoring_exercise_id: draft_squat
+  canonical_exercise_id: squat
+  requires_review:
+    - compensation_candidates
+    - view_metric_reliability
+```
+
 ## 6. Notebook 목표 (Notebook Target)
 
 Target notebook:
@@ -357,7 +418,8 @@ Required cell flow:
 6. performance protocol preview
 7. camera protocol preview
 8. review checklist
-9. draft YAML write
+9. draft bundle write
+10. canonical loader-view preview
 ```
 
 Notebook cell은 YAML assembly를 다시 구현하지 말고

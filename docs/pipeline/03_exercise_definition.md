@@ -1,6 +1,6 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.6.1
+**문서 버전:** 1.6.2
 **최종 갱신:** 2026-06-20
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
@@ -109,10 +109,10 @@ canonical YAML로 승격한다.
 data/processed/authoring_drafts/<exercise_id>/data/definitions/exercises
 ```
 
-Stage-check notebook은 선택한 test `exercise_id`를 canonical directory, git-tracked authoring
-example directory, local authoring draft directory 순서로 탐색할 수 있다. Pipeline 기본값은
-project-wide registry와 `generic` fallback definition을 포함하는 canonical definition directory로
-유지한다.
+Stage-check notebook은 선택한 test `exercise_id`를 canonical directory, local authoring draft
+directory, git-tracked authoring example directory 순서로 탐색할 수 있다. 이렇게 하면 방금 생성한
+local draft가 review 중에는 example bundle보다 우선한다. Pipeline 기본값은 project-wide registry와
+`generic` fallback definition을 포함하는 canonical definition directory로 유지한다.
 
 `exercise_type`이 없거나 일치하는 YAML이 없으면 `generic.yaml`을 로드한다. Generic mode는 ROM,
 tempo, stability 같은 exercise-agnostic feature만 활성화한다. Compensation biomarker는 산출하지
@@ -167,10 +167,12 @@ classification:
   equipment: none | external_load | assisted | ...
   load_type: bodyweight | external_load | assisted | ...
   posture_type: standing | plank | inverted_closed_chain | kneeling | ...
+  body_geometry: neutral_upright | neutral_prone_line | high_hip_inverted_v | ...
   kinetic_chain: open_chain | closed_chain | mixed_chain | ...
   laterality: bilateral_symmetric | bilateral_asymmetric | alternating |
               unilateral_left | unilateral_right | unilateral_unspecified
   movement_pattern: squat | lunge | pushup | shoulder_tap | custom
+  movement_pattern_source: derived_from_joint_actions_and_context | manual
   primary_plane: sagittal | frontal | transverse | multiplanar | static
   secondary_planes: list[string]
   complexity: single_joint | multi_joint | compound | whole_body
@@ -179,6 +181,36 @@ classification:
 `laterality`는 L/R swap 처리와 motion-attribution 점검에 영향을 준다. 양측 대칭 운동은 반복별
 active-side attribution을 건너뛸 수 있고, 편측/교대 운동은 active-side 또는 role metadata를
 보존해야 한다.
+
+### authoring_spec and authoring_inference
+
+Canonical exercise YAML file도 해당 정의를 만들거나 재구성한 authoring 선택값을 보존할 수 있다.
+이 provenance는 scoring feature가 아니며, 명시적인 `classification`, `support`, `phase_model`,
+`joint_actions` field를 대체하지 않는다.
+
+```yaml
+authoring_spec:
+  exercise_id: squat
+  display_name: Bodyweight Squat
+  movement_pattern: squat
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: bilateral_symmetric
+  support_template: bilateral_feet
+  primary_body_regions: [hip, knee, ankle]
+  primary_joint_actions: [...]
+  secondary_joint_actions: [...]
+  phase_template: descent_ascent_hip_center
+  counting_template: repeated_repetition
+  camera_view_family: front_oblique
+  camera_height_level: H2
+  analysis_template: bilateral_lower_body_closed_chain
+```
+
+Authoring generator가 선택된 axis에서 좁고 설명 가능한 항목을 추론했다면 YAML에
+`authoring_inference`도 보존할 수 있다. Inference record는 posture, support, laterality,
+joint actions, planes에서 설명되어야 하며 운동 이름만으로 추론하면 안 된다.
 
 ### support and phase_model
 
@@ -212,18 +244,26 @@ phase label을 붙인다.
 ```yaml
 rep_segmentation:
   reference_landmark: hip_center | wrist_center | shoulder_center | custom
-  reference_axis: vertical | horizontal | depth | custom
+  reference_coordinate_family: norm | recording_view_raw | custom
+  reference_axis: vertical | anterior_posterior | medial_lateral | image_x | image_y | model_depth | custom
   boundary_logic: local_maximum | local_minimum | zero_crossing | threshold | custom
   smoothing: optional mapping
   minimum_rep_length_frames: int
 
 phase_segmentation:
   reference_landmark: string
+  reference_coordinate_family: norm | recording_view_raw | custom
   reference_axis: string
   phase_sequence: list[string]
   split_logic: local_minimum | local_maximum | multi_inflection | custom
   minimum_rep_length_frames: int
 ```
+
+`reference_coordinate_family`는 boundary detection에만 사용하는 좌표 source다. 기본값 `norm`은
+⑤ Normalization의 body-relative column을 읽는다. `hip_center`처럼 reference landmark가
+normalization anchor이기도 하면 hip-centered normalization 뒤 움직임 신호가 제거될 수 있다.
+이 경우 운동 정의는 normalized feature/scoring 좌표를 바꾸지 않고 `recording_view_raw`와
+`image_y` 같은 recording-plane axis를 사용해 눈에 보이는 움직임 trace를 따라 segmentation해야 한다.
 
 자동 segmentation이 불확실하면, 후속 분석은 불량 경계를 조용히 받아들이지 말고 확인된 수동
 label을 사용한다.

@@ -1,7 +1,7 @@
 # 07. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.3.1
-**최종 갱신:** 2026-06-10
+**문서 버전:** 1.3.2
+**최종 갱신:** 2026-06-20
 **영문 동기화:** `docs_eng/pipeline/07_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑦은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
@@ -53,9 +53,25 @@ phase_segmentation
     확정된 반복 내부의 phase boundary를 추정하고 phase label을 채운다.
 ```
 
-두 block은 exercise-defined reference landmark, axis, expected phase order, minimum-length 설정을
-사용한다. Visibility, ROM, boundary candidate 수, boundary order, manual-label consistency가
-불명확하면 automatic segmentation은 거부한다.
+두 block은 exercise-defined reference landmark, coordinate family, axis, expected phase order,
+minimum-length 설정을 사용한다. Visibility, ROM, boundary candidate 수, boundary order,
+manual-label consistency가 불명확하면 automatic segmentation은 거부한다.
+
+`reference_coordinate_family`는 boundary detection에 쓰는 신호와 feature/scoring 계산에 쓰는
+좌표를 분리한다:
+
+```text
+norm
+    기본값. ⑤ Normalization의 <landmark>_norm_x/y/z를 읽는다.
+
+recording_view_raw
+    <landmark>_x/y/z 같은 raw recording-plane column을 읽는다. Reference landmark가
+    normalization anchor라서 normalized trajectory가 제거되는 경우에 유용하다.
+```
+
+예를 들어 squat phase splitting은 `recording_view_raw`의 `hip_center`와 `image_y`를 사용해
+눈에 보이는 recording-plane hip trajectory를 따라 descent/ascent를 나눌 수 있다. 이는
+normalized coordinate를 바꾸거나 raw coordinate를 scoring feature로 승격하는 것이 아니다.
 
 ---
 

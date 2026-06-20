@@ -15,9 +15,11 @@ classification:
   load_type: bodyweight
   external_load_position: none
   posture_type: standing_split
+  body_geometry: neutral_upright
   kinetic_chain: closed_chain
   laterality: alternating
   movement_pattern: lunge
+  movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
   secondary_planes:
   - frontal
@@ -65,6 +67,43 @@ biomechanical_identity:
   - avoid_knee_valgus
   - avoid_excessive_lateral_shift
   - maintain_pelvis_level
+authoring_spec:
+  exercise_id: lunge
+  display_name: Forward Lunge
+  movement_pattern: lunge
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: alternating
+  support_template: split_stance
+  primary_body_regions:
+  - hip
+  - knee
+  - ankle
+  primary_joint_actions:
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
+  primary_plane: sagittal
+  secondary_planes:
+  - frontal
+  secondary_joint_actions:
+  - trunk_flexion_extension
+  - trunk_lateral_flexion
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
+  - weight_shift_control
+  phase_template: descent_ascent_hip_center
+  counting_template: same_side_block_then_switch_5_each
+  target_sets: null
+  target_count_per_set: 10
+  rest_between_sets_s: []
+  camera_view_family: side
+  camera_height_level: H2
+  analysis_template: alternating_lower_body_split_stance
+  description: ''
+  tags: []
+  author_notes: ''
 notes: 'Lunge is the primary exercise for validating alternating-pattern motion attribution.
 
   Forward leg per rep is determined by annotation.starting_side and pattern=alternating.

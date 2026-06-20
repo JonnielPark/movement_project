@@ -16,9 +16,11 @@ classification:
   load_type: bodyweight
   external_load_position: none
   posture_type: plank
+  body_geometry: neutral_prone_line
   kinetic_chain: closed_chain_alternating
   laterality: alternating
   movement_pattern: anti_rotation
+  movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: frontal
   secondary_planes:
   - transverse
@@ -79,6 +81,46 @@ biomechanical_identity:
   - avoid_excessive_rotation
   - avoid_excessive_lateral_shift
   - maintain_controlled_tempo
+authoring_spec:
+  exercise_id: plank_shoulder_tap
+  display_name: Plank Shoulder Tap
+  movement_pattern: anti_rotation
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: floor_supported_prone
+  body_geometry: neutral_prone_line
+  laterality: alternating
+  support_template: hands_and_feet_with_trunk
+  primary_body_regions:
+  - shoulder
+  - trunk
+  - core
+  - pelvis
+  - hip
+  primary_joint_actions:
+  - anti_rotation_control
+  - weight_shift_control
+  - shoulder_flexion_extension
+  - scapular_stability_proxy
+  primary_plane: frontal
+  secondary_planes:
+  - transverse
+  secondary_joint_actions:
+  - trunk_rotation_proxy
+  - trunk_lateral_flexion
+  - pelvis_rotation_proxy
+  - pelvis_lateral_tilt_proxy
+  - hip_flexion_extension
+  phase_template: lift_tap_return_wrist
+  counting_template: alternating_left_right_pair
+  target_sets: null
+  target_count_per_set: 10
+  rest_between_sets_s: []
+  camera_view_family: front_oblique
+  camera_height_level: H1
+  analysis_template: alternating_core_anti_rotation
+  description: ''
+  tags: []
+  author_notes: ''
 notes: 'Plank shoulder tap is the primary stability-under-perturbation exercise.
 
   Active hand per rep is determined by annotation.starting_side and

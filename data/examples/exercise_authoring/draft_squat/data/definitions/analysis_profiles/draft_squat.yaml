@@ -4,6 +4,9 @@ requires_review:
 - compensation_candidates
 - quality_rules
 - feature_domains
+- context_inferred_joint_actions
+- context_inferred_compensation_candidates
+- context_inferred_feature_domains
 exercise_id: draft_squat
 analysis_template: bilateral_lower_body_closed_chain
 landmark_set: lower_body_mediapipe_33
@@ -84,8 +87,9 @@ angle_definitions:
     - 24
 rep_segmentation:
   reference_landmark: hip_center
-  reference_axis: vertical
-  boundary_logic: local_maximum
+  reference_coordinate_family: recording_view_raw
+  reference_axis: image_y
+  boundary_logic: local_minimum
   smoothing:
     method: savitzky_golay
     window_frames: 7
@@ -97,11 +101,12 @@ rep_segmentation:
   include_endpoints: true
 phase_segmentation:
   reference_landmark: hip_center
-  reference_axis: vertical
+  reference_coordinate_family: recording_view_raw
+  reference_axis: image_y
   phase_sequence:
   - Descent
   - Ascent
-  split_logic: local_minimum
+  split_logic: local_maximum
   smoothing:
     method: savitzky_golay
     window_frames: 7
@@ -132,6 +137,7 @@ compensation_candidates:
 - heel_lift
 - pelvis_rotation
 - tempo_instability
+- foot_external_rotation_proxy
 feature_domains:
   spatial:
   - rom
@@ -152,11 +158,13 @@ feature_domains:
   - com_stability
   - pelvis_stability
   - lateral_shift
+  - joint_tracking_error
   biomechanical_proxy:
   - com_displacement
   - segment_length_normalized_displacement
   - moment_arm_proxy
   - relative_joint_load_proxy
+  - compensation_load_shift_proxy
 quality_rules:
   minimum_visible_landmark_ratio: 0.8
   minimum_critical_landmark_ratio: 0.9
@@ -165,3 +173,22 @@ quality_rules:
   exclude_rep_if_critical_landmark_missing: true
   exclude_rep_if_phase_missing: false
   allow_partial_feature_output: true
+authoring_inference:
+  source: authoring_axes
+  active_rules:
+  - standing_bilateral_feet_sagittal_lower_body_bend_frontal
+  - standing_bilateral_feet_sagittal_lower_body_bend_transverse
+  inferred_secondary_joint_actions:
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
+  inferred_compensation_candidates:
+  - foot_external_rotation_proxy
+  inferred_feature_domains:
+    control:
+    - joint_tracking_error
+    biomechanical_proxy:
+    - compensation_load_shift_proxy
+  requires_review:
+  - context_inferred_joint_actions
+  - context_inferred_compensation_candidates
+  - context_inferred_feature_domains

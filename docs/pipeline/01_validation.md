@@ -1,7 +1,7 @@
 # 01. 검증 (Validation)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-06-12
+**문서 버전:** 1.2.1
+**최종 갱신:** 2026-06-20
 **영문 동기화:** `docs_eng/pipeline/01_validation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ①은 입력 pose data의 구조적 무결성을 점검한다. 데이터를 수정하지 않으며,
@@ -19,6 +19,11 @@ Pose CSV
 ```
 
 후속 단계는 여기서 확인한 integrity assumption에 의존한다.
+
+MediaPipe가 아닌 pose backend는 pipeline schema로 adapter 변환된 뒤 validation을 수행한다.
+Validation 통과는 필수 frame, timestamp, coordinate, optional visibility field가 구조적으로
+사용 가능하다는 뜻이다. MediaPipe와 다른 backend가 동일한 depth, visibility, 생체역학 evidence를
+제공한다는 의미는 아니다.
 
 ## 2. 점검 항목 (Checks)
 

@@ -1,7 +1,7 @@
 # 00. 데이터 포맷 (Data Format)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-06-12
+**문서 버전:** 1.2.1
+**최종 갱신:** 2026-06-20
 **영문 동기화:** `docs_eng/pipeline/00_data_format.md`는 동일 버전의 영문 번역본이다.
 
 단안 3D pose time-series CSV 입력 규격.
@@ -22,6 +22,20 @@ landmark names = src/movement/core/config.py
 
 다른 engine은 실제 export schema가 확보되기 전까지 adapter 대상이다. 현재 pipeline에 넣기 전에
 이 schema로 변환한다.
+
+YOLOv11 같은 향후 pose engine은 운동별 예외 처리로 넣지 않고 pose-backend adapter를 통해
+들어오게 한다. Adapter는 native keypoint를 pipeline landmark schema로 mapping하고, native
+confidence를 visibility 또는 confidence provenance로 변환하며, engine name, model version,
+coordinate convention, depth availability 같은 source metadata를 기록할 수 있다. Engine이
+native depth를 제공하지 않는다면 depth를 신뢰 가능한 evidence로 합성하지 않는다. 대신
+depth-dependent downstream record에는 unavailable 또는 low-confidence provenance를 남기고,
+추후 scoring policy가 해당 source를 명시적으로 지원할 때까지 score evidence로 승격하지 않는다.
+
+MediaPipe 기반 분석과 점수화가 안정화된 뒤에는 같은 exercise definition을 사용해 MediaPipe와
+YOLOv11 output을 비교하는 engineering model-dependence study를 수행할 수 있다. 비교 항목은
+운동 정의와 canonicalization evidence가 backend별 candidate availability, confidence, burden,
+residual, feature sensitivity를 얼마나 바꾸는지다. 이를 clinical validation이나 특정 pose
+engine이 생체역학적으로 정답이라는 증명으로 표현하지 않는다.
 
 ## 2. 필수 칼럼 (Required Columns)
 

@@ -49,6 +49,21 @@ def _phase_df(trace, phase_values=None):
     )
 
 
+def _raw_phase_df(trace):
+    n = len(trace)
+    return pd.DataFrame(
+        {
+            "frame": list(range(n)),
+            "timestamp": np.arange(n) / 30.0,
+            "left_hip_y": trace,
+            "right_hip_y": trace,
+            "segment_type": "rep",
+            "rep_id": pd.array([1] * n, dtype="Int64"),
+            "phase": pd.array([pd.NA] * n, dtype=object),
+        }
+    )
+
+
 def test_segment_phases_splits_nominal_two_phase_rep():
     df, reports = segment_phases(
         _phase_df([1.0, 0.75, 0.0, 0.75, 1.0]),
@@ -69,6 +84,27 @@ def test_segment_phases_splits_nominal_two_phase_rep():
         "Ascent": (2, 4),
         "Descent": (0, 1),
     }
+
+
+def test_segment_phases_can_use_recording_view_raw_hip_center_y():
+    df, reports = segment_phases(
+        _raw_phase_df([0.2, 0.5, 0.8, 0.5, 0.2]),
+        _phase_definition(
+            reference_coordinate_family="recording_view_raw",
+            reference_axis="image_y",
+            split_logic="local_maximum",
+        ),
+    )
+
+    assert df["phase"].tolist() == [
+        "Descent",
+        "Descent",
+        "Ascent",
+        "Ascent",
+        "Ascent",
+    ]
+    assert reports[0].rejected_reason is None
+    assert reports[0].inflection_frames == [2]
 
 
 def test_segment_phases_records_too_short_rep_without_labels():

@@ -1072,6 +1072,97 @@ def _joint_actions_from_spec(
     return deepcopy(pattern.get("joint_actions") or {})
 
 
+def _append_unique(values: Iterable[str], additions: Iterable[str]) -> list[str]:
+    merged: list[str] = []
+    for value in tuple(values) + tuple(additions):
+        item = str(value)
+        if item not in merged:
+            merged.append(item)
+    return merged
+
+
+def _merge_feature_domain_additions(
+    feature_domains: Mapping[str, Any],
+    additions: Mapping[str, Iterable[str]],
+) -> dict[str, list[str]]:
+    merged: dict[str, list[str]] = {
+        str(domain): [str(value) for value in values]
+        for domain, values in feature_domains.items()
+    }
+    for domain, values in additions.items():
+        merged[str(domain)] = _append_unique(merged.get(str(domain), []), values)
+    return merged
+
+
+def _is_standing_bilateral_lower_body_bend(
+    spec: ExerciseAuthoringSpec,
+) -> bool:
+    actions = set(spec.primary_joint_actions + spec.secondary_joint_actions)
+    regions = {str(region) for region in spec.primary_body_regions}
+    return (
+        spec.posture_type == "standing"
+        and spec.support_template == "bilateral_feet"
+        and str(spec.laterality).startswith("bilateral")
+        and spec.primary_plane == "sagittal"
+        and _LOWER_BODY_BEND_ACTIONS.issubset(actions)
+        and {"hip", "knee", "ankle"}.issubset(regions)
+    )
+
+
+def _infer_from_authoring_context(
+    spec: ExerciseAuthoringSpec,
+) -> dict[str, Any]:
+    """
+    Infer only narrow, explainable additions from structural authoring axes.
+
+    These additions are draft conveniences, not canonical exercise identity.
+    They remain review-labeled so a researcher can reject them before promotion.
+    """
+    inferred_secondary_actions: list[str] = []
+    inferred_candidates: list[str] = []
+    inferred_feature_domains: dict[str, list[str]] = {}
+    active_rules: list[str] = []
+
+    secondary_planes = {str(plane) for plane in spec.secondary_planes}
+    if _is_standing_bilateral_lower_body_bend(spec):
+        rule_id = "standing_bilateral_feet_sagittal_lower_body_bend"
+        if "frontal" in secondary_planes:
+            active_rules.append(f"{rule_id}_frontal")
+            inferred_secondary_actions.append("pelvis_lateral_tilt_proxy")
+            inferred_feature_domains["control"] = _append_unique(
+                inferred_feature_domains.get("control", []),
+                ["joint_tracking_error"],
+            )
+        if "transverse" in secondary_planes:
+            active_rules.append(f"{rule_id}_transverse")
+            inferred_secondary_actions.append("pelvis_rotation_proxy")
+            inferred_candidates.append("foot_external_rotation_proxy")
+        if secondary_planes & {"frontal", "transverse"}:
+            inferred_feature_domains["biomechanical_proxy"] = _append_unique(
+                inferred_feature_domains.get("biomechanical_proxy", []),
+                ["compensation_load_shift_proxy"],
+            )
+
+    review_flags: list[str] = []
+    if inferred_secondary_actions:
+        review_flags.append("context_inferred_joint_actions")
+    if inferred_candidates:
+        review_flags.append("context_inferred_compensation_candidates")
+    if inferred_feature_domains:
+        review_flags.append("context_inferred_feature_domains")
+
+    return {
+        "source": "authoring_axes",
+        "active_rules": active_rules,
+        "inferred_secondary_joint_actions": _append_unique(
+            (), inferred_secondary_actions
+        ),
+        "inferred_compensation_candidates": _append_unique((), inferred_candidates),
+        "inferred_feature_domains": inferred_feature_domains,
+        "requires_review": review_flags,
+    }
+
+
 def generate_authoring_artifacts(
     spec: ExerciseAuthoringSpec,
     registries: Mapping[str, Any],
@@ -1106,6 +1197,7 @@ def generate_authoring_artifacts(
     landmark_set = _registry_item(
         registries["landmark_sets"], "sets", str(landmark_set_id)
     )
+    context_inference = _infer_from_authoring_context(spec)
 
     classification = deepcopy(pattern.get("classification") or {})
     classification.update(
@@ -1121,6 +1213,15 @@ def generate_authoring_artifacts(
 
     description = spec.description or str(pattern.get("default_description") or "")
     tags = list(spec.tags or pattern.get("default_tags") or [])
+    joint_actions = _joint_actions_from_spec(pattern, spec)
+    joint_actions["secondary"] = _append_unique(
+        joint_actions.get("secondary", ()),
+        context_inference["inferred_secondary_joint_actions"],
+    )
+    secondary_joint_actions = _append_unique(
+        spec.secondary_joint_actions,
+        context_inference["inferred_secondary_joint_actions"],
+    )
 
     exercise_definition = {
         **_metadata(["biomechanical_identity"]),
@@ -1133,26 +1234,44 @@ def generate_authoring_artifacts(
         "support": support,
         "primary_body_regions": list(spec.primary_body_regions),
         "phase_model": deepcopy(phase["phase_model"]),
-        "joint_actions": _joint_actions_from_spec(pattern, spec),
+        "joint_actions": joint_actions,
         "biomechanical_identity": {
             **deepcopy(pattern.get("biomechanical_identity") or {}),
             "primary_body_regions": list(spec.primary_body_regions),
             "primary_joint_actions": list(spec.primary_joint_actions),
-            "secondary_joint_actions": list(spec.secondary_joint_actions),
+            "secondary_joint_actions": secondary_joint_actions,
         },
         "authoring_spec": spec.as_dict(),
     }
+    if context_inference["active_rules"]:
+        exercise_definition["authoring_inference"] = {
+            "source": context_inference["source"],
+            "active_rules": context_inference["active_rules"],
+            "inferred_secondary_joint_actions": context_inference[
+                "inferred_secondary_joint_actions"
+            ],
+        }
     if spec.author_notes:
         exercise_definition["author_notes"] = spec.author_notes
 
+    analysis_candidates = _append_unique(
+        analysis["compensation_candidates"],
+        context_inference["inferred_compensation_candidates"],
+    )
+    analysis_feature_domains = _merge_feature_domain_additions(
+        analysis["feature_domains"],
+        context_inference["inferred_feature_domains"],
+    )
+    analysis_requires_review = _append_unique(
+        [
+            "compensation_candidates",
+            "quality_rules",
+            "feature_domains",
+        ],
+        context_inference["requires_review"],
+    )
     analysis_profile = {
-        **_metadata(
-            [
-                "compensation_candidates",
-                "quality_rules",
-                "feature_domains",
-            ]
-        ),
+        **_metadata(analysis_requires_review),
         "exercise_id": spec.exercise_id,
         "analysis_template": spec.analysis_template,
         "landmark_set": landmark_set_id,
@@ -1161,10 +1280,12 @@ def generate_authoring_artifacts(
         "rep_segmentation": deepcopy(phase["rep_segmentation"]),
         "phase_segmentation": deepcopy(phase["phase_segmentation"]),
         "biomechanical_focus": deepcopy(analysis["biomechanical_focus"]),
-        "compensation_candidates": deepcopy(analysis["compensation_candidates"]),
-        "feature_domains": deepcopy(analysis["feature_domains"]),
+        "compensation_candidates": analysis_candidates,
+        "feature_domains": analysis_feature_domains,
         "quality_rules": deepcopy(analysis["quality_rules"]),
     }
+    if context_inference["active_rules"]:
+        analysis_profile["authoring_inference"] = context_inference
 
     performance_protocol = {
         **_metadata(["participant_cues", "analysis_disrupting_patterns"]),

@@ -44,12 +44,20 @@ except ImportError:  # pragma: no cover
 
 
 # ── Axis resolver ─────────────────────────────────────────────────────────────
-# Maps rep_segmentation/phase_segmentation.reference_axis → coordinate suffix
+# Maps rep_segmentation/phase_segmentation reference coordinate settings to
+# dataframe coordinate suffixes.
 
-_AXIS_TO_SUFFIX: dict[str, str] = {
-    "vertical": "norm_z",
-    "anterior_posterior": "norm_y",
-    "medial_lateral": "norm_x",
+_REFERENCE_AXIS_TO_SUFFIX: dict[str, dict[str, str]] = {
+    "norm": {
+        "vertical": "norm_z",
+        "anterior_posterior": "norm_y",
+        "medial_lateral": "norm_x",
+    },
+    "recording_view_raw": {
+        "image_x": "x",
+        "image_y": "y",
+        "model_depth": "z",
+    },
 }
 
 # Virtual landmarks resolved to the midpoint of two named landmarks
@@ -133,7 +141,8 @@ class PhaseSegmentationReport:
 def _resolve_landmark_trace(
     df: pd.DataFrame,
     landmark: str,
-    axis_suffix: str,
+    coordinate_family: str,
+    reference_axis: str,
     starting_side: str | None = None,
 ) -> np.ndarray:
     """
@@ -143,6 +152,15 @@ def _resolve_landmark_trace(
     midpoint of the corresponding left/right pair.  For plank_shoulder_tap the
     `right_wrist` / `left_wrist` reference is resolved from `starting_side`.
     """
+    family = coordinate_family or "norm"
+    try:
+        axis_suffix = _REFERENCE_AXIS_TO_SUFFIX[family][reference_axis]
+    except KeyError as exc:
+        raise KeyError(
+            f"Unsupported segmentation reference: "
+            f"coordinate_family='{family}', reference_axis='{reference_axis}'."
+        ) from exc
+
     # Side-keyed landmark (plank_shoulder_tap uses starting_side for wrist reference)
     if landmark in ("right_wrist", "left_wrist") and starting_side is not None:
         side_landmark = f"{starting_side}_wrist"
@@ -150,8 +168,8 @@ def _resolve_landmark_trace(
         if col in df.columns:
             return df[col].to_numpy(dtype=float)
 
-    # Direct normalized reference columns may already exist after normalization
-    # (e.g., hip_center_norm_z, shoulder_center_norm_z).
+    # Direct reference columns may already exist after normalization or midpoint
+    # preparation (e.g., hip_center_y, shoulder_center_norm_z).
     direct_col = f"{landmark}_{axis_suffix}"
     if direct_col in df.columns:
         return df[direct_col].to_numpy(dtype=float)
@@ -519,7 +537,6 @@ def segment_reps(
         else list(range(len(df_analysis)))
     )
 
-    axis_suffix = _AXIS_TO_SUFFIX.get(rs.reference_axis, "norm_z")
     starting_side: str | None = None
     if "starting_side" in df_analysis.columns:
         ss_vals = df_analysis["starting_side"].dropna().unique()
@@ -527,7 +544,11 @@ def segment_reps(
             starting_side = str(ss_vals[0])
     try:
         trace_raw = _resolve_landmark_trace(
-            df_analysis, rs.reference_landmark, axis_suffix, starting_side
+            df_analysis,
+            rs.reference_landmark,
+            rs.reference_coordinate_family,
+            rs.reference_axis,
+            starting_side,
         )
     except KeyError as exc:
         failure = _make_failure_point(
@@ -738,7 +759,6 @@ def segment_phases(
     if fps is None:
         fps = float(df.attrs.get("fps", fps_default))
 
-    axis_suffix = _AXIS_TO_SUFFIX.get(ps.reference_axis, "norm_z")
     split_logics = (
         ps.split_logic if isinstance(ps.split_logic, list) else [ps.split_logic]
     )
@@ -785,7 +805,11 @@ def segment_phases(
         # Resolve reference landmark trajectory
         try:
             trace_raw = _resolve_landmark_trace(
-                df_rep, ps.reference_landmark, axis_suffix, starting_side
+                df_rep,
+                ps.reference_landmark,
+                ps.reference_coordinate_family,
+                ps.reference_axis,
+                starting_side,
             )
         except KeyError as exc:
             reports.append(

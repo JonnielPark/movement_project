@@ -533,15 +533,36 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
         "ankle_dorsiflexion_plantarflexion",
     ]
     assert exercise["joint_actions"]["secondary"] == [
-        "trunk_flexion_extension"
+        "trunk_flexion_extension",
+        "pelvis_lateral_tilt_proxy",
+        "pelvis_rotation_proxy",
+    ]
+    assert exercise["authoring_inference"]["active_rules"] == [
+        "standing_bilateral_feet_sagittal_lower_body_bend_frontal",
+        "standing_bilateral_feet_sagittal_lower_body_bend_transverse",
     ]
     assert "rep_segmentation" not in exercise
     assert "feature_domains" not in exercise
     assert "camera_protocol" not in exercise
 
     assert analysis["rep_segmentation"]["reference_landmark"] == "hip_center"
+    assert (
+        analysis["rep_segmentation"]["reference_coordinate_family"]
+        == "recording_view_raw"
+    )
+    assert analysis["rep_segmentation"]["reference_axis"] == "image_y"
+    assert analysis["phase_segmentation"]["split_logic"] == "local_maximum"
     assert analysis["landmarks"]["model"] == "mediapipe_pose_33"
     assert "compensation_candidates" in analysis["requires_review"]
+    assert "context_inferred_joint_actions" in analysis["requires_review"]
+    assert "context_inferred_compensation_candidates" in analysis["requires_review"]
+    assert "context_inferred_feature_domains" in analysis["requires_review"]
+    assert "foot_external_rotation_proxy" in analysis["compensation_candidates"]
+    assert "joint_tracking_error" in analysis["feature_domains"]["control"]
+    assert (
+        "compensation_load_shift_proxy"
+        in analysis["feature_domains"]["biomechanical_proxy"]
+    )
 
     assert (
         performance["performance_protocol"]["prescription"][
@@ -577,6 +598,26 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
     } in camera["camera_protocol"]["non_recommended_view_positions"]
     assert camera["camera_protocol"]["recommended_zones"] == ["Z2", "Z8"]
     assert "view_metric_reliability" in camera["requires_review"]
+
+
+def test_context_inference_stays_conservative_without_secondary_planes():
+    registries = load_authoring_registries()
+    spec = ExerciseAuthoringSpec(
+        **{**_squat_spec().__dict__, "secondary_planes": ()}
+    )
+
+    artifacts = generate_authoring_artifacts(spec, registries)
+    exercise = artifacts["exercise_definition"]
+    analysis = artifacts["analysis_profile"]
+
+    assert exercise["joint_actions"]["secondary"] == ["trunk_flexion_extension"]
+    assert "authoring_inference" not in exercise
+    assert "foot_external_rotation_proxy" not in analysis["compensation_candidates"]
+    assert "joint_tracking_error" not in analysis["feature_domains"]["control"]
+    assert (
+        "compensation_load_shift_proxy"
+        not in analysis["feature_domains"]["biomechanical_proxy"]
+    )
 
 
 def test_authoring_yaml_generation_is_deterministic():
@@ -691,6 +732,77 @@ def test_write_authoring_drafts_uses_mirrored_paths_and_protects_overwrite(tmp_p
     write_authoring_draft_artifacts(artifacts, draft_root=tmp_path, overwrite=True)
 
 
+def test_authoring_draft_bundle_loads_as_canonical_view(tmp_path):
+    registries = load_authoring_registries()
+    artifacts = generate_authoring_artifacts(_squat_spec(), registries)
+
+    paths = write_authoring_draft_artifacts(
+        artifacts,
+        draft_root=tmp_path,
+    )
+
+    exercise_path = (
+        tmp_path
+        / "draft_squat"
+        / "data"
+        / "definitions"
+        / "exercises"
+        / "draft_squat.yaml"
+    )
+    assert paths["exercise_definition"] == exercise_path
+    assert exercise_path.exists()
+
+    context = load_exercise_context(
+        "draft_squat",
+        exercise_path.parent,
+        authoring_mode="canonical_view",
+        canonical_exercise_id="squat",
+        canonical_display_name="Bodyweight Squat",
+    )
+    definition = context.exercise_definition
+
+    assert context.exercise_id == "squat"
+    assert definition.exercise_id == "squat"
+    assert definition.display_name == "Bodyweight Squat"
+    assert context.source_paths["exercise_definition"] == exercise_path
+    assert context.exercise_identity["exercise_id"] == "squat"
+    assert context.exercise_identity["display_name"] == "Bodyweight Squat"
+    assert "status" not in context.exercise_identity
+    assert "generated_by" not in context.exercise_identity
+    assert "requires_review" not in context.exercise_identity
+    assert context.exercise_identity["authoring_spec"]["exercise_id"] == "squat"
+    provenance = context.exercise_identity["authoring_provenance"]
+    assert provenance["authoring_mode"] == "canonical_view"
+    assert provenance["generated_by"] == "exercise_authoring_notebook"
+    assert provenance["source_status"] == "draft"
+    assert provenance["source_authoring_exercise_id"] == "draft_squat"
+    assert provenance["source_artifact_exercise_id"] == "draft_squat"
+    assert provenance["canonical_exercise_id"] == "squat"
+    assert "biomechanical_identity" in provenance["requires_review"]
+    assert context.analysis_profile["exercise_id"] == "squat"
+    assert "compensation_candidates" in context.analysis_profile[
+        "authoring_provenance"
+    ]["requires_review"]
+    assert context.performance_protocol["exercise_id"] == "squat"
+    assert "participant_cues" in context.performance_protocol[
+        "authoring_provenance"
+    ]["requires_review"]
+    assert context.camera_protocol["exercise_id"] == "squat"
+    assert "view_metric_reliability" in context.camera_protocol[
+        "authoring_provenance"
+    ]["requires_review"]
+    assert definition.rep_segmentation.reference_landmark == "hip_center"
+    assert definition.performance_protocol is not None
+    assert definition.camera_protocol is not None
+
+    with pytest.raises(ValueError, match="canonical_exercise_id is required"):
+        load_exercise_context(
+            "draft_squat",
+            exercise_path.parent,
+            authoring_mode="canonical_view",
+        )
+
+
 def test_split_exercise_context_loads_backward_compatible_definition():
     context = load_exercise_context("squat", DEFINITIONS_DIR)
     definition = context.exercise_definition
@@ -709,6 +821,14 @@ def test_split_exercise_context_loads_backward_compatible_definition():
 
     assert definition.exercise_id == "squat"
     assert definition.rep_segmentation is not None
+    assert definition.rep_segmentation.reference_coordinate_family == "recording_view_raw"
+    assert definition.rep_segmentation.reference_axis == "image_y"
+    assert definition.phase_segmentation is not None
+    assert (
+        definition.phase_segmentation.reference_coordinate_family
+        == "recording_view_raw"
+    )
+    assert definition.phase_segmentation.split_logic == "local_maximum"
     assert definition.performance_protocol is not None
     assert definition.camera_protocol is not None
     assert definition.feature_domains.spatial[:2] == ["rom", "symmetry"]
@@ -763,6 +883,34 @@ def test_target_exercise_identity_yaml_keeps_only_identity_fields():
         identity_keys = set(context.exercise_identity)
         assert not moved_fields.intersection(identity_keys)
         assert context.exercise_definition.exercise_id == exercise_id
+
+
+def test_target_exercise_identity_yaml_preserves_authoring_spec():
+    for exercise_id in TARGET_EXERCISES:
+        context = load_exercise_context(exercise_id, DEFINITIONS_DIR)
+        authoring_spec = context.exercise_identity.get("authoring_spec")
+
+        assert authoring_spec is not None
+        assert authoring_spec["exercise_id"] == exercise_id
+        assert (
+            authoring_spec["movement_pattern_source"]
+            == "derived_from_joint_actions_and_context"
+        )
+        assert authoring_spec["phase_template"]
+        assert authoring_spec["counting_template"]
+        assert authoring_spec["analysis_template"]
+
+
+def test_canonical_squat_authoring_order_matches_draft_squat():
+    canonical = load_exercise_context("squat", DEFINITIONS_DIR).exercise_definition
+    draft = load_exercise_context(
+        "draft_squat",
+        EXAMPLE_AUTHORING_DEFINITIONS_DIR,
+    ).exercise_definition
+
+    assert canonical.compensation_candidates == draft.compensation_candidates
+    assert canonical.feature_domains.control == draft.feature_domains.control
+    assert canonical.joint_actions == draft.joint_actions
 
 
 def test_load_exercise_definition_still_returns_definition_for_split_yaml():
