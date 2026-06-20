@@ -22,7 +22,7 @@
 | 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.5.0 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.6.1 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 2.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 2.0.0 | [06_canonicalization.md](pipeline/06_canonicalization.md) | ⑥ Canonicalization |

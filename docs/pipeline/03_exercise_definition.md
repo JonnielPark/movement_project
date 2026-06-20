@@ -1,7 +1,7 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.6.0
-**최종 갱신:** 2026-06-16
+**문서 버전:** 1.6.1
+**최종 갱신:** 2026-06-20
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③은 `exercise_id`로 exercise YAML artifact를 로드하고 `ExerciseContext`를
@@ -102,6 +102,17 @@ phase model, count unit, camera zone, feature availability를 도입할 수 있�
 향후 운동은 notebook-first authoring flow에서 draft split YAML로 시작한 뒤, 연구자 검토 후
 canonical YAML로 승격한다.
 [exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md)를 참조한다.
+
+승격 전에는 local authoring draft bundle을 다음 생성 경로로 지정해 테스트할 수 있다.
+
+```text
+data/processed/authoring_drafts/<exercise_id>/data/definitions/exercises
+```
+
+Stage-check notebook은 선택한 test `exercise_id`를 canonical directory, git-tracked authoring
+example directory, local authoring draft directory 순서로 탐색할 수 있다. Pipeline 기본값은
+project-wide registry와 `generic` fallback definition을 포함하는 canonical definition directory로
+유지한다.
 
 `exercise_type`이 없거나 일치하는 YAML이 없으면 `generic.yaml`을 로드한다. Generic mode는 ROM,
 tempo, stability 같은 exercise-agnostic feature만 활성화한다. Compensation biomarker는 산출하지

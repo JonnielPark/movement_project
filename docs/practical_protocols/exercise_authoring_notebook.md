@@ -343,7 +343,7 @@ requires_review:
 Target notebook:
 
 ```text
-notebook/10_manual_preparation/16_exercise_authoring_test.ipynb
+notebook/10_manual_preparation/10_exercise_authoring_test.ipynb
 ```
 
 Required cell flow:

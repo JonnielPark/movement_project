@@ -145,7 +145,7 @@ movement_project/
 ├── notebook/                        # 역할별 노트북
 │   ├── 00_setup/                    # 환경, 데이터 로딩, raw 시각화
 │   ├── 10_manual_preparation/       # annotation/운동 정의 작성 및 검토 gate
-│   ├── 20_stage_checks/             # 파이프라인 단계별 검증 01-13
+│   ├── 20_stage_checks/             # 파이프라인 단계별 검증 20-32
 │   ├── 30_user_evaluation/          # 사용자 recording 전체 평가
 │   └── 90_local_research_review/    # 로컬 p01 연구 리뷰 표면
 ├── scripts/                         # 일회성 유틸리티 (베이스라인 계산 등)

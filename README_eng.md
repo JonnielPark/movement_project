@@ -151,7 +151,7 @@ movement_project/
 ├── notebook/                        # role-grouped notebooks
 │   ├── 00_setup/                    # environment, data loading, raw visualization
 │   ├── 10_manual_preparation/       # annotation/exercise authoring and review gates
-│   ├── 20_stage_checks/             # pipeline stage checks 01-13
+│   ├── 20_stage_checks/             # pipeline stage checks 20-32
 │   ├── 30_user_evaluation/          # end-to-end user recording evaluation
 │   └── 90_local_research_review/    # local p01 research review surfaces
 ├── scripts/                         # one-off utilities such as baseline computation

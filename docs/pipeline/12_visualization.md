@@ -118,11 +118,11 @@ Language                   향후 Korean/English label runtime 선택 가능
 src/movement/reporting/visualization.py  implemented animations + planned stubs
 src/movement/core/utils.py               frame extraction, plot ranges,
                                          landmark-column validation
-notebook/00_setup/setup_02_raw_visualization_test.ipynb          raw pose animation
-notebook/20_stage_checks/04_preprocessing_test.ipynb             reliability review
-notebook/20_stage_checks/05_normalization_test.ipynb             raw/norm review
-notebook/20_stage_checks/06_canonicalization_test.ipynb          norm/canon candidate review
-notebook/20_stage_checks/09_feature_extraction_test.ipynb        feature review
+notebook/00_setup/02_raw_visualization_test.ipynb          raw pose animation
+notebook/20_stage_checks/23_preprocessing_test.ipynb             reliability review
+notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
+notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon candidate review
+notebook/20_stage_checks/28_feature_extraction_test.ipynb        feature review
 ```
 
 ---
