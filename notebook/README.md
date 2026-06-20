@@ -7,34 +7,34 @@ pose CSV without guessing which notebook to open.
 
 ```text
 00_setup/
-    setup_00_environment_check.ipynb
-    setup_01_data_loading_test.ipynb
-    setup_02_raw_visualization_test.ipynb
+    00_environment_check.ipynb
+    01_data_loading_test.ipynb
+    02_raw_visualization_test.ipynb
 
 10_manual_preparation/
-    16_exercise_authoring_test.ipynb
+    10_exercise_authoring_test.ipynb
     annotation authoring/review notebooks will live here when promoted
 
 20_stage_checks/
-    01_validation_test.ipynb
-    02_annotation_mask_test.ipynb
-    03_exercise_definition_test.ipynb
-    04_preprocessing_test.ipynb
-    05_normalization_test.ipynb
-    06_canonicalization_test.ipynb
-    07_segmentation_test.ipynb
-    08_motion_attribution_test.ipynb
-    09_feature_extraction_test.ipynb
-    10_biomechanical_proxy_test.ipynb
-    11_biomarker_scoring_test.ipynb
-    12_visualization_test.ipynb
-    13_simulation_robustness_test.ipynb
+    20_validation_test.ipynb
+    21_annotation_mask_test.ipynb
+    22_exercise_definition_test.ipynb
+    23_preprocessing_test.ipynb
+    24_normalization_test.ipynb
+    25_canonicalization_test.ipynb
+    26_segmentation_test.ipynb
+    27_motion_attribution_test.ipynb
+    28_feature_extraction_test.ipynb
+    29_biomechanical_proxy_test.ipynb
+    30_biomarker_scoring_test.ipynb
+    31_visualization_test.ipynb
+    32_simulation_robustness_test.ipynb
 
 30_user_evaluation/
-    14_user_movement_evaluation.ipynb
+    30_user_movement_evaluation.ipynb
 
 90_local_research_review/
-    15_real_squat_import_visualization_test.ipynb
+    90_real_squat_import_visualization_test.ipynb
 ```
 
 ## Modes
@@ -68,35 +68,35 @@ local_research_review
 3. Start with setup:
 
 ```text
-00_setup/setup_00_environment_check.ipynb
-00_setup/setup_01_data_loading_test.ipynb
-00_setup/setup_02_raw_visualization_test.ipynb
+00_setup/00_environment_check.ipynb
+00_setup/01_data_loading_test.ipynb
+00_setup/02_raw_visualization_test.ipynb
 ```
 
 4. If manual artifacts are missing, prepare them first:
 
 ```text
-10_manual_preparation/16_exercise_authoring_test.ipynb
+10_manual_preparation/10_exercise_authoring_test.ipynb
 ```
 
 Annotation authoring/review should also live under `10_manual_preparation/`
-once promoted. For now, `20_stage_checks/02_annotation_mask_test.ipynb` validates
+once promoted. For now, `20_stage_checks/21_annotation_mask_test.ipynb` validates
 and applies an existing annotation CSV; it is not an annotation authoring UI.
 
 5. Run stage checks as needed:
 
 ```text
-20_stage_checks/01_validation_test.ipynb
-20_stage_checks/02_annotation_mask_test.ipynb
-20_stage_checks/03_exercise_definition_test.ipynb
+20_stage_checks/20_validation_test.ipynb
+20_stage_checks/21_annotation_mask_test.ipynb
+20_stage_checks/22_exercise_definition_test.ipynb
 ...
-20_stage_checks/13_simulation_robustness_test.ipynb
+20_stage_checks/32_simulation_robustness_test.ipynb
 ```
 
 6. For the public end-to-end route, open:
 
 ```text
-30_user_evaluation/14_user_movement_evaluation.ipynb
+30_user_evaluation/30_user_movement_evaluation.ipynb
 ```
 
 Edit the pose CSV path, optional annotation CSV path, participant YAML path, and

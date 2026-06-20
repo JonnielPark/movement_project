@@ -1,7 +1,7 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.6.0
-**Last Updated:** 2026-06-16
+**Document Version:** 1.6.1
+**Last Updated:** 2026-06-20
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
@@ -108,6 +108,19 @@ pipeline branches unless a new analytical capability is genuinely needed.
 Future exercises should start as draft split YAML generated through the
 notebook-first authoring flow, then be reviewed and promoted to canonical YAML.
 See [exercise_authoring_notebook.md](../practical_protocols/exercise_authoring_notebook.md).
+
+Before promotion, a local authoring draft bundle may be tested by pointing
+`definitions_dir` to the generated bundle path:
+
+```text
+data/processed/authoring_drafts/<exercise_id>/data/definitions/exercises
+```
+
+The stage-check notebook may also resolve a selected test `exercise_id` from the
+canonical directory, the git-tracked authoring example directory, or the local
+authoring draft directory. The canonical definition directory remains the
+pipeline default because it contains the project-wide registry and `generic`
+fallback definition.
 
 If `exercise_type` is missing or no matching YAML exists, `generic.yaml` is loaded.
 Generic mode activates only exercise-agnostic features such as ROM, tempo, and
