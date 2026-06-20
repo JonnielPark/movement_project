@@ -15,9 +15,11 @@ classification:
   load_type: bodyweight
   external_load_position: none
   posture_type: inverted_closed_chain
+  body_geometry: high_hip_inverted_v
   kinetic_chain: closed_chain
   laterality: bilateral_symmetric
   movement_pattern: push
+  movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
   secondary_planes:
   - frontal
@@ -69,6 +71,42 @@ biomechanical_identity:
   - maintain_neutral_spine_proxy
   - maintain_head_position
   - maintain_support_symmetry
+authoring_spec:
+  exercise_id: pike_pushup
+  display_name: Pike Push-up
+  movement_pattern: push
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: floor_supported_prone
+  body_geometry: high_hip_inverted_v
+  laterality: bilateral_symmetric
+  support_template: hands_and_feet
+  primary_body_regions:
+  - shoulder
+  - elbow
+  - wrist
+  - trunk
+  primary_joint_actions:
+  - shoulder_flexion_extension
+  - elbow_flexion_extension
+  - scapular_stability_proxy
+  primary_plane: sagittal
+  secondary_planes:
+  - frontal
+  secondary_joint_actions:
+  - trunk_flexion_extension
+  - pelvis_anterior_posterior_tilt_proxy
+  - hip_flexion_extension
+  phase_template: descent_ascent_nose
+  counting_template: repeated_repetition
+  target_sets: null
+  target_count_per_set: 10
+  rest_between_sets_s: []
+  camera_view_family: side
+  camera_height_level: H1
+  analysis_template: bilateral_upper_body_inverted_closed_chain
+  description: ''
+  tags: []
+  author_notes: ''
 notes: 'Pike push-up validates upper-body bilateral symmetry under inverted load.
 
   Shoulder and elbow landmarks frequently self-occlude in the bottom phase;

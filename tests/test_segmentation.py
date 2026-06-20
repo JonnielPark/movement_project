@@ -39,6 +39,20 @@ def _pose_df(trace):
     )
 
 
+def _raw_pose_df(trace):
+    return pd.DataFrame(
+        {
+            "frame": list(range(len(trace))),
+            "timestamp": np.arange(len(trace)) / 30.0,
+            "left_hip_y": trace,
+            "right_hip_y": trace,
+            "use_for_analysis": True,
+            "segment_type": "full_sequence",
+            "rep_id": pd.array([pd.NA] * len(trace), dtype="Int64"),
+        }
+    )
+
+
 def test_segment_reps_assigns_rep_ids_from_boundary_peaks():
     trace = np.array([1.0, 0.75, 0.0, 0.75, 1.0, 0.75, 0.0, 0.75, 1.0])
     df, report = segment_reps(_pose_df(trace), _rep_definition())
@@ -48,6 +62,27 @@ def test_segment_reps_assigns_rep_ids_from_boundary_peaks():
     assert report.rep_assignments == {1: (0, 3), 2: (4, 8)}
     assert df["rep_id"].tolist() == [1, 1, 1, 1, 2, 2, 2, 2, 2]
     assert set(df["rep_segmentation_source"]) == {"semi_auto"}
+
+
+def test_segment_reps_can_use_recording_view_raw_hip_center_y():
+    trace = np.array([0.2, 0.8, 0.2, 0.8, 0.2])
+    df, report = segment_reps(
+        _raw_pose_df(trace),
+        _rep_definition(
+            reference_coordinate_family="recording_view_raw",
+            reference_axis="image_y",
+            boundary_logic="local_minimum",
+            smoothing=SmoothingSpec(
+                method="savitzky_golay", window_frames=1, polyorder=0
+            ),
+            minimum_rep_length_frames=2,
+        ),
+    )
+
+    assert report.status == "success"
+    assert report.boundary_frames == [0, 2, 4]
+    assert report.rep_assignments == {1: (0, 1), 2: (2, 4)}
+    assert df["rep_id"].tolist() == [1, 1, 2, 2, 2]
 
 
 def test_segment_reps_preserves_existing_manual_rep_labels():

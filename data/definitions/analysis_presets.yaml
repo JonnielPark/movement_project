@@ -2,8 +2,9 @@ segmentation:
   resistance_vertical_hip:
     rep_segmentation:
       reference_landmark: hip_center
-      reference_axis: vertical
-      boundary_logic: local_maximum
+      reference_coordinate_family: recording_view_raw
+      reference_axis: image_y
+      boundary_logic: local_minimum
       smoothing:
         method: savitzky_golay
         window_frames: 7
@@ -15,11 +16,12 @@ segmentation:
       include_endpoints: true
     phase_segmentation:
       reference_landmark: hip_center
-      reference_axis: vertical
+      reference_coordinate_family: recording_view_raw
+      reference_axis: image_y
       phase_sequence:
       - Descent
       - Ascent
-      split_logic: local_minimum
+      split_logic: local_maximum
       smoothing:
         method: savitzky_golay
         window_frames: 7

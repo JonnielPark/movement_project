@@ -1,7 +1,7 @@
 # Exercise Authoring Notebook
 
-**Document Version:** 0.2.22
-**Last Updated:** 2026-06-19
+**Document Version:** 0.2.25
+**Last Updated:** 2026-06-20
 **Korean Sync:** [docs/practical_protocols/exercise_authoring_notebook.md](../../docs/practical_protocols/exercise_authoring_notebook.md) is the matching Korean document.
 
 This document defines the temporary notebook-first workflow for adding new
@@ -47,8 +47,10 @@ Notebook atomic selections
 → exercise_authoring_spec
 → deterministic generator
 → draft YAML preview
+→ draft bundle export
+→ canonical loader-view preview
 → researcher review
-→ canonical YAML files
+→ canonical YAML install
 ```
 
 Core rules:
@@ -56,12 +58,24 @@ Core rules:
 ```text
 UI input is small and researcher-facing
 same input produces the same YAML
-drafts are written under data/processed/authoring_drafts/<exercise_id>/
+draft bundles are written under data/processed/authoring_drafts/<exercise_id>/
 git-tracked examples are copied under data/examples/exercise_authoring/<exercise_id>/
 canonical YAML is not overwritten without explicit approval
 generated fields and review-required fields are separated
 generated text must avoid clinical diagnosis, clinical-effect claims, absolute force, and absolute torque
 ```
+
+The notebook supports three authoring modes:
+
+| Mode | Purpose | File policy | Metadata policy |
+|---|---|---|---|
+| `draft_bundle` | Local generated draft for preview and researcher review. | `data/processed/authoring_drafts/<exercise_id>/` | Keeps top-level `status: draft`, `generated_by`, and `requires_review`. |
+| `canonical_loader_view` | Loader-time view of the draft bundle as the intended canonical exercise, so the pipeline can be tested as if the exercise had no prior hand-authored definition. | Reuses the draft bundle; no duplicate candidate files are written. | Moves draft top-level metadata into runtime `authoring_provenance`. |
+| `canonical_install` | Future reviewed promotion into the runtime `data/definitions/` and `data/protocols/` directories. | Main runtime directories. | Requires explicit researcher approval and is not the default notebook action. |
+
+The current prototype implements `draft_bundle` and `canonical_loader_view`.
+`canonical_install` remains a manual promotion step until equivalence checks and
+review gates are stable.
 
 ## 3. Authoring Spec
 
@@ -192,6 +206,12 @@ families can be described, but the notebook must show a warning when one is
 selected. Planned templates require segmentation review before becoming canonical
 pipeline inputs.
 
+Phase templates may declare the coordinate family used for boundary detection.
+For example, a squat-like template may use recording-view raw `hip_center`
+`image_y` for descent/ascent detection while downstream feature and scoring
+stages still consume normalized coordinates. See
+`docs_eng/pipeline/07_segmentation.md` for the report contract.
+
 The notebook should recommend and order phase templates from the earlier
 authoring axes rather than hard-filter them. The recommendation may use
 `posture_type`, `body_geometry`, `support_template`, selected joint actions, and
@@ -277,6 +297,16 @@ selectable with a warning. This keeps the authoring flow extensible: adding a
 new exercise should usually mean reusing or adding an analysis family, not
 adding another one-off exercise preset.
 
+After the analysis family is selected, the generator may apply conservative
+context inference from the same authoring axes. These inferred additions should
+be narrow, explainable, and review-labeled. For example, a standing,
+bilateral-feet, bilateral lower-body bend with sagittal primary motion and
+frontal/transverse secondary planes may infer pelvis tilt/rotation proxy actions,
+foot external-rotation compensation, joint-tracking error, and compensation
+load-shift proxy availability. The generator must not infer these items from the
+exercise name alone, and must not add them for exercises whose posture, support,
+laterality, joint actions, or planes do not support the inference.
+
 ## 4. Generated Artifacts
 
 One spec generates four artifact families:
@@ -300,9 +330,10 @@ data/protocols/camera/<exercise_id>.yaml
 Interpretation rules and feature-meaning text remain separate display layers.
 The loader supports both split YAML artifacts and legacy combined exercise YAML.
 
-Authoring writes to `data/processed/authoring_drafts/<exercise_id>/` by default
-because generated drafts are local review artifacts. Files that should be
-committed as examples must be placed under:
+Authoring writes a `draft_bundle` to
+`data/processed/authoring_drafts/<exercise_id>/` by default because generated
+drafts are local review artifacts. Files that should be committed as examples
+must be placed under:
 
 ```text
 data/examples/exercise_authoring/<exercise_id>/
@@ -334,6 +365,29 @@ From that `definitions_dir`, the loader resolves sibling split artifacts at
 review-labeled (`status: draft`, `requires_review`) and should not be treated as
 canonical until researcher review promotes it into the main `data/definitions`
 and `data/protocols` directories.
+
+A `canonical_loader_view` does not write a second candidate bundle. It reuses
+the same draft files and asks the loader to expose them as the intended
+canonical `exercise_id`. For example, a `draft_squat` bundle can be evaluated as
+runtime `squat` without copying four YAML files:
+
+```python
+context = load_exercise_context(
+    exercise_id="draft_squat",
+    definitions_dir="data/processed/authoring_drafts/draft_squat/data/definitions/exercises",
+    authoring_mode="canonical_view",
+    canonical_exercise_id="squat",
+    canonical_display_name="Bodyweight Squat",
+)
+```
+
+The loader still records the draft source paths, but the returned
+`ExerciseContext.exercise_id` and parsed `ExerciseDefinition.exercise_id` use the
+canonical view id. Top-level draft metadata is moved into
+`authoring_provenance` in the in-memory view. This is useful when demonstrating
+the pipeline from the assumption that no canonical `squat` file existed
+beforehand, while avoiding duplicated YAML artifacts. It is still not a reviewed
+canonical install.
 
 ## 5. Review Boundary
 
@@ -372,6 +426,20 @@ requires_review:
   - clinical_meaning
 ```
 
+Canonical loader-view artifacts do not keep those three fields at the in-memory
+artifact top level. They preserve the same review boundary as provenance:
+
+```yaml
+authoring_provenance:
+  authoring_mode: canonical_view
+  generated_by: exercise_authoring_notebook
+  source_authoring_exercise_id: draft_squat
+  canonical_exercise_id: squat
+  requires_review:
+    - compensation_candidates
+    - view_metric_reliability
+```
+
 ## 6. Notebook Target
 
 Target notebook:
@@ -391,7 +459,8 @@ Required cell flow:
 6. performance protocol preview
 7. camera protocol preview
 8. review checklist
-9. draft YAML write
+9. draft bundle write
+10. canonical loader-view preview
 ```
 
 Notebook cells must call `src/movement/definitions/exercise_authoring.py` rather

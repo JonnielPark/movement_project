@@ -138,6 +138,15 @@ _VOCAB: dict[str, frozenset[str]] = {
             "vertical",
             "anterior_posterior",
             "medial_lateral",
+            "image_x",
+            "image_y",
+            "model_depth",
+        }
+    ),
+    "rep_segmentation.reference_coordinate_family": frozenset(
+        {
+            "norm",
+            "recording_view_raw",
         }
     ),
     "rep_segmentation.boundary_logic": frozenset(
@@ -152,6 +161,15 @@ _VOCAB: dict[str, frozenset[str]] = {
             "vertical",
             "anterior_posterior",
             "medial_lateral",
+            "image_x",
+            "image_y",
+            "model_depth",
+        }
+    ),
+    "phase_segmentation.reference_coordinate_family": frozenset(
+        {
+            "norm",
+            "recording_view_raw",
         }
     ),
     "phase_segmentation.split_logic": frozenset(
@@ -208,6 +226,14 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
 
 _PHASE_RATIO_TOLERANCE: float = 0.02
 _GENERIC_ID = "generic"
+_AUTHORING_MODE_AS_AUTHORED = "as_authored"
+_AUTHORING_MODE_CANONICAL_VIEW = "canonical_view"
+_AUTHORING_MODES = frozenset(
+    {
+        _AUTHORING_MODE_AS_AUTHORED,
+        _AUTHORING_MODE_CANONICAL_VIEW,
+    }
+)
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_CAMERA_ZONES_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.yaml"
 _DEFAULT_ANALYSIS_PROFILES_DIR = (
@@ -265,6 +291,7 @@ class RepSegmentationSpec:
     """
 
     reference_landmark: str = "hip_center"
+    reference_coordinate_family: str = "norm"
     reference_axis: str = "vertical"
     boundary_logic: str = "local_maximum"
     smoothing: SmoothingSpec = field(default_factory=SmoothingSpec)
@@ -289,6 +316,7 @@ class PhaseSegmentationSpec:
     """
 
     reference_landmark: str = "hip_center"
+    reference_coordinate_family: str = "norm"
     reference_axis: str = "vertical"  # maps to norm_z (vertical), norm_y, norm_x
     phase_sequence: list[str] = field(default_factory=list)
     split_logic: str | list[str] = (
@@ -552,8 +580,16 @@ def _check_vocabulary(raw: dict, exercise_id: str) -> list[str]:
         ("biomechanical_focus.stability_requirement", bio.get("stability_requirement")),
         ("view_requirements.occlusion_risk", vr.get("occlusion_risk")),
         ("rep_segmentation.reference_axis", rs.get("reference_axis") if rs else None),
+        (
+            "rep_segmentation.reference_coordinate_family",
+            rs.get("reference_coordinate_family") if rs else None,
+        ),
         ("rep_segmentation.boundary_logic", rs.get("boundary_logic") if rs else None),
         ("phase_segmentation.reference_axis", ps.get("reference_axis") if ps else None),
+        (
+            "phase_segmentation.reference_coordinate_family",
+            ps.get("reference_coordinate_family") if ps else None,
+        ),
         (
             "phase_segmentation.multi_inflection_policy",
             ps.get("multi_inflection_policy") if ps else None,
@@ -812,6 +848,7 @@ def _parse_rep_segmentation(rs: dict | None) -> RepSegmentationSpec | None:
     prominence = rs.get("boundary_prominence", None)
     return RepSegmentationSpec(
         reference_landmark=rs.get("reference_landmark", "hip_center"),
+        reference_coordinate_family=rs.get("reference_coordinate_family", "norm"),
         reference_axis=rs.get("reference_axis", "vertical"),
         boundary_logic=rs.get("boundary_logic", "local_maximum"),
         smoothing=SmoothingSpec(
@@ -838,6 +875,7 @@ def _parse_phase_segmentation(ps: dict | None) -> PhaseSegmentationSpec | None:
     sl = ps.get("split_logic", "local_minimum")
     return PhaseSegmentationSpec(
         reference_landmark=ps.get("reference_landmark", "hip_center"),
+        reference_coordinate_family=ps.get("reference_coordinate_family", "norm"),
         reference_axis=ps.get("reference_axis", "vertical"),
         phase_sequence=list(ps.get("phase_sequence") or []),
         split_logic=sl if isinstance(sl, list) else str(sl),
@@ -1155,6 +1193,91 @@ def _compose_split_raw(
     return raw
 
 
+def _authoring_canonical_view_artifact(
+    artifact: dict,
+    *,
+    source_authoring_exercise_id: str,
+    canonical_exercise_id: str,
+    canonical_display_name: str | None = None,
+) -> dict:
+    view = deepcopy(artifact)
+    source_status = view.pop("status", None)
+    generated_by = view.pop("generated_by", None)
+    requires_review = list(view.pop("requires_review", []) or [])
+    source_artifact_exercise_id = str(
+        view.get("exercise_id") or source_authoring_exercise_id
+    )
+
+    view["exercise_id"] = canonical_exercise_id
+    if canonical_display_name is not None and "display_name" in view:
+        view["display_name"] = canonical_display_name
+
+    authoring_spec = view.get("authoring_spec")
+    if isinstance(authoring_spec, dict):
+        authoring_spec = deepcopy(authoring_spec)
+        authoring_spec["exercise_id"] = canonical_exercise_id
+        if canonical_display_name is not None:
+            authoring_spec["display_name"] = canonical_display_name
+        view["authoring_spec"] = authoring_spec
+
+    provenance = {
+        "authoring_mode": _AUTHORING_MODE_CANONICAL_VIEW,
+        "source_authoring_exercise_id": source_authoring_exercise_id,
+        "source_artifact_exercise_id": source_artifact_exercise_id,
+        "canonical_exercise_id": canonical_exercise_id,
+        "requires_review": requires_review,
+    }
+    if generated_by is not None:
+        provenance["generated_by"] = generated_by
+    if source_status is not None:
+        provenance["source_status"] = source_status
+    view["authoring_provenance"] = provenance
+    return view
+
+
+def _apply_authoring_canonical_view(
+    *,
+    identity: dict,
+    analysis_profile: dict,
+    performance_protocol: dict,
+    camera_protocol: dict,
+    source_authoring_exercise_id: str,
+    canonical_exercise_id: str,
+    canonical_display_name: str | None,
+) -> tuple[dict, dict, dict, dict]:
+    return (
+        _authoring_canonical_view_artifact(
+            identity,
+            source_authoring_exercise_id=source_authoring_exercise_id,
+            canonical_exercise_id=canonical_exercise_id,
+            canonical_display_name=canonical_display_name,
+        ),
+        _authoring_canonical_view_artifact(
+            analysis_profile,
+            source_authoring_exercise_id=source_authoring_exercise_id,
+            canonical_exercise_id=canonical_exercise_id,
+        ),
+        (
+            _authoring_canonical_view_artifact(
+                performance_protocol,
+                source_authoring_exercise_id=source_authoring_exercise_id,
+                canonical_exercise_id=canonical_exercise_id,
+            )
+            if performance_protocol
+            else {}
+        ),
+        (
+            _authoring_canonical_view_artifact(
+                camera_protocol,
+                source_authoring_exercise_id=source_authoring_exercise_id,
+                canonical_exercise_id=canonical_exercise_id,
+            )
+            if camera_protocol
+            else {}
+        ),
+    )
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
@@ -1166,6 +1289,9 @@ def load_exercise_context(
     analysis_presets_path: Path | str | None = None,
     performance_protocols_dir: Path | str | None = None,
     camera_protocols_dir: Path | str | None = None,
+    authoring_mode: str = _AUTHORING_MODE_AS_AUTHORED,
+    canonical_exercise_id: str | None = None,
+    canonical_display_name: str | None = None,
 ) -> ExerciseContext:
     """
     Load the runtime exercise context for one exercise_id.
@@ -1176,6 +1302,19 @@ def load_exercise_context(
     preset blocks before exercise-specific overrides are applied. Performance and
     camera protocol files are optional metadata.
     """
+    if authoring_mode not in _AUTHORING_MODES:
+        allowed = ", ".join(sorted(_AUTHORING_MODES))
+        raise ValueError(
+            f"Unknown authoring_mode={authoring_mode}; allowed: {allowed}"
+        )
+    if (
+        authoring_mode == _AUTHORING_MODE_CANONICAL_VIEW
+        and not canonical_exercise_id
+    ):
+        raise ValueError(
+            "canonical_exercise_id is required when authoring_mode='canonical_view'"
+        )
+
     definitions_dir = Path(definitions_dir)
     is_fallback = False
 
@@ -1205,6 +1344,7 @@ def load_exercise_context(
                 f"Generic fallback definition not found at: '{yaml_path}'"
             )
 
+    source_authoring_exercise_id = str(exercise_id)
     identity = _load_raw(yaml_path)
     raw = identity
     source_paths = {"exercise_definition": yaml_path}
@@ -1262,12 +1402,36 @@ def load_exercise_context(
             camera_protocol = _load_raw(camera_path)
             source_paths["camera_protocol"] = camera_path
 
+        if authoring_mode == _AUTHORING_MODE_CANONICAL_VIEW:
+            (
+                identity,
+                analysis_profile,
+                performance_protocol,
+                camera_protocol,
+            ) = _apply_authoring_canonical_view(
+                identity=identity,
+                analysis_profile=analysis_profile,
+                performance_protocol=performance_protocol,
+                camera_protocol=camera_protocol,
+                source_authoring_exercise_id=source_authoring_exercise_id,
+                canonical_exercise_id=str(canonical_exercise_id),
+                canonical_display_name=canonical_display_name,
+            )
+
         raw = _compose_split_raw(
             identity,
             analysis_profile,
             performance_protocol or None,
             camera_protocol or None,
         )
+    elif authoring_mode == _AUTHORING_MODE_CANONICAL_VIEW:
+        identity = _authoring_canonical_view_artifact(
+            identity,
+            source_authoring_exercise_id=source_authoring_exercise_id,
+            canonical_exercise_id=str(canonical_exercise_id),
+            canonical_display_name=canonical_display_name,
+        )
+        raw = identity
 
     errors, warns = _validate(raw)
     for w in warns:
@@ -1299,6 +1463,9 @@ def load_exercise_definition(
     analysis_presets_path: Path | str | None = None,
     performance_protocols_dir: Path | str | None = None,
     camera_protocols_dir: Path | str | None = None,
+    authoring_mode: str = _AUTHORING_MODE_AS_AUTHORED,
+    canonical_exercise_id: str | None = None,
+    canonical_display_name: str | None = None,
 ) -> ExerciseDefinition:
     """
     Load an exercise definition YAML for the given exercise_id.
@@ -1333,6 +1500,9 @@ def load_exercise_definition(
         analysis_presets_path=analysis_presets_path,
         performance_protocols_dir=performance_protocols_dir,
         camera_protocols_dir=camera_protocols_dir,
+        authoring_mode=authoring_mode,
+        canonical_exercise_id=canonical_exercise_id,
+        canonical_display_name=canonical_display_name,
     ).exercise_definition
 
 

@@ -55,6 +55,8 @@ joint_actions:
   - ankle_dorsiflexion_plantarflexion
   secondary:
   - trunk_flexion_extension
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
 biomechanical_identity:
   expected_com_motion: vertical
   stability_requirement: medium
@@ -73,6 +75,8 @@ biomechanical_identity:
   - ankle_dorsiflexion_plantarflexion
   secondary_joint_actions:
   - trunk_flexion_extension
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
 authoring_spec:
   exercise_id: draft_squat
   display_name: Draft Squat
@@ -107,3 +111,11 @@ authoring_spec:
   description: ''
   tags: []
   author_notes: ''
+authoring_inference:
+  source: authoring_axes
+  active_rules:
+  - standing_bilateral_feet_sagittal_lower_body_bend_frontal
+  - standing_bilateral_feet_sagittal_lower_body_bend_transverse
+  inferred_secondary_joint_actions:
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy

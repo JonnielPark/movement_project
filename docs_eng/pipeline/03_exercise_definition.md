@@ -1,6 +1,6 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.6.1
+**Document Version:** 1.6.2
 **Last Updated:** 2026-06-20
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
@@ -117,8 +117,9 @@ data/processed/authoring_drafts/<exercise_id>/data/definitions/exercises
 ```
 
 The stage-check notebook may also resolve a selected test `exercise_id` from the
-canonical directory, the git-tracked authoring example directory, or the local
-authoring draft directory. The canonical definition directory remains the
+canonical directory, the local authoring draft directory, or the git-tracked
+authoring example directory. This lets a newly generated local draft override
+the example bundle during review. The canonical definition directory remains the
 pipeline default because it contains the project-wide registry and `generic`
 fallback definition.
 
@@ -176,10 +177,12 @@ classification:
   equipment: none | external_load | assisted | ...
   load_type: bodyweight | external_load | assisted | ...
   posture_type: standing | plank | inverted_closed_chain | kneeling | ...
+  body_geometry: neutral_upright | neutral_prone_line | high_hip_inverted_v | ...
   kinetic_chain: open_chain | closed_chain | mixed_chain | ...
   laterality: bilateral_symmetric | bilateral_asymmetric | alternating |
               unilateral_left | unilateral_right | unilateral_unspecified
   movement_pattern: squat | lunge | pushup | shoulder_tap | custom
+  movement_pattern_source: derived_from_joint_actions_and_context | manual
   primary_plane: sagittal | frontal | transverse | multiplanar | static
   secondary_planes: list[string]
   complexity: single_joint | multi_joint | compound | whole_body
@@ -188,6 +191,38 @@ classification:
 `laterality` informs L/R swap handling and motion-attribution checks. Bilateral
 symmetric tasks may skip per-rep active-side attribution; unilateral or
 alternating tasks should preserve active-side or role metadata.
+
+### authoring_spec and authoring_inference
+
+Canonical exercise YAML files may retain the authoring selections that produced
+or reconstructed the definition. This provenance is not a scoring feature and
+does not replace explicit `classification`, `support`, `phase_model`, or
+`joint_actions` fields.
+
+```yaml
+authoring_spec:
+  exercise_id: squat
+  display_name: Bodyweight Squat
+  movement_pattern: squat
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: bilateral_symmetric
+  support_template: bilateral_feet
+  primary_body_regions: [hip, knee, ankle]
+  primary_joint_actions: [...]
+  secondary_joint_actions: [...]
+  phase_template: descent_ascent_hip_center
+  counting_template: repeated_repetition
+  camera_view_family: front_oblique
+  camera_height_level: H2
+  analysis_template: bilateral_lower_body_closed_chain
+```
+
+If the authoring generator inferred narrow additions from the selected axes,
+the YAML may also retain `authoring_inference`. Inference records must be
+explainable from posture, support, laterality, joint actions, and planes; they
+must not be inferred from the exercise name alone.
 
 ### support and phase_model
 
@@ -223,18 +258,29 @@ assigns phase labels inside confirmed reps.
 ```yaml
 rep_segmentation:
   reference_landmark: hip_center | wrist_center | shoulder_center | custom
-  reference_axis: vertical | horizontal | depth | custom
+  reference_coordinate_family: norm | recording_view_raw | custom
+  reference_axis: vertical | anterior_posterior | medial_lateral | image_x | image_y | model_depth | custom
   boundary_logic: local_maximum | local_minimum | zero_crossing | threshold | custom
   smoothing: optional mapping
   minimum_rep_length_frames: int
 
 phase_segmentation:
   reference_landmark: string
+  reference_coordinate_family: norm | recording_view_raw | custom
   reference_axis: string
   phase_sequence: list[string]
   split_logic: local_minimum | local_maximum | multi_inflection | custom
   minimum_rep_length_frames: int
 ```
+
+`reference_coordinate_family` is the coordinate source used only for boundary
+detection. The default `norm` family reads body-relative columns from ⑤
+Normalization. If the reference landmark is also the normalization anchor, such
+as `hip_center` after hip-centered normalization, the movement signal may be
+removed. In that case the exercise definition should use `recording_view_raw`
+with a recording-plane axis such as `image_y` so segmentation follows the
+visible movement trace without changing the normalized feature/scoring
+coordinates.
 
 If automatic segmentation is uncertain, downstream analysis should use confirmed
 manual labels rather than silently accepting poor boundaries.

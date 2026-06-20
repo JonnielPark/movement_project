@@ -1,7 +1,7 @@
 # 00. Data Format
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-06-12
+**Document Version:** 1.2.1
+**Last Updated:** 2026-06-20
 **Korean Sync:** `docs/pipeline/00_data_format.md` is the same-version Korean source.
 
 Input specification for monocular 3D pose time-series CSV files.
@@ -22,6 +22,24 @@ landmark names = src/movement/core/config.py
 
 Other engines are adapters until their export schemas are available. They should
 be converted into this schema before entering the current pipeline.
+
+Future pose engines such as YOLOv11 should enter through a pose-backend adapter,
+not through exercise-specific special cases. The adapter may map native keypoints
+to the pipeline landmark schema, translate native confidence into visibility or
+confidence provenance, and record source metadata such as engine name, model
+version, coordinate convention, and depth availability. If the engine has no
+native depth output, the adapter must not synthesize depth as trusted evidence;
+depth-dependent downstream records should instead carry unavailable or
+low-confidence provenance until a later scoring policy explicitly supports that
+source.
+
+After MediaPipe-based analysis and scoring stabilize, the same exercise
+definition can be used to compare MediaPipe and YOLOv11 outputs as an
+engineering model-dependence study. The comparison should report how much the
+exercise-definition and canonicalization evidence changes candidate
+availability, confidence, burden, residual, and feature sensitivity for each
+backend. It must not be framed as clinical validation or as proof that one pose
+engine is biomechanically correct.
 
 ## 2. Required Columns
 

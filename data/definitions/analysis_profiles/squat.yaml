@@ -24,9 +24,9 @@ compensation_candidates:
 - excessive_trunk_flexion
 - lateral_pelvic_shift
 - heel_lift
-- foot_external_rotation_proxy
 - pelvis_rotation
 - tempo_instability
+- foot_external_rotation_proxy
 feature_domains:
   spatial:
   - rom
@@ -46,11 +46,26 @@ feature_domains:
   - compensation
   - com_stability
   - pelvis_stability
-  - joint_tracking_error
   - lateral_shift
+  - joint_tracking_error
   biomechanical_proxy:
   - com_displacement
   - segment_length_normalized_displacement
   - moment_arm_proxy
   - relative_joint_load_proxy
   - compensation_load_shift_proxy
+authoring_inference:
+  source: authoring_axes
+  active_rules:
+  - standing_bilateral_feet_sagittal_lower_body_bend_frontal
+  - standing_bilateral_feet_sagittal_lower_body_bend_transverse
+  inferred_secondary_joint_actions:
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
+  inferred_compensation_candidates:
+  - foot_external_rotation_proxy
+  inferred_feature_domains:
+    control:
+    - joint_tracking_error
+    biomechanical_proxy:
+    - compensation_load_shift_proxy

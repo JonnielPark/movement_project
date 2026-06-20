@@ -1,7 +1,7 @@
 # 01. Validation
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-06-12
+**Document Version:** 1.2.1
+**Last Updated:** 2026-06-20
 **Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
 Pipeline step ① checks structural integrity of input pose data. It does not
@@ -19,6 +19,12 @@ Pose CSV
 ```
 
 Downstream steps rely on integrity assumptions confirmed here.
+
+For non-MediaPipe pose backends, validation is performed after adapter
+conversion into the pipeline schema. A pass means the required frame,
+timestamp, coordinate, and optional visibility fields are structurally usable; it
+does not mean that MediaPipe and another backend provide equivalent depth,
+visibility, or biomechanical evidence.
 
 ## 2. Checks
 

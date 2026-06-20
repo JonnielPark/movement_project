@@ -1,7 +1,7 @@
 # 07. Segmentation
 
-**Document Version:** 1.3.1
-**Last Updated:** 2026-06-10
+**Document Version:** 1.3.2
+**Last Updated:** 2026-06-20
 **Korean Sync:** `docs/pipeline/07_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑦ confirms repetition boundaries and intra-rep phase labels. It is
@@ -55,10 +55,28 @@ phase_segmentation
     Estimates phase boundaries inside confirmed reps and fills phase labels.
 ```
 
-Both blocks use exercise-defined reference landmarks, axes, expected phase order,
-and minimum-length settings. Automatic segmentation is rejected when visibility,
-ROM, candidate boundary count, boundary order, or manual-label consistency is
-unclear.
+Both blocks use exercise-defined reference landmarks, coordinate families, axes,
+expected phase order, and minimum-length settings. Automatic segmentation is
+rejected when visibility, ROM, candidate boundary count, boundary order, or
+manual-label consistency is unclear.
+
+`reference_coordinate_family` separates the signal used for boundary detection
+from the coordinates used for feature/scoring computation:
+
+```text
+norm
+    Default. Reads <landmark>_norm_x/y/z from ⑤ Normalization.
+
+recording_view_raw
+    Reads raw recording-plane columns such as <landmark>_x/y/z. This is useful
+    when the reference landmark is the normalization anchor and its normalized
+    trajectory has been removed.
+```
+
+For example, squat phase splitting may use `hip_center` in
+`recording_view_raw` with `image_y` so the descent/ascent split follows the
+visible recording-plane hip trajectory. This does not change normalized
+coordinates or promote raw coordinates to scoring features.
 
 ---
 

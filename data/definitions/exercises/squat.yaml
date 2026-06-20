@@ -15,9 +15,11 @@ classification:
   load_type: bodyweight
   external_load_position: none
   posture_type: standing
+  body_geometry: neutral_upright
   kinetic_chain: closed_chain
   laterality: bilateral_symmetric
   movement_pattern: squat
+  movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
   secondary_planes:
   - frontal
@@ -64,5 +66,47 @@ biomechanical_identity:
   - avoid_knee_valgus
   - avoid_heel_lift
   - avoid_excessive_lateral_shift
+authoring_spec:
+  exercise_id: squat
+  display_name: Bodyweight Squat
+  movement_pattern: squat
+  movement_pattern_source: derived_from_joint_actions_and_context
+  posture_type: standing
+  body_geometry: neutral_upright
+  laterality: bilateral_symmetric
+  support_template: bilateral_feet
+  primary_body_regions:
+  - hip
+  - knee
+  - ankle
+  primary_joint_actions:
+  - hip_flexion_extension
+  - knee_flexion_extension
+  - ankle_dorsiflexion_plantarflexion
+  primary_plane: sagittal
+  secondary_planes:
+  - frontal
+  - transverse
+  secondary_joint_actions:
+  - trunk_flexion_extension
+  phase_template: descent_ascent_hip_center
+  counting_template: repeated_repetition
+  target_sets: null
+  target_count_per_set: 10
+  rest_between_sets_s: []
+  camera_view_family: front_oblique
+  camera_height_level: H2
+  analysis_template: bilateral_lower_body_closed_chain
+  description: ''
+  tags: []
+  author_notes: ''
+authoring_inference:
+  source: authoring_axes
+  active_rules:
+  - standing_bilateral_feet_sagittal_lower_body_bend_frontal
+  - standing_bilateral_feet_sagittal_lower_body_bend_transverse
+  inferred_secondary_joint_actions:
+  - pelvis_lateral_tilt_proxy
+  - pelvis_rotation_proxy
 notes: Squat is a suitable reference exercise for validating bilateral symmetry, sagittal-plane
   ROM, COM displacement, and lower-limb compensation indicators.
