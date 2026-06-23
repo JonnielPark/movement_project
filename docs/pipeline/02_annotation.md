@@ -23,7 +23,7 @@ Pose CSV
 → 후속 단계
 ```
 
-② 단계는 ③ 이전에 실행된다. `exercise_type`이 운동 정의 YAML을 선택하기 때문이다.
+② 단계는 ③ 이전에 실행된다. `exercise_id`가 운동 정의 YAML을 선택하기 때문이다.
 
 ## 2. 출력 계약 (Output Contract)
 
@@ -36,8 +36,8 @@ set_id              Int64     nullable 세트 식별자
 rep_id              Int64     nullable 반복 식별자
 phase               object    선택 수동 phase 라벨; ⑦에서 확정
 note                str       선택 구간 기록
-exercise_type       str       운동 정의 식별자
-pattern             str       bilateral | alternating
+exercise_id         str       운동 정의 식별자
+execution_pattern   str       bilateral | alternating; 관찰된 좌우/순서 pattern
 starting_side       str       left | right; 교대/단측 운동 컨텍스트
 session_id          str       선택 취득 세션 식별자
 recording_id        str       선택 촬영 파일 식별자
@@ -61,8 +61,9 @@ protocol_cycle_id   Int64     원자 반복을 묶는 사용자 안내 기준 cy
 후속 사용:
 
 ```text
-exercise_type                 → ③ exercise definition 로딩
-pattern / starting_side        → ④ L/R 점검 및 ⑦ motion attribution
+exercise_id                   → ③ exercise definition 로딩
+execution_pattern / starting_side
+                               → ④ L/R 점검 및 ⑦ motion attribution
 phase                          → 본 단계에서 보존, ⑦에서 수용/거부
 filming provenance             → warning/report 컨텍스트만 제공
 performance provenance         → warning/report 컨텍스트만 제공
@@ -82,7 +83,7 @@ segment_type, set_id, rep_id, start_frame, end_frame, use_for_analysis
 최소 예시:
 
 ```csv
-segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_id,execution_pattern,starting_side
 baseline,,,20,60,false,squat,bilateral,
 rep,1,1,85,160,true,squat,bilateral,
 rep,1,2,170,245,true,squat,bilateral,
@@ -92,7 +93,7 @@ idle,,,416,460,false,squat,bilateral,
 ```
 
 교대 운동에서는 `starting_side`가 첫 기대 활성 측을 정의한다.
-예를 들어 `plank_shoulder_tap`에서 `pattern=alternating`,
+예를 들어 `plank_shoulder_tap`에서 `execution_pattern=alternating`,
 `starting_side=right`이면 rep 1은 right, rep 2는 left로 이어진다.
 
 ## 4. 동작 (Behavior)
@@ -114,8 +115,8 @@ use_for_analysis = True
 segment_type     = full_sequence
 set_id / rep_id  = None
 phase            = None
-exercise_type    = None   → ③은 generic fallback 로딩
-pattern          = bilateral
+exercise_id      = None   → ③은 generic fallback 로딩
+execution_pattern = bilateral
 starting_side    = None
 camera_zone      = unknown
 camera_height_level = unknown

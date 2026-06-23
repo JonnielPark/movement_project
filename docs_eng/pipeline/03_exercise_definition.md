@@ -18,7 +18,7 @@ the movement happened in a recording.
 ```text
 Pose CSV + annotation + exercise YAML artifacts
 → ① Validation
-→ ② Annotation                    exercise_type, pattern, recording metadata
+→ ② Annotation                    exercise_id, execution_pattern, recording metadata
 → ③ Exercise Definition           ← this step
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
@@ -123,7 +123,7 @@ the example bundle during review. The canonical definition directory remains the
 pipeline default because it contains the project-wide registry and `generic`
 fallback definition.
 
-If `exercise_type` is missing or no matching YAML exists, `generic.yaml` is loaded.
+If `exercise_id` is missing or no matching YAML exists, `generic.yaml` is loaded.
 Generic mode activates only exercise-agnostic features such as ROM, tempo, and
 stability. Compensation biomarkers are not produced.
 
@@ -181,7 +181,8 @@ classification:
   kinetic_chain: open_chain | closed_chain | mixed_chain | ...
   laterality: bilateral_symmetric | bilateral_asymmetric | alternating |
               unilateral_left | unilateral_right | unilateral_unspecified
-  movement_pattern: squat | lunge | pushup | shoulder_tap | custom
+  movement_template_id: bilateral_lower_body_closed_chain | ...
+  movement_pattern: deprecated alias for movement_template_id
   movement_pattern_source: derived_from_joint_actions_and_context | manual
   primary_plane: sagittal | frontal | transverse | multiplanar | static
   secondary_planes: list[string]
@@ -191,6 +192,12 @@ classification:
 `laterality` informs L/R swap handling and motion-attribution checks. Bilateral
 symmetric tasks may skip per-rep active-side attribution; unilateral or
 alternating tasks should preserve active-side or role metadata.
+
+`movement_template_id` is derived from selected authoring axes such as posture,
+support/contact pattern, laterality, primary regions, joint actions, and planes.
+It names the analysis template/family, not the public exercise name. During
+migration, existing YAML may still expose `movement_pattern`; loaders mirror it
+as `movement_template_id` when the new field is absent.
 
 ### authoring_spec and authoring_inference
 
@@ -203,6 +210,7 @@ does not replace explicit `classification`, `support`, `phase_model`, or
 authoring_spec:
   exercise_id: squat
   display_name: Bodyweight Squat
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: standing

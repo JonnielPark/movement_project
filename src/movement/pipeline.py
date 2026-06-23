@@ -155,6 +155,7 @@ class InterpolationConfig:
     enabled: bool = True
     method: str = "linear"
     max_gap_frames: int = 3
+    post_velocity_check: bool = True
 
 
 @dataclass
@@ -469,6 +470,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 enabled=bool(itp.get("enabled", True)),
                 method=itp.get("method", "linear"),
                 max_gap_frames=int(itp.get("max_gap_frames", 3)),
+                post_velocity_check=bool(itp.get("post_velocity_check", True)),
             ),
             smoothing=SmoothingConfig(
                 enabled=bool(sm.get("enabled", False)),
@@ -738,17 +740,22 @@ def run_pipeline(
         from movement.definitions.exercise_definition import load_exercise_definition
 
         ex_id = config.exercise_definition.exercise_id
-        if ex_id is None and "exercise_type" in df.columns:
-            unique_types = df["exercise_type"].dropna().unique().tolist()
-            if len(unique_types) == 1:
-                ex_id = unique_types[0]
-            elif len(unique_types) > 1:
+        if ex_id is None:
+            if "exercise_id" in df.columns:
+                id_column = "exercise_id"
+                unique_ids = df[id_column].dropna().unique().tolist()
+            else:
+                unique_ids = []
+            if len(unique_ids) == 1:
+                ex_id = unique_ids[0]
+            elif len(unique_ids) > 1:
                 _warnings.warn(
-                    f"[Step ③] Multiple exercise_type values found: {unique_types}. "
-                    "Using the first. For multi-exercise sessions, load definitions per segment.",
+                    f"[Step ③] Multiple exercise_id values found: {unique_ids}. "
+                    "Using the first. For multi-exercise sessions, load "
+                    "definitions per segment.",
                     stacklevel=2,
                 )
-                ex_id = unique_types[0]
+                ex_id = unique_ids[0]
 
         exercise_def = load_exercise_definition(
             exercise_id=ex_id,
@@ -760,6 +767,9 @@ def run_pipeline(
             "version": exercise_def.version,
             "is_generic_fallback": exercise_def.is_generic_fallback,
             "laterality": exercise_def.classification.get("laterality"),
+            "movement_template_id": exercise_def.classification.get(
+                "movement_template_id"
+            ),
             "primary_plane": exercise_def.classification.get("primary_plane"),
             "compensation_candidates": exercise_def.compensation_candidates,
             "camera_protocol": (

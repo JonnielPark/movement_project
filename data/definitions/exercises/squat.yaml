@@ -18,6 +18,7 @@ classification:
   body_geometry: neutral_upright
   kinetic_chain: closed_chain
   laterality: bilateral_symmetric
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
@@ -69,6 +70,7 @@ biomechanical_identity:
 authoring_spec:
   exercise_id: squat
   display_name: Bodyweight Squat
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: standing

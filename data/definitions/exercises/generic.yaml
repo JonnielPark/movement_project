@@ -2,7 +2,7 @@ exercise_id: generic
 display_name: Generic Movement
 description: |
   Conservative fallback definition used when annotation does not declare an
-  exercise_type or when the corresponding YAML cannot be located. Only
+  exercise_id or when the corresponding YAML cannot be located. Only
   exercise-agnostic features are emitted; no compensation biomarkers are
   produced.
 version: 0.1.0
@@ -88,4 +88,4 @@ notes: |
   pipeline cannot derive interpretable, exercise-specific biomarkers. The
   loader should emit a warning so that the user is aware analysis is running
   in fallback mode. To restore full biomarker output, either provide an
-  exercise YAML or declare exercise_type in the annotation file.
+  exercise YAML or declare exercise_id in the annotation file.

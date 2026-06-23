@@ -2,7 +2,7 @@
 ⑧ Motion Attribution
 
 Compares per-rep observed motion energy against the expected active side
-(from annotation pattern / starting_side) and flags label consistency.
+(from execution_pattern / starting_side) and flags label consistency.
 
 Does not modify coordinates. Adds per-rep metadata columns only.
 
@@ -82,9 +82,9 @@ class AttributionThresholds:
 @dataclass
 class AttributionReport:
     method: str = "motion_energy_ratio"
-    exercise_type: str | None = None
+    exercise_id: str | None = None
     laterality: str | None = None
-    pattern: str | None = None
+    execution_pattern: str | None = None
     starting_side: str | None = None
     num_reps: int = 0
     num_consistent: int = 0
@@ -104,9 +104,9 @@ class AttributionReport:
     def as_dict(self) -> dict[str, Any]:
         return {
             "method": self.method,
-            "exercise_type": self.exercise_type,
+            "exercise_id": self.exercise_id,
             "laterality": self.laterality,
-            "pattern": self.pattern,
+            "execution_pattern": self.execution_pattern,
             "starting_side": self.starting_side,
             "num_reps": self.num_reps,
             "num_consistent": self.num_consistent,
@@ -207,7 +207,7 @@ def _expected_active_from_protocol(
 
 def _expected_active_from_annotation(
     rep_number: int,
-    pattern: str | None,
+    execution_pattern: str | None,
     starting_side: str | None,
     laterality: str,
 ) -> str | None:
@@ -217,7 +217,7 @@ def _expected_active_from_annotation(
     if laterality == "unilateral_right":
         return "right"
 
-    if pattern == "alternating":
+    if execution_pattern == "alternating":
         if starting_side in ("left", "right"):
             sides = ["left", "right"] if starting_side == "left" else ["right", "left"]
             return sides[(rep_number - 1) % 2]
@@ -228,7 +228,7 @@ def _expected_active_from_annotation(
 
 
 def _requires_starting_side(
-    pattern: str | None,
+    execution_pattern: str | None,
     laterality: str,
     performance_protocol: Any | None,
 ) -> bool:
@@ -244,7 +244,7 @@ def _requires_starting_side(
     )
     return (
         mode in {"alternating_each_rep", "same_side_block_then_switch"}
-        or pattern == "alternating"
+        or execution_pattern == "alternating"
     )
 
 
@@ -359,7 +359,7 @@ def attribute_motion(
     ----------
     df : pd.DataFrame
         Normalized dataframe from ⑤. Annotation columns (segment_type, rep_id,
-        pattern, starting_side) must be present to read rep boundaries.
+        execution_pattern and starting_side provide side-sequence context.
     exercise_definition : ExerciseDefinition
         Object returned by ③ exercise definition loading.
     thresholds : AttributionThresholds, optional
@@ -409,9 +409,10 @@ def attribute_motion(
         return df, report
 
     # ── Common context ────────────────────────────────────────────────────────
-    pattern = (
-        df["pattern"].dropna().iloc[0]
-        if "pattern" in df.columns and not df["pattern"].dropna().empty
+    execution_pattern = (
+        df["execution_pattern"].dropna().iloc[0]
+        if "execution_pattern" in df.columns
+        and not df["execution_pattern"].dropna().empty
         else None
     )
     starting_side = (
@@ -419,14 +420,14 @@ def attribute_motion(
         if "starting_side" in df.columns and not df["starting_side"].dropna().empty
         else None
     )
-    exercise_type = (
-        df["exercise_type"].dropna().iloc[0]
-        if "exercise_type" in df.columns and not df["exercise_type"].dropna().empty
-        else None
+    exercise_id = (
+        df["exercise_id"].dropna().iloc[0]
+        if "exercise_id" in df.columns and not df["exercise_id"].dropna().empty
+        else exercise_definition.exercise_id
     )
 
-    report.exercise_type = exercise_type
-    report.pattern = pattern
+    report.exercise_id = exercise_id
+    report.execution_pattern = execution_pattern
     report.starting_side = starting_side
     performance_protocol = getattr(exercise_definition, "performance_protocol", None)
     report.performance_side_sequence = _performance_side_sequence_dict(
@@ -470,12 +471,12 @@ def attribute_motion(
         expected_source = (
             "performance_protocol.side_sequence"
             if expected is not None
-            else "annotation.pattern"
+            else "annotation.execution_pattern"
         )
         if expected is None:
             expected = _expected_active_from_annotation(
                 rep_num_one,
-                pattern,
+                execution_pattern,
                 use_starting,
                 laterality,
             )
@@ -484,7 +485,9 @@ def attribute_motion(
         if (
             rep_num_zero == 0
             and use_starting is None
-            and _requires_starting_side(pattern, laterality, performance_protocol)
+            and _requires_starting_side(
+                execution_pattern, laterality, performance_protocol
+            )
         ):
             if detected in ("left", "right"):
                 inferred_starting_side = detected

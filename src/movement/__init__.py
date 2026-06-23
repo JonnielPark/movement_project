@@ -35,6 +35,7 @@ from movement.definitions import clinical as clinical
 from movement.definitions import exercise_authoring as exercise_authoring
 from movement.definitions import exercise_definition as exercise_definition
 from movement.reporting import visualization as visualization
+from movement import stage_context as stage_context
 from movement.stages import annotation as annotation
 from movement.stages import canonicalization as canonicalization
 from movement.stages import floor_reference as floor_reference
@@ -57,6 +58,7 @@ _COMPAT_MODULES = {
     "normalization": normalization,
     "preprocessing": preprocessing,
     "segmentation": segmentation,
+    "stage_context": stage_context,
     "utils": utils,
     "validation": validation,
     "visualization": visualization,
@@ -114,6 +116,11 @@ from movement.visualization import (  # noqa: E402
     plot_rep_timeline,
 )
 from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
+from movement.stage_context import (  # noqa: E402
+    PreviousStageInputs,
+    prepare_previous_stage_inputs,
+    resolve_target_definitions_dir,
+)
 from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
 from movement.biomech import BiomechRecord  # noqa
 from movement.biomarker import (  # noqa: E402
@@ -189,4 +196,7 @@ __all__ = [
     # pipeline runner
     "load_pipeline_config",
     "run_pipeline",
+    "PreviousStageInputs",
+    "prepare_previous_stage_inputs",
+    "resolve_target_definitions_dir",
 ]

@@ -46,6 +46,7 @@ preprocessing:
     enabled: true
     method: linear
     max_gap_frames: 3         # overridable by exercise definition quality_rules
+    post_velocity_check: true # re-check interpolated landmark-frame jumps
   smoothing:
     enabled: false
     method: rolling_median
@@ -54,8 +55,8 @@ preprocessing:
     enabled: false
     camera_side_inference: true
     visibility_threshold: 0.6
-    jitter_threshold_torso_per_sec: null
-    acceleration_threshold_torso_per_sec2: null
+    jitter_threshold_torso_per_sec: null        # null = conservative 3x reliability velocity threshold
+    acceleration_threshold_torso_per_sec2: null # null = jitter threshold scaled by fps
     max_gap_frames: 3
     smoothing_method: rolling_median
     smoothing_window_size: 3

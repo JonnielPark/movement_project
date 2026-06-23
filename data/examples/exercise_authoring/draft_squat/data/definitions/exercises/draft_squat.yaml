@@ -19,6 +19,7 @@ classification:
   load_type: bodyweight
   external_load_position: none
   kinetic_chain: closed_chain
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   complexity: compound
   posture_type: standing
@@ -80,6 +81,7 @@ biomechanical_identity:
 authoring_spec:
   exercise_id: draft_squat
   display_name: Draft Squat
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: standing

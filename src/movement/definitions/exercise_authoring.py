@@ -224,9 +224,8 @@ class ExerciseAuthoringSpec:
         camera_zone = raw.get("camera_zone")
         legacy_camera_template = raw.get("camera_template")
         if (
-            (camera_view_family is None or camera_height_level is None)
-            and legacy_camera_template in _LEGACY_CAMERA_TEMPLATE_DEFAULTS
-        ):
+            camera_view_family is None or camera_height_level is None
+        ) and legacy_camera_template in _LEGACY_CAMERA_TEMPLATE_DEFAULTS:
             default_view_family, default_height = _LEGACY_CAMERA_TEMPLATE_DEFAULTS[
                 str(legacy_camera_template)
             ]
@@ -258,19 +257,13 @@ class ExerciseAuthoringSpec:
             camera_view_family=str(camera_view_family),
             camera_height_level=str(camera_height_level),
             analysis_template=str(raw["analysis_template"]),
-            target_sets=(
-                int(target_sets)
-                if target_sets not in (None, "")
-                else None
-            ),
+            target_sets=(int(target_sets) if target_sets not in (None, "") else None),
             target_count_per_set=(
                 int(target_count_per_set)
                 if target_count_per_set not in (None, "")
                 else None
             ),
-            rest_between_sets_s=tuple(
-                int(value) for value in rest_between_sets_s
-            ),
+            rest_between_sets_s=tuple(int(value) for value in rest_between_sets_s),
             description=str(raw.get("description") or ""),
             tags=tuple(raw.get("tags") or ()),
             secondary_joint_actions=tuple(raw.get("secondary_joint_actions") or ()),
@@ -283,6 +276,7 @@ class ExerciseAuthoringSpec:
         return {
             "exercise_id": self.exercise_id,
             "display_name": self.display_name,
+            "movement_template_id": self.analysis_template,
             "movement_pattern": self.movement_pattern,
             "movement_pattern_source": self.movement_pattern_source,
             "posture_type": self.posture_type,
@@ -361,10 +355,12 @@ def derive_movement_pattern_from_authoring_axes(
     secondary_joint_actions: Iterable[str] = (),
 ) -> str:
     """
-    Derive the internal movement-pattern template from atomic authoring axes.
+    Derive the legacy movement-pattern family from atomic authoring axes.
 
     This keeps researcher input focused on observable biomechanical structure:
     joint actions, contact base, side pattern, posture, and loaded body regions.
+    Downstream reports should prefer `movement_template_id` for the
+    analysis-template key.
     """
     body_regions = tuple(str(region) for region in primary_body_regions)
     regions = set(body_regions)
@@ -787,16 +783,13 @@ def recommend_camera_positions_for_authoring_axes(
         view_families = ("front",)
     elif primary_plane == "static":
         view_families = (
-            ("front_oblique",)
-            if posture_type in _FLOOR_BASED_POSTURES
-            else ("front",)
+            ("front_oblique",) if posture_type in _FLOOR_BASED_POSTURES else ("front",)
         )
     else:
         view_families = ("front_oblique",)
 
     return tuple(
-        _camera_position_id(view_family, height_level)
-        for view_family in view_families
+        _camera_position_id(view_family, height_level) for view_family in view_families
     )
 
 
@@ -866,9 +859,7 @@ def _build_camera_protocol(
     )
     recommended_set = set(recommended_position_ids)
     recommendation_status = (
-        "recommended"
-        if selected_position_id in recommended_set
-        else "non_recommended"
+        "recommended" if selected_position_id in recommended_set else "non_recommended"
     )
     non_recommended_position_ids = tuple(
         position_id
@@ -983,9 +974,7 @@ def validate_authoring_spec(
     if spec.camera_view_family not in known_view_families:
         raise ValueError(f"Unknown camera_view_family={spec.camera_view_family}")
     if spec.camera_height_level not in known_height_levels:
-        raise ValueError(
-            f"Unknown camera_height_level={spec.camera_height_level}"
-        )
+        raise ValueError(f"Unknown camera_height_level={spec.camera_height_level}")
 
     allowed_geometries = _POSTURE_BODY_GEOMETRY_VALUES.get(spec.posture_type)
     if allowed_geometries is None:
@@ -1007,10 +996,7 @@ def validate_authoring_spec(
 
     if spec.target_sets is not None and spec.target_sets <= 0:
         raise ValueError("target_sets must be a positive integer")
-    if (
-        spec.target_count_per_set is not None
-        and spec.target_count_per_set <= 0
-    ):
+    if spec.target_count_per_set is not None and spec.target_count_per_set <= 0:
         raise ValueError("target_count_per_set must be a positive integer")
     if spec.rest_between_sets_s:
         if len(spec.rest_between_sets_s) != 2:
@@ -1202,6 +1188,7 @@ def generate_authoring_artifacts(
     classification = deepcopy(pattern.get("classification") or {})
     classification.update(
         {
+            "movement_template_id": spec.analysis_template,
             "posture_type": spec.posture_type,
             "body_geometry": spec.body_geometry,
             "laterality": spec.laterality,

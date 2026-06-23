@@ -37,7 +37,7 @@ Optional inputs:
 
 ```text
 <landmark>_visibility
-exercise_type, pattern
+exercise_id, execution_pattern
 camera_zone, camera_height_level
 ```
 
@@ -55,7 +55,10 @@ view_metric_reliability
 Added columns include:
 
 ```text
-<landmark>_reliable          per-landmark reliability mask
+<landmark>_observed_reliable raw observation reliability before repair
+<landmark>_usable            per-landmark usability after short-gap repair
+<landmark>_preprocessing_source
+                              observed | short_gap_interpolated | unusable
 preprocessing_valid          frame-level validity
 preprocessing_note           machine-readable reason text
 swap_corrected               L/R labels exchanged for this frame
@@ -88,7 +91,9 @@ velocity outliers
     body-scale-normalized frame-to-frame jumps above threshold.
 ```
 
-Unreliable data are marked, not silently deleted.
+Unreliable data are marked, not silently deleted. A repaired value can become
+usable for the next calculation while still carrying lower observation
+confidence through its preprocessing source.
 
 ---
 
@@ -120,6 +125,22 @@ long gap    remains unreliable and is reported
 
 `quality_rules.max_interpolation_gap_frames` controls the limit.
 
+Interpolation updates `<landmark>_usable`, not
+`<landmark>_observed_reliable`. This keeps two questions separate:
+
+```text
+observed_reliable  Was the original landmark observation trustworthy?
+usable             Can the landmark be used by the next stage after repair?
+```
+
+When enabled, the post-interpolation velocity sanity check re-evaluates only the
+landmark-frames recovered by interpolation. If the interpolated coordinate still
+creates a frame-to-frame jump beyond the velocity threshold, it is marked
+unusable with `post_interpolation_velocity_failed`.
+
+Short-gap interpolated landmarks are usable but should be treated as lower
+confidence evidence by later feature/scoring stages.
+
 ### Optional Smoothing
 
 Smoothing is disabled by default and should use small windows. It is intended for
@@ -134,11 +155,32 @@ where the side farther from the camera has lower visibility, higher jitter, or
 higher swap risk. It is not canonicalization and does not make the skeleton
 symmetric.
 
+Because monocular pose coordinates are noisy, far-side jitter detection is
+intentionally conservative. Minor coordinate wobble is not treated as jitter.
+The jitter gate should require a large motion spike plus low-confidence context
+such as low visibility or an existing reliability-mask failure.
+
+The report separates the original observation from the post-preprocessing state:
+
+```text
+observed_*             raw observation before interpolation/far-side repair
+post_preprocessing_*   remaining issue after preprocessing repair attempts
+```
+
+Observed-only issues are provenance. Post-preprocessing issues are the stronger
+signal for later feature availability gates.
+
+Far-side summaries should therefore expose separate counts such as
+`num_observed_low_confidence_far_side_landmark_frames`,
+`num_observed_high_jitter_far_side_landmark_frames`,
+`num_post_preprocessing_low_confidence_far_side_landmark_frames`, and
+`num_post_preprocessing_high_jitter_far_side_landmark_frames`.
+
 Allowed:
 
 ```text
 infer near/far/unknown side context
-apply stronger smoothing only to low-visibility + high-jitter landmarks
+apply optional smoothing/interpolation only to far-side low-confidence landmarks
 interpolate short low-confidence gaps
 report unresolved long gaps as low confidence
 emit feature-availability hooks for ⑧ and ⑩
@@ -173,11 +215,17 @@ DataFrame and a report.
 ```python
 {
     "method": str,
-    "exercise_type": str,
-    "pattern": str,
+    "exercise_id": str | None,
+    "movement_template_id": str | None,
+    "execution_pattern": str | None,
     "laterality": str,
     "num_frames": int,
     "reliability_summary": dict,
+    "landmark_quality_summary": list[dict],
+    "rule_contribution_summary": dict,
+    "worst_landmarks_by_observed_unreliable": list[dict],
+    "worst_landmarks_by_unusable": list[dict],
+    "frames_with_many_unusable_landmarks": list[dict],
     "swap_detection_summary": dict,
     "interpolation_summary": dict,
     "smoothing_summary": dict,
@@ -187,6 +235,34 @@ DataFrame and a report.
     "applied_columns": list,
 }
 ```
+
+`exercise_id` and `movement_template_id` come from the loaded exercise definition.
+`execution_pattern` uses representative non-null dataframe values rather than
+the first frame, because real recordings may include setup frames before the
+annotated exercise starts.
+
+The landmark/rule/frame summaries are QC provenance, not movement-quality
+scores. They identify which landmarks, rules, and frames made preprocessing
+confidence low so later feature stages can decide whether a feature should be
+used, down-weighted, or skipped.
+
+Stage-check notebooks may derive compact QC ratios and a readiness label from
+this report, such as `ready_for_next_stage`, `ready_with_low_confidence_notes`,
+or `review_recommended`. These labels are execution/QC interpretation aids only;
+they are not biomarker scores and do not replace feature-level availability
+decisions.
+
+Stage-check notebooks may also display the active preprocessing configuration
+next to those QC ratios: visibility threshold, segment-length tolerance, joint
+angle check, velocity threshold, interpolation gap, post-interpolation velocity
+check, smoothing setting, and far-side jitter gate. This configuration summary
+is provenance for reproducibility, not a scoring input.
+
+The stage-check notebook should follow the established notebook style used by
+the earlier stage checks: `Data Setup`, `Direct Preprocessing Test`, numbered
+checks, `Pipeline Integration`, and `Check Summary`. Synthetic diagnostics may
+be kept as a separate numbered check near the end, clearly marked as diagnostic
+evidence rather than target-recording movement quality.
 
 Frames are never silently deleted. Exact feature-level exclusion is decided later
 by ⑨ Feature Extraction and ⑪ Biomarker Scoring.
@@ -203,6 +279,7 @@ preprocessing:
   reliability: ...
   swap_detection: ...
   interpolation: ...
+    post_velocity_check: true
   smoothing: ...
   far_side_stabilization: ...
 ```

@@ -50,6 +50,9 @@
 | 운동 작성 스펙 (Exercise authoring spec) | notebook 또는 향후 UI에서 연구자의 선택값으로 만드는 작은 초안 객체. exercise definition, analysis profile, performance protocol, camera protocol YAML 산출물을 생성하는 입력이며, 파이프라인이 직접 소비하는 실행 기준 파일은 아니다. |
 | 분석 프로필 (Analysis profile) | 운동 정체성에서 분리된 운동별 분석 설정. segmentation 설정, landmark set, angle definition, 활성 feature domain, quality-rule override, compensation-candidate 초안 등을 포함한다. |
 | 운동 런타임 컨텍스트 (`ExerciseContext`) | 하나의 `exercise_id`에 대해 exercise definition과 관련 analysis, performance, camera YAML 산출물을 조합한 런타임 객체. 과도하게 큰 단일 exercise-definition YAML 객체를 파이프라인 전체에 전달하는 현재 구조의 목표 대체 형태다. |
+| 움직임 템플릿 ID (Movement template ID) | joint action과 context 조합에서 도출되는 exercise definition의 분석 템플릿 classification key. 예: `bilateral_lower_body_closed_chain`. 프레임 단위 annotation의 좌우/순서 pattern이 아니며, 운동 표시명만으로 결정하면 안 된다. |
+| 움직임 패턴 (Movement pattern) | 마이그레이션 동안 `movement_template_id`를 가리키는 deprecated compatibility name. 새 문서와 코드는 exercise-definition 분석 템플릿을 말할 때 `movement_template_id`를 사용한다. |
+| 실행 패턴 (Execution pattern) | recording 안에서 관찰·표기된 수행의 좌우/순서 방식을 나타내는 frame 또는 segment 수준 값. 예: `bilateral`, `alternating`. `movement_template_id`와 구분되며 운동의 생체역학적 정체성으로 사용하지 않는다. |
 | 수행 실패 지점 (Performance failure point) | 피험자가 통증 없이 움직일 수 있더라도 해당 운동의 기본 자세, ROM, 리듬, 지지 기저면, 좌우 순서를 더 이상 일관되게 유지하지 못하기 시작하는 최초 반복/프레임 또는 recording 종료 지점. 근력이나 피로의 임상 진단 기준이 아니라 실제 반복 수와 중단 사유를 남기기 위한 취득/annotation 표지이며, 분할 실패 지점과 구분한다. |
 | 보상 움직임 (Compensatory movement) | 주 작업을 대체하거나 왜곡하는 비주요 움직임. 본 연구에서는 YAML의 `compensation_candidates`와 코드의 보상 규칙 레지스트리에 등록된 후보만 바이오마커로 산출한다. |
 | 검증 (Validation) | 입력 포즈 데이터의 구조적·형식적 무결성 점검. 강건성 평가와 구분하며, 데이터를 수정하지 않는다. |

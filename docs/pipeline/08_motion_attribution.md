@@ -6,7 +6,7 @@
 
 파이프라인 단계 ⑧은 각 반복에서 실제로 움직인 사지가 기대 활성 측과 일치하는지 점검한다.
 기대 측은 `performance_protocol.side_sequence`가 있으면 이를 먼저 사용하고, 없으면 annotation의
-`pattern` / `starting_side`에서 도출한다. 본 단계는 좌표를 수정하지 않으며, 후속 피처 귀속을
+`execution_pattern` / `starting_side`에서 도출한다. 본 단계는 좌표를 수정하지 않으며, 후속 피처 귀속을
 위한 반복 단위 메타데이터 칼럼만 추가한다.
 
 ---
@@ -30,7 +30,7 @@ Pose CSV
 
 ```text
 반복 경계                  segment_type == rep, rep_id
-운동 컨텍스트              exercise_type, pattern, starting_side
+운동 컨텍스트              exercise_id, execution_pattern, starting_side
 운동 정의                  laterality, primary_joints, performance_protocol.side_sequence
 정규화 좌표                <landmark>_norm_x/y/z
 ```
@@ -80,7 +80,7 @@ share ≤ τ_ambiguous              → detected_active = bilateral
 ```text
 1. laterality = unilateral_left/right
 2. performance_protocol.side_sequence
-3. annotation pattern + starting_side
+3. execution pattern + starting_side
 4. starting_side가 없고 근거가 충분할 때 첫 rep의 검출 측
 ```
 
@@ -132,9 +132,9 @@ Report fields:
 
 ```text
 method
-exercise_type
+exercise_id
 laterality
-pattern
+execution_pattern
 starting_side
 num_reps / num_consistent / num_flagged / num_swapped
 num_ambiguous / num_bilateral

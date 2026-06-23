@@ -18,6 +18,7 @@ classification:
   body_geometry: neutral_upright
   kinetic_chain: closed_chain
   laterality: alternating
+  movement_template_id: alternating_lower_body_split_stance
   movement_pattern: lunge
   movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
@@ -70,6 +71,7 @@ biomechanical_identity:
 authoring_spec:
   exercise_id: lunge
   display_name: Forward Lunge
+  movement_template_id: alternating_lower_body_split_stance
   movement_pattern: lunge
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: standing
@@ -106,7 +108,7 @@ authoring_spec:
   author_notes: ''
 notes: 'Lunge is the primary exercise for validating alternating-pattern motion attribution.
 
-  Forward leg per rep is determined by annotation.starting_side and pattern=alternating.
+  Forward leg per rep is determined by annotation.starting_side and execution_pattern=alternating.
 
   Sagittal view is preferred because the rear leg is often occluded in frontal view.
 

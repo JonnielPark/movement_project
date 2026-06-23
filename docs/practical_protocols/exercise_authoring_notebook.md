@@ -28,8 +28,9 @@ reason 4   향후 web UI도 같은 spec과 generator를 재사용 가능
 Authoring UI는 연구자에게 movement archetype을 직접 고르게 하지 않고, 원자적인 movement
 descriptor를 먼저 수집해야 한다. Primary/secondary joint actions를 먼저 선택하고,
 support/contact pattern, laterality, posture, body geometry, primary body regions와 함께
-해석한다. 내부 `movement_pattern` template key는 이 joint-action-plus-context 조합에서
-산출한다. Registry key는 별도 migration을 계획하기 전까지 기존 내부 식별자를 유지할 수 있다.
+해석한다. Export되는 `movement_template_id`는 이 joint-action-plus-context 조합에서
+산출한다. Legacy `movement_pattern` key는 별도 registry migration을 계획하기 전까지 내부
+호환 alias로 남을 수 있다.
 이 제한은 선택 가능한 template label에 적용된다. `exercise_id`와 `display_name`은 작성 중인
 구체적 운동 이름을 사용할 수 있다.
 
@@ -38,7 +39,7 @@ support/contact pattern, laterality, posture, body geometry, primary body region
 ```text
 Notebook atomic selections
 → joint_action + context derivation
-→ internal movement_pattern anchor
+→ movement_template_id / legacy movement_pattern anchor
 → exercise_authoring_spec
 → deterministic generator
 → draft YAML preview
@@ -78,6 +79,7 @@ Notebook은 세 가지 authoring mode를 구분한다:
 ```yaml
 exercise_id: squat
 display_name: Bodyweight Squat
+movement_template_id: bilateral_lower_body_closed_chain
 movement_pattern: squat
 movement_pattern_source: derived_from_joint_actions_and_context
 posture_type: standing
@@ -104,7 +106,8 @@ analysis_template: bilateral_lower_body_closed_chain
 이 spec은 draft input이며 pipeline이 직접 소비하는 실행 기준 문서가 아니다.
 현재 notebook UI에서 `movement_pattern: squat`은 직접 선택하지 않는다. Standing, bilateral,
 two-foot support context 안에서 lower-body flexion/extension joint actions를 해석해 산출된다.
-저장되는 key는 draft biomechanical default를 시작하기 위한 내부 registry identifier로 유지한다.
+`movement_template_id`가 후속 분석에서 우선 쓰는 analysis-template identifier이고,
+`movement_pattern`은 draft biomechanical default를 시작하기 위한 legacy registry family로 남긴다.
 
 `posture_type`은 넓은 시작 신체 방향을 설명하고, `body_geometry`는 그 posture 안에서의
 shape 정보를 추가한다. 예를 들어 floor-supported prone posture와 neutral body-line geometry는
@@ -138,11 +141,11 @@ Notebook은 `posture_type`에 따라 `body_geometry` 선택지를 필터링한�
 | `external_object_supported` | `neutral_upright`, `neutral_prone_line`, `side_supported`, `supported_incline_line`, `machine_supported_fixed_trunk`, `custom` |
 
 일부 body-geometry 선택지는 구현보다 먼저 등록해둔다. 이들은 authoring descriptor로는 선택할
-수 있지만, 대응 registry template이 추가되기 전까지는 현재 movement-pattern family로 자동
+수 있지만, 대응 registry template이 추가되기 전까지는 현재 movement-template family로 자동
 매핑하지 않는다.
 
 Dead bug 계열 운동은 `posture_type: supine`에서 시작하는 것으로 본다. 다만 supine core-control
-registry family가 추가되기 전까지는 현재 movement-pattern template으로 자동 매핑하지 않는다.
+registry family가 추가되기 전까지는 현재 movement-template family로 자동 매핑하지 않는다.
 
 `laterality`는 의도한 움직임의 좌우 수행 방식을 설명한다. 예를 들어 양측 대칭, 양측 비대칭,
 좌우 교대, 한쪽 수행을 구분한다. 대부분의 posture는 bilateral, alternating, unilateral 변형을
@@ -152,7 +155,7 @@ active-side attribution, side-sequence review, 생성 draft의 추가 검토 필
 `support_template`은 지지면과 실제로 하중을 주고받는 접촉 방식을 설명하므로 `posture_type`에
 따라 필터링한다. 이렇게 해야 supine movement와 two-foot standing support처럼 물리적으로 맞지
 않는 authoring 상태를 막을 수 있다. 일부 support template은 전체 analysis-template 구현보다
-먼저 등록한다. 이들은 descriptor로는 유효하지만, 대응 movement-pattern 또는 analysis template이
+먼저 등록한다. 이들은 descriptor로는 유효하지만, 대응 movement-template 또는 analysis template이
 추가되기 전까지는 draft YAML 생성 단계에서 추가 구현이 필요할 수 있다.
 
 Notebook은 `posture_type`에 따라 `support_template` 선택지를 필터링한다:

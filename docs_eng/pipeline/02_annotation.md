@@ -23,7 +23,7 @@ Pose CSV
 → downstream steps
 ```
 
-② runs before ③ because `exercise_type` selects the exercise-definition YAML.
+② runs before ③ because `exercise_id` selects the exercise-definition YAML.
 
 ## 2. Output Contract
 
@@ -36,8 +36,8 @@ set_id              Int64     nullable set identifier
 rep_id              Int64     nullable repetition identifier
 phase               object    optional manual phase label; confirmed later by ⑦
 note                str       optional segment note
-exercise_type       str       exercise definition identifier
-pattern             str       bilateral | alternating
+exercise_id         str       exercise definition identifier
+execution_pattern   str       bilateral | alternating; observed side/sequence pattern
 starting_side       str       left | right; alternating/unilateral context
 session_id          str       optional acquisition-session identifier
 recording_id        str       optional filming-file identifier
@@ -61,8 +61,9 @@ protocol_cycle_id   Int64     user-facing protocol cycle id for grouped atomic r
 Downstream use:
 
 ```text
-exercise_type                 → ③ exercise definition loading
-pattern / starting_side        → ④ L/R checks and ⑦ motion attribution
+exercise_id                   → ③ exercise definition loading
+execution_pattern / starting_side
+                               → ④ L/R checks and ⑦ motion attribution
 phase                          → preserved here, accepted/rejected by ⑦
 filming provenance             → warning/report context only
 performance provenance         → warning/report context only
@@ -82,7 +83,7 @@ Optional columns are the remaining output-context fields listed in Section 2.
 Minimal example:
 
 ```csv
-segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_type,pattern,starting_side
+segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_id,execution_pattern,starting_side
 baseline,,,20,60,false,squat,bilateral,
 rep,1,1,85,160,true,squat,bilateral,
 rep,1,2,170,245,true,squat,bilateral,
@@ -92,7 +93,7 @@ idle,,,416,460,false,squat,bilateral,
 ```
 
 For alternating exercises, `starting_side` defines the expected first active side.
-For example, `plank_shoulder_tap` with `pattern=alternating` and
+For example, `plank_shoulder_tap` with `execution_pattern=alternating` and
 `starting_side=right` means rep 1 is right, rep 2 is left, and so on.
 
 ## 4. Behavior
@@ -114,8 +115,8 @@ use_for_analysis = True
 segment_type     = full_sequence
 set_id / rep_id  = None
 phase            = None
-exercise_type    = None   → ③ loads generic fallback
-pattern          = bilateral
+exercise_id      = None   → ③ loads generic fallback
+execution_pattern = bilateral
 starting_side    = None
 camera_zone      = unknown
 camera_height_level = unknown

@@ -18,6 +18,7 @@ classification:
   body_geometry: high_hip_inverted_v
   kinetic_chain: closed_chain
   laterality: bilateral_symmetric
+  movement_template_id: bilateral_upper_body_inverted_closed_chain
   movement_pattern: push
   movement_pattern_source: derived_from_joint_actions_and_context
   primary_plane: sagittal
@@ -74,6 +75,7 @@ biomechanical_identity:
 authoring_spec:
   exercise_id: pike_pushup
   display_name: Pike Push-up
+  movement_template_id: bilateral_upper_body_inverted_closed_chain
   movement_pattern: push
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: floor_supported_prone

@@ -93,6 +93,11 @@ and applies an existing annotation CSV; it is not an annotation authoring UI.
 20_stage_checks/32_simulation_robustness_test.ipynb
 ```
 
+Stage-check notebooks are follow-along inspection surfaces. Repeated
+previous-stage input preparation should be handled by `src/movement/` helper
+code, so a notebook can focus on the current stage's function call, compact
+tables, and visual review.
+
 6. For the public end-to-end route, open:
 
 ```text

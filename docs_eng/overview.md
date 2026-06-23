@@ -167,13 +167,13 @@ Output
 | Step | Input / Reference Information | Main Processing | Output |
 |---|---|---|---|
 | ① Validation | Pose CSV | Checks required columns, frame order, timestamps, landmark coordinate structure, and missing-value patterns. | Validation report |
-| ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_type`, `pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
-| ③ Exercise Definition | `exercise_type`, split YAML artifacts or legacy combined YAML | Loads an `ExerciseContext` and returns a backward-compatible `ExerciseDefinition`; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as metadata for filming recommendations and warning policy. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
+| ② Annotation | Pose DataFrame, Annotation CSV, optional recording metadata | Merges manual annotation information at frame level and constructs `exercise_id`, `execution_pattern`, `starting_side`, the initial `phase`, filming provenance columns, and performance/failure provenance summaries. | Annotated DataFrame, annotation report |
+| ③ Exercise Definition | `exercise_id`, split YAML artifacts or legacy combined YAML | Loads an `ExerciseContext` and returns a backward-compatible `ExerciseDefinition`; applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as metadata for filming recommendations and warning policy. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap candidates, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Canonicalization | Normalized DataFrame, exercise/camera/support priors | Optionally emits analysis-space candidate coordinate families using support-plane, movement-plane, protocol-height, or anthropometric priors. Raw/norm/candidate coordinate families remain separate and every candidate is reported with confidence, burden, residual, and sensitivity provenance. | Optional candidate coordinate columns, canonicalization report, correction diagnostics |
 | ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑧ Motion Attribution | Segmented DataFrame, laterality/pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
+| ⑧ Motion Attribution | Segmented DataFrame, laterality/execution-pattern settings | Estimates the active side per repetition and checks left/right order and primary-side consistency for alternating exercises. | active-side flag, attribution report |
 | ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | Computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
 | ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
 | ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
@@ -204,8 +204,9 @@ penalty.
 
 ## 5. Core Operating Rules
 
-- Annotation provides exercise identity, pattern, side sequence, protocol grouping,
-  and recording provenance. See [02_annotation.md](pipeline/02_annotation.md).
+- Annotation provides `exercise_id`, execution pattern, side sequence, protocol
+  grouping, and recording provenance. See
+  [02_annotation.md](pipeline/02_annotation.md).
 - Segmentation emits confirmed `rep_id` and `phase` labels. Failure points require
   manual confirmation before affected ranges drive rep-level or phase-level metrics.
   See [07_segmentation.md](pipeline/07_segmentation.md).

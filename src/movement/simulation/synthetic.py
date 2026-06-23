@@ -466,8 +466,8 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
                 "start_frame",
                 "end_frame",
                 "use_for_analysis",
-                "exercise_type",
-                "pattern",
+                "exercise_id",
+                "execution_pattern",
                 "note",
             ]
         )
