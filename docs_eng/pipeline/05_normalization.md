@@ -35,6 +35,17 @@ Pose CSV
 Runs after ④ Preprocessing so unreliable hip/shoulder landmarks are corrected,
 interpolated, or marked before they affect the scale reference.
 
+The stage-check notebook should normalize the preprocessed dataframe, not the
+raw pose CSV directly. It should also confirm that preprocessing provenance
+columns are preserved in the normalized output: `preprocessing_valid` and
+per-landmark usability/source columns are required, while
+`preprocessing_confidence` is checked when it is emitted by ④.
+
+The stage-check notebook should follow the established notebook style used by
+the earlier stage checks: `Data Setup`, `Direct Normalization Test`, numbered
+checks, `Pipeline Integration`, and `Check Summary`. Visualization may remain in
+the notebook when it directly confirms the normalized coordinate output.
+
 ---
 
 ## 2. Base Normalization Contract
@@ -109,6 +120,14 @@ normalization:
 and model-depth gain needed by later stages. Any candidate confidence, correction
 burden, residual, or norm-vs-candidate sensitivity belongs to
 ⑥ Canonicalization or later scoring policy.
+
+Downstream stages receive the carried coordinate families and provenance rather
+than a single "trusted" coordinate stream: raw coordinates, preprocessing
+reliability/usability metadata, and `norm` coordinates are preserved. Later
+feature extraction and scoring decide how much a coordinate family contributes
+by using availability, confidence, correction burden, residuals, and
+norm-vs-candidate sensitivity. This does not retroactively change ① structural
+validation; it gates feature availability and score contribution downstream.
 
 ---
 

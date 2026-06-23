@@ -78,6 +78,7 @@ _SWAP_PAIRS: list[tuple[str, str]] = [
 _SIDE_OR_OBLIQUE_ZONES = {"Z2", "Z3", "Z4", "Z6", "Z7", "Z8"}
 _FRONTAL_ZONES = {"Z1", "Z5"}
 _AVAILABILITY_STATES = {"assessed", "low_confidence", "not_assessed"}
+_FAR_SIDE_JITTER_DEFAULT_VELOCITY_MULTIPLIER = 3.0
 
 
 # ── Pure coordinate helpers ───────────────────────────────────────────────────
@@ -371,6 +372,40 @@ def _run_interpolation(
     return n_short, n_long
 
 
+def _run_post_interpolation_velocity_check(
+    df: pd.DataFrame,
+    present: list[str],
+    torso_scale: float,
+    fps: float,
+    threshold_torso_per_sec: float,
+    mask: np.ndarray,
+    recovered_mask: np.ndarray,
+) -> tuple[int, np.ndarray]:
+    """
+    Revoke interpolated landmark-frames that still create implausible velocity.
+
+    Only frames recovered by interpolation are eligible. Original observations
+    are not reclassified here because the observed reliability pass has already
+    handled them.
+    """
+    vel_threshold = threshold_torso_per_sec * torso_scale / max(fps, 1.0)
+    failed = np.zeros_like(mask, dtype=bool)
+    T = len(df)
+    if T == 0:
+        return 0, failed
+    for i, lm in enumerate(present):
+        xyz = _xyz(df, lm)
+        disp = np.linalg.norm(np.diff(xyz, axis=0), axis=1)
+        incoming = np.concatenate([[0.0], disp])
+        outgoing = np.concatenate([disp, [0.0]])
+        velocity_bad = (incoming > vel_threshold) | (outgoing > vel_threshold)
+        eligible = recovered_mask[:, i] & mask[:, i]
+        failed[:, i] = eligible & velocity_bad
+
+    mask[failed] = False
+    return int(np.sum(failed)), failed
+
+
 # ── Smoothing ─────────────────────────────────────────────────────────────────
 
 
@@ -407,6 +442,107 @@ def _unique_strings(df: pd.DataFrame, column: str) -> list[str]:
         return []
     values = df[column].dropna().astype(str)
     return sorted({value for value in values if value})
+
+
+def _representative_string(df: pd.DataFrame, column: str) -> str | None:
+    """Return the most common meaningful non-null string while preserving tie order."""
+    if column not in df.columns:
+        return None
+    counts: dict[str, int] = {}
+    order: list[str] = []
+    for value in df[column].tolist():
+        if value is None:
+            continue
+        try:
+            if pd.isna(value):
+                continue
+        except (TypeError, ValueError):
+            pass
+        text = str(value).strip()
+        if not text or text.lower() in {"none", "nan", "nat"}:
+            continue
+        if text not in counts:
+            counts[text] = 0
+            order.append(text)
+        counts[text] += 1
+    if not order:
+        return None
+    return max(order, key=lambda item: counts[item])
+
+
+def _frame_report_value(df: pd.DataFrame, row_index: int) -> int:
+    """Return a JSON-friendly frame identifier for report summaries."""
+    if "frame" not in df.columns:
+        return int(row_index)
+    value = df.iloc[row_index]["frame"]
+    if pd.isna(value):
+        return int(row_index)
+    return int(value)
+
+
+def _build_landmark_quality_summary(
+    present: list[str],
+    observed_mask: np.ndarray,
+    usable_mask: np.ndarray,
+    recovered_mask: np.ndarray,
+    post_velocity_failed_mask: np.ndarray,
+    visibility_counts: dict[str, int],
+) -> list[dict[str, Any]]:
+    """Summarize landmark-level preprocessing provenance for QC review."""
+    summary: list[dict[str, Any]] = []
+    for i, landmark in enumerate(present):
+        observed_unreliable = int(np.sum(~observed_mask[:, i]))
+        unusable = int(np.sum(~usable_mask[:, i]))
+        recovered = int(np.sum(recovered_mask[:, i]))
+        post_velocity_failed = int(np.sum(post_velocity_failed_mask[:, i]))
+        summary.append(
+            {
+                "landmark": landmark,
+                "low_visibility_frames": int(visibility_counts.get(landmark, 0)),
+                "observed_unreliable_frames": observed_unreliable,
+                "unusable_frames": unusable,
+                "recovered_by_interpolation": recovered,
+                "post_interpolation_velocity_failed": post_velocity_failed,
+            }
+        )
+    return summary
+
+
+def _top_landmark_quality(
+    landmark_quality_summary: list[dict[str, Any]],
+    key: str,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Return the highest-count landmark QC rows for a given count key."""
+    rows = [row for row in landmark_quality_summary if int(row.get(key, 0)) > 0]
+    rows = sorted(rows, key=lambda row: (-int(row[key]), str(row["landmark"])))
+    return rows[:limit]
+
+
+def _frames_with_many_unusable_landmarks(
+    df: pd.DataFrame,
+    usable_mask: np.ndarray,
+    present: list[str],
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Return frames with the largest number of unusable landmarks."""
+    if not present:
+        return []
+    unusable_counts = np.sum(~usable_mask, axis=1)
+    rows: list[dict[str, Any]] = []
+    for row_index, count in enumerate(unusable_counts):
+        count = int(count)
+        if count <= 0:
+            continue
+        rows.append(
+            {
+                "frame": _frame_report_value(df, row_index),
+                "unusable_landmark_count": count,
+                "unusable_landmark_ratio": float(count / len(present)),
+            }
+        )
+    rows.sort(key=lambda row: (-int(row["unusable_landmark_count"]), row["frame"]))
+    return rows[:limit]
 
 
 def _supports_camera_side_inference(zones: list[str]) -> bool:
@@ -459,20 +595,14 @@ def _landmark_jitter_score(
     else:
         accel = np.zeros(len(df), dtype=float)
 
-    visibility, low_visibility = _landmark_visibility(
+    _, low_visibility = _landmark_visibility(
         df, landmark, visibility_threshold
-    )
-    visibility_penalty = np.where(
-        low_visibility,
-        (visibility_threshold - visibility) / max(visibility_threshold, 1e-9),
-        0.0,
     )
 
     score = np.maximum.reduce(
         [
             velocity / max(velocity_threshold, 1e-9),
             accel / max(acceleration_threshold, 1e-9),
-            visibility_penalty,
         ]
     )
     return score, low_visibility
@@ -654,9 +784,11 @@ def _feature_availability_summary(
 
 def _run_far_side_stabilization(
     df: pd.DataFrame,
+    observed_df: pd.DataFrame,
     present: list[str],
     present_set: set[str],
     mask: np.ndarray,
+    observed_mask: np.ndarray,
     *,
     torso_scale: float,
     fps: float,
@@ -664,10 +796,10 @@ def _run_far_side_stabilization(
     exercise_definition: "ExerciseDefinition | None",
     config: Any,
     swap_corrected: np.ndarray,
-) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str]]:
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str], dict[str, Any]]:
     far_cfg = getattr(config, "far_side_stabilization", None)
     if far_cfg is None or not far_cfg.enabled:
-        return None, None, []
+        return None, None, [], {}
 
     zones = _unique_strings(df, "camera_zone")
     allow_inference = bool(
@@ -677,6 +809,7 @@ def _run_far_side_stabilization(
         float(far_cfg.jitter_threshold_torso_per_sec)
         if far_cfg.jitter_threshold_torso_per_sec is not None
         else float(config.reliability.velocity_threshold_torso_per_sec)
+        * _FAR_SIDE_JITTER_DEFAULT_VELOCITY_MULTIPLIER
     )
     acceleration_threshold = (
         float(far_cfg.acceleration_threshold_torso_per_sec2)
@@ -707,15 +840,28 @@ def _run_far_side_stabilization(
     num_near = 0
     num_far = 0
     num_unknown = 0
-    num_high_jitter_far = 0
+    num_observed_low_confidence_far = 0
+    num_observed_high_jitter_far = 0
+    num_post_low_confidence_far = 0
+    num_post_high_jitter_far = 0
     num_far_gaps_interpolated = 0
     num_far_gaps_unresolved = 0
     num_far_values_smoothed = 0
     frame_low_confidence = np.zeros(len(df), dtype=bool)
     present_index = {lm: idx for idx, lm in enumerate(present)}
+    output_columns: dict[str, Any] = {}
 
     for landmark in present:
         side = landmark_side[landmark]
+        observed_score, observed_low_visibility = _landmark_jitter_score(
+            observed_df,
+            landmark,
+            torso_scale=torso_scale,
+            fps=fps,
+            velocity_threshold=velocity_threshold,
+            acceleration_threshold=acceleration_threshold,
+            visibility_threshold=float(far_cfg.visibility_threshold),
+        )
         score, low_visibility = _landmark_jitter_score(
             df,
             landmark,
@@ -726,11 +872,20 @@ def _run_far_side_stabilization(
             visibility_threshold=float(far_cfg.visibility_threshold),
         )
         lm_mask = mask[:, present_index[landmark]]
-        score = np.maximum(score, np.where(lm_mask, 0.0, 1.0))
-        score = np.maximum(score, np.where(swap_corrected, 1.0, 0.0))
-        unstable_far = (side == "far_side") & (
-            (score >= 1.0) | low_visibility | ~lm_mask
+        observed_lm_mask = observed_mask[:, present_index[landmark]]
+        observed_low_confidence_far = (side == "far_side") & (
+            observed_low_visibility | ~observed_lm_mask | swap_corrected
         )
+        observed_high_jitter_far = (side == "far_side") & (
+            observed_score >= 1.0
+        ) & observed_low_confidence_far
+        post_low_confidence_far = (side == "far_side") & (
+            low_visibility | ~lm_mask | swap_corrected
+        )
+        post_high_jitter_far = (side == "far_side") & (
+            score >= 1.0
+        ) & post_low_confidence_far
+        unstable_far = post_low_confidence_far | post_high_jitter_far
 
         (
             interpolated,
@@ -747,12 +902,13 @@ def _run_far_side_stabilization(
 
         confidence_note = np.full(len(df), "", dtype=object)
         confidence_note[unstable_far] = "far_side_low_confidence"
+        confidence_note[post_high_jitter_far] = "far_side_jitter_low_confidence"
         if interpolated:
             confidence_note[unstable_far] = "far_side_stabilized"
 
-        df[f"{landmark}_camera_side"] = side
-        df[f"{landmark}_jitter_score"] = score
-        df[f"{landmark}_confidence_note"] = confidence_note
+        output_columns[f"{landmark}_camera_side"] = side
+        output_columns[f"{landmark}_jitter_score"] = score
+        output_columns[f"{landmark}_confidence_note"] = confidence_note
         applied_columns.extend(
             [
                 f"{landmark}_camera_side",
@@ -764,13 +920,16 @@ def _run_far_side_stabilization(
         num_near += int(np.sum(side == "near_side"))
         num_far += int(np.sum(side == "far_side"))
         num_unknown += int(np.sum(side == "unknown"))
-        num_high_jitter_far += int(np.sum(unstable_far))
+        num_observed_low_confidence_far += int(np.sum(observed_low_confidence_far))
+        num_observed_high_jitter_far += int(np.sum(observed_high_jitter_far))
+        num_post_low_confidence_far += int(np.sum(post_low_confidence_far))
+        num_post_high_jitter_far += int(np.sum(post_high_jitter_far))
         num_far_gaps_interpolated += interpolated
         num_far_gaps_unresolved += unresolved
         num_far_values_smoothed += smoothed
         frame_low_confidence |= unstable_far
 
-    df["preprocessing_confidence"] = np.where(
+    output_columns["preprocessing_confidence"] = np.where(
         frame_low_confidence,
         "low_confidence",
         "assessed",
@@ -790,20 +949,34 @@ def _run_far_side_stabilization(
         "num_near_side_landmark_frames": num_near,
         "num_far_side_landmark_frames": num_far,
         "num_unknown_side_landmark_frames": num_unknown,
-        "num_high_jitter_far_side_landmark_frames": num_high_jitter_far,
+        "num_observed_low_confidence_far_side_landmark_frames": (
+            num_observed_low_confidence_far
+        ),
+        "num_observed_high_jitter_far_side_landmark_frames": (
+            num_observed_high_jitter_far
+        ),
+        "num_post_preprocessing_low_confidence_far_side_landmark_frames": (
+            num_post_low_confidence_far
+        ),
+        "num_post_preprocessing_high_jitter_far_side_landmark_frames": (
+            num_post_high_jitter_far
+        ),
         "num_far_side_gaps_interpolated": num_far_gaps_interpolated,
         "num_far_side_gaps_unresolved": num_far_gaps_unresolved,
         "num_far_side_values_smoothed": num_far_values_smoothed,
         "velocity_threshold_torso_per_sec": velocity_threshold,
         "acceleration_threshold_torso_per_sec2": acceleration_threshold,
+        "jitter_detection_policy": (
+            "conservative_motion_spike_with_low_confidence_context"
+        ),
     }
     availability = _feature_availability_summary(
         laterality=laterality,
         zones=zones,
-        num_high_jitter_far_side=num_high_jitter_far,
+        num_high_jitter_far_side=num_post_high_jitter_far,
         exercise_definition=exercise_definition,
     )
-    return summary, availability, applied_columns
+    return summary, availability, applied_columns, output_columns
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -833,7 +1006,11 @@ def preprocess_pose_dataframe(
     -------
     pre_df : pd.DataFrame
         Input columns plus:
-          <landmark>_reliable  (bool, per landmark per frame)
+          <landmark>_observed_reliable
+                                (bool, source observation quality before repair)
+          <landmark>_usable    (bool, usable by the next stage after short-gap repair)
+          <landmark>_preprocessing_source
+                                (str, observed | short_gap_interpolated | unusable)
           <landmark>_camera_side / _jitter_score / _confidence_note
                                 (when far_side_stabilization is enabled)
           preprocessing_valid  (bool, frame-level summary)
@@ -899,11 +1076,9 @@ def preprocess_pose_dataframe(
     if config.reliability.joint_angle_check:
         n_angle_violations = _run_joint_angle_check(pre_df, present_set, present, mask)
 
-    num_unreliable_lm_frames = int(np.sum(~mask))
-
-    # ── Per-landmark reliability columns ─────────────────────────────────────
-    for i, lm in enumerate(present):
-        pre_df[f"{lm}_reliable"] = mask[:, i]
+    observed_mask = mask.copy()
+    observed_df_for_far_side = pre_df.copy()
+    num_observed_unreliable_lm_frames = int(np.sum(~observed_mask))
 
     # ── Frame-level validity (before interpolation) ───────────────────────────
     frame_reliable = mask.all(axis=1)
@@ -921,21 +1096,76 @@ def preprocess_pose_dataframe(
 
     # ── Short-gap interpolation ───────────────────────────────────────────────
     n_short_gaps = n_long_gaps = 0
+    n_post_velocity_rejected = 0
+    post_velocity_failed_mask = np.zeros_like(mask, dtype=bool)
     if config.interpolation.enabled:
         n_short_gaps, n_long_gaps = _run_interpolation(
             pre_df, present, mask, max_gap_from_def
         )
+        recovered_after_interpolation = (~observed_mask) & mask
+        if config.interpolation.post_velocity_check:
+            n_post_velocity_rejected, post_velocity_failed_mask = (
+                _run_post_interpolation_velocity_check(
+                    pre_df,
+                    present,
+                    torso_scale,
+                    fps,
+                    config.reliability.velocity_threshold_torso_per_sec,
+                    mask,
+                    recovered_after_interpolation,
+                )
+            )
         frame_reliable = mask.all(axis=1)  # recompute after gaps resolved
+
+    recovered_mask = (~observed_mask) & mask
+    num_recovered_lm_frames = int(np.sum(recovered_mask))
+    num_unusable_lm_frames = int(np.sum(~mask))
+    landmark_quality_summary = _build_landmark_quality_summary(
+        present,
+        observed_mask=observed_mask,
+        usable_mask=mask,
+        recovered_mask=recovered_mask,
+        post_velocity_failed_mask=post_velocity_failed_mask,
+        visibility_counts=vis_counts,
+    )
+    rule_contribution_summary = {
+        "low_visibility_landmark_frames": int(sum(vis_counts.values())),
+        "segment_length_violation_events": int(n_segment_violations),
+        "velocity_outlier_landmark_frames": int(n_velocity_outliers),
+        "joint_angle_violation_events": int(n_angle_violations),
+        "observed_unreliable_landmark_frames": num_observed_unreliable_lm_frames,
+        "unusable_landmark_frames_after_interpolation": num_unusable_lm_frames,
+        "landmark_frames_recovered_by_interpolation": num_recovered_lm_frames,
+        "post_interpolation_velocity_rejected_landmark_frames": (
+            n_post_velocity_rejected
+        ),
+        "note": (
+            "Rule counts are QC provenance and may overlap; they are not "
+            "movement-quality scores."
+        ),
+    }
+    worst_landmarks_by_observed_unreliable = _top_landmark_quality(
+        landmark_quality_summary, "observed_unreliable_frames"
+    )
+    worst_landmarks_by_unusable = _top_landmark_quality(
+        landmark_quality_summary, "unusable_frames"
+    )
+    frames_with_many_unusable_landmarks = _frames_with_many_unusable_landmarks(
+        pre_df, mask, present
+    )
 
     (
         far_side_summary,
         feature_availability_summary,
         far_side_applied_columns,
+        far_side_output_columns,
     ) = _run_far_side_stabilization(
         pre_df,
+        observed_df_for_far_side,
         present,
         present_set,
         mask,
+        observed_mask,
         torso_scale=torso_scale,
         fps=fps,
         laterality=laterality,
@@ -951,25 +1181,48 @@ def preprocess_pose_dataframe(
             pre_df, present, config.smoothing.method, config.smoothing.window_size
         )
 
+    # ── Per-landmark observed/usable columns ─────────────────────────────────
+    status_columns: dict[str, Any] = {}
+    for i, lm in enumerate(present):
+        status_columns[f"{lm}_observed_reliable"] = observed_mask[:, i]
+        status_columns[f"{lm}_usable"] = mask[:, i]
+        status_columns[f"{lm}_preprocessing_source"] = np.where(
+            observed_mask[:, i],
+            "observed",
+            np.where(
+                post_velocity_failed_mask[:, i],
+                "post_interpolation_velocity_failed",
+                np.where(mask[:, i], "short_gap_interpolated", "unusable"),
+            ),
+        )
+
     # ── Output columns ────────────────────────────────────────────────────────
-    pre_df["preprocessing_valid"] = frame_reliable
-    pre_df["preprocessing_note"] = swap_notes
-    pre_df["swap_corrected"] = swap_corrected
+    status_columns["preprocessing_valid"] = frame_reliable
+    status_columns["preprocessing_note"] = swap_notes
+    status_columns["swap_corrected"] = swap_corrected
+    status_columns.update(far_side_output_columns)
+    pre_df = pd.concat(
+        [pre_df, pd.DataFrame(status_columns, index=pre_df.index)], axis=1
+    )
 
     # ── Report ────────────────────────────────────────────────────────────────
-    exercise_type = (
-        str(pre_df["exercise_type"].iloc[0])
-        if "exercise_type" in pre_df.columns
+    exercise_id = (
+        exercise_definition.exercise_id if exercise_definition is not None else None
+    )
+    movement_template_id = (
+        exercise_definition.classification.get("movement_template_id")
+        if exercise_definition is not None
         else None
     )
-    pattern = str(pre_df["pattern"].iloc[0]) if "pattern" in pre_df.columns else None
+    execution_pattern = _representative_string(pre_df, "execution_pattern")
 
     num_invalid_frames = int(np.sum(~frame_reliable))
 
     pre_report: dict[str, Any] = {
         "method": "reliability_mask_v1",
-        "exercise_type": exercise_type,
-        "pattern": pattern,
+        "exercise_id": exercise_id,
+        "movement_template_id": movement_template_id,
+        "execution_pattern": execution_pattern,
         "laterality": laterality,
         "num_frames": T,
         "num_coordinate_columns": sum(
@@ -985,8 +1238,18 @@ def preprocess_pose_dataframe(
             "num_segment_length_violations": n_segment_violations,
             "num_joint_angle_violations": n_angle_violations,
             "num_velocity_outliers": n_velocity_outliers,
-            "num_unreliable_landmark_frames": num_unreliable_lm_frames,
+            "num_observed_unreliable_landmark_frames": (
+                num_observed_unreliable_lm_frames
+            ),
+            "num_unusable_landmark_frames": num_unusable_lm_frames,
         },
+        "landmark_quality_summary": landmark_quality_summary,
+        "rule_contribution_summary": rule_contribution_summary,
+        "worst_landmarks_by_observed_unreliable": (
+            worst_landmarks_by_observed_unreliable
+        ),
+        "worst_landmarks_by_unusable": worst_landmarks_by_unusable,
+        "frames_with_many_unusable_landmarks": frames_with_many_unusable_landmarks,
         "swap_detection_summary": {
             "enabled": do_swap,
             "num_temporal_swap_corrected": num_temporal_swap,
@@ -997,6 +1260,14 @@ def preprocess_pose_dataframe(
             "max_interpolation_gap": max_gap_from_def,
             "num_short_gaps_interpolated": n_short_gaps,
             "num_long_gaps_unresolved": n_long_gaps,
+            "num_landmark_frames_recovered": num_recovered_lm_frames,
+            "post_velocity_check_enabled": (
+                config.interpolation.enabled
+                and config.interpolation.post_velocity_check
+            ),
+            "num_post_velocity_rejected_landmark_frames": (
+                n_post_velocity_rejected
+            ),
         },
         "smoothing_summary": {
             "enabled": config.smoothing.enabled,
@@ -1008,7 +1279,9 @@ def preprocess_pose_dataframe(
         "feature_availability_summary": feature_availability_summary,
         "num_invalid_frames": num_invalid_frames,
         "applied_columns": (
-            [f"{lm}_reliable" for lm in present]
+            [f"{lm}_observed_reliable" for lm in present]
+            + [f"{lm}_usable" for lm in present]
+            + [f"{lm}_preprocessing_source" for lm in present]
             + ["preprocessing_valid", "preprocessing_note", "swap_corrected"]
             + far_side_applied_columns
         ),

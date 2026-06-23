@@ -38,8 +38,8 @@ ANNOTATION_REQUIRED_COLUMNS: list[str] = [
 ]
 
 ANNOTATION_OPTIONAL_COLUMNS: list[str] = [
-    "exercise_type",
-    "pattern",
+    "exercise_id",
+    "execution_pattern",
     "starting_side",
     "phase",
     "note",
@@ -80,8 +80,8 @@ ANNOTATION_OUTPUT_COLUMNS: list[str] = [
     "set_id",
     "rep_id",
     "phase",
-    "exercise_type",
-    "pattern",
+    "exercise_id",
+    "execution_pattern",
     "starting_side",
     "note",
     "session_id",
@@ -481,7 +481,7 @@ def _full_sequence_fallback(pose_df: pd.DataFrame) -> pd.DataFrame:
         result[col] = _empty_output_column(col, n)
     result["use_for_analysis"] = True
     result["segment_type"] = "full_sequence"
-    result["pattern"] = "bilateral"
+    result["execution_pattern"] = "bilateral"
     return result
 
 

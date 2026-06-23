@@ -520,6 +520,10 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
     assert exercise["exercise_id"] == "draft_squat"
     assert exercise["status"] == "draft"
     assert exercise["generated_by"] == "exercise_authoring_notebook"
+    assert (
+        exercise["classification"]["movement_template_id"]
+        == "bilateral_lower_body_closed_chain"
+    )
     assert exercise["classification"]["movement_pattern"] == "squat"
     assert exercise["classification"]["body_geometry"] == "neutral_upright"
     assert (
@@ -565,17 +569,14 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
     )
 
     assert (
-        performance["performance_protocol"]["prescription"][
-            "target_count_per_set"
-        ]
+        performance["performance_protocol"]["prescription"]["target_count_per_set"]
         == 10
     )
     assert performance["performance_protocol"]["counting"]["target_count"] == 10
     assert "target_sets" not in performance["performance_protocol"]["prescription"]
     assert "recommended_sets" not in performance["performance_protocol"]["completion"]
     assert (
-        "rest_between_sets_s"
-        not in performance["performance_protocol"]["prescription"]
+        "rest_between_sets_s" not in performance["performance_protocol"]["prescription"]
     )
     assert camera["camera_protocol"]["selected_view"] == {
         "view_family": "front_oblique",
@@ -602,9 +603,7 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
 
 def test_context_inference_stays_conservative_without_secondary_planes():
     registries = load_authoring_registries()
-    spec = ExerciseAuthoringSpec(
-        **{**_squat_spec().__dict__, "secondary_planes": ()}
-    )
+    spec = ExerciseAuthoringSpec(**{**_squat_spec().__dict__, "secondary_planes": ()})
 
     artifacts = generate_authoring_artifacts(spec, registries)
     exercise = artifacts["exercise_definition"]
@@ -780,17 +779,20 @@ def test_authoring_draft_bundle_loads_as_canonical_view(tmp_path):
     assert provenance["canonical_exercise_id"] == "squat"
     assert "biomechanical_identity" in provenance["requires_review"]
     assert context.analysis_profile["exercise_id"] == "squat"
-    assert "compensation_candidates" in context.analysis_profile[
-        "authoring_provenance"
-    ]["requires_review"]
+    assert (
+        "compensation_candidates"
+        in context.analysis_profile["authoring_provenance"]["requires_review"]
+    )
     assert context.performance_protocol["exercise_id"] == "squat"
-    assert "participant_cues" in context.performance_protocol[
-        "authoring_provenance"
-    ]["requires_review"]
+    assert (
+        "participant_cues"
+        in context.performance_protocol["authoring_provenance"]["requires_review"]
+    )
     assert context.camera_protocol["exercise_id"] == "squat"
-    assert "view_metric_reliability" in context.camera_protocol[
-        "authoring_provenance"
-    ]["requires_review"]
+    assert (
+        "view_metric_reliability"
+        in context.camera_protocol["authoring_provenance"]["requires_review"]
+    )
     assert definition.rep_segmentation.reference_landmark == "hip_center"
     assert definition.performance_protocol is not None
     assert definition.camera_protocol is not None
@@ -821,7 +823,9 @@ def test_split_exercise_context_loads_backward_compatible_definition():
 
     assert definition.exercise_id == "squat"
     assert definition.rep_segmentation is not None
-    assert definition.rep_segmentation.reference_coordinate_family == "recording_view_raw"
+    assert (
+        definition.rep_segmentation.reference_coordinate_family == "recording_view_raw"
+    )
     assert definition.rep_segmentation.reference_axis == "image_y"
     assert definition.phase_segmentation is not None
     assert (
@@ -899,6 +903,10 @@ def test_target_exercise_identity_yaml_preserves_authoring_spec():
         assert authoring_spec["phase_template"]
         assert authoring_spec["counting_template"]
         assert authoring_spec["analysis_template"]
+        assert (
+            authoring_spec["movement_template_id"]
+            == authoring_spec["analysis_template"]
+        )
 
 
 def test_canonical_squat_authoring_order_matches_draft_squat():

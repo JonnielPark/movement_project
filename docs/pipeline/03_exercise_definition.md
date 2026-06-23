@@ -17,7 +17,7 @@
 ```text
 Pose CSV + annotation + exercise YAML artifacts
 → ① Validation
-→ ② Annotation                    exercise_type, pattern, recording metadata
+→ ② Annotation                    exercise_id, execution_pattern, recording metadata
 → ③ Exercise Definition           ← 본 단계
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
@@ -114,7 +114,7 @@ directory, git-tracked authoring example directory 순서로 탐색할 수 있�
 local draft가 review 중에는 example bundle보다 우선한다. Pipeline 기본값은 project-wide registry와
 `generic` fallback definition을 포함하는 canonical definition directory로 유지한다.
 
-`exercise_type`이 없거나 일치하는 YAML이 없으면 `generic.yaml`을 로드한다. Generic mode는 ROM,
+`exercise_id`가 없거나 일치하는 YAML이 없으면 `generic.yaml`을 로드한다. Generic mode는 ROM,
 tempo, stability 같은 exercise-agnostic feature만 활성화한다. Compensation biomarker는 산출하지
 않는다.
 
@@ -171,7 +171,8 @@ classification:
   kinetic_chain: open_chain | closed_chain | mixed_chain | ...
   laterality: bilateral_symmetric | bilateral_asymmetric | alternating |
               unilateral_left | unilateral_right | unilateral_unspecified
-  movement_pattern: squat | lunge | pushup | shoulder_tap | custom
+  movement_template_id: bilateral_lower_body_closed_chain | ...
+  movement_pattern: movement_template_id의 deprecated alias
   movement_pattern_source: derived_from_joint_actions_and_context | manual
   primary_plane: sagittal | frontal | transverse | multiplanar | static
   secondary_planes: list[string]
@@ -181,6 +182,11 @@ classification:
 `laterality`는 L/R swap 처리와 motion-attribution 점검에 영향을 준다. 양측 대칭 운동은 반복별
 active-side attribution을 건너뛸 수 있고, 편측/교대 운동은 active-side 또는 role metadata를
 보존해야 한다.
+
+`movement_template_id`는 posture, support/contact pattern, laterality, primary
+regions, joint actions, planes 같은 authoring axis 조합에서 도출한다. 이는 공개 운동명이 아니라
+분석 템플릿/family 이름이다. 마이그레이션 동안 기존 YAML은 `movement_pattern`을 계속 노출할 수
+있으며, loader는 새 field가 없으면 이를 `movement_template_id`로 mirror한다.
 
 ### authoring_spec and authoring_inference
 
@@ -192,6 +198,7 @@ Canonical exercise YAML file도 해당 정의를 만들거나 재구성한 autho
 authoring_spec:
   exercise_id: squat
   display_name: Bodyweight Squat
+  movement_template_id: bilateral_lower_body_closed_chain
   movement_pattern: squat
   movement_pattern_source: derived_from_joint_actions_and_context
   posture_type: standing

@@ -466,7 +466,7 @@ class ExerciseDefinition:
     downstream feature extraction, proxy modeling, and scoring.
 
     The `is_generic_fallback` flag is True when the generic definition was
-    loaded due to a missing exercise_type or a missing YAML file.
+    loaded due to a missing exercise_id or a missing YAML file.
     Downstream modules should emit a warning when this flag is True, because
     compensation biomarkers will not be produced.
 
@@ -485,7 +485,7 @@ class ExerciseDefinition:
     is_generic_fallback : bool
     classification : dict[str, Any]
         Raw classification block (family, posture_type, kinetic_chain,
-        laterality, primary_plane, movement_pattern, ...).
+        laterality, primary_plane, movement_template_id, ...).
     phase_model : PhaseModel
     landmarks : LandmarkSpec
     angle_definitions : dict[str, Any]
@@ -982,13 +982,19 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
     fd = raw.get("feature_domains", {})
     qr = raw.get("quality_rules", {})
     ja = raw.get("joint_actions", {})
+    classification = dict(raw.get("classification") or {})
+    authoring_spec = raw.get("authoring_spec") or {}
+    if not classification.get("movement_template_id"):
+        classification["movement_template_id"] = authoring_spec.get(
+            "analysis_template"
+        ) or classification.get("movement_pattern")
 
     return ExerciseDefinition(
         exercise_id=raw.get("exercise_id", _GENERIC_ID),
         display_name=raw.get("display_name", "Unknown"),
         version=raw.get("version", "0.0.0"),
         is_generic_fallback=is_generic_fallback,
-        classification=raw.get("classification", {}),
+        classification=classification,
         phase_model=PhaseModel(
             type=pm.get("type", "cyclic"),
             expected_ratio={
@@ -1304,13 +1310,8 @@ def load_exercise_context(
     """
     if authoring_mode not in _AUTHORING_MODES:
         allowed = ", ".join(sorted(_AUTHORING_MODES))
-        raise ValueError(
-            f"Unknown authoring_mode={authoring_mode}; allowed: {allowed}"
-        )
-    if (
-        authoring_mode == _AUTHORING_MODE_CANONICAL_VIEW
-        and not canonical_exercise_id
-    ):
+        raise ValueError(f"Unknown authoring_mode={authoring_mode}; allowed: {allowed}")
+    if authoring_mode == _AUTHORING_MODE_CANONICAL_VIEW and not canonical_exercise_id:
         raise ValueError(
             "canonical_exercise_id is required when authoring_mode='canonical_view'"
         )

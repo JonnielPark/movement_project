@@ -156,13 +156,13 @@ view_metric_reliability  zone별 metric-family reliability prior
 | 단계 | 입력/참조 정보 | 주요 처리 | 산출물 |
 |---|---|---|---|
 | ① Validation | Pose CSV | 필수 칼럼, 프레임 순서, 시간값, 랜드마크 좌표 구조, 결측 패턴을 검사한다. | Validation report |
-| ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_type`, `pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼, performance/failure provenance 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
-| ③ Exercise Definition | `exercise_type`, split YAML 산출물 또는 legacy combined YAML | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
+| ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_id`, `execution_pattern`, `starting_side`, 초기 `phase`, 촬영 provenance 칼럼, performance/failure provenance 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
+| ③ Exercise Definition | `exercise_id`, split YAML 산출물 또는 legacy combined YAML | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 후보, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
 | ⑥ Canonicalization | Normalized DataFrame, 운동/카메라/지지면 prior | support-plane, movement-plane, protocol-height, anthropometric prior를 이용해 선택 analysis-space 후보 좌표 계열을 방출할 수 있다. raw/norm/candidate 좌표 계열은 분리하고 모든 후보는 confidence, burden, residual, sensitivity provenance와 함께 보고한다. | 선택 후보 좌표 columns, canonicalization report, correction diagnostics |
 | ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑧ Motion Attribution | Segmented DataFrame, laterality/pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
+| ⑧ Motion Attribution | Segmented DataFrame, laterality/execution-pattern 설정 | 반복별 활성 측을 추정하고, 교대 운동의 좌우 순서와 주동측 일관성을 검사한다. | active-side flag, attribution report |
 | ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns` | 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
 | ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
 | ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. 좌표 보정량과 관측 품질은 movement quality score와 분리된 data-confidence/provenance로 해석한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |

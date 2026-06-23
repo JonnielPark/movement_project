@@ -182,6 +182,20 @@ are not the primary review surface.
 surface as caution, withholding, or provenance rather than automatic score
 deduction.
 
+The stage-check notebook should follow the established notebook style used by
+the earlier stage checks: `Data Setup`, `Direct Canonicalization Test`, numbered
+checks, `Pipeline Integration`, and `Check Summary`. Its setup must prepare the
+same previous-stage input chain used by ⑤ Normalization: validation,
+annotation, exercise definition loading, preprocessing, and normalization.
+Canonicalization should be tested on the normalized preprocessed dataframe, not
+on a raw-pose dataframe that was normalized in isolation, so preprocessing
+validity/usability provenance is available when candidate evidence is reviewed.
+
+Visualization in the stage-check notebook should stay compact: one normalized
+vs canonical comparison is enough for pose inspection, with a separate
+diagnostic plot only when it directly exposes residuals, correction magnitude,
+or prior-specific evidence.
+
 ---
 
 ## 5. Canonicalization Contract

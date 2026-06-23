@@ -168,6 +168,17 @@ camera height match처럼 prior별 가장 중요한 diagnostic을 노출한다. 
 `data_confidence.level`은 movement-quality score가 아니다. 낮은 confidence는 자동 감점이 아니라
 주의, withheld, provenance로 표현한다.
 
+Stage-check notebook은 앞 단계 노트북에서 쓰던 기존 양식을 따른다. 즉 `Data Setup`,
+`Direct Canonicalization Test`, 번호가 붙은 check, `Pipeline Integration`, `Check Summary`
+구조를 사용한다. setup은 ⑤ Normalization에서 사용한 previous-stage input chain과 동일하게
+validation, annotation, exercise definition loading, preprocessing, normalization을 준비해야 한다.
+Canonicalization은 raw pose를 단독으로 normalization한 DataFrame이 아니라, preprocessing
+validity/usability provenance가 보존된 normalized preprocessed DataFrame 위에서 검증해야 한다.
+
+Stage-check notebook의 시각화는 compact하게 유지한다. Pose 확인에는 normalized vs canonical
+비교 하나면 충분하며, residual, correction magnitude, prior-specific evidence를 직접 보여주는 경우에만
+별도 diagnostic plot을 둔다.
+
 ---
 
 ## 5. Canonicalization 계약 (Canonicalization Contract)

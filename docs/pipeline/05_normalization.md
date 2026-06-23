@@ -33,6 +33,15 @@ Pose CSV
 ④ Preprocessing 이후에 실행된다. 신뢰도 낮은 hip/shoulder landmark가 척도 기준에 영향을 주기
 전에 보정, 보간, 또는 표시되어야 하기 때문이다.
 
+Stage-check notebook은 raw pose CSV를 직접 normalize하지 않고 preprocessing이 끝난 DataFrame을
+normalize해야 한다. 또한 preprocessing provenance가 normalized output에도 보존되는지 확인해야 한다.
+`preprocessing_valid`와 landmark별 usability/source column은 필수이고,
+`preprocessing_confidence`는 ④에서 방출된 경우에 보존 여부를 확인한다.
+
+Stage-check notebook은 앞 단계 노트북에서 쓰던 기존 양식을 따른다. 즉 `Data Setup`,
+`Direct Normalization Test`, 번호가 붙은 check, `Pipeline Integration`, `Check Summary` 구조를
+사용한다. Visualization은 normalized coordinate output을 직접 확인하는 경우 노트북에 둘 수 있다.
+
 ---
 
 ## 2. 기본 정규화 계약 (Base Normalization Contract)
@@ -104,6 +113,12 @@ normalization:
 ⑤ Normalization은 score gravity를 할당하지 않는다. 이후 단계가 사용할 좌표 척도와 model-depth
 gain만 노출한다. 후보 confidence, correction burden, residual, norm-vs-candidate sensitivity는
 ⑥ Canonicalization 또는 이후 scoring policy의 책임이다.
+
+후속 단계에는 하나의 "신뢰된" 좌표 stream만 넘기지 않는다. Raw coordinate, preprocessing
+reliability/usability metadata, `norm` coordinate를 모두 보존해서 넘긴다. 이후 feature extraction과
+scoring은 availability, confidence, correction burden, residual, norm-vs-candidate sensitivity를
+사용해 각 좌표 계열이 feature와 score에 얼마나 기여할지 결정한다. 이는 ① structural validation을
+사후에 바꾸는 의미가 아니라, downstream feature availability와 score contribution을 gate하는 의미다.
 
 ---
 

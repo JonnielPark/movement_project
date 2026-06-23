@@ -7,7 +7,7 @@
 Pipeline step ⑧ checks whether the observed moving limb in each rep matches the
 expected active side. The expected side is derived from
 `performance_protocol.side_sequence` when available, then from annotation
-`pattern` / `starting_side`. This step does not modify coordinates; it adds
+`execution_pattern` / `starting_side`. This step does not modify coordinates; it adds
 rep-level metadata columns for downstream feature attribution.
 
 ---
@@ -31,7 +31,7 @@ Required inputs:
 
 ```text
 rep boundaries            segment_type == rep, rep_id
-exercise context          exercise_type, pattern, starting_side
+exercise context          exercise_id, execution_pattern, starting_side
 exercise definition       laterality, primary_joints, performance_protocol.side_sequence
 normalized coordinates    <landmark>_norm_x/y/z
 ```
@@ -82,7 +82,7 @@ Priority:
 ```text
 1. laterality = unilateral_left/right
 2. performance_protocol.side_sequence
-3. annotation pattern + starting_side
+3. execution pattern + starting_side
 4. first-rep detected side when starting_side is missing and evidence is usable
 ```
 
@@ -136,9 +136,9 @@ Report fields:
 
 ```text
 method
-exercise_type
+exercise_id
 laterality
-pattern
+execution_pattern
 starting_side
 num_reps / num_consistent / num_flagged / num_swapped
 num_ambiguous / num_bilateral

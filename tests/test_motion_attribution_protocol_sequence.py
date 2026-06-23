@@ -12,7 +12,7 @@ DEFINITIONS_DIR = "data/definitions/exercises"
 def _motion_rows(
     *,
     sequence: list[str],
-    exercise_type: str,
+    exercise_id: str,
     starting_side: str,
     moving_landmark: str,
     protocol_cycle_ids: list[int] | None = None,
@@ -30,8 +30,8 @@ def _motion_rows(
                 "frame": frame,
                 "segment_type": "rep",
                 "rep_id": rep_id,
-                "exercise_type": exercise_type,
-                "pattern": "bilateral",
+                "exercise_id": exercise_id,
+                "execution_pattern": "bilateral",
                 "starting_side": starting_side,
                 f"{left_landmark}_x": 0.0,
                 f"{left_landmark}_y": 0.0,
@@ -53,8 +53,7 @@ def _motion_rows(
 
 def _per_rep_values(df: pd.DataFrame, column: str) -> list[object]:
     return [
-        group[column].dropna().iloc[0]
-        for _, group in df.groupby("rep_id", sort=True)
+        group[column].dropna().iloc[0] for _, group in df.groupby("rep_id", sort=True)
     ]
 
 
@@ -63,7 +62,7 @@ def test_lunge_uses_same_side_block_performance_protocol():
     sequence = ["right"] * 5 + ["left"] * 5
     df = _motion_rows(
         sequence=sequence,
-        exercise_type="lunge",
+        exercise_id="lunge",
         starting_side="right",
         moving_landmark="knee",
     )
@@ -77,6 +76,8 @@ def test_lunge_uses_same_side_block_performance_protocol():
         "first_side_source": "annotation.starting_side",
     }
     assert report.expected_side_source == "performance_protocol.side_sequence"
+    assert report.exercise_id == "lunge"
+    assert report.execution_pattern == "bilateral"
     assert report.num_consistent == 10
 
 
@@ -85,7 +86,7 @@ def test_lunge_reports_observed_side_sequence_mismatch_as_warning_only():
     sequence = ["right"] * 5 + ["left"] * 5
     df = _motion_rows(
         sequence=sequence,
-        exercise_type="lunge",
+        exercise_id="lunge",
         starting_side="right",
         moving_landmark="knee",
     )
@@ -109,7 +110,7 @@ def test_plank_shoulder_tap_preserves_protocol_cycles_and_alternates_each_tap():
     sequence = ["left", "right", "left", "right"]
     df = _motion_rows(
         sequence=sequence,
-        exercise_type="plank_shoulder_tap",
+        exercise_id="plank_shoulder_tap",
         starting_side="left",
         moving_landmark="wrist",
         protocol_cycle_ids=[1, 1, 2, 2],

@@ -30,10 +30,10 @@ Any new dependency must be decided separately before adding a package.
 The authoring UI should collect atomic movement descriptors rather than ask the
 researcher to choose a movement archetype directly. Primary and secondary joint
 actions are selected first, then interpreted with support/contact pattern,
-laterality, posture, body geometry, and primary body regions. The internal
-`movement_pattern` template key is derived from that joint-action-plus-context
-combination. Registry keys may still use historical internal identifiers until a
-separate registry migration is planned.
+laterality, posture, body geometry, and primary body regions. The exported
+`movement_template_id` is derived from that joint-action-plus-context
+combination. The legacy `movement_pattern` key may still appear as an internal
+compatibility alias until a separate registry migration is planned.
 
 This restriction applies to selectable template labels. `exercise_id` and
 `display_name` may use the concrete exercise name being authored.
@@ -43,7 +43,7 @@ This restriction applies to selectable template labels. `exercise_id` and
 ```text
 Notebook atomic selections
 → joint_action + context derivation
-→ internal movement_pattern anchor
+→ movement_template_id / legacy movement_pattern anchor
 → exercise_authoring_spec
 → deterministic generator
 → draft YAML preview
@@ -84,6 +84,7 @@ Example:
 ```yaml
 exercise_id: squat
 display_name: Bodyweight Squat
+movement_template_id: bilateral_lower_body_closed_chain
 movement_pattern: squat
 movement_pattern_source: derived_from_joint_actions_and_context
 posture_type: standing
@@ -110,8 +111,9 @@ analysis_template: bilateral_lower_body_closed_chain
 The spec is a draft input, not the execution source consumed by the pipeline.
 In the current notebook UI, `movement_pattern: squat` is not selected directly.
 It is derived from lower-body flexion/extension joint actions in a standing,
-bilateral, two-foot support context. The stored key remains an internal registry
-identifier used to seed draft biomechanical defaults.
+bilateral, two-foot support context. `movement_template_id` is the preferred
+downstream analysis-template identifier; `movement_pattern` remains a legacy
+registry family used to seed draft biomechanical defaults.
 
 `posture_type` describes the broad starting body orientation, while
 `body_geometry` adds shape information inside that posture. For example,
@@ -148,10 +150,10 @@ The notebook filters `body_geometry` choices from `posture_type`:
 
 Some body-geometry choices are registered ahead of implementation. They are
 selectable authoring descriptors, but they do not automatically map to a current
-movement-pattern family until the corresponding registry template is added.
+movement-template family until the corresponding registry template is added.
 
 Dead bug-like exercises should start from `posture_type: supine`. They are not
-mapped to a current movement-pattern template until a supine core-control
+mapped to a current movement-template family until a supine core-control
 registry family is added.
 
 `laterality` describes the side pattern of the intended movement: bilateral
@@ -165,8 +167,8 @@ researcher review.
 is filtered by `posture_type`. This prevents physically mismatched authoring
 states such as supine movement with two-foot standing support. Some support
 templates are registered before full analysis-template support exists; those
-choices are valid descriptors but may still require a future movement-pattern or
-analysis template before draft YAML can be generated.
+choices are valid descriptors but may still require a future movement-template
+or analysis template before draft YAML can be generated.
 
 The notebook filters `support_template` choices from `posture_type`:
 

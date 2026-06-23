@@ -35,7 +35,7 @@ movement-quality pattern을 바꾸면 안 된다.
 
 ```text
 <landmark>_visibility
-exercise_type, pattern
+exercise_id, execution_pattern
 camera_zone, camera_height_level
 ```
 
@@ -53,7 +53,10 @@ view_metric_reliability
 추가되는 칼럼:
 
 ```text
-<landmark>_reliable          landmark별 reliability mask
+<landmark>_observed_reliable 원본 관측값의 repair 전 reliability
+<landmark>_usable            short-gap repair 이후 다음 계산 사용 가능 여부
+<landmark>_preprocessing_source
+                              observed | short_gap_interpolated | unusable
 preprocessing_valid          frame-level validity
 preprocessing_note           machine-readable reason text
 swap_corrected               해당 frame에서 L/R label 교환 여부
@@ -85,7 +88,8 @@ velocity outliers
     body-scale-normalized frame-to-frame jump가 threshold를 초과.
 ```
 
-신뢰도 낮은 데이터는 삭제하지 않고 표시한다.
+신뢰도 낮은 데이터는 삭제하지 않고 표시한다. Repair된 값은 다음 계산에 사용할 수
+있게 될 수 있지만, preprocessing source를 통해 낮은 관측 confidence를 계속 남긴다.
 
 ---
 
@@ -116,6 +120,21 @@ long gap    unreliable 상태로 남기고 report에 기록
 
 한계는 `quality_rules.max_interpolation_gap_frames`가 제어한다.
 
+Interpolation은 `<landmark>_usable`을 갱신하지만
+`<landmark>_observed_reliable`은 바꾸지 않는다. 이는 두 질문을 분리하기 위해서다.
+
+```text
+observed_reliable  원본 landmark 관측값을 믿을 수 있었는가?
+usable             repair 이후 다음 단계 계산에 사용할 수 있는가?
+```
+
+활성화된 경우 post-interpolation velocity sanity check는 interpolation으로 회복된
+landmark-frame만 다시 평가한다. 보간 좌표가 여전히 velocity threshold를 넘는 frame-to-frame
+jump를 만들면 `post_interpolation_velocity_failed`로 표시하고 unusable로 되돌린다.
+
+Short-gap interpolation된 landmark는 사용할 수는 있지만, 이후 feature/scoring 단계에서
+낮은 confidence evidence로 처리해야 한다.
+
 ### Optional Smoothing
 
 Smoothing은 기본 비활성화이며 작은 window를 사용해야 한다. 이는 작은 observation jitter를 줄이는
@@ -129,11 +148,32 @@ Smoothing은 기본 비활성화이며 작은 window를 사용해야 한다. 이
 낮거나 jitter/swap risk가 높은 경우를 다룬다. 이는 canonicalization이 아니며 skeleton을
 대칭으로 맞추지 않는다.
 
+Monocular pose 좌표는 원래 noise가 크기 때문에 far-side jitter detection은 의도적으로 보수적으로
+둔다. 작은 coordinate wobble은 jitter로 보지 않는다. Jitter gate는 큰 motion spike와 낮은
+visibility 또는 기존 reliability-mask 실패 같은 low-confidence context가 함께 있을 때만
+동작해야 한다.
+
+Report는 원본 관측과 preprocessing 이후 상태를 분리한다.
+
+```text
+observed_*             interpolation/far-side repair 전 원본 관측
+post_preprocessing_*   preprocessing repair 시도 이후에도 남은 문제
+```
+
+Observed-only issue는 provenance이다. 이후 feature availability gate에는
+post-preprocessing issue가 더 강한 근거가 된다.
+
+따라서 far-side summary는 `num_observed_low_confidence_far_side_landmark_frames`,
+`num_observed_high_jitter_far_side_landmark_frames`,
+`num_post_preprocessing_low_confidence_far_side_landmark_frames`,
+`num_post_preprocessing_high_jitter_far_side_landmark_frames`처럼 원본/처리 후 count를
+분리해서 노출해야 한다.
+
 허용:
 
 ```text
 near/far/unknown side context 추론
-low-visibility + high-jitter landmark에만 더 강한 smoothing 적용
+far-side low-confidence landmark에만 선택 smoothing/interpolation 적용
 짧은 low-confidence gap 보간
 해결되지 않은 long gap을 low confidence로 report
 ⑧과 ⑩을 위한 feature-availability hook 방출
@@ -167,11 +207,17 @@ view_reliability
 ```python
 {
     "method": str,
-    "exercise_type": str,
-    "pattern": str,
+    "exercise_id": str | None,
+    "movement_template_id": str | None,
+    "execution_pattern": str | None,
     "laterality": str,
     "num_frames": int,
     "reliability_summary": dict,
+    "landmark_quality_summary": list[dict],
+    "rule_contribution_summary": dict,
+    "worst_landmarks_by_observed_unreliable": list[dict],
+    "worst_landmarks_by_unusable": list[dict],
+    "frames_with_many_unusable_landmarks": list[dict],
     "swap_detection_summary": dict,
     "interpolation_summary": dict,
     "smoothing_summary": dict,
@@ -181,6 +227,29 @@ view_reliability
     "applied_columns": list,
 }
 ```
+
+`exercise_id`와 `movement_template_id`는 로드된 exercise definition에서 가져온다.
+`execution_pattern`은 첫 프레임 값이 아니라 DataFrame의 non-null 대표값을 사용한다. 실제
+recording에는 운동 시작 전 setup frame이 포함될 수 있기 때문이다.
+
+landmark/rule/frame summary는 QC provenance이지 movement-quality score가 아니다.
+어떤 landmark, rule, frame 때문에 preprocessing confidence가 낮아졌는지 보여주어,
+이후 feature 단계가 해당 feature를 사용할지, 낮은 신뢰도로 다룰지, 건너뛸지 판단하게 한다.
+
+Stage-check notebook은 이 report에서 compact QC ratio와 readiness label을 만들 수 있다.
+예: `ready_for_next_stage`, `ready_with_low_confidence_notes`, `review_recommended`.
+이 label은 실행/QC 해석 보조일 뿐 biomarker score가 아니며, feature-level availability 결정을
+대체하지 않는다.
+
+Stage-check notebook은 이런 QC ratio 옆에 활성 preprocessing configuration도 표시할 수 있다.
+예: visibility threshold, segment-length tolerance, joint angle check, velocity threshold,
+interpolation gap, post-interpolation velocity check, smoothing 설정, far-side jitter gate.
+이 configuration summary는 재현성을 위한 provenance이지 scoring input이 아니다.
+
+Stage-check notebook은 앞 단계 노트북에서 쓰던 기존 양식을 따른다. 즉 `Data Setup`,
+`Direct Preprocessing Test`, 번호가 붙은 check, `Pipeline Integration`, `Check Summary` 구조를
+사용한다. Synthetic diagnostic은 뒤쪽의 별도 번호 check로 둘 수 있지만, target recording의
+movement quality가 아니라 diagnostic evidence임을 명확히 표시해야 한다.
 
 Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑨ Feature Extraction과 ⑪ Biomarker
 Scoring에서 결정한다.
@@ -197,6 +266,7 @@ preprocessing:
   reliability: ...
   swap_detection: ...
   interpolation: ...
+    post_velocity_check: true
   smoothing: ...
   far_side_stabilization: ...
 ```

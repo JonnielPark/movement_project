@@ -18,6 +18,7 @@ required_fields:
 optional_fields:
   - description
   - tags
+  - movement_template_id
   - secondary_planes
   - secondary_joint_actions
   - author_notes
