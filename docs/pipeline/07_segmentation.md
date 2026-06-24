@@ -1,7 +1,7 @@
 # 07. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.3.2
-**최종 갱신:** 2026-06-20
+**문서 버전:** 1.3.3
+**최종 갱신:** 2026-06-25
 **영문 동기화:** `docs_eng/pipeline/07_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑦은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
@@ -40,6 +40,30 @@ phase_segmentation_failure_id
 ```
 
 ② Annotation에서 온 manual label은 후보 또는 확정 label로 취급하며 조용히 덮어쓰지 않는다.
+
+Stage-check notebook 26은 공통 stage-check pattern을 따른다:
+
+```text
+Data Setup
+    prepare_previous_stage_inputs(prepare_until="normalization")로 validation,
+    annotation, exercise definition, preprocessing, normalization 산출물을 준비한다.
+
+Direct Segmentation Test
+    rep label handoff를 짧게 확인한 뒤, 준비된 normalized dataframe에 phase
+    segmentation 함수를 직접 호출한다.
+
+Pipeline Integration
+    run_pipeline으로 같은 stage를 실행하고 report 존재 여부와 frame-level label을 비교한다.
+```
+
+Stage-check notebook은 annotation rep range를 자세히 재검증하지 않고,
+recording-specific phase-split guide를 ground truth로 승격하지 않는다. Annotation의 rep label이
+handoff evidence로 보존되는지와 현재 exercise definition이 usable phase label과 provenance를
+만들 수 있는지만 확인한다.
+
+Canonicalization은 전체 파이프라인의 선행 단계로 유지되지만, 현재 segmentation boundary detection은
+canonical candidate coordinate를 필요로 하지 않는다. Normalized/preprocessed dataframe과
+exercise-defined reference signal을 입력으로 사용한다.
 
 ---
 
