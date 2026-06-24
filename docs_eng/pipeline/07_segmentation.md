@@ -1,7 +1,7 @@
 # 07. Segmentation
 
-**Document Version:** 1.3.2
-**Last Updated:** 2026-06-20
+**Document Version:** 1.3.3
+**Last Updated:** 2026-06-25
 **Korean Sync:** `docs/pipeline/07_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑦ confirms repetition boundaries and intra-rep phase labels. It is
@@ -42,6 +42,32 @@ phase_segmentation_failure_id
 
 Manual labels from ② Annotation are treated as candidate or confirmed labels and
 are never silently overwritten.
+
+Stage-check notebook 26 follows the shared stage-check pattern:
+
+```text
+Data Setup
+    Uses prepare_previous_stage_inputs(prepare_until="normalization") to prepare
+    validation, annotation, exercise definition, preprocessing, and normalization
+    outputs.
+
+Direct Segmentation Test
+    Runs a compact rep-label handoff check, then calls phase segmentation on the
+    prepared normalized dataframe.
+
+Pipeline Integration
+    Runs the same stage through run_pipeline and compares report presence and
+    frame-level labels.
+```
+
+The stage-check notebook does not re-audit annotation rep ranges in detail and
+does not promote recording-specific phase-split guides to ground truth. It only
+confirms that annotation rep labels are preserved as handoff evidence and that
+the current exercise definition can produce usable phase labels and provenance.
+
+Canonicalization remains the preceding pipeline stage, but current segmentation
+boundary detection does not require canonical candidate coordinates; it consumes
+the normalized/preprocessed dataframe and the exercise-defined reference signal.
 
 ---
 
