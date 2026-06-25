@@ -384,6 +384,38 @@ def attribute_motion(
 
     laterality: str = exercise_definition.classification.get("laterality", "") or ""
     report.laterality = laterality
+    execution_pattern = (
+        df["execution_pattern"].dropna().iloc[0]
+        if "execution_pattern" in df.columns
+        and not df["execution_pattern"].dropna().empty
+        else None
+    )
+    starting_side = (
+        df["starting_side"].dropna().iloc[0]
+        if "starting_side" in df.columns and not df["starting_side"].dropna().empty
+        else None
+    )
+    exercise_id = (
+        df["exercise_id"].dropna().iloc[0]
+        if "exercise_id" in df.columns and not df["exercise_id"].dropna().empty
+        else exercise_definition.exercise_id
+    )
+    performance_protocol = getattr(exercise_definition, "performance_protocol", None)
+
+    report.exercise_id = exercise_id
+    report.execution_pattern = execution_pattern
+    report.starting_side = starting_side
+    report.performance_side_sequence = _performance_side_sequence_dict(
+        performance_protocol
+    )
+    report.thresholds = {
+        "τ_active": thresholds.active,
+        "τ_ambiguous": thresholds.ambiguous,
+        "τ_swap": thresholds.swap,
+    }
+    report.landmark_pairs_used = _select_landmark_pairs(
+        exercise_definition, custom_landmark_pairs
+    )
 
     # ── Skip conditions ───────────────────────────────────────────────────────
     if laterality == "bilateral_symmetric":
@@ -409,38 +441,7 @@ def attribute_motion(
         return df, report
 
     # ── Common context ────────────────────────────────────────────────────────
-    execution_pattern = (
-        df["execution_pattern"].dropna().iloc[0]
-        if "execution_pattern" in df.columns
-        and not df["execution_pattern"].dropna().empty
-        else None
-    )
-    starting_side = (
-        df["starting_side"].dropna().iloc[0]
-        if "starting_side" in df.columns and not df["starting_side"].dropna().empty
-        else None
-    )
-    exercise_id = (
-        df["exercise_id"].dropna().iloc[0]
-        if "exercise_id" in df.columns and not df["exercise_id"].dropna().empty
-        else exercise_definition.exercise_id
-    )
-
-    report.exercise_id = exercise_id
-    report.execution_pattern = execution_pattern
-    report.starting_side = starting_side
-    performance_protocol = getattr(exercise_definition, "performance_protocol", None)
-    report.performance_side_sequence = _performance_side_sequence_dict(
-        performance_protocol
-    )
-    report.thresholds = {
-        "τ_active": thresholds.active,
-        "τ_ambiguous": thresholds.ambiguous,
-        "τ_swap": thresholds.swap,
-    }
-
-    pairs = _select_landmark_pairs(exercise_definition, custom_landmark_pairs)
-    report.landmark_pairs_used = pairs
+    pairs = report.landmark_pairs_used
 
     # ── Initialize output columns ─────────────────────────────────────────────
     for col in _ATTR_COLS:

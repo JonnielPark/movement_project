@@ -1,7 +1,7 @@
 # 08. Motion Attribution
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.1.1
+**Last Updated:** 2026-06-25
 **Korean Sync:** `docs/pipeline/08_motion_attribution.md` is the same-version Korean source.
 
 Pipeline step ⑧ checks whether the observed moving limb in each rep matches the
@@ -33,16 +33,63 @@ Required inputs:
 rep boundaries            segment_type == rep, rep_id
 exercise context          exercise_id, execution_pattern, starting_side
 exercise definition       laterality, primary_joints, performance_protocol.side_sequence
+definition readiness      primary_body_regions, joint_actions.primary
 normalized coordinates    <landmark>_norm_x/y/z
 ```
 
 Normalized coordinates keep motion-energy comparisons independent of body size
 and camera distance.
 
+Stage-check notebook 27 follows the shared stage-check pattern, but it must not
+be limited to the current real sample's laterality:
+
+```text
+Data Setup
+    Prepares the real sample through ⑦ Segmentation.
+
+Definition Policy Matrix
+    Reads available exercise definitions and classifies motion-attribution
+    policy as skip, run, conditional, or not-yet-implemented from definition
+    fields such as laterality, performance side sequence, and pairable primary
+    joints.
+
+Definition Field Coverage
+    Shows whether selected definition fields are used by this stage, carried as
+    provenance/context, reserved for downstream stages, or not yet supported.
+
+Direct Real-Sample Test
+    Runs attribute_motion on the selected real sample and verifies the expected
+    policy outcome.
+
+Synthetic Applicability Smoke Test
+    Uses a minimal generated dataframe for one runnable definition, when
+    available, to confirm the active-side attribution path without requiring a
+    new recording.
+
+Pipeline Integration
+    Runs the same stage through run_pipeline and verifies report provenance and
+    frame-level output contract.
+```
+
+The stage-check notebook may use one default real sample, but the policy matrix,
+field coverage table, and synthetic smoke test must be definition-driven rather
+than hard-coded to a single exercise. Fields that exist in the exercise
+definition but are not yet implemented should be represented as
+`not_yet_implemented`, `conditional`, or carried-forward context, not silently
+ignored.
+
+For side-specific definitions, the stage-check policy treats `primary_body_regions`
+and `joint_actions.primary` as readiness gates. They do not change the
+motion-energy formula, but they prevent a definition from being reported as
+fully runnable when the authoring context needed to interpret the active-side
+evidence is missing.
+
 ## 2. Activation Rules
 
 ```text
 bilateral_symmetric       skipped; no per-rep active-side concept
+bilateral_asymmetric      not_yet_implemented; route to side-bias/symmetry
+                          feature policy until active-side semantics are defined
 alternating               run per rep
 unilateral_left/right     run; declared side is expected
 unilateral_unspecified    run when side can be inferred from context/evidence
@@ -50,6 +97,9 @@ unknown / generic         skipped
 ```
 
 `bilateral_symmetric` skips this step even if the config flag is enabled.
+For the stage-check readiness preview, a side-specific definition is downgraded
+to `conditional` when pairable primary landmarks, primary body regions, or
+primary joint actions are missing.
 
 ## 3. Detection Method
 
@@ -150,6 +200,11 @@ side_sequence_warnings
 mode
 skipped / skip_reason
 ```
+
+These provenance fields are emitted even when the stage is skipped. A skipped
+bilateral exercise should still report `exercise_id`, `laterality`,
+`execution_pattern` when present, `performance_side_sequence`, thresholds, and
+the skip reason.
 
 ## 7. Configuration
 
