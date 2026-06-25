@@ -81,6 +81,32 @@ def test_lunge_uses_same_side_block_performance_protocol():
     assert report.num_consistent == 10
 
 
+def test_bilateral_skip_preserves_definition_provenance():
+    definition = load_exercise_definition("squat", DEFINITIONS_DIR)
+    df = _motion_rows(
+        sequence=["right"],
+        exercise_id="squat",
+        starting_side="right",
+        moving_landmark="knee",
+    )
+
+    attributed, report = attribute_motion(df, definition)
+
+    assert report.skipped is True
+    assert report.exercise_id == "squat"
+    assert report.laterality == "bilateral_symmetric"
+    assert report.execution_pattern == "bilateral"
+    assert report.performance_side_sequence == {
+        "mode": "none",
+        "block_size_counts": None,
+        "first_side_source": None,
+    }
+    assert report.thresholds
+    assert report.landmark_pairs_used
+    assert attributed["detected_active_limb"].isna().all()
+    assert attributed["expected_active_limb"].isna().all()
+
+
 def test_lunge_reports_observed_side_sequence_mismatch_as_warning_only():
     definition = load_exercise_definition("lunge", DEFINITIONS_DIR)
     sequence = ["right"] * 5 + ["left"] * 5
