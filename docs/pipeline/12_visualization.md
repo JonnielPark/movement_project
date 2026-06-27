@@ -122,7 +122,8 @@ notebook/00_setup/02_raw_visualization_test.ipynb          raw pose animation
 notebook/20_stage_checks/23_preprocessing_test.ipynb             reliability review
 notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
 notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon candidate review
-notebook/20_stage_checks/28_feature_extraction_test.ipynb        feature review
+notebook/20_stage_checks/27_motion_context_feature_extraction_test.ipynb
+                                                             motion-context + feature review
 ```
 
 ---

@@ -23,12 +23,11 @@ pose CSV without guessing which notebook to open.
     24_normalization_test.ipynb
     25_canonicalization_test.ipynb
     26_segmentation_test.ipynb
-    27_motion_attribution_test.ipynb
-    28_feature_extraction_test.ipynb
-    29_biomechanical_proxy_test.ipynb
-    30_biomarker_scoring_test.ipynb
-    31_visualization_test.ipynb
-    32_simulation_robustness_test.ipynb
+    27_motion_context_feature_extraction_test.ipynb
+    28_biomechanical_proxy_test.ipynb
+    29_biomarker_scoring_test.ipynb
+    30_visualization_test.ipynb
+    31_simulation_robustness_test.ipynb
 
 30_user_evaluation/
     30_user_movement_evaluation.ipynb
@@ -90,7 +89,7 @@ and applies an existing annotation CSV; it is not an annotation authoring UI.
 20_stage_checks/21_annotation_mask_test.ipynb
 20_stage_checks/22_exercise_definition_test.ipynb
 ...
-20_stage_checks/32_simulation_robustness_test.ipynb
+20_stage_checks/31_simulation_robustness_test.ipynb
 ```
 
 Stage-check notebooks are follow-along inspection surfaces. Repeated

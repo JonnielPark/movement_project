@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.6.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.6.2
+**최종 갱신:** 2026-06-27
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -59,6 +59,7 @@
 | 강건성 평가 (Robustness evaluation) | 노이즈, 가려짐, ROM 제한, 속도 스파이크 등을 주입한 합성 조건에서 지표 반응성과 일관성을 확인하는 평가. 입력 무결성 검증과 다르다. |
 | 가시성 기반 신뢰도 가중 (Visibility-based confidence weighting) | 생체역학 프록시 계산에서 주요 랜드마크 가시성을 프레임 가중치로 사용하는 방식. 낮은 가시성 프레임은 지표 계산 영향이 줄거나 제외된다. |
 | 시점-지표 신뢰도 (View-metric reliability) | 특정 camera zone이 특정 metric family를 얼마나 잘 뒷받침하는지 나타내는 운동 정의 수준의 prior. 좌표 보정이나 landmark 품질과 분리되며, `high`, `moderate`, `low`, `not_assessed` 같은 값으로 보고와 scoring eligibility를 안내한다. |
+| 피처 컨텍스트 해석 (Feature-context resolution) | ⑨ Feature Extraction 앞단의 준비 단계. 운동 정의, segmentation, motion-attribution provenance, bilateral-symmetry context, 관측 신뢰도를 `role_context`, availability reason, `source_fields`로 변환한다. 좌표를 수정하거나 rep/phase를 다시 라벨링하거나 score를 만들지 않는다. |
 | 피처 산출 가능성 (Feature availability) | landmark coverage, geometry plausibility, swap risk, view-metric reliability를 확인한 뒤, 계산 가능한 값이 scoring에 들어갈 수 있는지 결정하는 피처별 판정. 숫자값을 계산할 수 있다는 사실과 구분한다. |
 | 후보 근거 (Candidate evidence) | Availability, confidence, visibility, burden, residual, sensitivity 정보를 담는 계산 후보 좌표 family 또는 후보 비교. Scoring 전에 생성되며 score gravity나 final-score contribution을 정의하지 않는다. |
 | 카메라 근측/원측 (Near-side / far-side) | 카메라 기준 visibility context. `Near-side`는 카메라에 더 가까운 landmark 또는 body side, `far-side`는 카메라에서 더 먼 쪽을 뜻한다. 해부학적 품질 라벨이 아니라 관측 신뢰도 판단에 사용한다. |

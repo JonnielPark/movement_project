@@ -48,8 +48,8 @@ Pose CSV  +  annotation CSV  +  exercise YAML artifacts
 ⑤  Normalization        body-relative coordinate normalization
 ⑥  Canonicalization     optional candidate-evidence coordinate families
 ⑦  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
-⑧  Motion Attribution   per-rep active-side consistency
-⑨  Feature Extraction   spatial / temporal / control features, rep and phase level
+⑧  Motion Attribution   code-backed active-side context helper/QC
+⑨  Feature Extraction   motion/feature-context + spatial / temporal / control features
 ⑩  Biomech Proxy        CoM, moment arms, load-shift trend
 ⑪  Biomarker Derivation interpretable digital biomarkers and interpretation rules
 ⑫  Visualization        per-step visualization and reporting      [partial]
@@ -75,8 +75,8 @@ Stage activation is controlled by the `enabled` flags in
 | ⑤ Normalization | `stages/normalization.py` | Hip-center translation + median torso-length scale; emits `norm` coordinates only |
 | ⑥ Canonicalization | `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | Optional candidate-evidence coordinate families; current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
 | ⑦ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
-| ⑧ Motion Attribution | `stages/motion_attribution.py` | Per-rep active-limb consistency; reads `performance_protocol.side_sequence`; conservative / auto-correct modes |
-| ⑨ Feature Extraction | `features/` | ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
+| ⑧ Motion Attribution | `stages/motion_attribution.py` | Code-backed active-limb consistency helper; public stage-check review is folded into ⑨ feature-context inspection |
+| ⑨ Feature Extraction | `features/` | Motion/feature-context resolution, ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
 | ⑩ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑪ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
@@ -151,7 +151,7 @@ movement_project/
 ├── notebook/                        # role-grouped notebooks
 │   ├── 00_setup/                    # environment, data loading, raw visualization
 │   ├── 10_manual_preparation/       # annotation/exercise authoring and review gates
-│   ├── 20_stage_checks/             # pipeline stage checks 20-32
+│   ├── 20_stage_checks/             # pipeline stage checks 20-31
 │   ├── 30_user_evaluation/          # end-to-end user recording evaluation
 │   └── 90_local_research_review/    # local p01 research review surfaces
 ├── scripts/                         # one-off utilities such as baseline computation

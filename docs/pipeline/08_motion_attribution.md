@@ -1,7 +1,7 @@
 # 08. 모션 어트리뷰션 (Motion Attribution)
 
-**문서 버전:** 1.1.1
-**최종 갱신:** 2026-06-25
+**문서 버전:** 1.1.3
+**최종 갱신:** 2026-06-27
 **영문 동기화:** `docs_eng/pipeline/08_motion_attribution.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧은 각 반복에서 실제로 움직인 사지가 기대 활성 측과 일치하는지 점검한다.
@@ -38,38 +38,27 @@ Pose CSV
 
 정규화 좌표를 사용하므로 motion-energy 비교가 신체 크기와 카메라 거리의 영향을 덜 받는다.
 
-Stage-check notebook 27은 공통 stage-check pattern을 따르되, 현재 real sample의 편측성에만
+Public stage-check 경로에서는 본 단계를 `27_motion_context_feature_extraction_test.ipynb`에
+접어 넣는다. Alternating/unilateral 운동은 여전히 active-side QC 경로가 필요하므로 code-backed
+`attribute_motion()` helper는 별도로 유지한다. 통합 stage-check는 현재 real sample의 편측성에만
 묶이면 안 된다:
 
 ```text
 Data Setup
     real sample을 ⑦ Segmentation까지 준비한다.
 
-Definition Policy Matrix
-    사용 가능한 exercise definition을 읽고 laterality, performance side sequence,
-    pairable primary joints 같은 definition field를 기준으로 motion-attribution
-    policy를 skip, run, conditional, not-yet-implemented로 분류한다.
-
-Definition Field Coverage
-    선택된 definition field가 본 단계에서 직접 사용되는지, provenance/context로
-    전달되는지, 후속 단계용인지, 아직 미지원인지 표시한다.
-
-Direct Real-Sample Test
-    선택된 real sample에 attribute_motion을 실행하고 기대 policy outcome을 확인한다.
-
-Synthetic Applicability Smoke Test
-    실행 가능한 definition이 있으면 minimal generated dataframe으로 active-side
-    attribution 경로를 확인한다. 새 recording은 필요하지 않다.
+Motion Context Contract
+    선택된 real sample에 attribute_motion을 실행하고 기대 policy outcome, 출력 column,
+    non-mutation contract를 확인한다.
 
 Pipeline Integration
-    run_pipeline으로 같은 stage를 실행하고 report provenance와 frame-level output
-    contract를 확인한다.
+    run_pipeline으로 같은 motion-context 경로를 실행하고, feature extraction이
+    `FeatureContext`를 소비하기 전 report provenance를 확인한다.
 ```
 
-Stage-check notebook은 하나의 default real sample을 사용할 수 있지만, policy matrix, field
-coverage table, synthetic smoke test는 특정 운동 하나에 하드코딩하지 않고 definition-driven이어야
-한다. Exercise definition에는 존재하지만 아직 구현되지 않은 항목은 조용히 무시하지 않고
-`not_yet_implemented`, `conditional`, 또는 carried-forward context로 표시한다.
+Stage-check notebook은 하나의 default real sample을 사용할 수 있지만, motion-context check는
+특정 운동 하나에 하드코딩하지 않고 definition-driven이어야 한다. Exercise definition에는 존재하지만
+아직 구현되지 않은 항목은 조용히 무시하지 않고 provenance로 carry forward한다.
 
 편측성/교대성 운동정의의 stage-check policy에서는 `primary_body_regions`와
 `joint_actions.primary`를 readiness gate로 취급한다. 이 항목들은 motion-energy 계산식을 바꾸지는
@@ -89,8 +78,8 @@ unknown / generic         건너뜀
 ```
 
 `bilateral_symmetric`은 config flag가 켜져 있어도 항상 건너뛴다.
-Stage-check readiness preview에서는 편측성/교대성 definition에 pairable primary landmark,
-primary body regions, primary joint actions 중 하나라도 빠지면 `conditional`로 낮춘다.
+향후 side-specific review에서는 편측성/교대성 definition에 pairable primary landmark,
+primary body regions, primary joint actions 중 하나라도 빠지면 `conditional`로 낮춰야 한다.
 
 ## 3. 검출 방법 (Detection Method)
 
@@ -220,7 +209,40 @@ ambiguous/bilateral   → 강한 측별 해석을 피함
 ⑧은 ④ Preprocessing을 보완한다. ④는 짧은 frame-level L/R swap을 다루고, ⑧은 segmentation과
 운동 컨텍스트를 사용해 rep-level side consistency를 점검한다.
 
-## 9. 코드 매핑 (Code Mapping)
+## 9. ⑨와의 Stage-Check 병합 경계 (Stage-Check Merge Boundary With ⑨)
+
+현재 구현은 ⑧을 별도 code-backed pipeline helper로 유지한다. QC, provenance, 확장성 테스트에는
+유용하기 때문이다. 다만 public stage-check 경로에서는 ⑧ check를 ⑨ Feature Extraction에 접어
+사용자가 motion context와 feature context를 한곳에서 검토하게 한다.
+
+계획상 통합 방향은 ⑨ Feature Extraction이 feature value 계산 전에 `feature_context` 준비 substep을
+소유하는 구조다:
+
+```text
+⑨ Feature Extraction
+    1. Feature context 해석
+       - bilateral_symmetric      → bilateral symmetry / side-bias context
+       - alternating/unilateral   → active-side attribution context
+       - conditional/unsupported  → provenance warning, 강한 side role 없음
+    2. spatial / temporal / control feature 계산
+    3. availability, reliability, burden/provenance, role_context 부착
+```
+
+이 방향에서는 `attribute_motion()`은 alternating/unilateral 운동을 위한 code-backed helper로 남고,
+public pipeline에서는 나중에 이 동작을 feature extraction의 일부로 보여줄 수 있다. 이 병합은
+coordinate policy를 바꾸지 않아야 하며, attribution을 score로 바꾸면 안 되고, squat 같은
+bilateral symmetric 운동에 active-side logic을 적용해서도 안 된다.
+
+통합 stage-check는 다음 guard를 유지해야 한다:
+
+```text
+1. bilateral_symmetric 운동은 active-side attribution을 skip하는지 확인한다.
+2. Attribution column이 추가되더라도 coordinate, rep_id, phase를 바꾸지 않는지 확인한다.
+3. ⑨는 context를 소비하는 FeatureRecord family에만 role_context/source_fields를 붙인다.
+4. Alternating/unilateral exercise sample을 검토하기 전에는 `attribute_motion()` helper를 제거하지 않는다.
+```
+
+## 10. 코드 매핑 (Code Mapping)
 
 ```text
 src/movement/stages/motion_attribution.py

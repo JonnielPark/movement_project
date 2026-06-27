@@ -1,7 +1,7 @@
 # 09. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.2.3
+**최종 갱신:** 2026-06-27
 **영문 동기화:** `docs_eng/pipeline/09_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑨은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
@@ -28,6 +28,8 @@ exercise_definition         feature_domains, angle_definitions,
                             compensation_candidates, view_metric_reliability
 recording provenance        camera_zone, camera_height_level이 있으면 사용
 preprocessing context       visibility, swap risk, far-side jitter, availability hooks
+motion/role context         사용 가능한 경우 ⑧ attribution report, 또는 본 단계 내부의
+                            feature-context resolution
 ```
 
 ---
@@ -53,11 +55,73 @@ source_fields 없는 FeatureRecord
 절대 force/torque/length 출력
 camera-view 한계를 movement-quality penalty로 직접 변환
 feature ID에서 kinematic phase label과 kinetic phase 명칭 혼합
+bilateral symmetric 운동에 active-side attribution 적용
 ```
 
 ---
 
-## 3. 피처 계열 (Feature Families)
+## 3. Feature Context Resolution
+
+Feature Extraction은 ⑧ Motion Attribution이 만든 context를 소유한다. Attribution 자체는 score가
+아니라, feature family가 side role, confidence, provenance를 어떻게 해석할지 알려주는 정보이기
+때문이다.
+
+⑨의 첫 context substep은 다음 형태다:
+
+```text
+resolve_feature_context(df, exercise_definition, attribution_report=None)
+apply_feature_context(records, feature_context)
+```
+
+개념적 출력:
+
+```text
+feature_context:
+  laterality
+  role_mode                 bilateral_symmetry | active_side | unavailable
+  role_context              active_side, support_side, forward_leg, trailing_leg 등
+  attribution_confidence    assessed | low_confidence | not_assessed
+  context_reasons           provenance 문자열
+```
+
+정책:
+
+```text
+bilateral_symmetric
+    active-side attribution을 실행하지 않는다. 좌우 movement quality를 비교하는 feature family를
+    위해 bilateral symmetry / side-bias context를 제공한다.
+
+alternating / unilateral_left / unilateral_right
+    ⑧ attribution metadata가 있으면 사용한다. ⑧이 실행되지 않은 경우에는 source_fields에
+    그 사실을 남긴다는 조건으로 같은 code-backed helper를 내부 substep으로 호출할 수 있다.
+
+unilateral_unspecified / bilateral_asymmetric / unsupported
+    강한 side role을 만들지 않는다. conditional 또는 not-yet-supported provenance를 방출하고,
+    값의 assessed 여부는 feature availability가 결정하게 한다.
+```
+
+이 context-resolution substep은 좌표를 수정하거나, rep/phase를 다시 라벨링하거나, score를 만들거나,
+`exercise_id`로 분기하면 안 된다.
+
+Context application은 의도적으로 좁게 적용한다:
+
+```text
+spatial.symmetry.*
+    role_mode == bilateral_symmetry이면 bilateral symmetry context를 부착한다.
+    이는 좌우 비교 provenance를 명시할 뿐, numeric symmetry value나 low-confidence depth gate를
+    바꾸지 않는다.
+
+alternating / unilateral active-side records
+    attribution metadata가 있을 때만 active-side context를 부착한다.
+    Ambiguous 또는 missing attribution은 강한 side role이 아니라 provenance로 남긴다.
+
+그 외 records
+    향후 feature family가 context requirement를 명시하기 전까지 기존 role_context를 보존한다.
+```
+
+---
+
+## 4. 피처 계열 (Feature Families)
 
 Domain은 `feature_id` prefix로 표시한다.
 
@@ -78,7 +142,7 @@ control.*
 
 ---
 
-## 4. Availability And View Reliability
+## 5. Availability And View Reliability
 
 Feature extraction은 camera view 또는 pose model이 scoring을 뒷받침하지 않는 값도 계산할 수
 있다. 따라서 `FeatureRecord.availability`가 ⑪ scoring gate다.
@@ -115,7 +179,7 @@ frontal/front-oblique evidence가 없으면 `low_confidence` 또는 `not_assesse
 
 ---
 
-## 5. Phase-Aware Features
+## 6. Phase-Aware Features
 
 ⑦이 `phase` column을 제공하면 다음 계열은 rep-level과 phase-level record를 모두 방출할 수 있다.
 
@@ -140,7 +204,7 @@ control.compensation  별도 phase-specific rule이 없으면 rep-level only
 
 ---
 
-## 6. 출력 계약 (Output Contract)
+## 7. 출력 계약 (Output Contract)
 
 ```python
 @dataclass
@@ -168,7 +232,7 @@ camera-zone, provenance field를 보존한다.
 
 ---
 
-## 7. 감사 리포트 (Audits)
+## 8. 감사 리포트 (Audits)
 
 ⑨은 feature record 옆에 diagnostic audit를 방출할 수 있다.
 
@@ -187,7 +251,7 @@ Audit는 provenance/reporting 출력이다. 좌표를 바꾸거나 반복을 제
 
 ---
 
-## 8. 진입점 (Entry Point)
+## 9. 진입점 (Entry Point)
 
 ```python
 from movement.features import (
@@ -203,11 +267,13 @@ feat_df = features_to_dataframe(records)
 
 ---
 
-## 9. 다른 단계와의 관계 (Relationship To Other Steps)
+## 10. 다른 단계와의 관계 (Relationship To Other Steps)
 
 - ⑦ Segmentation은 `rep_id`와 선택 `phase`를 제공한다. Phase label이 없으면 rep-level feature만
   산출한다.
-- ⑧ Motion Attribution은 role-aware feature를 위한 side/consistency context를 제공한다.
+- ⑧ Motion Attribution은 현재 role-aware feature를 위한 side/consistency context를 제공한다.
+  Public stage-check 경로에서는 이 context를 `27_motion_context_feature_extraction_test.ipynb` 안에서
+  검토하고, `attribute_motion()`은 alternating/unilateral 운동을 위한 helper로 유지한다.
 - ⑩ Biomech Proxy는 같은 정규화 좌표를 사용하지만 `FeatureRecord`가 아니라 `BiomechRecord`를
   방출한다.
 - ⑪ Biomarker Derivation은 모든 feature를 pass-through biomarker로 감싸고,
@@ -220,6 +286,8 @@ feat_df = features_to_dataframe(records)
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
+                                         FeatureContext, resolve_feature_context,
+                                         apply_feature_context,
                                          audits, summarize_phase_to_rep,
                                          features_to_dataframe
 src/movement/features/spatial.py         ROM, symmetry, shape
@@ -230,12 +298,15 @@ tests/test_feature_view_reliability.py   availability metadata
 tests/test_feature_registry_coverage.py  feature/compensation coverage audit
 tests/test_analysis_disrupting_patterns.py detectability audit
 tests/test_features_phase_grouping.py    phase-level feature behavior
+tests/test_feature_context_resolution.py feature-context resolution/application
 ```
 
 ---
 
 ## 12. 향후 확장 (Planned Extensions)
 
+- Alternating/unilateral sample을 검토하기 전에는 `attribute_motion()` helper를 제거하거나 ⑨ 뒤에
+  완전히 숨기지 않는다.
 - source fields, visibility policy, test가 준비된 compensation rule 추가.
 - coarse preprocessing summary 대신 per-feature landmark coverage 사용.
 - lunge와 plank shoulder tap을 위한 role-aware feature family.
