@@ -20,7 +20,7 @@
 
 런지는 active-side 및 role-based 해석을 위한 주요 하지 운동이다. 한쪽 다리는 forward/load-accepting
 limb, 다른쪽은 balance를 돕는 trailing limb 역할을 한다. 본 연구는 이를 통해 side-sequence
-provenance, motion attribution, anterior knee travel, trunk alignment, pelvic stability,
+provenance, side-role context, anterior knee travel, trunk alignment, pelvic stability,
 step consistency를 검증한다.
 
 좌우 순서는 운동의 고유 속성이 아니라 protocol-specific 선택이다.

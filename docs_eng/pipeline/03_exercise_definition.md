@@ -24,8 +24,7 @@ Pose CSV + annotation + exercise YAML artifacts
 → ⑤ Normalization
 → ⑥ Canonicalization              coordinate-candidate priors
 → ⑦ Segmentation                  rep/phase settings
-→ ⑧ Motion Attribution            laterality, side_sequence
-→ ⑨ Feature Extraction            feature_domains, joint_actions
+→ ⑨ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
 → ⑩ Biomech Proxy                 biomechanical_focus
 → ⑪ Biomarker Derivation          compensation_candidates
 ```
@@ -189,9 +188,9 @@ classification:
   complexity: single_joint | multi_joint | compound | whole_body
 ```
 
-`laterality` informs L/R swap handling and motion-attribution checks. Bilateral
-symmetric tasks may skip per-rep active-side attribution; unilateral or
-alternating tasks should preserve active-side or role metadata.
+`laterality` informs L/R swap handling and side-role context inside Feature
+Extraction. Bilateral symmetric tasks may skip per-rep active-side context;
+unilateral or alternating tasks should preserve active-side or role metadata.
 
 `movement_template_id` is derived from selected authoring axes such as posture,
 support/contact pattern, laterality, primary regions, joint actions, and planes.
@@ -464,7 +463,7 @@ and then sync `docs/`.
 
 ## 7. Provenance Convention
 
-Every biomarker produced by ⑧-⑩ must include `source_fields` pointing to the
+Every biomarker produced by ⑨-⑩ must include `source_fields` pointing to the
 definition fields that drove the computation.
 
 ```text

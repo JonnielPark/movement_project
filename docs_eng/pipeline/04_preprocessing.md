@@ -112,7 +112,7 @@ generic fallback     skip
 
 High-confidence swap candidates exchange paired landmark labels for the affected
 frame. Coordinate values are not modified. Low-confidence cases are flagged only
-and left for ⑧ Motion Attribution or manual review.
+and left for ⑨ Feature Extraction role-context handling or manual review.
 
 ### Short-Gap Interpolation
 
@@ -183,7 +183,7 @@ infer near/far/unknown side context
 apply optional smoothing/interpolation only to far-side low-confidence landmarks
 interpolate short low-confidence gaps
 report unresolved long gaps as low confidence
-emit feature-availability hooks for ⑧ and ⑩
+emit feature-availability hooks for ⑨ and ⑩
 ```
 
 Not allowed:

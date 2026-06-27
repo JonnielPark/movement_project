@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from movement.exercise_definition import load_exercise_definition
-from movement.motion_attribution import attribute_motion
+from movement.side_role_context import resolve_side_role_context
 
 
 DEFINITIONS_DIR = "data/definitions/exercises"
@@ -67,7 +67,7 @@ def test_lunge_uses_same_side_block_performance_protocol():
         moving_landmark="knee",
     )
 
-    attributed, report = attribute_motion(df, definition)
+    attributed, report = resolve_side_role_context(df, definition)
 
     assert _per_rep_values(attributed, "expected_active_limb") == sequence
     assert report.performance_side_sequence == {
@@ -90,7 +90,7 @@ def test_bilateral_skip_preserves_definition_provenance():
         moving_landmark="knee",
     )
 
-    attributed, report = attribute_motion(df, definition)
+    attributed, report = resolve_side_role_context(df, definition)
 
     assert report.skipped is True
     assert report.exercise_id == "squat"
@@ -118,7 +118,7 @@ def test_lunge_reports_observed_side_sequence_mismatch_as_warning_only():
     )
     df.loc[df["rep_id"] == 1, "rep_side_sequence"] = "left"
 
-    _, report = attribute_motion(df, definition)
+    _, report = resolve_side_role_context(df, definition)
 
     assert report.side_sequence_warnings == [
         {
@@ -143,7 +143,7 @@ def test_plank_shoulder_tap_preserves_protocol_cycles_and_alternates_each_tap():
         rep_unit="tap",
     )
 
-    attributed, report = attribute_motion(df, definition)
+    attributed, report = resolve_side_role_context(df, definition)
 
     assert _per_rep_values(attributed, "expected_active_limb") == sequence
     assert _per_rep_values(attributed, "protocol_cycle_id") == [1, 1, 2, 2]

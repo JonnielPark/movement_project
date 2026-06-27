@@ -1,6 +1,6 @@
 # 09. Feature Extraction
 
-**Document Version:** 1.2.3
+**Document Version:** 1.2.4
 **Last Updated:** 2026-06-27
 **Korean Sync:** `docs/pipeline/09_feature_extraction.md` is the same-version Korean source.
 
@@ -14,7 +14,7 @@ Biomarker Derivation.
 ## 1. Pipeline Position
 
 ```text
-⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation → ⑧ Motion Attribution
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation
 → ⑨ Feature Extraction     ← this step
 → ⑩ Biomech Proxy → ⑪ Biomarker Derivation
 ```
@@ -29,8 +29,7 @@ exercise_definition         feature_domains, angle_definitions,
                             compensation_candidates, view_metric_reliability
 recording provenance        camera_zone, camera_height_level when available
 preprocessing context       visibility, swap risk, far-side jitter, availability hooks
-motion/role context         ⑧ attribution report when available, or
-                            feature-context resolution inside this step
+role context settings       laterality, execution pattern, side sequence
 ```
 
 ---
@@ -56,21 +55,21 @@ FeatureRecord without source_fields
 Absolute force/torque/length output
 Turning camera-view limitations directly into movement-quality penalties
 Mixing kinematic phase labels with kinetic phase names in feature IDs
-Using active-side attribution for bilateral symmetric exercises
+Using active-side role context for bilateral symmetric exercises
 ```
 
 ---
 
 ## 3. Feature Context Resolution
 
-Feature Extraction owns the context produced by ⑧ Motion Attribution because
-attribution is not a score by itself. It only tells feature families how to
-interpret side roles, confidence, and provenance.
+Feature Extraction owns side-role context resolution. This is not a score by
+itself and no longer exists as a standalone pipeline stage. It only tells feature
+families how to interpret side roles, confidence, and provenance.
 
 The first context substep of ⑨ is:
 
 ```text
-resolve_feature_context(df, exercise_definition, attribution_report=None)
+resolve_feature_context(df, exercise_definition, role_context_report=None)
 apply_feature_context(records, feature_context)
 ```
 
@@ -81,7 +80,7 @@ feature_context:
   laterality
   role_mode                 bilateral_symmetry | active_side | unavailable
   role_context              active_side, support_side, forward_leg, trailing_leg, etc.
-  attribution_confidence    assessed | low_confidence | not_assessed
+  role_confidence           assessed | low_confidence | not_assessed
   context_reasons           provenance strings
 ```
 
@@ -89,13 +88,12 @@ Policy:
 
 ```text
 bilateral_symmetric
-    Do not run active-side attribution. Provide bilateral symmetry / side-bias
+    Do not run active-side role detection. Provide bilateral symmetry / side-bias
     context for feature families that compare left and right movement quality.
 
 alternating / unilateral_left / unilateral_right
-    Use ⑧ attribution metadata when present. If ⑧ has not run, Feature
-    Extraction may call the same code-backed helper as an internal substep,
-    provided source_fields record that fact.
+    Resolve side-role context inside ⑨ from the segmented dataframe,
+    performance_protocol.side_sequence, and annotation context.
 
 unilateral_unspecified / bilateral_asymmetric / unsupported
     Do not create strong side roles. Emit conditional or not-yet-supported
@@ -104,6 +102,19 @@ unilateral_unspecified / bilateral_asymmetric / unsupported
 
 This context-resolution substep must not modify coordinates, relabel reps or
 phases, create scores, or branch on `exercise_id`.
+
+Integration policy:
+
+```text
+⑨ owns feature-facing interpretation
+    Resolve side-role context inside Feature Extraction, attach role_context only
+    where a feature family declares it useful, and keep confidence/provenance
+    separate from numeric feature values.
+
+public notebook review
+    Verify side-role context and feature records together in
+    `27_feature_extraction_test.ipynb`.
+```
 
 Context application is intentionally narrow:
 
@@ -114,8 +125,8 @@ spatial.symmetry.*
     the numeric symmetry value or its low-confidence depth gate.
 
 alternating / unilateral active-side records
-    Attach active-side context only when attribution metadata is available.
-    Ambiguous or missing attribution remains provenance, not a strong side role.
+    Attach active-side context only when side-role evidence is available.
+    Ambiguous or missing context remains provenance, not a strong side role.
 
 all other records
     Preserve the original role_context unless a future feature family declares
@@ -171,7 +182,7 @@ view_reliability             exercise_definition.view_metric_reliability
 landmark_quality             visibility / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
-swap or far-side risk         from ④ Preprocessing and ⑧ Motion Attribution
+swap or far-side risk         from ④ Preprocessing and ⑨ side-role context
 camera_zone                  from annotation or recording metadata
 role_context                 active/support/near/far side when available
 ```
@@ -281,10 +292,9 @@ feat_df = features_to_dataframe(records)
 
 - ⑦ Segmentation provides `rep_id` and optional `phase`; missing phase labels
   produce rep-level features only.
-- ⑧ Motion Attribution currently provides side/consistency context for
-  role-aware features. The public stage-check path reviews this context inside
-  `27_motion_context_feature_extraction_test.ipynb`, while `attribute_motion()`
-  remains a helper for alternating/unilateral exercises.
+- Side-role context is resolved inside ⑨, then attached only to role-aware
+  feature records. The public stage-check path reviews this context in
+  `27_feature_extraction_test.ipynb`.
 - ⑩ Biomech Proxy consumes the same normalized coordinates but emits
   `BiomechRecord`, not `FeatureRecord`.
 - ⑪ Biomarker Derivation wraps all features as pass-through biomarkers and uses
@@ -317,8 +327,8 @@ tests/test_feature_context_resolution.py feature-context resolution/application
 
 ## 12. Planned Extensions
 
-- Review alternating/unilateral samples before removing or hiding the
-  `attribute_motion()` helper behind ⑨.
+- Review alternating/unilateral samples before expanding side-role context from
+  bilateral provenance to active/support-side feature families.
 - More compensation rules after source fields, visibility policy, and tests exist.
 - Per-feature landmark coverage instead of coarse preprocessing summaries.
 - Role-aware feature families for lunge and plank shoulder tap.

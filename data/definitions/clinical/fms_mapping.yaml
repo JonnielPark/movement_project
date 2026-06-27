@@ -67,7 +67,7 @@ lunge:
     - id: heel_contact_strategy
       domain: control
       feature_id_prefix: control.compensation.heel_lift
-      rationale: Heel elevation helps distinguish ankle restriction from normal trailing-foot motion context.
+      rationale: Heel elevation helps distinguish ankle restriction from normal trailing-foot movement context.
   references:
     - "Cook G., Burton L., Hoogenboom B., Voight M. Functional Movement Screen publications; citation only."
 

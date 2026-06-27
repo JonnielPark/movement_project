@@ -27,12 +27,12 @@ def test_bilateral_squat_resolves_symmetry_context_without_active_side():
     assert context.laterality == "bilateral_symmetric"
     assert context.role_mode == "bilateral_symmetry"
     assert context.role_context == {"symmetry_context": "bilateral_symmetric"}
-    assert context.attribution_confidence == "not_assessed"
-    assert "active_side_attribution_not_applicable" in context.context_reasons
+    assert context.role_confidence == "not_assessed"
+    assert "active_side_role_context_not_applicable" in context.context_reasons
     assert "classification.laterality" in context.source_fields
 
 
-def test_lunge_resolves_active_side_context_when_attribution_report_is_present():
+def test_lunge_resolves_active_side_context_when_role_context_report_is_present():
     exercise = load_exercise_definition("lunge", _DEFINITIONS_DIR)
     df = pd.DataFrame(
         {
@@ -40,35 +40,35 @@ def test_lunge_resolves_active_side_context_when_attribution_report_is_present()
             "rep_id": [1],
             "detected_active_limb": ["right"],
             "expected_active_limb": ["right"],
-            "attribution_consistent": [True],
-            "attribution_confidence": [0.95],
+            "side_role_consistent": [True],
+            "side_role_confidence": [0.95],
         }
     )
 
     context = resolve_feature_context(
         df,
         exercise,
-        attribution_report={"skipped": False, "mode": "conservative"},
+        role_context_report={"skipped": False, "mode": "conservative"},
     )
 
     assert context.laterality == "alternating"
     assert context.role_mode == "active_side"
     assert context.role_context == {"side_role": "active_side"}
-    assert context.attribution_confidence == "assessed"
-    assert "motion_attribution_context_available" in context.context_reasons
+    assert context.role_confidence == "assessed"
+    assert "feature_role_context_available" in context.context_reasons
     assert "performance_protocol.side_sequence" in context.source_fields
-    assert "motion_attribution" in context.source_fields
+    assert "feature_role_context" in context.source_fields
 
 
-def test_lunge_without_attribution_context_is_low_confidence():
+def test_lunge_without_role_context_is_low_confidence():
     exercise = load_exercise_definition("lunge", _DEFINITIONS_DIR)
     df = pd.DataFrame({"segment_type": ["rep"], "rep_id": [1]})
 
     context = resolve_feature_context(df, exercise)
 
     assert context.role_mode == "active_side"
-    assert context.attribution_confidence == "low_confidence"
-    assert "motion_attribution_context_missing" in context.context_reasons
+    assert context.role_confidence == "low_confidence"
+    assert "feature_role_context_missing" in context.context_reasons
 
 
 def test_apply_feature_context_attaches_bilateral_context_without_value_change():

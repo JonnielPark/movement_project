@@ -9,8 +9,7 @@ Documented analysis stages:
     ⑤ normalization          body-relative coordinate normalization
     ⑥ canonicalization       optional analysis-space candidate evidence
     ⑦ segmentation           semi-automatic rep splitting + intra-rep phase splitting
-    ⑧ motion_attribution     per-rep active-side consistency
-    ⑨ features               spatial / temporal / control feature extraction
+    ⑨ features               side-role context + spatial / temporal / control features
     ⑩ biomech                biomechanical proxy modeling (CoM, moment arm)
     ⑪ biomarker              interpretable digital biomarkers with provenance
 
@@ -233,12 +232,16 @@ class ExerciseDefinitionConfig:
 
 
 @dataclass
-class MotionAttributionConfig:
+class RoleContextConfig:
     enabled: bool = False
     tau_active: float = 0.70
     tau_ambiguous: float = 0.55
     tau_swap: float = 0.85
     mode: str = "conservative"
+
+
+# backward-compatibility alias
+MotionAttributionConfig = RoleContextConfig
 
 
 @dataclass
@@ -263,6 +266,7 @@ class ControlConfig:
 @dataclass
 class FeaturesConfig:
     enabled: bool = False
+    role_context: RoleContextConfig = field(default_factory=RoleContextConfig)
     spatial: SpatialConfig = field(default_factory=SpatialConfig)
     temporal: TemporalConfig = field(default_factory=TemporalConfig)
     control: ControlConfig = field(default_factory=ControlConfig)
@@ -339,13 +343,19 @@ class PipelineConfig:
     phase_segmentation: PhaseSegmentationConfig = field(
         default_factory=PhaseSegmentationConfig
     )
-    motion_attribution: MotionAttributionConfig = field(
-        default_factory=MotionAttributionConfig
-    )
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
     biomech: BiomechConfig = field(default_factory=BiomechConfig)
     biomarker: BiomarkerConfig = field(default_factory=BiomarkerConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
+
+    @property
+    def motion_attribution(self) -> RoleContextConfig:
+        """Legacy alias for `features.role_context`."""
+        return self.features.role_context
+
+    @motion_attribution.setter
+    def motion_attribution(self, value: RoleContextConfig) -> None:
+        self.features.role_context = value
 
 
 # ── Config loader ─────────────────────────────────────────────────────────────
@@ -418,8 +428,8 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     support_alias = can_support or frc
     rsg = raw.get("rep_segmentation", {})
     psg = raw.get("phase_segmentation", {})
-    ma = raw.get("motion_attribution", {})
     feat = raw.get("features", {})
+    rc = feat.get("role_context", raw.get("motion_attribution", {}))
     sp = feat.get("spatial", {})
     te = feat.get("temporal", {})
     co = feat.get("control", {})
@@ -632,15 +642,15 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             ),
             minimum_rep_length_frames=int(psg.get("minimum_rep_length_frames", 8)),
         ),
-        motion_attribution=MotionAttributionConfig(
-            enabled=ma.get("enabled", False),
-            tau_active=float(ma.get("thresholds", {}).get("active", 0.70)),
-            tau_ambiguous=float(ma.get("thresholds", {}).get("ambiguous", 0.55)),
-            tau_swap=float(ma.get("thresholds", {}).get("swap", 0.85)),
-            mode=ma.get("mode", "conservative"),
-        ),
         features=FeaturesConfig(
             enabled=feat.get("enabled", False),
+            role_context=RoleContextConfig(
+                enabled=rc.get("enabled", False),
+                tau_active=float(rc.get("thresholds", {}).get("active", 0.70)),
+                tau_ambiguous=float(rc.get("thresholds", {}).get("ambiguous", 0.55)),
+                tau_swap=float(rc.get("thresholds", {}).get("swap", 0.85)),
+                mode=rc.get("mode", "conservative"),
+            ),
             spatial=SpatialConfig(
                 rom=sp.get("rom", False),
                 symmetry=sp.get("symmetry", False),
@@ -964,29 +974,6 @@ def run_pipeline(
     else:
         pass  # ⑦ disabled — phase column stays NA (set by ② Annotation)
 
-    # ── ⑧ Motion Attribution ─────────────────────────────────────────────────
-    if config.motion_attribution.enabled:
-        from movement.stages.motion_attribution import (
-            AttributionThresholds,
-            attribute_motion,
-        )
-
-        thresholds = AttributionThresholds(
-            active=config.motion_attribution.tau_active,
-            ambiguous=config.motion_attribution.tau_ambiguous,
-            swap=config.motion_attribution.tau_swap,
-        )
-        if exercise_def is None:
-            print("[Step ⑧] Motion Attribution: exercise_def not available — skipped.")
-        else:
-            df, attr_report = attribute_motion(
-                df=df,
-                exercise_definition=exercise_def,
-                thresholds=thresholds,
-                mode=config.motion_attribution.mode,
-            )
-            report["motion_attribution"] = attr_report.as_dict()
-
     # ── ⑨ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
@@ -995,10 +982,28 @@ def run_pipeline(
             audit_feature_registry,
             extract_rep_features,
         )
+        from movement.features.side_role_context import (
+            SideRoleContextThresholds,
+            resolve_side_role_context,
+        )
 
         if exercise_def is None:
             print("[Step ⑨] Feature Extraction: exercise_def not available — skipped.")
         else:
+            if config.features.role_context.enabled:
+                thresholds = SideRoleContextThresholds(
+                    active=config.features.role_context.tau_active,
+                    ambiguous=config.features.role_context.tau_ambiguous,
+                    swap=config.features.role_context.tau_swap,
+                )
+                df, role_context_report = resolve_side_role_context(
+                    df=df,
+                    exercise_definition=exercise_def,
+                    thresholds=thresholds,
+                    mode=config.features.role_context.mode,
+                )
+                report["feature_role_context"] = role_context_report.as_dict()
+
             coverage_report = audit_feature_registry(exercise_def)
             report["feature_registry_coverage"] = coverage_report.as_dict()
             detectability_report = audit_analysis_disrupting_patterns(exercise_def)

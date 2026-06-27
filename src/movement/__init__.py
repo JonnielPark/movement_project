@@ -12,8 +12,7 @@ Pipeline steps:
     ⑤  normalization          body-relative coordinate normalization
     ⑥  canonicalization       optional analysis-space candidate evidence
     ⑦  segmentation           semi-automatic rep splitter + intra-rep phase splitter
-    ⑧  motion_attribution     per-rep active-side consistency
-    ⑨  features               spatial / temporal / control feature extraction
+    ⑨  features               side-role context + spatial / temporal / control features
                                (rep-level and phase-level when ⑦ has populated phase column)
     ⑩  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
     ⑪  biomarker              interpretable digital biomarkers with provenance
@@ -34,6 +33,7 @@ from movement.core import utils as utils
 from movement.definitions import clinical as clinical
 from movement.definitions import exercise_authoring as exercise_authoring
 from movement.definitions import exercise_definition as exercise_definition
+from movement.features import side_role_context as side_role_context
 from movement.reporting import visualization as visualization
 from movement import stage_context as stage_context
 from movement.stages import annotation as annotation
@@ -54,6 +54,7 @@ _COMPAT_MODULES = {
     "exercise_definition": exercise_definition,
     "floor_reference": floor_reference,
     "io": io,
+    "side_role_context": side_role_context,
     "motion_attribution": motion_attribution,
     "normalization": normalization,
     "preprocessing": preprocessing,
@@ -102,18 +103,19 @@ from movement.canonicalization import (  # noqa: E402
     apply_canonicalization,
 )
 from movement.segmentation import segment_phases, segment_reps  # noqa: E402
-from movement.motion_attribution import (  # noqa: E402
-    AttributionThresholds,
-    attribute_motion,
+from movement.side_role_context import (  # noqa: E402
+    SideRoleContextReport,
+    SideRoleContextThresholds,
+    resolve_side_role_context,
 )
 from movement.visualization import (  # noqa: E402
     create_pose_animation,
     create_pose_comparison_animation,
-    plot_attribution_chart,
     plot_biomarker_radar,
     plot_joint_angle_timeseries,
     plot_reliability_overlay,
     plot_rep_timeline,
+    plot_side_role_context_chart,
 )
 from movement.pipeline import load_pipeline_config, run_pipeline  # noqa
 from movement.stage_context import (  # noqa: E402
@@ -177,9 +179,10 @@ __all__ = [
     # ⑦ segmentation
     "segment_reps",
     "segment_phases",
-    # ⑧ motion attribution
-    "attribute_motion",
-    "AttributionThresholds",
+    # ⑨ feature side-role context
+    "resolve_side_role_context",
+    "SideRoleContextThresholds",
+    "SideRoleContextReport",
     # ⑨ features (prefer direct import from submodules)
     "FeatureContext",
     "FeatureRecord",
@@ -200,7 +203,7 @@ __all__ = [
     "plot_reliability_overlay",
     "plot_joint_angle_timeseries",
     "plot_rep_timeline",
-    "plot_attribution_chart",
+    "plot_side_role_context_chart",
     "plot_biomarker_radar",
     # pipeline runner
     "load_pipeline_config",

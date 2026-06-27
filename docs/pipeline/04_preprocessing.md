@@ -107,7 +107,7 @@ generic fallback     skip
 ```
 
 High-confidence swap candidate는 해당 frame의 paired landmark label을 교환한다. Coordinate value는
-바꾸지 않는다. Low-confidence case는 표시만 하고 ⑧ Motion Attribution 또는 manual review로 남긴다.
+바꾸지 않는다. Low-confidence case는 표시만 하고 ⑨ Feature Extraction role-context 처리 또는 manual review로 남긴다.
 
 ### Short-Gap Interpolation
 
@@ -176,7 +176,7 @@ near/far/unknown side context 추론
 far-side low-confidence landmark에만 선택 smoothing/interpolation 적용
 짧은 low-confidence gap 보간
 해결되지 않은 long gap을 low confidence로 report
-⑧과 ⑩을 위한 feature-availability hook 방출
+⑨와 ⑩을 위한 feature-availability hook 방출
 ```
 
 금지:

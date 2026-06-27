@@ -15,7 +15,7 @@
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← 본 단계 → ⑧ Motion Attribution
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← 본 단계 → ⑨ Feature Extraction
 ```
 
 입력:
@@ -200,8 +200,8 @@ pipeline default가 아니라 annotation-adjacent QC workflow로 유지한다.
 ## 7. 후속 단계 규칙 (Downstream Rules)
 
 ```text
-⑧ Motion Attribution   확정된 rep_id를 사용.
-⑨ Feature Extraction   확정 rep에는 rep-level feature를, successful/manual phase에는
+⑨ Feature Extraction   확정된 rep_id를 사용하고 side-role context를 해석하며,
+                       confirmed rep에는 rep-level feature를, successful/manual phase에는
                        phase-level feature를 방출.
 ⑩ Biomech Proxy        unresolved rep-boundary failure는 제외.
 ⑪ Biomarker Scoring    failure/exclusion provenance를 보존.

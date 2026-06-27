@@ -95,7 +95,7 @@ specificity
     unmatched distortion에서 관련 없는 metric이 비교적 안정적인가?
 
 false_correction_rate
-    distortion 아래에서 motion attribution이 잘못된 side correction을 만드는가?
+    distortion 아래에서 Feature Extraction side-role context가 잘못된 active-side context를 만드는가?
 ```
 
 Metric은 rep level과, 가능하면 phase level에서 요약한다.

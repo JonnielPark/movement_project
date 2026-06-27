@@ -23,8 +23,7 @@ Pose CSV + annotation + exercise YAML artifacts
 → ⑤ Normalization
 → ⑥ Canonicalization              coordinate-candidate priors
 → ⑦ Segmentation                  rep/phase settings
-→ ⑧ Motion Attribution            laterality, side_sequence
-→ ⑨ Feature Extraction            feature_domains, joint_actions
+→ ⑨ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
 → ⑩ Biomech Proxy                 biomechanical_focus
 → ⑪ Biomarker Derivation          compensation_candidates
 ```
@@ -179,9 +178,9 @@ classification:
   complexity: single_joint | multi_joint | compound | whole_body
 ```
 
-`laterality`는 L/R swap 처리와 motion-attribution 점검에 영향을 준다. 양측 대칭 운동은 반복별
-active-side attribution을 건너뛸 수 있고, 편측/교대 운동은 active-side 또는 role metadata를
-보존해야 한다.
+`laterality`는 L/R swap 처리와 Feature Extraction 내부의 side-role context에 영향을 준다.
+양측 대칭 운동은 반복별 active-side context를 건너뛸 수 있고, 편측/교대 운동은 active-side 또는
+role metadata를 보존해야 한다.
 
 `movement_template_id`는 posture, support/contact pattern, laterality, primary
 regions, joint actions, planes 같은 authoring axis 조합에서 도출한다. 이는 공개 운동명이 아니라
@@ -437,7 +436,7 @@ quality_rules:
 
 ## 7. Provenance 규약 (Provenance Convention)
 
-⑧-⑩에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
+⑨-⑩에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
 포함해야 한다.
 
 ```text

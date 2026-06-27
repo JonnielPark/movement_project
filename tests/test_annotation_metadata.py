@@ -149,7 +149,7 @@ def test_pipeline_annotation_report_consumes_performance_provenance():
     config.normalization.enabled = False
     config.rep_segmentation.enabled = False
     config.phase_segmentation.enabled = False
-    config.motion_attribution.enabled = False
+    config.features.role_context.enabled = False
     config.features.enabled = False
     config.biomech.enabled = False
     config.biomarker.enabled = False
@@ -186,7 +186,7 @@ def test_pipeline_exercise_definition_uses_exercise_id():
     config.normalization.enabled = False
     config.rep_segmentation.enabled = False
     config.phase_segmentation.enabled = False
-    config.motion_attribution.enabled = False
+    config.features.role_context.enabled = False
     config.features.enabled = False
     config.biomech.enabled = False
     config.biomarker.enabled = False
