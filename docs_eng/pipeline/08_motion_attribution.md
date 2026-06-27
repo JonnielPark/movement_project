@@ -1,7 +1,7 @@
 # 08. Motion Attribution
 
-**Document Version:** 1.1.1
-**Last Updated:** 2026-06-25
+**Document Version:** 1.1.3
+**Last Updated:** 2026-06-27
 **Korean Sync:** `docs/pipeline/08_motion_attribution.md` is the same-version Korean source.
 
 Pipeline step ⑧ checks whether the observed moving limb in each rep matches the
@@ -40,43 +40,29 @@ normalized coordinates    <landmark>_norm_x/y/z
 Normalized coordinates keep motion-energy comparisons independent of body size
 and camera distance.
 
-Stage-check notebook 27 follows the shared stage-check pattern, but it must not
+The public stage-check path folds this step into
+`27_motion_context_feature_extraction_test.ipynb`. The code-backed
+`attribute_motion()` helper remains separate because alternating/unilateral
+exercises still need an active-side QC path. The combined stage-check must not
 be limited to the current real sample's laterality:
 
 ```text
 Data Setup
     Prepares the real sample through ⑦ Segmentation.
 
-Definition Policy Matrix
-    Reads available exercise definitions and classifies motion-attribution
-    policy as skip, run, conditional, or not-yet-implemented from definition
-    fields such as laterality, performance side sequence, and pairable primary
-    joints.
-
-Definition Field Coverage
-    Shows whether selected definition fields are used by this stage, carried as
-    provenance/context, reserved for downstream stages, or not yet supported.
-
-Direct Real-Sample Test
+Motion Context Contract
     Runs attribute_motion on the selected real sample and verifies the expected
-    policy outcome.
-
-Synthetic Applicability Smoke Test
-    Uses a minimal generated dataframe for one runnable definition, when
-    available, to confirm the active-side attribution path without requiring a
-    new recording.
+    policy outcome, output columns, and non-mutation contract.
 
 Pipeline Integration
-    Runs the same stage through run_pipeline and verifies report provenance and
-    frame-level output contract.
+    Runs the same motion-context path through run_pipeline and verifies report
+    provenance before feature extraction consumes `FeatureContext`.
 ```
 
-The stage-check notebook may use one default real sample, but the policy matrix,
-field coverage table, and synthetic smoke test must be definition-driven rather
-than hard-coded to a single exercise. Fields that exist in the exercise
-definition but are not yet implemented should be represented as
-`not_yet_implemented`, `conditional`, or carried-forward context, not silently
-ignored.
+The stage-check notebook may use one default real sample, but motion-context
+checks should remain definition-driven rather than hard-coded to a single
+exercise. Fields that exist in the exercise definition but are not yet
+implemented should be carried forward as provenance, not silently ignored.
 
 For side-specific definitions, the stage-check policy treats `primary_body_regions`
 and `joint_actions.primary` as readiness gates. They do not change the
@@ -97,7 +83,7 @@ unknown / generic         skipped
 ```
 
 `bilateral_symmetric` skips this step even if the config flag is enabled.
-For the stage-check readiness preview, a side-specific definition is downgraded
+For later side-specific review, a side-specific definition should be downgraded
 to `conditional` when pairable primary landmarks, primary body regions, or
 primary joint actions are missing.
 
@@ -233,7 +219,45 @@ ambiguous/bilateral   → avoid strong side-specific interpretation
 ⑧ complements ④ Preprocessing: ④ handles short frame-level L/R swaps, while ⑧
 checks rep-level side consistency using segmentation and exercise context.
 
-## 9. Code Mapping
+## 9. Stage-Check Merge Boundary With ⑨
+
+The current implementation keeps ⑧ as a separate code-backed pipeline helper
+because it is useful for QC, provenance, and extension testing. The public
+stage-check path folds ⑧ checks into ⑨ Feature Extraction so the user reviews
+motion context and feature context in one place.
+
+The planned integration direction is to let ⑨ Feature Extraction own a
+`feature_context` preparation substep before computing feature values:
+
+```text
+⑨ Feature Extraction
+    1. Resolve feature context
+       - bilateral_symmetric      → bilateral symmetry / side-bias context
+       - alternating/unilateral   → active-side attribution context
+       - conditional/unsupported  → provenance warning, no strong side role
+    2. Compute spatial / temporal / control features
+    3. Attach availability, reliability, burden/provenance, and role_context
+```
+
+Under this direction, `attribute_motion()` remains a code-backed helper for
+alternating/unilateral exercises, while the public pipeline may later present
+the operation as part of feature extraction. This merge must not change the
+coordinate policy, must not turn attribution into a score, and must not apply
+active-side logic to bilateral symmetric exercises such as squat.
+
+The combined stage-check must keep these guards:
+
+```text
+1. Confirm bilateral_symmetric exercises skip active-side attribution.
+2. Confirm attribution columns, when added, do not mutate coordinates, rep_id,
+   or phase.
+3. Confirm ⑨ attaches role_context/source_fields only to context-consuming
+   FeatureRecord families.
+4. Do not remove the `attribute_motion()` helper until alternating/unilateral
+   exercise samples have been reviewed.
+```
+
+## 10. Code Mapping
 
 ```text
 src/movement/stages/motion_attribution.py

@@ -121,7 +121,13 @@ from movement.stage_context import (  # noqa: E402
     prepare_previous_stage_inputs,
     resolve_target_definitions_dir,
 )
-from movement.features import FeatureRecord, summarize_phase_to_rep  # noqa
+from movement.features import (  # noqa
+    FeatureContext,
+    FeatureRecord,
+    apply_feature_context,
+    resolve_feature_context,
+    summarize_phase_to_rep,
+)
 from movement.biomech import BiomechRecord  # noqa
 from movement.biomarker import (  # noqa: E402
     BiomarkerRecord,
@@ -175,7 +181,10 @@ __all__ = [
     "attribute_motion",
     "AttributionThresholds",
     # ⑨ features (prefer direct import from submodules)
+    "FeatureContext",
     "FeatureRecord",
+    "apply_feature_context",
+    "resolve_feature_context",
     "summarize_phase_to_rep",
     # ⑩ biomech proxy (prefer direct import from submodules)
     "BiomechRecord",

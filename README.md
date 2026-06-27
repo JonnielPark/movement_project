@@ -43,8 +43,8 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 ⑤  Normalization       신체 상대 좌표 정규화
 ⑥  Canonicalization    선택 candidate-evidence 좌표 계열
 ⑦  Segmentation        관절 움직임 추적 기반 rep/phase 반자동 분할
-⑧  Motion Attribution  반복별 활성 측(active-side) 일관성
-⑨  Feature Extraction  공간/시간/제어 피처 (반복 + 구간 단위)
+⑧  Motion Attribution  code-backed active-side context helper/QC
+⑨  Feature Extraction  motion/feature-context + 공간/시간/제어 피처
 ⑩  Biomech Proxy       CoM · 모멘트 암(moment arms) · load-shift 추세
 ⑪  Biomarker Derivation 해석 가능한 디지털 바이오마커 + 해석 규칙
 ⑫  Visualization       단계별 시각화 및 보고               [부분]
@@ -69,8 +69,8 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | ⑤ Normalization | `stages/normalization.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도; `norm` 좌표만 방출 |
 | ⑥ Canonicalization | `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | 선택 candidate-evidence 좌표 계열; 현재 `support_plane_alignment`는 기존 floor-reference 구현을 감싸는 prior이며 기본 비활성화 |
 | ⑦ Segmentation | `stages/segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
-| ⑧ Motion Attribution | `stages/motion_attribution.py` | 반복별 활성 사지(active-limb) 일관성; `performance_protocol.side_sequence` 참조; conservative / auto-correct 모드 |
-| ⑨ Feature Extraction | `features/` | ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage, compensation availability, analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
+| ⑧ Motion Attribution | `stages/motion_attribution.py` | Code-backed active-limb consistency helper; public stage-check 검토는 ⑨ feature-context inspection에 통합 |
+| ⑨ Feature Extraction | `features/` | Motion/feature-context resolution, ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage, compensation availability, analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
 | ⑩ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑪ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3); movement quality score와 data confidence 분리 |
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
@@ -145,7 +145,7 @@ movement_project/
 ├── notebook/                        # 역할별 노트북
 │   ├── 00_setup/                    # 환경, 데이터 로딩, raw 시각화
 │   ├── 10_manual_preparation/       # annotation/운동 정의 작성 및 검토 gate
-│   ├── 20_stage_checks/             # 파이프라인 단계별 검증 20-32
+│   ├── 20_stage_checks/             # 파이프라인 단계별 검증 20-31
 │   ├── 30_user_evaluation/          # 사용자 recording 전체 평가
 │   └── 90_local_research_review/    # 로컬 p01 연구 리뷰 표면
 ├── scripts/                         # 일회성 유틸리티 (베이스라인 계산 등)

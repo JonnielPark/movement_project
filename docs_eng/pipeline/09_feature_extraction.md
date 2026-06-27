@@ -1,7 +1,7 @@
 # 09. Feature Extraction
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.2.3
+**Last Updated:** 2026-06-27
 **Korean Sync:** `docs/pipeline/09_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑨ computes movement-quality features from normalized pose data. It
@@ -29,6 +29,8 @@ exercise_definition         feature_domains, angle_definitions,
                             compensation_candidates, view_metric_reliability
 recording provenance        camera_zone, camera_height_level when available
 preprocessing context       visibility, swap risk, far-side jitter, availability hooks
+motion/role context         ⑧ attribution report when available, or
+                            feature-context resolution inside this step
 ```
 
 ---
@@ -54,11 +56,75 @@ FeatureRecord without source_fields
 Absolute force/torque/length output
 Turning camera-view limitations directly into movement-quality penalties
 Mixing kinematic phase labels with kinetic phase names in feature IDs
+Using active-side attribution for bilateral symmetric exercises
 ```
 
 ---
 
-## 3. Feature Families
+## 3. Feature Context Resolution
+
+Feature Extraction owns the context produced by ⑧ Motion Attribution because
+attribution is not a score by itself. It only tells feature families how to
+interpret side roles, confidence, and provenance.
+
+The first context substep of ⑨ is:
+
+```text
+resolve_feature_context(df, exercise_definition, attribution_report=None)
+apply_feature_context(records, feature_context)
+```
+
+Conceptual output:
+
+```text
+feature_context:
+  laterality
+  role_mode                 bilateral_symmetry | active_side | unavailable
+  role_context              active_side, support_side, forward_leg, trailing_leg, etc.
+  attribution_confidence    assessed | low_confidence | not_assessed
+  context_reasons           provenance strings
+```
+
+Policy:
+
+```text
+bilateral_symmetric
+    Do not run active-side attribution. Provide bilateral symmetry / side-bias
+    context for feature families that compare left and right movement quality.
+
+alternating / unilateral_left / unilateral_right
+    Use ⑧ attribution metadata when present. If ⑧ has not run, Feature
+    Extraction may call the same code-backed helper as an internal substep,
+    provided source_fields record that fact.
+
+unilateral_unspecified / bilateral_asymmetric / unsupported
+    Do not create strong side roles. Emit conditional or not-yet-supported
+    provenance and let feature availability decide whether values are assessed.
+```
+
+This context-resolution substep must not modify coordinates, relabel reps or
+phases, create scores, or branch on `exercise_id`.
+
+Context application is intentionally narrow:
+
+```text
+spatial.symmetry.*
+    Attach bilateral symmetry context when role_mode == bilateral_symmetry.
+    This makes left/right comparison provenance explicit but does not change
+    the numeric symmetry value or its low-confidence depth gate.
+
+alternating / unilateral active-side records
+    Attach active-side context only when attribution metadata is available.
+    Ambiguous or missing attribution remains provenance, not a strong side role.
+
+all other records
+    Preserve the original role_context unless a future feature family declares
+    a context requirement.
+```
+
+---
+
+## 4. Feature Families
 
 Domain membership is encoded in the `feature_id` prefix.
 
@@ -80,7 +146,7 @@ as a missing ⑨ extractor.
 
 ---
 
-## 4. Availability And View Reliability
+## 5. Availability And View Reliability
 
 Feature extraction may compute a numeric value even when the camera view or pose
 model does not support scoring that value. Therefore `FeatureRecord.availability`
@@ -121,7 +187,7 @@ raw anatomical left/right alone.
 
 ---
 
-## 5. Phase-Aware Features
+## 6. Phase-Aware Features
 
 When ⑦ provides a `phase` column, these families may emit both rep-level and
 phase-level records:
@@ -147,7 +213,7 @@ descent/ascent ROM ratios. It is additive and must not mutate input records.
 
 ---
 
-## 6. Output Contract
+## 7. Output Contract
 
 ```python
 @dataclass
@@ -175,7 +241,7 @@ preserving phase, availability, camera-zone, and provenance fields.
 
 ---
 
-## 7. Audits
+## 8. Audits
 
 ⑨ may emit diagnostic audits beside the feature records.
 
@@ -195,7 +261,7 @@ repetitions, or create scores by themselves.
 
 ---
 
-## 8. Entry Point
+## 9. Entry Point
 
 ```python
 from movement.features import (
@@ -211,11 +277,14 @@ feat_df = features_to_dataframe(records)
 
 ---
 
-## 9. Relationship To Other Steps
+## 10. Relationship To Other Steps
 
 - ⑦ Segmentation provides `rep_id` and optional `phase`; missing phase labels
   produce rep-level features only.
-- ⑧ Motion Attribution provides side/consistency context for role-aware features.
+- ⑧ Motion Attribution currently provides side/consistency context for
+  role-aware features. The public stage-check path reviews this context inside
+  `27_motion_context_feature_extraction_test.ipynb`, while `attribute_motion()`
+  remains a helper for alternating/unilateral exercises.
 - ⑩ Biomech Proxy consumes the same normalized coordinates but emits
   `BiomechRecord`, not `FeatureRecord`.
 - ⑪ Biomarker Derivation wraps all features as pass-through biomarkers and uses
@@ -229,6 +298,8 @@ feat_df = features_to_dataframe(records)
 
 ```text
 src/movement/features/__init__.py        FeatureRecord, extract_rep_features,
+                                         FeatureContext, resolve_feature_context,
+                                         apply_feature_context,
                                          audits, summarize_phase_to_rep,
                                          features_to_dataframe
 src/movement/features/spatial.py         ROM, symmetry, shape
@@ -239,12 +310,15 @@ tests/test_feature_view_reliability.py   availability metadata
 tests/test_feature_registry_coverage.py  feature/compensation coverage audit
 tests/test_analysis_disrupting_patterns.py detectability audit
 tests/test_features_phase_grouping.py    phase-level feature behavior
+tests/test_feature_context_resolution.py feature-context resolution/application
 ```
 
 ---
 
 ## 12. Planned Extensions
 
+- Review alternating/unilateral samples before removing or hiding the
+  `attribute_motion()` helper behind ⑨.
 - More compensation rules after source fields, visibility policy, and tests exist.
 - Per-feature landmark coverage instead of coarse preprocessing summaries.
 - Role-aware feature families for lunge and plank shoulder tap.
