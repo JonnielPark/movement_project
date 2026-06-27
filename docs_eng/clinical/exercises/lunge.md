@@ -22,7 +22,7 @@ Related:
 Lunge is the main lower-body task for active-side and role-based interpretation.
 One limb acts as the forward/load-accepting limb while the other supports balance
 as the trailing limb. The study uses it to test side-sequence provenance,
-motion attribution, anterior knee travel, trunk alignment, pelvic stability, and
+side-role context, anterior knee travel, trunk alignment, pelvic stability, and
 step consistency.
 
 Left/right order is protocol-specific, not an intrinsic property of the exercise.

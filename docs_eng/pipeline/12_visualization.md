@@ -37,8 +37,7 @@ metrics.
 ⑤ Normalization       raw/norm comparison
 ⑥ Canonicalization    norm/canon/candidate comparison
 ⑦ Segmentation        rep/phase boundaries and failure points
-⑧ Motion Attribution  active-side and correction logs
-⑨ Feature Extraction  joint angles, ROM, feature availability
+⑨ Feature Extraction  side-role context, joint angles, ROM, feature availability
 ⑩ Biomech Proxy       CoM and moment-arm/load-shift proxies
 ⑪ Biomarker Scoring   domain scores, deductions, withheld features
 ⑬ Simulation          robustness sensitivity curves
@@ -89,12 +88,12 @@ Visualization stubs are intentionally retained until implementation starts.
 plot_reliability_overlay
 plot_joint_angle_timeseries
 plot_rep_timeline
-plot_attribution_chart
+plot_side_role_context_chart
 plot_phase_segmentation
 plot_biomech_overlay
 plot_biomarker_radar
 plot_biomech_load_shift
-plot_attribution_heatmap
+plot_side_role_context_heatmap
 plot_robustness_sensitivity
 plot_biomarker_score_breakdown
 save_figure(fig, path, fmt='svg')
@@ -128,8 +127,8 @@ notebook/00_setup/02_raw_visualization_test.ipynb          raw pose animation
 notebook/20_stage_checks/23_preprocessing_test.ipynb             reliability review
 notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
 notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon candidate review
-notebook/20_stage_checks/27_motion_context_feature_extraction_test.ipynb
-                                                             motion-context + feature review
+notebook/20_stage_checks/27_feature_extraction_test.ipynb
+                                                             feature + side-role context review
 ```
 
 ---

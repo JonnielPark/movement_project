@@ -118,7 +118,7 @@ class FeatureContext:
     laterality: str | None
     role_mode: str
     role_context: dict[str, str] = field(default_factory=dict)
-    attribution_confidence: str = "not_assessed"
+    role_confidence: str = "not_assessed"
     context_reasons: list[str] = field(default_factory=list)
     source_fields: list[str] = field(default_factory=list)
 
@@ -127,10 +127,15 @@ class FeatureContext:
             "laterality": self.laterality,
             "role_mode": self.role_mode,
             "role_context": self.role_context,
-            "attribution_confidence": self.attribution_confidence,
+            "role_confidence": self.role_confidence,
             "context_reasons": self.context_reasons,
             "source_fields": self.source_fields,
         }
+
+    @property
+    def attribution_confidence(self) -> str:
+        """Legacy alias for role_confidence."""
+        return self.role_confidence
 
 
 @dataclass
@@ -224,25 +229,25 @@ def _report_value(report: Any, key: str, default: Any = None) -> Any:
     return getattr(report, key, default)
 
 
-def _attribution_columns_available(df: Any) -> bool:
+def _side_role_columns_available(df: Any) -> bool:
     columns = set(getattr(df, "columns", []))
     return {
         "detected_active_limb",
         "expected_active_limb",
-        "attribution_consistent",
-        "attribution_confidence",
+        "side_role_consistent",
+        "side_role_confidence",
     }.issubset(columns)
 
 
 def resolve_feature_context(
     df: Any,
     exercise_definition: Any,
-    attribution_report: Any | None = None,
+    role_context_report: Any | None = None,
 ) -> FeatureContext:
     """Resolve side/role context for feature interpretation.
 
-    This helper is a preparation surface for the planned ⑧/⑨ merge boundary.
-    It deliberately avoids coordinate changes, rep/phase relabeling, and scoring.
+    This helper is a Feature Extraction side-role preparation surface. It
+    deliberately avoids coordinate changes, rep/phase relabeling, and scoring.
     """
 
     classification = getattr(exercise_definition, "classification", {}) or {}
@@ -254,10 +259,10 @@ def resolve_feature_context(
             laterality=laterality,
             role_mode="bilateral_symmetry",
             role_context={"symmetry_context": "bilateral_symmetric"},
-            attribution_confidence="not_assessed",
+            role_confidence="not_assessed",
             context_reasons=[
                 "bilateral_symmetric_uses_symmetry_or_side_bias_context",
-                "active_side_attribution_not_applicable",
+                "active_side_role_context_not_applicable",
             ],
             source_fields=source_fields,
         )
@@ -266,32 +271,32 @@ def resolve_feature_context(
         source_fields.extend(
             [
                 "performance_protocol.side_sequence",
-                "motion_attribution",
+                "feature_role_context",
             ]
         )
-        skipped = bool(_report_value(attribution_report, "skipped", False))
-        has_columns = _attribution_columns_available(df)
+        skipped = bool(_report_value(role_context_report, "skipped", False))
+        has_columns = _side_role_columns_available(df)
         reasons: list[str] = []
 
         if skipped:
             confidence = "low_confidence"
-            reasons.append("motion_attribution_skipped")
-        elif attribution_report is not None or has_columns:
+            reasons.append("feature_role_context_skipped")
+        elif role_context_report is not None or has_columns:
             confidence = "assessed"
-            reasons.append("motion_attribution_context_available")
+            reasons.append("feature_role_context_available")
         else:
             confidence = "low_confidence"
-            reasons.append("motion_attribution_context_missing")
+            reasons.append("feature_role_context_missing")
 
-        mode = _report_value(attribution_report, "mode")
+        mode = _report_value(role_context_report, "mode")
         if mode:
-            reasons.append(f"motion_attribution_mode_{mode}")
+            reasons.append(f"feature_role_context_mode_{mode}")
 
         return FeatureContext(
             laterality=laterality,
             role_mode="active_side",
             role_context={"side_role": "active_side"},
-            attribution_confidence=confidence,
+            role_confidence=confidence,
             context_reasons=reasons,
             source_fields=source_fields,
         )
@@ -301,7 +306,7 @@ def resolve_feature_context(
             laterality=laterality,
             role_mode="unavailable",
             role_context={},
-            attribution_confidence="low_confidence",
+            role_confidence="low_confidence",
             context_reasons=["unilateral_side_requires_context_or_manual_review"],
             source_fields=source_fields + ["performance_protocol.side_sequence"],
         )
@@ -311,7 +316,7 @@ def resolve_feature_context(
             laterality=laterality,
             role_mode="unavailable",
             role_context={},
-            attribution_confidence="not_assessed",
+            role_confidence="not_assessed",
             context_reasons=[
                 "bilateral_asymmetric_requires_side_bias_feature_policy"
             ],
@@ -322,7 +327,7 @@ def resolve_feature_context(
         laterality=laterality,
         role_mode="unavailable",
         role_context={},
-        attribution_confidence="not_assessed",
+        role_confidence="not_assessed",
         context_reasons=[f"unsupported_laterality_{laterality}"],
         source_fields=source_fields,
     )
@@ -336,7 +341,7 @@ def _record_needs_feature_context(
         return record.feature_id.startswith("spatial.symmetry.")
 
     if feature_context.role_mode == "active_side":
-        if feature_context.attribution_confidence != "assessed":
+        if feature_context.role_confidence != "assessed":
             return False
         is_side_specific = (
             ".left" in record.feature_id
@@ -362,8 +367,8 @@ def apply_feature_context(
         "feature_context.role_mode",
         "feature_context.role_context",
     ]
-    if feature_context.attribution_confidence != "not_assessed":
-        context_source_fields.append("feature_context.attribution_confidence")
+    if feature_context.role_confidence != "not_assessed":
+        context_source_fields.append("feature_context.role_confidence")
 
     for record in records:
         if not _record_needs_feature_context(record, feature_context):
@@ -957,7 +962,7 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "annotation_fallback": "annotation.starting_side and performance_protocol.side_sequence",
         "linked_compensation_candidates": ["left_right_timing_variability"],
         "linked_feature_domain_entries": ["temporal.left_right_timing_variability"],
-        "basis": "Side-order errors are protocol-adherence warnings tied to motion attribution.",
+        "basis": "Side-order errors are protocol-adherence warnings tied to side-role context.",
     },
     "missed_shoulder_tap": {
         "classification": _INTERPRETATION_LIMITATION_FACTOR,

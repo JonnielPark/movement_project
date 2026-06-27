@@ -97,7 +97,8 @@ specificity
     Do unrelated metrics stay relatively stable under unmatched distortion?
 
 false_correction_rate
-    Does motion attribution introduce wrong side corrections under distortion?
+    Does Feature Extraction side-role context introduce wrong active-side context under
+    distortion?
 ```
 
 Metrics should be summarized at rep level and, when available, phase level.

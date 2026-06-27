@@ -23,7 +23,7 @@ pose CSV without guessing which notebook to open.
     24_normalization_test.ipynb
     25_canonicalization_test.ipynb
     26_segmentation_test.ipynb
-    27_motion_context_feature_extraction_test.ipynb
+    27_feature_extraction_test.ipynb
     28_biomechanical_proxy_test.ipynb
     29_biomarker_scoring_test.ipynb
     30_visualization_test.ipynb

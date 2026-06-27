@@ -12,7 +12,7 @@ Planned (raise NotImplementedError):
     plot_reliability_overlay()         — Per-frame reliability mask overlay
     plot_joint_angle_timeseries()      — Joint angle time series (deg)
     plot_rep_timeline()                — Rep boundary timeline with segment labels
-    plot_attribution_chart()           — Active-side attribution result chart
+    plot_side_role_context_chart()      — Feature side-role context result chart
     plot_biomarker_radar()             — Biomarker radar chart
 
 Coordinate modes:
@@ -310,22 +310,22 @@ def plot_rep_timeline(
     raise NotImplementedError("plot_rep_timeline is not yet implemented.")
 
 
-def plot_attribution_chart(
+def plot_side_role_context_chart(
     df,
     attribution_col: str = "detected_active_limb",
-    confidence_col: str = "attribution_confidence",
+    confidence_col: str = "side_role_confidence",
     expected_col: str = "expected_active_limb",
     height: int = 300,
     width: int = 900,
 ) -> "go.Figure":
-    """Chart ⑧ motion attribution results per frame.
+    """Chart ⑨ Feature Extraction side-role context results per frame.
 
-    Shows detected vs. expected active side and attribution confidence.
+    Shows detected vs. expected active side and side-role confidence.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Dataframe with motion attribution output columns.
+        Dataframe with side-role context output columns.
     attribution_col : str
     confidence_col : str
     expected_col : str
@@ -336,7 +336,13 @@ def plot_attribution_chart(
     -------
     go.Figure
     """
-    raise NotImplementedError("plot_attribution_chart is not yet implemented.")
+    raise NotImplementedError(
+        "plot_side_role_context_chart is not yet implemented."
+    )
+
+
+# Legacy alias for older notebooks/imports.
+plot_attribution_chart = plot_side_role_context_chart
 
 
 def plot_biomarker_radar(

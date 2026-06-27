@@ -2,7 +2,7 @@
 # Step order:
 #   ①  validation           ②  annotation          ③  exercise_definition
 #   ④  preprocessing        ⑤  normalization        ⑥  canonicalization
-#   ⑦  segmentation         ⑧  motion_attribution   ⑨  features
+#   ⑦  segmentation         ⑨  features (includes side-role context)
 #   ⑩  biomech              ⑪  biomarker
 #   ⑫  visualization        (called outside the runner)
 #   ⑬  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
@@ -175,21 +175,19 @@ phase_segmentation:
   multi_inflection_policy: global_extremum   # global_extremum | first | reject_rep
   minimum_rep_length_frames: 8
 
-# ── ⑧ Motion Attribution ─────────────────────────────────────────────────────
-motion_attribution:
-  enabled: false
-  thresholds:
-    active: 0.70              # motion_share > τ_active → unilateral detection
-    ambiguous: 0.55           # τ_ambiguous < share ≤ τ_active → ambiguous
-    swap: 0.85                # minimum confidence to perform swap in auto_correct mode
-  mode: conservative          # conservative | auto_correct
-
 # ── ⑨ Feature Extraction ─────────────────────────────────────────────────────
 # extract_rep_features() runs all spatial / temporal / control features.
 # When phase_segmentation is enabled and the phase column is populated,
 # features in PHASE_AWARE_FEATURE_FAMILIES are also emitted per (rep_id, phase).
 features:
   enabled: false
+  role_context:
+    enabled: false
+    thresholds:
+      active: 0.70            # motion_share > τ_active → active-side evidence
+      ambiguous: 0.55         # τ_ambiguous < share ≤ τ_active → ambiguous
+      swap: 0.85              # legacy auto_correct threshold; no coordinate changes
+    mode: conservative        # conservative | auto_correct
   spatial:    {rom: true, symmetry: true, shape: true}
   temporal:   {tempo: true, variability: true}
   control:    {stability: true, compensation: true}

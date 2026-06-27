@@ -94,6 +94,6 @@ rep_unit
 protocol_cycle_id
 ```
 
-These fields are provenance for reports, ⑦ motion attribution, feature
+These fields are provenance for reports, ⑨ Feature Extraction role context, feature
 availability, and interpretation-confidence notes. They are not automatic
 movement-quality penalties by themselves.

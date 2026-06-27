@@ -25,7 +25,6 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Canonicalization
 → ⑦ Segmentation
-→ ⑧ Motion Attribution
 → ⑨ Feature Extraction
 → ⑩ Biomech Proxy              ← 본 단계
 → ⑪ Biomarker Scoring

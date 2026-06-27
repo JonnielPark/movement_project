@@ -1,6 +1,6 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.37
+**문서 버전:** 1.4.38
 **최종 갱신:** 2026-06-27
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
@@ -14,7 +14,7 @@
 | 버전 | 파일 | 내용 |
 |---|---|---|
 | 1.6.2 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.37 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.38 | [overview.md](overview.md) | 전체 파이프라인 개요 |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 0.2.22 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
@@ -27,8 +27,7 @@
 | 2.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 2.0.0 | [06_canonicalization.md](pipeline/06_canonicalization.md) | ⑥ Canonicalization |
 | 1.3.0 | [07_segmentation.md](pipeline/07_segmentation.md) | ⑦ Segmentation |
-| 1.1.3 | [08_motion_attribution.md](pipeline/08_motion_attribution.md) | ⑧ Motion Attribution |
-| 1.2.3 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
+| 1.2.4 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
 | 1.2.0 | [10_biomechanical_proxy.md](pipeline/10_biomechanical_proxy.md) | ⑩ Biomech Proxy |
 | 1.2.0 | [11_biomarker_scoring.md](pipeline/11_biomarker_scoring.md) | ⑪ Biomarker Scoring |
 | 1.1.0 | [12_visualization.md](pipeline/12_visualization.md) | ⑫ Visualization |
@@ -123,8 +122,7 @@ view_metric_reliability  zone별 metric-family reliability prior
     ⑤  Normalization        골반 중심 평행이동 + 몸통 길이 중앙값 척도화
     ⑥  Canonicalization     선택 analysis-space 후보 좌표(raw/norm 보존)
     ⑦  Segmentation         관절 움직임 추적 기반 rep/phase 반자동 분할
-    ⑧  Motion Attribution   code-backed active-side context helper/QC
-    ⑨  Feature Extraction   motion/feature-context resolution + 공간/시간/제어 피처 + audit reports
+    ⑨  Feature Extraction   side-role context resolution + 공간/시간/제어 피처 + audit reports
     ⑩  Biomech Proxy        CoM, 모멘트 암(moment arms), 인체 계측(Winter 1990)
     ⑪  Biomarker Derivation BiomarkerRecord(개별 지표) + BiomarkerScoreRecord(반복 단위 종합)
     ⑫  Visualization        ①–⑪ 러너(runner) 외부에서 호출; 진단 및 결과 차트
@@ -162,8 +160,7 @@ view_metric_reliability  zone별 metric-family reliability prior
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준으로 좌표를 평행이동하고, 시퀀스 단위 몸통 길이 중앙값으로 척도화한다. | Normalized DataFrame |
 | ⑥ Canonicalization | Normalized DataFrame, 운동/카메라/지지면 prior | support-plane, movement-plane, protocol-height, anthropometric prior를 이용해 선택 analysis-space 후보 좌표 계열을 방출할 수 있다. raw/norm/candidate 좌표 계열은 분리하고 모든 후보는 confidence, burden, residual, sensitivity provenance와 함께 보고한다. | 선택 후보 좌표 columns, canonicalization report, correction diagnostics |
 | ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑧ Motion Attribution | Segmented DataFrame, laterality/execution-pattern 설정 | Alternating/unilateral 운동의 active-side consistency를 추정하고, bilateral symmetric 운동에는 skip provenance를 방출한다. Public stage-check 경로에서는 ⑨ feature extraction과 함께 검토한다. | active-side flag, attribution report |
-| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, 선택 ⑧ context | motion/feature context를 해석한 뒤 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, audit reports |
+| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role 설정 | Feature extraction 내부에서 side-role context를 해석한 뒤 반복 단위 및 phase 단위의 ROM, symmetry, trajectory, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-candidate availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, feature-role-context report, audit reports |
 | ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
 | ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | 개별 지표를 BiomarkerRecord로 변환하고, Z-score 기반 도메인 점수와 종합 점수를 산출한다. 좌표 보정량과 관측 품질은 movement quality score와 분리된 data-confidence/provenance로 해석한다. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑫ Visualization | 단계별 DataFrame, records, reports | 신뢰도, 관절각, phase, feature, biomarker 결과를 진단 및 결과 차트로 시각화한다. | figures |
@@ -210,7 +207,7 @@ Feature availability와 관측 신뢰도는 movement quality와 분리한다. �
 ```text
 구현됨
     ①-⑪ pipeline runner, split exercise YAML loading, annotation, preprocessing,
-    normalization, canonicalization candidate reports, segmentation, motion attribution, features, biomech proxy,
+    normalization, canonicalization candidate reports, segmentation, feature-side-role context, features, biomech proxy,
     biomarker scoring, interpretation rules, synthetic-normal baseline.
 
 Review-only / 기본 비활성

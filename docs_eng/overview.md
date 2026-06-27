@@ -1,6 +1,6 @@
 # Overview
 
-**Document Version:** 1.4.37
+**Document Version:** 1.4.38
 **Last Updated:** 2026-06-27
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
@@ -14,7 +14,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | Version | File | Content |
 |---|---|---|
 | 1.6.2 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.37 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.38 | [overview.md](overview.md) | Overall pipeline overview |
 | 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
 | 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 0.2.22 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | Notebook-first exercise authoring and YAML generation plan |
@@ -27,8 +27,7 @@ For terminology definitions see [`terminology.md`](terminology.md).
 | 2.0.0 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization |
 | 2.0.0 | [06_canonicalization.md](pipeline/06_canonicalization.md) | ⑥ Canonicalization |
 | 1.3.0 | [07_segmentation.md](pipeline/07_segmentation.md) | ⑦ Segmentation |
-| 1.1.3 | [08_motion_attribution.md](pipeline/08_motion_attribution.md) | ⑧ Motion Attribution |
-| 1.2.3 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
+| 1.2.4 | [09_feature_extraction.md](pipeline/09_feature_extraction.md) | ⑨ Feature Extraction |
 | 1.2.0 | [10_biomechanical_proxy.md](pipeline/10_biomechanical_proxy.md) | ⑩ Biomech Proxy |
 | 1.2.0 | [11_biomarker_scoring.md](pipeline/11_biomarker_scoring.md) | ⑪ Biomarker Scoring |
 | 1.1.0 | [12_visualization.md](pipeline/12_visualization.md) | ⑫ Visualization |
@@ -134,8 +133,7 @@ Steps
     ⑤  Normalization        hip-center translation + median torso-length scale
     ⑥  Canonicalization     optional analysis-space candidate coordinates (raw/norm preserved)
     ⑦  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
-    ⑧  Motion Attribution   code-backed active-side context helper/QC
-    ⑨  Feature Extraction   motion/feature-context resolution + spatial / temporal / control features + audit reports
+    ⑨  Feature Extraction   side-role context resolution + spatial / temporal / control features + audit reports
     ⑩  Biomech Proxy        CoM, moment arms, anthropometry (Winter 1990)
     ⑪  Biomarker Derivation BiomarkerRecord (individual metrics) + BiomarkerScoreRecord (per-rep composite)
     ⑫  Visualization        called outside the ①–⑪ runner; diagnostic and result charts
@@ -173,8 +171,7 @@ Output
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Canonicalization | Normalized DataFrame, exercise/camera/support priors | Optionally emits analysis-space candidate coordinate families using support-plane, movement-plane, protocol-height, or anthropometric priors. Raw/norm/candidate coordinate families remain separate and every candidate is reported with confidence, burden, residual, and sensitivity provenance. | Optional candidate coordinate columns, canonicalization report, correction diagnostics |
 | ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑧ Motion Attribution | Segmented DataFrame, laterality/execution-pattern settings | Estimates active-side consistency for alternating/unilateral exercises and emits skip provenance for bilateral symmetric exercises. The public stage-check path reviews this together with ⑨ feature extraction. | active-side flag, attribution report |
-| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, optional ⑧ context | Resolves motion/feature context, then computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, audit reports |
+| ⑨ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role settings | Resolves side-role context inside feature extraction, then computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, feature-role-context report, audit reports |
 | ⑩ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
 | ⑪ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑫ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
@@ -226,7 +223,7 @@ penalty.
 ```text
 Implemented
     ①-⑪ pipeline runner, split exercise YAML loading, annotation, preprocessing,
-    normalization, canonicalization candidate reports, segmentation, motion attribution, features, biomech proxies,
+    normalization, canonicalization candidate reports, segmentation, feature-side-role context, features, biomech proxies,
     biomarker scoring, interpretation rules, and synthetic-normal baseline.
 
 Review-only / disabled by default

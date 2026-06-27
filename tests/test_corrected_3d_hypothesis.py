@@ -151,7 +151,7 @@ def test_pipeline_emits_corrected_3d_review_without_scoring_use():
     config.canonicalization.corrected_3d_hypothesis.output_family = "review"
     config.rep_segmentation.enabled = False
     config.phase_segmentation.enabled = False
-    config.motion_attribution.enabled = False
+    config.features.role_context.enabled = False
     config.features.enabled = False
     config.biomech.enabled = False
     config.biomarker.enabled = False
