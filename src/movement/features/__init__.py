@@ -21,7 +21,9 @@ Unit convention       : torso_length_ratio (dimensionless) or degree.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -317,9 +319,7 @@ def resolve_feature_context(
             role_mode="unavailable",
             role_context={},
             role_confidence="not_assessed",
-            context_reasons=[
-                "bilateral_asymmetric_requires_side_bias_feature_policy"
-            ],
+            context_reasons=["bilateral_asymmetric_requires_side_bias_feature_policy"],
             source_fields=source_fields,
         )
 
@@ -349,7 +349,9 @@ def _record_needs_feature_context(
             or ".left_" in record.feature_id
             or ".right_" in record.feature_id
         )
-        return record.feature_id.startswith("control.compensation.") and is_side_specific
+        return (
+            record.feature_id.startswith("control.compensation.") and is_side_specific
+        )
 
     return False
 
@@ -1504,8 +1506,188 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
     return pd.DataFrame(rows)
 
 
+FEATURE_REQUIRED_COLUMNS = [
+    "feature_id",
+    "exercise_id",
+    "rep_id",
+    "phase",
+    "value",
+    "unit",
+    "source_fields",
+    "availability",
+    "availability_reasons",
+    "view_reliability",
+    "depth_dependency",
+    "model_depth_reliability",
+    "landmark_quality",
+    "camera_zone",
+    "role_context",
+]
+
+
+def _serialize_feature_output_value(value: Any) -> Any:
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    try:
+        import pandas as pd
+
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return value
+
+
+def _feature_output_dict(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "as_dict"):
+        return value.as_dict()
+    raise TypeError(f"Cannot serialize {type(value)!r} as a feature output dict.")
+
+
+def _relative_feature_output_path(path: Path, project_root: Path | None) -> str:
+    if project_root is None:
+        return str(path)
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
+
+
+def _assert_feature_output_round_trip(
+    *,
+    csv_path: Path,
+    expected_rows: int,
+    required_columns: list[str],
+) -> "pd.DataFrame":
+    import pandas as pd
+
+    reloaded = pd.read_csv(csv_path)
+    if len(reloaded) != expected_rows:
+        raise AssertionError(
+            f"Saved row count mismatch for {csv_path}: "
+            f"expected {expected_rows}, got {len(reloaded)}."
+        )
+    for column in required_columns:
+        if column not in reloaded.columns:
+            raise AssertionError(f"Saved feature CSV missing column: {column}")
+    if "source_fields" in reloaded.columns:
+        source_lengths = reloaded["source_fields"].astype(str).str.len()
+        if not source_lengths.gt(0).all():
+            raise AssertionError("Saved feature CSV contains empty source_fields.")
+    return reloaded
+
+
+def _missing_feature_source_fields(feature_df: "pd.DataFrame") -> int:
+    if "source_fields" not in feature_df.columns:
+        return len(feature_df)
+    return int(feature_df["source_fields"].fillna("").astype(str).str.len().eq(0).sum())
+
+
+def save_feature_outputs(
+    *,
+    feature_df: "pd.DataFrame",
+    recording_id: str,
+    exercise_id: str,
+    output_dir: str | Path,
+    feature_context: Any,
+    feature_role_context_report: Any,
+    project_root: str | Path | None = None,
+    required_columns: list[str] | None = None,
+) -> "pd.DataFrame":
+    """Save ⑧ Feature Extraction table/context/QC and verify CSV round-trip."""
+
+    import pandas as pd
+
+    required = required_columns or FEATURE_REQUIRED_COLUMNS
+    output_path = Path(output_dir)
+    root = Path(project_root) if project_root is not None else None
+    output_path.mkdir(parents=True, exist_ok=True)
+    csv_path = output_path / f"{recording_id}_features.csv"
+    context_path = output_path / f"{recording_id}_feature_context.json"
+    qc_path = output_path / f"{recording_id}_feature_qc.json"
+
+    csv_df = feature_df.copy()
+    for column in ("source_fields", "availability_reasons", "role_context"):
+        if column in csv_df.columns:
+            csv_df[column] = csv_df[column].map(_serialize_feature_output_value)
+    csv_df.to_csv(csv_path, index=False, encoding="utf-8")
+
+    context_payload = {
+        "recording_id": recording_id,
+        "exercise_id": exercise_id,
+        "feature_context": _feature_output_dict(feature_context),
+        "feature_role_context_report": _feature_output_dict(
+            feature_role_context_report
+        ),
+    }
+    context_path.write_text(
+        json.dumps(context_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    qc_payload = {
+        "recording_id": recording_id,
+        "exercise_id": exercise_id,
+        "feature_rows": int(len(feature_df)),
+        "feature_columns": list(feature_df.columns),
+        "availability_counts": feature_df["availability"]
+        .value_counts(dropna=False)
+        .to_dict(),
+        "phase_counts": feature_df["phase"]
+        .fillna("rep_level")
+        .value_counts()
+        .to_dict(),
+        "feature_family_counts": (
+            feature_df.assign(
+                feature_family=feature_df["feature_id"]
+                .str.split(".")
+                .str[:2]
+                .str.join(".")
+            )
+            .groupby("feature_family", dropna=False)
+            .size()
+            .to_dict()
+        ),
+        "missing_source_fields": _missing_feature_source_fields(feature_df),
+    }
+    qc_path.write_text(
+        json.dumps(qc_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    reloaded = _assert_feature_output_round_trip(
+        csv_path=csv_path,
+        expected_rows=len(feature_df),
+        required_columns=required,
+    )
+    return pd.DataFrame(
+        [
+            {
+                "artifact": "features_csv",
+                "path": _relative_feature_output_path(csv_path, root),
+                "rows": len(reloaded),
+            },
+            {
+                "artifact": "feature_context_json",
+                "path": _relative_feature_output_path(context_path, root),
+                "rows": 1,
+            },
+            {
+                "artifact": "feature_qc_json",
+                "path": _relative_feature_output_path(qc_path, root),
+                "rows": 1,
+            },
+        ]
+    )
+
+
 __all__ = [
     "AnalysisDisruptingPatternDetectabilityReport",
+    "FEATURE_REQUIRED_COLUMNS",
     "FeatureContext",
     "FeatureRecord",
     "FeatureRegistryCoverageReport",
@@ -1516,6 +1698,7 @@ __all__ = [
     "audit_feature_registry",
     "extract_rep_features",
     "resolve_feature_context",
+    "save_feature_outputs",
     "summarize_phase_to_rep",
     "features_to_dataframe",
 ]

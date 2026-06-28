@@ -1,7 +1,7 @@
 # 08. Feature Extraction
 
-**Document Version:** 1.2.4
-**Last Updated:** 2026-06-27
+**Document Version:** 1.2.5
+**Last Updated:** 2026-06-28
 **Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
 Pipeline step ⑧ computes movement-quality features from normalized pose data. It
@@ -221,6 +221,8 @@ control.compensation  rep-level only unless a separate phase-specific rule is de
 
 `summarize_phase_to_rep()` may add derived rep-level summaries, such as
 descent/ascent ROM ratios. It is additive and must not mutate input records.
+The ⑧ pipeline report includes these derived summary records beside the direct
+feature records so saved outputs and downstream checks use the same feature set.
 
 ---
 
@@ -249,6 +251,31 @@ class FeatureRecord:
 
 `features_to_dataframe()` flattens record lists for tabular output while
 preserving phase, availability, camera-zone, and provenance fields.
+
+Saved stage-check outputs should keep the feature table and diagnostic context
+separate:
+
+```text
+data/processed/features/<recording_id>_features.csv
+    Tabular `features_to_dataframe()` output. Required columns include
+    feature_id, exercise_id, rep_id, phase, value, unit, source_fields,
+    availability, availability_reasons, view_reliability, depth_dependency,
+    model_depth_reliability, landmark_quality, camera_zone, and role_context.
+
+data/processed/features/<recording_id>_feature_context.json
+    Feature-context and role-context report for ⑧. This file records why
+    side-role context was applied, skipped, or withheld, without changing
+    feature values or creating scores.
+
+data/processed/features/<recording_id>_feature_qc.json
+    Compact counts for follow-along checks, such as row counts, availability
+    counts, feature-family counts, phase counts, and missing source_fields.
+```
+
+CSV round-trips must preserve the row count and required columns. Structured
+fields such as `source_fields`, `availability_reasons`, and `role_context` may
+be serialized for the CSV file, but the in-memory records remain the canonical
+object contract for later code paths.
 
 ---
 

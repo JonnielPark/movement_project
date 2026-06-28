@@ -2,7 +2,9 @@ import pandas as pd
 
 from movement.pipeline import NormalizationConfig, PreprocessingConfig
 from movement.stage_context import (
+    build_stage_check_pipeline_config,
     prepare_previous_stage_inputs,
+    recording_id_from_pose_csv,
     resolve_target_definitions_dir,
 )
 
@@ -71,3 +73,40 @@ def test_resolve_target_definitions_dir_falls_back_to_runtime_definitions():
     definitions_dir = resolve_target_definitions_dir("squat")
 
     assert (definitions_dir / "squat.yaml").exists()
+
+
+def test_recording_id_from_pose_csv_uses_pose_filename_convention():
+    recording_id = recording_id_from_pose_csv(
+        "data/pose/example/p01_squat_set1_output_pose.csv"
+    )
+
+    assert recording_id == "p01_squat_set1"
+
+
+def test_build_stage_check_pipeline_config_copies_stage_configs():
+    norm_config = NormalizationConfig(
+        enabled=True,
+        keep_reference_columns=True,
+        model_depth_scale=0.5,
+    )
+
+    cfg = build_stage_check_pipeline_config(
+        exercise_id="draft_squat",
+        definitions_dir="data/definitions/exercises",
+        annotation_csv="annotation.csv",
+        normalization_config=norm_config,
+        enable_rep_segmentation=True,
+        enable_phase_segmentation=True,
+        enable_features=True,
+        enable_role_context=True,
+    )
+
+    assert cfg.annotation.enabled is True
+    assert cfg.annotation.path == "annotation.csv"
+    assert cfg.exercise_definition.exercise_id == "draft_squat"
+    assert cfg.rep_segmentation.enabled is True
+    assert cfg.phase_segmentation.enabled is True
+    assert cfg.features.enabled is True
+    assert cfg.features.role_context.enabled is True
+    assert cfg.normalization.model_depth_scale == 0.5
+    assert cfg.normalization is not norm_config

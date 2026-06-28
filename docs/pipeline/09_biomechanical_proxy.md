@@ -1,13 +1,18 @@
 # 09. 생체역학 프록시 (Biomechanical Proxy)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.3.0
+**최종 갱신:** 2026-06-28
 **영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑨는 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
-무게중심(CoM) 궤적, 2D moment-arm proxy, 세트 내 load-shift tendency.
-단일 카메라 환경에서는 절대 힘, 토크, 피험자 질량을 추정할 수 없다. 출력은 상대적
-부하 분포 경향만 설명한다.
+무게중심(CoM) 궤적 proxy, 2D moment-arm proxy, 세트 내 load-shift tendency.
+단일 카메라 환경에서는 절대 힘, 토크, calibrated vertical displacement, 피험자 질량을
+추정할 수 없다. 출력은 상대적 부하 분포 경향만 설명한다.
+
+현재 MediaPipe 계열 단안 `z`는 calibrated depth 또는 gravity axis가 아니라 model-depth
+evidence이므로, ⑨ 출력은 기본적으로 low-confidence biomechanical proxy evidence로 방출한다.
+값은 보고하고 점검할 수 있지만, availability/provenance metadata에 근거한 후속 scoring 정책이
+명시적으로 weight를 올리기 전까지 강한 composite-score evidence가 되면 안 된다.
 
 허용 출력 단위는 `torso_length_ratio`, `torso_length_ratio_per_rep`, `degree`,
 `dimensionless`이다. `N`, `N·m`, `kg`, `m` 같은 절대 단위는 버그로 간주한다.
@@ -51,7 +56,7 @@ Pose CSV
 ```text
 - 인구집단 수준의 분절 질량 및 CoM 비율
 - 분절 질량 가중 프록시로서의 전신 CoM
-- 투영 평면에서의 2D moment-arm 거리
+- 투영 평면에서의 2D moment-arm proxy 거리
 - 단안 환경 강건성을 위한 visibility 기반 frame 제외
 - 관절 간 상대적 부하 분포 경향
 ```
@@ -62,6 +67,7 @@ Pose CSV
 - 절대 힘 또는 토크
 - 피험자 질량, 외부 부하, kg 기반 스케일링
 - meter/mm 출력
+- model-depth 값을 calibrated gravity/depth evidence로 취급
 - 단일 frame 순간 관절힘 주장
 - 임상 진단 또는 질환 분류
 ```
@@ -104,7 +110,7 @@ CoM metrics:
 
 ```text
 biomech.com.range_x      좌우 CoM 변위 범위
-biomech.com.range_z      수직 CoM 변위 범위
+biomech.com.range_z      normalized z-axis CoM 변위 범위
 biomech.com.path_length  전체 CoM 궤적 길이
 unit                     torso_length_ratio
 ```
@@ -117,7 +123,7 @@ biomech.moment_arm.hip.<side>.median
 unit = torso_length_ratio
 ```
 
-값은 CoM에서 부하 부담 관절축 proxy까지의 frame별 수직 거리 중앙값이다.
+값은 현재 정규화 투영에서 CoM에서 부하 부담 관절축 proxy까지의 frame별 수직 거리 중앙값이다.
 관절은 `biomechanical_focus.main_load_regions`에서 선택한다. 현재 구현은 hip과 knee proxy를
 산출하며, ankle proxy는 아직 구현하지 않았다.
 
@@ -168,6 +174,11 @@ class BiomechRecord:
     visibility_weight_applied: bool
     n_frames_used: int
     n_frames_excluded_low_visibility: int
+    availability: str = "low_confidence"
+    availability_reasons: list[str] = field(default_factory=list)
+    depth_dependency: str = "high"
+    model_depth_reliability: str = "low"
+    landmark_quality: str = "unknown"
 ```
 
 검증 규칙:
@@ -175,7 +186,38 @@ class BiomechRecord:
 ```text
 unit은 torso_length_ratio | torso_length_ratio_per_rep | degree | dimensionless 중 하나
 source_fields는 비어 있으면 안 됨
+availability는 assessed | low_confidence | not_assessed 중 하나
+depth_dependency는 none | low | moderate | high | unknown 중 하나
+model_depth_reliability는 high | moderate | low | unknown 중 하나
 ```
+
+기본 availability 정책:
+
+```text
+CoM trajectory proxies       low_confidence; model-depth 및 segment-ratio proxy
+moment-arm proxies           low_confidence; model-depth input을 가진 projected 2D proxy
+load-shift slopes            low_confidence; low-confidence moment-arm record에서 파생
+```
+
+이 정책은 ⑨를 보고와 이후 비교에는 사용할 수 있게 두면서, calibration 없는 monocular-depth proxy
+값이 조용히 강한 score로 들어가는 것을 막는다.
+
+저장되는 stage-check 산출물:
+
+```text
+data/processed/biomech/<recording_id>_biomech.csv
+    BiomechRecord tabular output. 필수 column은 metric_id, exercise_id, rep_id,
+    value, unit, source_fields, note, visibility_weight_applied, n_frames_used,
+    n_frames_excluded_low_visibility, availability, availability_reasons,
+    depth_dependency, model_depth_reliability, landmark_quality다.
+
+data/processed/biomech/<recording_id>_biomech_qc.json
+    Follow-along check용 compact count. row count, unit count,
+    availability count, metric-family count, missing source_fields 등을 담는다.
+```
+
+CSV round-trip은 row count와 필수 column을 보존해야 한다. `source_fields`,
+`availability_reasons` 같은 구조화 field는 CSV 호환성을 위해 직렬화할 수 있다.
 
 ## 7. 진입점 (Entry Point)
 
@@ -211,6 +253,8 @@ biomech.load_shift.*    biomech.moment_arm.* records에서 파생
 ```
 
 ⑩ Biomarker Scoring은 biomarker record로 변환할 때 이 field를 보존한다.
+Composite scoring은 후속 scoring 정책이 명시적으로 달리 정하지 않는 한
+`availability != assessed`를 withheld 또는 minimal-gravity evidence로 다뤄야 한다.
 
 ## 9. 코드 매핑 (Code Mapping)
 

@@ -7,12 +7,48 @@ Verifies slope sign, minimum-rep guard, and metric_id format.
 Synthetic input: BiomechRecord objects constructed directly
 (no pose dataframe required).
 """
+
 from __future__ import annotations
 
 from movement.biomech import BiomechRecord
 from movement.biomech.load_shift import compute_load_shift
+from movement.biomarker import from_biomech_record
 
 _SF = ["biomechanical_focus.main_load_regions"]
+
+
+def test_biomech_record_defaults_to_low_confidence_depth_proxy_metadata():
+    record = BiomechRecord(
+        metric_id="biomech.com.range_x",
+        exercise_id="squat",
+        rep_id=1,
+        value=0.1,
+        unit="torso_length_ratio",
+        source_fields=["biomechanical_focus.expected_com_motion"],
+    )
+
+    assert record.availability == "low_confidence"
+    assert "monocular_biomech_proxy_low_confidence" in record.availability_reasons
+    assert record.depth_dependency == "high"
+    assert record.model_depth_reliability == "low"
+
+
+def test_biomech_record_availability_is_preserved_in_biomarker_conversion():
+    record = BiomechRecord(
+        metric_id="biomech.moment_arm.knee.left.median",
+        exercise_id="squat",
+        rep_id=1,
+        value=0.2,
+        unit="torso_length_ratio",
+        source_fields=["biomechanical_focus.main_load_regions"],
+    )
+
+    biomarker = from_biomech_record(record, definition_version="test")
+
+    assert biomarker.availability == "low_confidence"
+    assert biomarker.availability_reasons == record.availability_reasons
+    assert biomarker.depth_dependency == "high"
+    assert biomarker.model_depth_reliability == "low"
 
 
 def _make_records(
@@ -36,6 +72,7 @@ def _make_records(
 
 
 # ── slope sign ────────────────────────────────────────────────────────────────
+
 
 class TestSlopeSign:
     def test_pure_decreasing_gives_negative_slope(self):
@@ -66,6 +103,7 @@ class TestSlopeSign:
 
 # ── minimum rep guard ─────────────────────────────────────────────────────────
 
+
 class TestMinRepGuard:
     def test_two_reps_produces_no_output(self):
         recs = _make_records("knee", "left", [0.50, 0.30])
@@ -84,6 +122,7 @@ class TestMinRepGuard:
 
 
 # ── metric_id and unit ────────────────────────────────────────────────────────
+
 
 class TestMetadataFormat:
     def test_metric_id_format(self):
@@ -120,6 +159,7 @@ class TestMetadataFormat:
 
 
 # ── multiple joints ────────────────────────────────────────────────────────────
+
 
 class TestMultipleJoints:
     def test_knee_and_hip_both_returned(self):

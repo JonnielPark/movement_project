@@ -133,6 +133,11 @@ def from_biomech_record(
         value=biomech.value,
         unit=biomech.unit,
         note=note or biomech.note,
+        availability=getattr(biomech, "availability", None),
+        availability_reasons=list(getattr(biomech, "availability_reasons", []) or []),
+        depth_dependency=getattr(biomech, "depth_dependency", None),
+        model_depth_reliability=getattr(biomech, "model_depth_reliability", None),
+        landmark_quality=getattr(biomech, "landmark_quality", None),
     )
 
 

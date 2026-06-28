@@ -19,8 +19,10 @@ Unit restriction      : all outputs in torso_length_ratio; absolute units are a 
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -43,6 +45,11 @@ class BiomechRecord:
     visibility_weight_applied        : True if low-visibility frames were excluded
     n_frames_used                    : number of frames included in the computation
     n_frames_excluded_low_visibility : frames excluded due to low visibility
+    availability                     : scoring availability gate
+    availability_reasons             : machine-readable availability provenance
+    depth_dependency                 : dependency on monocular model-depth evidence
+    model_depth_reliability          : reliability of pose-estimator depth evidence
+    landmark_quality                 : landmark quality summary when available
     """
 
     metric_id: str
@@ -55,6 +62,11 @@ class BiomechRecord:
     visibility_weight_applied: bool = False
     n_frames_used: int = 0
     n_frames_excluded_low_visibility: int = 0
+    availability: str = "low_confidence"
+    availability_reasons: list[str] = field(default_factory=list)
+    depth_dependency: str = "high"
+    model_depth_reliability: str = "low"
+    landmark_quality: str = "unknown"
 
     def __post_init__(self) -> None:
         if self.unit not in (
@@ -72,6 +84,29 @@ class BiomechRecord:
                 f"BiomechRecord '{self.metric_id}': source_fields is empty. "
                 "Provenance fields from the exercise definition must be specified."
             )
+        valid_availability = {"assessed", "low_confidence", "not_assessed"}
+        if self.availability not in valid_availability:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid availability "
+                f"{self.availability!r}."
+            )
+        valid_depth_dependency = {"none", "low", "moderate", "high", "unknown"}
+        if self.depth_dependency not in valid_depth_dependency:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid depth_dependency "
+                f"{self.depth_dependency!r}."
+            )
+        valid_model_depth_reliability = {"high", "moderate", "low", "unknown"}
+        if self.model_depth_reliability not in valid_model_depth_reliability:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid model_depth_reliability "
+                f"{self.model_depth_reliability!r}."
+            )
+        if self.availability == "low_confidence" and not self.availability_reasons:
+            self.availability_reasons = [
+                "monocular_biomech_proxy_low_confidence",
+                "model_depth_reliability_low",
+            ]
 
 
 def extract_rep_biomech(
@@ -152,4 +187,147 @@ def extract_rep_biomech(
     return records
 
 
-__all__ = ["BiomechRecord", "extract_rep_biomech", "compute_load_shift"]
+BIOMECH_REQUIRED_COLUMNS = [
+    "metric_id",
+    "exercise_id",
+    "rep_id",
+    "value",
+    "unit",
+    "source_fields",
+    "note",
+    "visibility_weight_applied",
+    "n_frames_used",
+    "n_frames_excluded_low_visibility",
+    "availability",
+    "availability_reasons",
+    "depth_dependency",
+    "model_depth_reliability",
+    "landmark_quality",
+]
+
+
+def _serialize_biomech_output_value(value: Any) -> Any:
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    try:
+        import pandas as pd
+
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return value
+
+
+def _relative_biomech_output_path(path: Path, project_root: Path | None) -> str:
+    if project_root is None:
+        return str(path)
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
+
+
+def _assert_biomech_output_round_trip(
+    *,
+    csv_path: Path,
+    expected_rows: int,
+    required_columns: list[str],
+) -> "pd.DataFrame":
+    import pandas as pd
+
+    reloaded = pd.read_csv(csv_path)
+    if len(reloaded) != expected_rows:
+        raise AssertionError(
+            f"Saved row count mismatch for {csv_path}: "
+            f"expected {expected_rows}, got {len(reloaded)}."
+        )
+    for column in required_columns:
+        if column not in reloaded.columns:
+            raise AssertionError(f"Saved biomech CSV missing column: {column}")
+    if "source_fields" in reloaded.columns:
+        source_lengths = reloaded["source_fields"].astype(str).str.len()
+        if not source_lengths.gt(0).all():
+            raise AssertionError("Saved biomech CSV contains empty source_fields.")
+    return reloaded
+
+
+def _missing_biomech_source_fields(biomech_df: "pd.DataFrame") -> int:
+    if "source_fields" not in biomech_df.columns:
+        return len(biomech_df)
+    return int(biomech_df["source_fields"].fillna("").astype(str).str.len().eq(0).sum())
+
+
+def save_biomech_outputs(
+    *,
+    biomech_df: "pd.DataFrame",
+    recording_id: str,
+    exercise_id: str,
+    output_dir: str | Path,
+    project_root: str | Path | None = None,
+    required_columns: list[str] | None = None,
+) -> "pd.DataFrame":
+    """Save ⑨ Biomechanical Proxy table/QC and verify CSV round-trip."""
+
+    import pandas as pd
+
+    required = required_columns or BIOMECH_REQUIRED_COLUMNS
+    output_path = Path(output_dir)
+    root = Path(project_root) if project_root is not None else None
+    output_path.mkdir(parents=True, exist_ok=True)
+    csv_path = output_path / f"{recording_id}_biomech.csv"
+    qc_path = output_path / f"{recording_id}_biomech_qc.json"
+
+    csv_df = biomech_df.copy()
+    for column in ("source_fields", "availability_reasons"):
+        if column in csv_df.columns:
+            csv_df[column] = csv_df[column].map(_serialize_biomech_output_value)
+    csv_df.to_csv(csv_path, index=False, encoding="utf-8")
+
+    qc_payload = {
+        "recording_id": recording_id,
+        "exercise_id": exercise_id,
+        "biomech_rows": int(len(biomech_df)),
+        "biomech_columns": list(biomech_df.columns),
+        "unit_counts": biomech_df["unit"].value_counts(dropna=False).to_dict(),
+        "availability_counts": biomech_df["availability"]
+        .value_counts(dropna=False)
+        .to_dict(),
+        "metric_family_counts": biomech_df["metric_family"]
+        .value_counts(dropna=False)
+        .to_dict(),
+        "missing_source_fields": _missing_biomech_source_fields(biomech_df),
+    }
+    qc_path.write_text(
+        json.dumps(qc_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    reloaded = _assert_biomech_output_round_trip(
+        csv_path=csv_path,
+        expected_rows=len(biomech_df),
+        required_columns=required,
+    )
+    return pd.DataFrame(
+        [
+            {
+                "artifact": "biomech_csv",
+                "path": _relative_biomech_output_path(csv_path, root),
+                "rows": len(reloaded),
+            },
+            {
+                "artifact": "biomech_qc_json",
+                "path": _relative_biomech_output_path(qc_path, root),
+                "rows": 1,
+            },
+        ]
+    )
+
+
+__all__ = [
+    "BIOMECH_REQUIRED_COLUMNS",
+    "BiomechRecord",
+    "extract_rep_biomech",
+    "compute_load_shift",
+    "save_biomech_outputs",
+]
