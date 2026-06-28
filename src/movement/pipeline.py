@@ -981,6 +981,7 @@ def run_pipeline(
             audit_analysis_disrupting_patterns,
             audit_feature_registry,
             extract_rep_features,
+            summarize_phase_to_rep,
         )
         from movement.features.side_role_context import (
             SideRoleContextThresholds,
@@ -1011,13 +1012,17 @@ def run_pipeline(
                 detectability_report.as_dict()
             )
             feat_records = extract_rep_features(df, exercise_def)
+            feat_records += summarize_phase_to_rep(feat_records)
             report["features"] = [
                 {
                     "feature_id": r.feature_id,
+                    "exercise_id": r.exercise_id,
                     "rep_id": r.rep_id,
+                    "phase": r.phase,
                     "value": r.value,
                     "unit": r.unit,
                     "source_fields": r.source_fields,
+                    "note": r.note,
                     "view_reliability": r.view_reliability,
                     "availability": r.availability,
                     "availability_reasons": r.availability_reasons,
@@ -1052,6 +1057,11 @@ def run_pipeline(
                     "visibility_weight_applied": r.visibility_weight_applied,
                     "n_frames_used": r.n_frames_used,
                     "n_frames_excluded_low_visibility": r.n_frames_excluded_low_visibility,
+                    "availability": r.availability,
+                    "availability_reasons": r.availability_reasons,
+                    "depth_dependency": r.depth_dependency,
+                    "model_depth_reliability": r.model_depth_reliability,
+                    "landmark_quality": r.landmark_quality,
                 }
                 for r in biomech_records
             ]

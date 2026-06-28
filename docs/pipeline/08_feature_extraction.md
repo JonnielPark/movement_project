@@ -1,7 +1,7 @@
 # 08. 피처 추출 (Feature Extraction)
 
-**문서 버전:** 1.2.4
-**최종 갱신:** 2026-06-27
+**문서 버전:** 1.2.5
+**최종 갱신:** 2026-06-28
 **영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑧은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
@@ -211,6 +211,8 @@ control.compensation  별도 phase-specific rule이 없으면 rep-level only
 
 `summarize_phase_to_rep()`는 descent/ascent ROM ratio 같은 파생 rep-level summary를 추가할 수 있다.
 입력 record는 수정하지 않는다.
+⑧ pipeline report는 이 파생 summary record를 직접 계산된 feature record 옆에 함께 포함한다.
+따라서 저장 산출물과 downstream check가 같은 feature set을 사용한다.
 
 ---
 
@@ -239,6 +241,28 @@ class FeatureRecord:
 
 `features_to_dataframe()`은 record 목록을 tabular output으로 펼치며 phase, availability,
 camera-zone, provenance field를 보존한다.
+
+저장되는 stage-check 산출물은 feature table과 diagnostic context를 분리해 둔다:
+
+```text
+data/processed/features/<recording_id>_features.csv
+    `features_to_dataframe()` tabular output. 필수 column은 feature_id,
+    exercise_id, rep_id, phase, value, unit, source_fields, availability,
+    availability_reasons, view_reliability, depth_dependency,
+    model_depth_reliability, landmark_quality, camera_zone, role_context다.
+
+data/processed/features/<recording_id>_feature_context.json
+    ⑧의 feature-context 및 role-context report. Side-role context가 왜 적용,
+    생략, withheld 되었는지를 기록하며 feature value를 바꾸거나 score를 만들지 않는다.
+
+data/processed/features/<recording_id>_feature_qc.json
+    Follow-along check용 compact count. row count, availability count,
+    feature-family count, phase count, missing source_fields 등을 담는다.
+```
+
+CSV round-trip은 row count와 필수 column을 보존해야 한다. `source_fields`,
+`availability_reasons`, `role_context` 같은 구조화 field는 CSV 저장을 위해 직렬화할 수 있지만,
+이후 code path의 canonical object contract는 in-memory record다.
 
 ---
 

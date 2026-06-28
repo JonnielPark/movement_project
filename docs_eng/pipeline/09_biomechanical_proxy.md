@@ -1,14 +1,20 @@
 # 09. Biomechanical Proxy
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.3.0
+**Last Updated:** 2026-06-28
 **Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
 
 Pipeline step ⑨ computes simplified biomechanical proxy metrics from normalized
-pose data: center-of-mass (CoM) trajectory, 2D moment-arm proxies, and within-set
-load-shift tendencies. The single-camera setup cannot estimate absolute force,
-torque, or subject mass. Outputs describe relative load-distribution tendencies
-only.
+pose data: center-of-mass (CoM) trajectory proxies, 2D moment-arm proxies, and
+within-set load-shift tendencies. The single-camera setup cannot estimate
+absolute force, torque, calibrated vertical displacement, or subject mass.
+Outputs describe relative load-distribution tendencies only.
+
+Because current MediaPipe-style monocular `z` is model-depth evidence, not a
+calibrated depth or gravity axis, ⑨ outputs are emitted as low-confidence
+biomechanical proxy evidence by default. They may be reported and inspected, but
+should not become strong composite-score evidence unless a later scoring policy
+explicitly upgrades their weight from availability/provenance metadata.
 
 Allowed output units are `torso_length_ratio`, `torso_length_ratio_per_rep`,
 `degree`, and `dimensionless`. Absolute units such as `N`, `N·m`, `kg`, and `m`
@@ -53,7 +59,7 @@ Allowed:
 ```text
 - Population-level segment mass and CoM ratios
 - Whole-body CoM as a segment-mass-weighted proxy
-- 2D moment-arm distances in projected planes
+- 2D moment-arm distances in projected planes as proxy evidence
 - Visibility-based frame exclusion for monocular robustness
 - Relative joint-to-joint load-distribution tendencies
 ```
@@ -64,6 +70,7 @@ Not allowed in the current implementation:
 - Absolute force or torque
 - Subject mass, external load, or kg-based scaling
 - Meter/mm outputs
+- Treating model-depth values as calibrated gravity/depth evidence
 - Single-frame instantaneous joint-force claims
 - Clinical diagnosis or disease classification
 ```
@@ -109,7 +116,7 @@ CoM metrics:
 
 ```text
 biomech.com.range_x      lateral CoM excursion
-biomech.com.range_z      vertical CoM excursion
+biomech.com.range_z      normalized z-axis CoM excursion
 biomech.com.path_length  total CoM trajectory length
 unit                     torso_length_ratio
 ```
@@ -123,7 +130,7 @@ unit = torso_length_ratio
 ```
 
 The value is the median per-frame perpendicular distance from CoM to the
-load-bearing joint-axis proxy. Joints are selected from
+load-bearing joint-axis proxy in the current normalized projection. Joints are selected from
 `biomechanical_focus.main_load_regions`. The current implementation emits hip
 and knee proxies; ankle proxy support is not implemented yet.
 
@@ -174,6 +181,11 @@ class BiomechRecord:
     visibility_weight_applied: bool
     n_frames_used: int
     n_frames_excluded_low_visibility: int
+    availability: str = "low_confidence"
+    availability_reasons: list[str] = field(default_factory=list)
+    depth_dependency: str = "high"
+    model_depth_reliability: str = "low"
+    landmark_quality: str = "unknown"
 ```
 
 Validation rules:
@@ -181,7 +193,40 @@ Validation rules:
 ```text
 unit must be torso_length_ratio | torso_length_ratio_per_rep | degree | dimensionless
 source_fields must not be empty
+availability must be assessed | low_confidence | not_assessed
+depth_dependency must be none | low | moderate | high | unknown
+model_depth_reliability must be high | moderate | low | unknown
 ```
+
+Default availability policy:
+
+```text
+CoM trajectory proxies       low_confidence; model-depth and segment-ratio proxy
+moment-arm proxies           low_confidence; projected 2D proxy with model-depth input
+load-shift slopes            low_confidence; derived from low-confidence moment-arm records
+```
+
+This policy keeps ⑨ available for reporting and later comparison while preventing
+uncalibrated monocular-depth proxy values from silently becoming strong scores.
+
+Saved stage-check outputs:
+
+```text
+data/processed/biomech/<recording_id>_biomech.csv
+    Tabular BiomechRecord output. Required columns include metric_id,
+    exercise_id, rep_id, value, unit, source_fields, note,
+    visibility_weight_applied, n_frames_used,
+    n_frames_excluded_low_visibility, availability, availability_reasons,
+    depth_dependency, model_depth_reliability, and landmark_quality.
+
+data/processed/biomech/<recording_id>_biomech_qc.json
+    Compact counts for follow-along checks, such as row counts, unit counts,
+    availability counts, metric-family counts, and missing source_fields.
+```
+
+CSV round-trips must preserve the row count and required columns. Structured
+fields such as `source_fields` and `availability_reasons` may be serialized for
+CSV compatibility.
 
 ## 7. Entry Point
 
@@ -218,6 +263,8 @@ biomech.load_shift.*    derived from biomech.moment_arm.* records
 ```
 
 ⑩ Biomarker Scoring preserves these fields when converting to biomarker records.
+Composite scoring should treat `availability != assessed` as withheld or
+minimal-gravity evidence unless a later scoring policy explicitly says otherwise.
 
 ## 9. Code Mapping
 
