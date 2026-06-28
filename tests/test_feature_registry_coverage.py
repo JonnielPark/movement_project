@@ -60,7 +60,7 @@ def test_feature_registry_audit_routes_biomechanical_proxy_entries_to_step_09():
     assert {
         "domain": "biomechanical_proxy",
         "entry": "support_moment_proxy",
-        "target_step": "10_biomechanical_proxy",
+        "target_step": "09_biomechanical_proxy",
     } in report.external_step_feature_domain_entries
     assert not any(
         item["domain"] == "biomechanical_proxy"

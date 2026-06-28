@@ -1,10 +1,10 @@
-# 11. 바이오마커 점수화 (Biomarker Scoring)
+# 10. 바이오마커 점수화 (Biomarker Scoring)
 
 **문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/11_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑪은 ⑨ `FeatureRecord`와 ⑩ `BiomechRecord`를 해석 가능한 biomarker record로
+파이프라인 단계 ⑩은 ⑧ `FeatureRecord`와 ⑨ `BiomechRecord`를 해석 가능한 biomarker record로
 감싸고, baseline이 있을 때 반복별 movement-quality score를 산출한다. 관측 신뢰도, feature
 availability, coordinate-correction magnitude는 별도 confidence/provenance signal로 유지한다.
 
@@ -15,9 +15,9 @@ availability, coordinate-correction magnitude는 별도 confidence/provenance si
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑨ Feature Extraction   FeatureRecord list
-⑩ Biomech Proxy        BiomechRecord list
-→ ⑪ Biomarker Scoring  ← 본 단계
+⑧ Feature Extraction   FeatureRecord list
+⑨ Biomech Proxy        BiomechRecord list
+→ ⑩ Biomarker Scoring  ← 본 단계
 ```
 
 필수 입력:
@@ -90,7 +90,7 @@ other       → pass-through only
 
 ## 4. Feature Eligibility
 
-⑨은 scoring에 충분히 신뢰할 수 없는 numeric feature도 방출할 수 있다. ⑪은 `availability`를
+⑧은 scoring에 충분히 신뢰할 수 없는 numeric feature도 방출할 수 있다. ⑩은 `availability`를
 composite-score gate로 사용한다.
 
 ```text

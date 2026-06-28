@@ -12,7 +12,7 @@ Output : the same dataframe with the `phase` column populated for rows where
          `segment_type == 'rep'`. Rows outside reps are left as NA.
          Expert-provided phase values (non-NA on entry) are never overwritten.
 
-Pipeline position: after ⑥ Canonicalization, before ⑨ Feature Extraction.
+Pipeline position: after ⑥ Canonicalization, before ⑧ Feature Extraction.
 
 Phase labels are kinematic (trajectory-based), not kinetic (muscle-action-based).
 They describe the reference-landmark trajectory direction, not muscle activation

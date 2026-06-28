@@ -82,7 +82,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     해부학적으로 불가능한 configuration만 표시한다.
-    운동별 ROM 평가는 ⑨ Feature Extraction의 책임이다.
+    운동별 ROM 평가는 ⑧ Feature Extraction의 책임이다.
 
 velocity outliers
     body-scale-normalized frame-to-frame jump가 threshold를 초과.
@@ -107,7 +107,7 @@ generic fallback     skip
 ```
 
 High-confidence swap candidate는 해당 frame의 paired landmark label을 교환한다. Coordinate value는
-바꾸지 않는다. Low-confidence case는 표시만 하고 ⑨ Feature Extraction role-context 처리 또는 manual review로 남긴다.
+바꾸지 않는다. Low-confidence case는 표시만 하고 ⑧ Feature Extraction role-context 처리 또는 manual review로 남긴다.
 
 ### Short-Gap Interpolation
 
@@ -176,7 +176,7 @@ near/far/unknown side context 추론
 far-side low-confidence landmark에만 선택 smoothing/interpolation 적용
 짧은 low-confidence gap 보간
 해결되지 않은 long gap을 low confidence로 report
-⑨와 ⑩을 위한 feature-availability hook 방출
+⑧와 ⑨을 위한 feature-availability hook 방출
 ```
 
 금지:
@@ -251,7 +251,7 @@ Stage-check notebook은 앞 단계 노트북에서 쓰던 기존 양식을 따�
 사용한다. Synthetic diagnostic은 뒤쪽의 별도 번호 check로 둘 수 있지만, target recording의
 movement quality가 아니라 diagnostic evidence임을 명확히 표시해야 한다.
 
-Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑨ Feature Extraction과 ⑪ Biomarker
+Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑧ Feature Extraction과 ⑩ Biomarker
 Scoring에서 결정한다.
 
 ---
@@ -280,4 +280,4 @@ Kalman filtering은 현재 preprocessing scope에서 활성화하지 않는다.
 - Availability resolution을 위한 per-feature landmark coverage summary.
 - 실제 sample review 이후 reliability-weighted interpolation/smoothing.
 - Test로 정당화되는 경우 per-exercise velocity threshold.
-- ⑪에서 before/after quality visualization.
+- ⑩에서 before/after quality visualization.

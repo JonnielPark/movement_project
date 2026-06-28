@@ -48,11 +48,11 @@ Pose CSV  +  annotation CSV  +  exercise YAML artifacts
 ⑤  Normalization        body-relative coordinate normalization
 ⑥  Canonicalization     optional candidate-evidence coordinate families
 ⑦  Segmentation         semi-automatic rep/phase splitting from joint-motion tracking
-⑨  Feature Extraction   side-role context + spatial / temporal / control features
-⑩  Biomech Proxy        CoM, moment arms, load-shift trend
-⑪  Biomarker Derivation interpretable digital biomarkers and interpretation rules
-⑫  Visualization        per-step visualization and reporting      [partial]
-⑬  Simulation           robustness condition injection            [partial]
+⑧  Feature Extraction   side-role context + spatial / temporal / control features
+⑨  Biomech Proxy        CoM, moment arms, load-shift trend
+⑩  Biomarker Derivation interpretable digital biomarkers and interpretation rules
+⑪  Visualization        per-step visualization and reporting      [partial]
+⑫  Simulation           robustness condition injection            [partial]
 ```
 
 Stage activation is controlled by the `enabled` flags in
@@ -74,12 +74,12 @@ Stage activation is controlled by the `enabled` flags in
 | ⑤ Normalization | `stages/normalization.py` | Hip-center translation + median torso-length scale; emits `norm` coordinates only |
 | ⑥ Canonicalization | `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | Optional candidate-evidence coordinate families; current `support_plane_alignment` wraps the existing floor-reference implementation and remains disabled by default |
 | ⑦ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
-| ⑨ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
-| ⑩ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑪ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
+| ⑧ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
+| ⑨ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with visibility weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
-| Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑪ connected; optional ⑥ `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
+| Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑩ connected; optional ⑥ `canonicalization` and `support_plane_alignment` report wired; legacy `floor_relative_correction` kept as a backward-compatible alias |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input clarification |
 | Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field policy, and performance/failure provenance |
 | Unit tests | `tests/` | Latest full run passes 153/153 |
@@ -91,7 +91,7 @@ Stage activation is controlled by the `enabled` flags in
 | Far-side preprocessing evidence | `stages/preprocessing.py` | Side-view far-side landmark jitter stabilization, feature availability, data-confidence hook (→ Task B) |
 | Side-role context evidence | `features/side_role_context.py` | Structured feature-context log, false-context metrics, and ambiguous-repetition reporting (→ Task C) |
 | Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
-| ⑫ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
+| ⑪ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, side-role context heatmap, radar, score breakdown (→ Task D) |
 
 ### Plan (Before Defense)
 
@@ -142,8 +142,8 @@ movement_project/
 │   │   ├── camera_protocol.md
 │   │   ├── exercise_performance_protocol.md
 │   │   └── exercise_authoring_notebook.md
-│   ├── pipeline/                    # pipeline stage documents ① ~ ⑬
-│   │   └── 00_data_format.md ~ 13_insilico_simulation.md
+│   ├── pipeline/                    # pipeline stage documents ① ~ ⑪
+│   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 feature × clinical meaning
 ├── notebook/                        # role-grouped notebooks
@@ -154,8 +154,8 @@ movement_project/
 │   └── 90_local_research_review/    # local p01 research review surfaces
 ├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
-│   ├── test_biomech_load_shift.py   # ⑩ load-shift slope sign + guards (17 cases)
-│   └── test_interpretation.py       # ⑪ rule loader + 3 scenarios (20 cases)
+│   ├── test_biomech_load_shift.py   # ⑨ load-shift slope sign + guards (17 cases)
+│   └── test_interpretation.py       # ⑩ rule loader + 3 scenarios (20 cases)
 └── src/movement/
     ├── biomech/
     │   ├── __init__.py              # BiomechRecord · extract_rep_biomech()

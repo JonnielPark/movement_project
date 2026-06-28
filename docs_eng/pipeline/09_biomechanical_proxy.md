@@ -1,10 +1,10 @@
-# 10. Biomechanical Proxy
+# 09. Biomechanical Proxy
 
 **Document Version:** 1.2.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/10_biomechanical_proxy.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
 
-Pipeline step ⑩ computes simplified biomechanical proxy metrics from normalized
+Pipeline step ⑨ computes simplified biomechanical proxy metrics from normalized
 pose data: center-of-mass (CoM) trajectory, 2D moment-arm proxies, and within-set
 load-shift tendencies. The single-camera setup cannot estimate absolute force,
 torque, or subject mass. Outputs describe relative load-distribution tendencies
@@ -27,9 +27,9 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Canonicalization
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomech Proxy              ← this step
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomech Proxy              ← this step
+→ ⑩ Biomarker Scoring
 ```
 
 Required inputs:
@@ -88,7 +88,7 @@ mass localization.
 This Winter-style model is separate from the Size Korea-derived
 `anthropometric_skeleton_prior` described in
 [06_canonicalization.md](06_canonicalization.md). Winter ratios are used for CoM and
-segment-mass proxy computation inside ⑩. The Size Korea prior is a loose
+segment-mass proxy computation inside ⑨. The Size Korea prior is a loose
 segment-length plausibility envelope for monocular-depth confidence and candidate
 evidence inside ⑥. The two priors must not be merged into
 one subject-specific skeleton model.
@@ -96,7 +96,7 @@ one subject-specific skeleton model.
 Current policy:
 
 ```text
-Winter anthropometry         CoM / segment-mass proxy in ⑩
+Winter anthropometry         CoM / segment-mass proxy in ⑨
 Size Korea aggregate prior   segment-length plausibility envelope in ⑥
 row-level Size Korea prior   future empirical upgrade only if raw data exist
 foot segment conflict        Size Korea full-body auto source marks foot unavailable;
@@ -157,7 +157,7 @@ n_frames_excluded_low_visibility
 ```
 
 `extract_rep_biomech(..., use_visibility_weight=False)` disables this exclusion
-for ablation experiments in ⑬ simulation.
+for ablation experiments in ⑫ simulation.
 
 ## 6. Output Contract
 
@@ -217,7 +217,7 @@ biomech.moment_arm.*    biomechanical_focus.main_load_regions
 biomech.load_shift.*    derived from biomech.moment_arm.* records
 ```
 
-⑪ Biomarker Scoring preserves these fields when converting to biomarker records.
+⑩ Biomarker Scoring preserves these fields when converting to biomarker records.
 
 ## 9. Code Mapping
 

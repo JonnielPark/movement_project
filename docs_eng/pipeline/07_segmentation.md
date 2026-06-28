@@ -16,7 +16,7 @@ This step does not modify coordinates or delete frames.
 ## 1. Pipeline Position
 
 ```text
-⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← this step → ⑨ Feature Extraction
+⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← this step → ⑧ Feature Extraction
 ```
 
 Inputs:
@@ -215,12 +215,12 @@ workflow rather than the generic pipeline default.
 ## 7. Downstream Rules
 
 ```text
-⑨ Feature Extraction   uses confirmed rep_id, resolves side-role context, and emits
+⑧ Feature Extraction   uses confirmed rep_id, resolves side-role context, and emits
                        rep-level features for confirmed reps and phase-level features
                        only for successful/manual phases.
-⑩ Biomech Proxy        excludes unresolved rep-boundary failures.
-⑪ Biomarker Scoring    keeps failure/exclusion provenance.
-⑫ Visualization        shows failure points and manual boundaries.
+⑨ Biomech Proxy        excludes unresolved rep-boundary failures.
+⑩ Biomarker Scoring    keeps failure/exclusion provenance.
+⑪ Visualization        shows failure points and manual boundaries.
 ```
 
 ---

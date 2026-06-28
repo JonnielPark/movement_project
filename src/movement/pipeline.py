@@ -9,11 +9,11 @@ Documented analysis stages:
     ⑤ normalization          body-relative coordinate normalization
     ⑥ canonicalization       optional analysis-space candidate evidence
     ⑦ segmentation           semi-automatic rep splitting + intra-rep phase splitting
-    ⑨ features               side-role context + spatial / temporal / control features
-    ⑩ biomech                biomechanical proxy modeling (CoM, moment arm)
-    ⑪ biomarker              interpretable digital biomarkers with provenance
+    ⑧ features               side-role context + spatial / temporal / control features
+    ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
+    ⑩ biomarker              interpretable digital biomarkers with provenance
 
-The current runner supports implemented stages ①–⑪; canonicalization remains
+The current runner supports implemented stages ①–⑩; canonicalization remains
 disabled unless explicitly enabled.
 """
 
@@ -974,7 +974,7 @@ def run_pipeline(
     else:
         pass  # ⑦ disabled — phase column stays NA (set by ② Annotation)
 
-    # ── ⑨ Feature Extraction ─────────────────────────────────────────────────
+    # ── ⑧ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
         from movement.features import (
@@ -988,7 +988,7 @@ def run_pipeline(
         )
 
         if exercise_def is None:
-            print("[Step ⑨] Feature Extraction: exercise_def not available — skipped.")
+            print("[Step ⑧] Feature Extraction: exercise_def not available — skipped.")
         else:
             if config.features.role_context.enabled:
                 thresholds = SideRoleContextThresholds(
@@ -1030,11 +1030,11 @@ def run_pipeline(
                 for r in feat_records
             ]
 
-    # ── ⑩ Biomechanical Proxy Modeling ───────────────────────────────────────
+    # ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────
     biomech_records: list[Any] = []
     if config.biomech.enabled:
         if exercise_def is None:
-            print("[Step ⑩] Biomech Proxy: exercise_def not available — skipped.")
+            print("[Step ⑨] Biomech Proxy: exercise_def not available — skipped.")
         else:
             from movement.biomech import extract_rep_biomech
 
@@ -1056,11 +1056,11 @@ def run_pipeline(
                 for r in biomech_records
             ]
 
-    # ── ⑪ Biomarker Derivation ────────────────────────────────────────────────
+    # ── ⑩ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
         if exercise_def is None:
             print(
-                "[Step ⑪] Biomarker Derivation: exercise_def not available — skipped."
+                "[Step ⑩] Biomarker Derivation: exercise_def not available — skipped."
             )
         else:
             from movement.biomarker.scoring import derive_biomarkers

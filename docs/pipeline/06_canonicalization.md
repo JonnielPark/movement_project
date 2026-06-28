@@ -26,9 +26,9 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Canonicalization       ← 본 단계
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomechanical Proxy
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomechanical Proxy
+→ ⑩ Biomarker Scoring
 ```
 
 ⑤ Normalization 이후에 실행된다. 모든 prior는 이미 생성된 신체 상대 좌표 계열 위에서 작동한다.
@@ -659,7 +659,7 @@ unit = dimensionless_ratio
 
 ## 7. 후속 단계 규칙 (Downstream Rules)
 
-- ⑦ Segmentation, ⑨ Feature Extraction, ⑩ Biomechanical Proxy, ⑪ Biomarker Scoring은 기본적으로
+- ⑦ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, ⑩ Biomarker Scoring은 기본적으로
   `norm` 좌표를 소비한다.
 - 후속 feature는 보정 좌표를 사용하기 전에 `recording_view_only`,
   `corrected_3d_hypothesis`, 또는 `dual_domain_compare`를 선언해야 한다.
@@ -669,7 +669,7 @@ unit = dimensionless_ratio
   data-confidence/provenance signal이다.
 - ④ Preprocessing은 scale 계산 전에 reliability violation을 표시할 수 있지만, 신체 상대 척도화는
   ⑤ Normalization의 책임이고 canonical 후보 좌표 생성은 ⑥ Canonicalization의 책임이다.
-- ⑩ Biomechanical Proxy는 정규화 좌표로 상대 CoM, moment-arm, load-shift proxy를 계산한다.
+- ⑨ Biomechanical Proxy는 정규화 좌표로 상대 CoM, moment-arm, load-shift proxy를 계산한다.
   이 단계로부터 절대 힘, 토크, calibrated physical distance를 추론하지 않는다.
 - Corrected candidate 출력은 feature별 burden, residual, norm-vs-corrected sensitivity gate가
   문서화되기 전까지 후속 단계에서 사용하지 않는다.

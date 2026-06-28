@@ -1,12 +1,12 @@
-# 09. 피처 추출 (Feature Extraction)
+# 08. 피처 추출 (Feature Extraction)
 
 **문서 버전:** 1.2.4
 **최종 갱신:** 2026-06-27
-**영문 동기화:** `docs_eng/pipeline/09_feature_extraction.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/08_feature_extraction.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑨은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
+파이프라인 단계 ⑧은 정규화된 pose 데이터에서 movement-quality feature를 계산한다. Pose 좌표는
 수정하지 않는다. 모든 출력은 numeric value, unit, `source_fields`, availability/reliability
-metadata를 가진 `FeatureRecord`이며, ⑪ Biomarker Derivation이 provenance를 추적할 수 있게 한다.
+metadata를 가진 `FeatureRecord`이며, ⑩ Biomarker Derivation이 provenance를 추적할 수 있게 한다.
 
 ---
 
@@ -14,8 +14,8 @@ metadata를 가진 `FeatureRecord`이며, ⑪ Biomarker Derivation이 provenance
 
 ```text
 ⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation
-→ ⑨ Feature Extraction     ← 본 단계
-→ ⑩ Biomech Proxy → ⑪ Biomarker Derivation
+→ ⑧ Feature Extraction     ← 본 단계
+→ ⑨ Biomech Proxy → ⑩ Biomarker Derivation
 ```
 
 필수 입력:
@@ -65,7 +65,7 @@ Feature Extraction은 side-role context resolution을 소유한다. 이는 score
 pipeline stage로 존재하지 않는다. 이는 feature family가 side role, confidence, provenance를 어떻게
 해석할지 알려주는 정보다.
 
-⑨의 첫 context substep은 다음 형태다:
+⑧의 첫 context substep은 다음 형태다:
 
 ```text
 resolve_feature_context(df, exercise_definition, role_context_report=None)
@@ -91,7 +91,7 @@ bilateral_symmetric
     위해 bilateral symmetry / side-bias context를 제공한다.
 
 alternating / unilateral_left / unilateral_right
-    ⑨ 내부에서 segmented dataframe, performance_protocol.side_sequence, annotation context를 이용해
+    ⑧ 내부에서 segmented dataframe, performance_protocol.side_sequence, annotation context를 이용해
     side-role context를 해석한다.
 
 unilateral_unspecified / bilateral_asymmetric / unsupported
@@ -105,7 +105,7 @@ unilateral_unspecified / bilateral_asymmetric / unsupported
 통합 정책:
 
 ```text
-⑨ owns feature-facing interpretation
+⑧ owns feature-facing interpretation
     Feature Extraction 내부에서 side-role context를 해석하고, feature family가 유용하다고 선언한
     곳에만 role_context를 부착하며, confidence/provenance는 numeric feature value와 분리한다.
 
@@ -147,7 +147,7 @@ control.*
     excessive_trunk_flexion, heel_lift, pelvis_rotation 같은 compensation candidate.
 ```
 
-`feature_domains.biomechanical_proxy`는 ⑨ extractor 누락이 아니라 ⑩ Biomech Proxy로 전달되는
+`feature_domains.biomechanical_proxy`는 ⑧ extractor 누락이 아니라 ⑨ Biomech Proxy로 전달되는
 항목이다.
 
 ---
@@ -155,7 +155,7 @@ control.*
 ## 5. Availability And View Reliability
 
 Feature extraction은 camera view 또는 pose model이 scoring을 뒷받침하지 않는 값도 계산할 수
-있다. 따라서 `FeatureRecord.availability`가 ⑪ scoring gate다.
+있다. 따라서 `FeatureRecord.availability`가 ⑩ scoring gate다.
 
 ```text
 assessed
@@ -175,7 +175,7 @@ view_reliability             exercise_definition.view_metric_reliability
 landmark_quality             visibility / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
-swap or far-side risk         ④ Preprocessing과 ⑨ side-role context에서 제공
+swap or far-side risk         ④ Preprocessing과 ⑧ side-role context에서 제공
 camera_zone                  annotation 또는 recording metadata
 role_context                 active/support/near/far side가 있으면 사용
 ```
@@ -244,7 +244,7 @@ camera-zone, provenance field를 보존한다.
 
 ## 8. 감사 리포트 (Audits)
 
-⑨은 feature record 옆에 diagnostic audit를 방출할 수 있다.
+⑧은 feature record 옆에 diagnostic audit를 방출할 수 있다.
 
 ```text
 Feature registry coverage
@@ -281,13 +281,13 @@ feat_df = features_to_dataframe(records)
 
 - ⑦ Segmentation은 `rep_id`와 선택 `phase`를 제공한다. Phase label이 없으면 rep-level feature만
   산출한다.
-- Side-role context는 ⑨ 내부에서 해석된 뒤 role-aware feature record에만 부착된다.
+- Side-role context는 ⑧ 내부에서 해석된 뒤 role-aware feature record에만 부착된다.
   Public stage-check 경로에서는 이 context를 `27_feature_extraction_test.ipynb`에서 검토한다.
-- ⑩ Biomech Proxy는 같은 정규화 좌표를 사용하지만 `FeatureRecord`가 아니라 `BiomechRecord`를
+- ⑨ Biomech Proxy는 같은 정규화 좌표를 사용하지만 `FeatureRecord`가 아니라 `BiomechRecord`를
   방출한다.
-- ⑪ Biomarker Derivation은 모든 feature를 pass-through biomarker로 감싸고,
+- ⑩ Biomarker Derivation은 모든 feature를 pass-through biomarker로 감싸고,
   `availability == assessed`인 feature만 composite scoring에 사용한다.
-- ⑬ Simulation은 pose-detectable audit entry를 perturbation candidate로 사용할 수 있다.
+- ⑫ Simulation은 pose-detectable audit entry를 perturbation candidate로 사용할 수 있다.
 
 ---
 

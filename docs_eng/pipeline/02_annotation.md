@@ -63,7 +63,7 @@ Downstream use:
 ```text
 exercise_id                   → ③ exercise definition loading
 execution_pattern / starting_side
-                               → ④ L/R checks and ⑨ Feature Extraction role context
+                               → ④ L/R checks and ⑧ Feature Extraction role context
 phase                          → preserved here, accepted/rejected by ⑦
 filming provenance             → warning/report context only
 performance provenance         → warning/report context only

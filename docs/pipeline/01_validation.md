@@ -5,7 +5,7 @@
 **영문 동기화:** `docs_eng/pipeline/01_validation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ①은 입력 pose data의 구조적 무결성을 점검한다. 데이터를 수정하지 않으며,
-⑫ robustness evaluation과 구분된다.
+⑪ robustness evaluation과 구분된다.
 
 ---
 

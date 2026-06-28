@@ -24,7 +24,7 @@ rep_*          rep별로 확장되는 template id, 예: temporal.tempo.rep_1
 Phase-level variant는 `spatial.rom`, `spatial.shape`, `control.stability`에서만 방출된다.
 Compensation feature는 full rep trajectory 위에서 동작하므로 rep-level이다.
 
-`spatial.symmetry.*`는 [09_feature_extraction.md](../pipeline/09_feature_extraction.md)의
+`spatial.symmetry.*`는 [08_feature_extraction.md](../pipeline/08_feature_extraction.md)의
 feature-availability gate를 통과한 뒤에만 해석한다. 측면 단안 rendering은 직접 정면 관찰 근거가
 아니다. 지지되지 않는 symmetry feature는 `low_confidence` 또는 `not_assessed`로 보고해야 한다.
 
@@ -42,7 +42,7 @@ Common units:
 ```text
 degree                  joint-angle ROM 및 trunk-angle feature
 torso_length_ratio      정규화 distance/trajectory feature
-torso_length_ratio_per_rep ⑨ load-shift trend
+torso_length_ratio_per_rep ⑧ load-shift trend
 second                  rep duration
 dimensionless_cv        coefficient of variation / symmetry index
 dimensionless           ratio
@@ -84,8 +84,8 @@ Pending candidate는 연구 메모이며 숨은 score component가 아니다.
 ```text
 src/movement/features/
 data/definitions/clinical/feature_meanings.yaml
-docs_eng/pipeline/09_feature_extraction.md
-docs_eng/pipeline/11_biomarker_scoring.md
+docs_eng/pipeline/08_feature_extraction.md
+docs_eng/pipeline/10_biomarker_scoring.md
 ```
 
 Feature family, unit, interpretation boundary가 바뀌면 `docs_eng/`를 먼저 수정하고,

@@ -43,11 +43,11 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 ⑤  Normalization       신체 상대 좌표 정규화
 ⑥  Canonicalization    선택 candidate-evidence 좌표 계열
 ⑦  Segmentation        관절 움직임 추적 기반 rep/phase 반자동 분할
-⑨  Feature Extraction  side-role context + 공간/시간/제어 피처
-⑩  Biomech Proxy       CoM · 모멘트 암(moment arms) · load-shift 추세
-⑪  Biomarker Derivation 해석 가능한 디지털 바이오마커 + 해석 규칙
-⑫  Visualization       단계별 시각화 및 보고               [부분]
-⑬  Simulation          강건성 조건 주입(injection)         [부분]
+⑧  Feature Extraction  side-role context + 공간/시간/제어 피처
+⑨  Biomech Proxy       CoM · 모멘트 암(moment arms) · load-shift 추세
+⑩  Biomarker Derivation 해석 가능한 디지털 바이오마커 + 해석 규칙
+⑪  Visualization       단계별 시각화 및 보고               [부분]
+⑫  Simulation          강건성 조건 주입(injection)         [부분]
 ```
 
 단계 활성화는 `configs/pipeline_default.yaml`의 `enabled` 플래그로 제어된다.
@@ -68,12 +68,12 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | ⑤ Normalization | `stages/normalization.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도; `norm` 좌표만 방출 |
 | ⑥ Canonicalization | `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | 선택 candidate-evidence 좌표 계열; 현재 `support_plane_alignment`는 기존 floor-reference 구현을 감싸는 prior이며 기본 비활성화 |
 | ⑦ Segmentation | `stages/segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
-| ⑨ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage, compensation availability, analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
-| ⑩ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
-| ⑪ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3); movement quality score와 data confidence 분리 |
+| ⑧ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage, compensation availability, analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
+| ⑨ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
+| ⑩ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3); movement quality score와 data confidence 분리 |
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
 | 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 4개 운동 × 5–7개 규칙; 금지 어휘 검증 완료 |
-| 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑪ 결선; 선택 ⑥ `canonicalization`과 `support_plane_alignment` report 연결; legacy `floor_relative_correction`은 하위 호환 alias로 유지 |
+| 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑩ 결선; 선택 ⑥ `canonicalization`과 `support_plane_alignment` report 연결; legacy `floor_relative_correction`은 하위 호환 alias로 유지 |
 | 프로토콜 메타데이터 스키마 | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning provenance, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
 | 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 현재 4대 운동 범위에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, source-field 정책, performance/failure provenance 검증 완료 |
 | 단위 테스트 | `tests/` | 최근 full run 153개 전체 통과 |
@@ -85,7 +85,7 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | Far-side preprocessing 근거 | `stages/preprocessing.py` | 측면 촬영 반대측 landmark jitter 안정화, feature availability, data-confidence hook (→ Task B) |
 | Side-role context 근거 | `features/side_role_context.py` | 구조화된 feature-context log, false-context 지표, ambiguous-repetition report (→ Task C) |
 | Robustness simulation 근거 | `simulation/`, `scripts/` | viewpoint variation, compensation injection, 실험 러너, long-format output, robustness summary (→ Task C) |
-| ⑫ Visualization | `reporting/visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, attribution heatmap, radar, score breakdown (→ Task D) |
+| ⑪ Visualization | `reporting/visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, side-role context heatmap, radar, score breakdown (→ Task D) |
 
 ### 계획 (방어 이전)
 
@@ -136,8 +136,8 @@ movement_project/
 │   │   ├── camera_protocol.md
 │   │   ├── exercise_performance_protocol.md
 │   │   └── exercise_authoring_notebook.md
-│   ├── pipeline/                    # 파이프라인 ① ~ ⑬ 단계 문서
-│   │   └── 00_data_format.md ~ 13_insilico_simulation.md
+│   ├── pipeline/                    # 파이프라인 ① ~ ⑪ 단계 문서
+│   │   └── 00_data_format.md ~ 12_insilico_simulation.md
 │   ├── clinical/
 │   │   └── per_exercise_mapping.md  # §5.5/§5.6 피처 × 임상적 의미
 ├── notebook/                        # 역할별 노트북
@@ -148,8 +148,8 @@ movement_project/
 │   └── 90_local_research_review/    # 로컬 p01 연구 리뷰 표면
 ├── scripts/                         # 일회성 유틸리티 (베이스라인 계산 등)
 ├── tests/
-│   ├── test_biomech_load_shift.py   # ⑩ load-shift slope 부호 + 가드 (17건)
-│   └── test_interpretation.py       # ⑪ 규칙 로더 + 3 시나리오 (20건)
+│   ├── test_biomech_load_shift.py   # ⑨ load-shift slope 부호 + 가드 (17건)
+│   └── test_interpretation.py       # ⑩ 규칙 로더 + 3 시나리오 (20건)
 └── src/movement/
     ├── biomech/
     │   ├── __init__.py              # BiomechRecord · extract_rep_biomech()

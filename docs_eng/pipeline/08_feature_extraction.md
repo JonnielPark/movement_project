@@ -1,12 +1,12 @@
-# 09. Feature Extraction
+# 08. Feature Extraction
 
 **Document Version:** 1.2.4
 **Last Updated:** 2026-06-27
-**Korean Sync:** `docs/pipeline/09_feature_extraction.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
 
-Pipeline step ⑨ computes movement-quality features from normalized pose data. It
+Pipeline step ⑧ computes movement-quality features from normalized pose data. It
 does not modify pose coordinates. Every output is a `FeatureRecord` with numeric
-value, unit, `source_fields`, and availability/reliability metadata for ⑪
+value, unit, `source_fields`, and availability/reliability metadata for ⑩
 Biomarker Derivation.
 
 ---
@@ -15,8 +15,8 @@ Biomarker Derivation.
 
 ```text
 ⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation
-→ ⑨ Feature Extraction     ← this step
-→ ⑩ Biomech Proxy → ⑪ Biomarker Derivation
+→ ⑧ Feature Extraction     ← this step
+→ ⑨ Biomech Proxy → ⑩ Biomarker Derivation
 ```
 
 Required inputs:
@@ -66,7 +66,7 @@ Feature Extraction owns side-role context resolution. This is not a score by
 itself and no longer exists as a standalone pipeline stage. It only tells feature
 families how to interpret side roles, confidence, and provenance.
 
-The first context substep of ⑨ is:
+The first context substep of ⑧ is:
 
 ```text
 resolve_feature_context(df, exercise_definition, role_context_report=None)
@@ -92,7 +92,7 @@ bilateral_symmetric
     context for feature families that compare left and right movement quality.
 
 alternating / unilateral_left / unilateral_right
-    Resolve side-role context inside ⑨ from the segmented dataframe,
+    Resolve side-role context inside ⑧ from the segmented dataframe,
     performance_protocol.side_sequence, and annotation context.
 
 unilateral_unspecified / bilateral_asymmetric / unsupported
@@ -106,7 +106,7 @@ phases, create scores, or branch on `exercise_id`.
 Integration policy:
 
 ```text
-⑨ owns feature-facing interpretation
+⑧ owns feature-facing interpretation
     Resolve side-role context inside Feature Extraction, attach role_context only
     where a feature family declares it useful, and keep confidence/provenance
     separate from numeric feature values.
@@ -152,8 +152,8 @@ control.*
     pelvis_rotation.
 ```
 
-`feature_domains.biomechanical_proxy` is routed to ⑩ Biomech Proxy, not consumed
-as a missing ⑨ extractor.
+`feature_domains.biomechanical_proxy` is routed to ⑨ Biomech Proxy, not consumed
+as a missing ⑧ extractor.
 
 ---
 
@@ -161,7 +161,7 @@ as a missing ⑨ extractor.
 
 Feature extraction may compute a numeric value even when the camera view or pose
 model does not support scoring that value. Therefore `FeatureRecord.availability`
-is the scoring gate for ⑪.
+is the scoring gate for ⑩.
 
 ```text
 assessed
@@ -182,7 +182,7 @@ view_reliability             exercise_definition.view_metric_reliability
 landmark_quality             visibility / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
-swap or far-side risk         from ④ Preprocessing and ⑨ side-role context
+swap or far-side risk         from ④ Preprocessing and ⑧ side-role context
 camera_zone                  from annotation or recording metadata
 role_context                 active/support/near/far side when available
 ```
@@ -254,7 +254,7 @@ preserving phase, availability, camera-zone, and provenance fields.
 
 ## 8. Audits
 
-⑨ may emit diagnostic audits beside the feature records.
+⑧ may emit diagnostic audits beside the feature records.
 
 ```text
 Feature registry coverage
@@ -292,14 +292,14 @@ feat_df = features_to_dataframe(records)
 
 - ⑦ Segmentation provides `rep_id` and optional `phase`; missing phase labels
   produce rep-level features only.
-- Side-role context is resolved inside ⑨, then attached only to role-aware
+- Side-role context is resolved inside ⑧, then attached only to role-aware
   feature records. The public stage-check path reviews this context in
   `27_feature_extraction_test.ipynb`.
-- ⑩ Biomech Proxy consumes the same normalized coordinates but emits
+- ⑨ Biomech Proxy consumes the same normalized coordinates but emits
   `BiomechRecord`, not `FeatureRecord`.
-- ⑪ Biomarker Derivation wraps all features as pass-through biomarkers and uses
+- ⑩ Biomarker Derivation wraps all features as pass-through biomarkers and uses
   only `availability == assessed` features for composite scoring.
-- ⑬ Simulation may later use pose-detectable audit entries as perturbation
+- ⑫ Simulation may later use pose-detectable audit entries as perturbation
   candidates.
 
 ---

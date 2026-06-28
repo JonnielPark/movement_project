@@ -1,10 +1,10 @@
-# 10. 생체역학 프록시 (Biomechanical Proxy)
+# 09. 생체역학 프록시 (Biomechanical Proxy)
 
 **문서 버전:** 1.2.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/10_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑩는 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
+파이프라인 단계 ⑨는 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
 무게중심(CoM) 궤적, 2D moment-arm proxy, 세트 내 load-shift tendency.
 단일 카메라 환경에서는 절대 힘, 토크, 피험자 질량을 추정할 수 없다. 출력은 상대적
 부하 분포 경향만 설명한다.
@@ -25,9 +25,9 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Canonicalization
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomech Proxy              ← 본 단계
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomech Proxy              ← 본 단계
+→ ⑩ Biomarker Scoring
 ```
 
 필수 입력:
@@ -83,7 +83,7 @@ SEGMENT_ENDPOINTS    각 분절을 정의하는 landmark pair
 이는 상대 proxy trend에는 충분하지만 절대 trunk mass location 추정에는 적합하지 않다.
 
 이 Winter 계열 모델은 [06_canonicalization.md](06_canonicalization.md)에 정의한 Size Korea 기반
-`anthropometric_skeleton_prior`와 분리한다. Winter 비율은 ⑩ 안에서 CoM과 segment-mass proxy
+`anthropometric_skeleton_prior`와 분리한다. Winter 비율은 ⑨ 안에서 CoM과 segment-mass proxy
 계산에 사용한다. Size Korea prior는 ⑥ 안에서 단안 depth confidence와 candidate evidence를
 위한 느슨한 segment-length plausibility envelope다. 두 prior를 하나의
 subject-specific skeleton model로 합치지 않는다.
@@ -91,7 +91,7 @@ subject-specific skeleton model로 합치지 않는다.
 현재 정책:
 
 ```text
-Winter anthropometry         ⑩의 CoM / segment-mass proxy
+Winter anthropometry         ⑨의 CoM / segment-mass proxy
 Size Korea aggregate prior   ⑥의 segment-length plausibility envelope
 row-level Size Korea prior   raw data가 있을 때만 future empirical upgrade
 foot segment conflict        Size Korea full-body auto source에서는 foot unavailable;
@@ -150,7 +150,7 @@ n_frames_used
 n_frames_excluded_low_visibility
 ```
 
-`extract_rep_biomech(..., use_visibility_weight=False)`는 ⑬ simulation의 ablation 실험을 위해
+`extract_rep_biomech(..., use_visibility_weight=False)`는 ⑫ simulation의 ablation 실험을 위해
 이 제외를 비활성화한다.
 
 ## 6. 출력 계약 (Output Contract)
@@ -210,7 +210,7 @@ biomech.moment_arm.*    biomechanical_focus.main_load_regions
 biomech.load_shift.*    biomech.moment_arm.* records에서 파생
 ```
 
-⑪ Biomarker Scoring은 biomarker record로 변환할 때 이 field를 보존한다.
+⑩ Biomarker Scoring은 biomarker record로 변환할 때 이 field를 보존한다.
 
 ## 9. 코드 매핑 (Code Mapping)
 
