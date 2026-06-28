@@ -1,10 +1,10 @@
-# 11. Biomarker Scoring
+# 10. Biomarker Scoring
 
 **Document Version:** 1.2.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/11_biomarker_scoring.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
-Pipeline step ⑪ wraps ⑨ `FeatureRecord` and ⑩ `BiomechRecord` outputs into
+Pipeline step ⑩ wraps ⑧ `FeatureRecord` and ⑨ `BiomechRecord` outputs into
 interpretable biomarker records and, when a baseline exists, derives a per-rep
 movement-quality score. Observation reliability, feature availability, and
 coordinate-correction magnitude remain separate confidence/provenance signals.
@@ -16,9 +16,9 @@ Scores are engineering summaries, not clinical thresholds or diagnostic outputs.
 ## 1. Pipeline Position
 
 ```text
-⑨ Feature Extraction   FeatureRecord list
-⑩ Biomech Proxy        BiomechRecord list
-→ ⑪ Biomarker Scoring  ← this step
+⑧ Feature Extraction   FeatureRecord list
+⑨ Biomech Proxy        BiomechRecord list
+→ ⑩ Biomarker Scoring  ← this step
 ```
 
 Required inputs:
@@ -93,7 +93,7 @@ other       → pass-through only
 
 ## 4. Feature Eligibility
 
-⑨ may emit numeric features that are not reliable enough for scoring. ⑪ uses
+⑧ may emit numeric features that are not reliable enough for scoring. ⑩ uses
 `availability` as the composite-score gate.
 
 ```text

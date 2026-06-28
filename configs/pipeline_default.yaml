@@ -2,10 +2,10 @@
 # Step order:
 #   ①  validation           ②  annotation          ③  exercise_definition
 #   ④  preprocessing        ⑤  normalization        ⑥  canonicalization
-#   ⑦  segmentation         ⑨  features (includes side-role context)
-#   ⑩  biomech              ⑪  biomarker
-#   ⑫  visualization        (called outside the runner)
-#   ⑬  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
+#   ⑦  segmentation         ⑧  features (includes side-role context)
+#   ⑨  biomech              ⑩  biomarker
+#   ⑪  visualization        (called outside the runner)
+#   ⑫  simulation           (called outside the runner, scripts/run_robustness_experiment.py)
 # Toggle each step with enabled: true / false
 
 input:
@@ -175,7 +175,7 @@ phase_segmentation:
   multi_inflection_policy: global_extremum   # global_extremum | first | reject_rep
   minimum_rep_length_frames: 8
 
-# ── ⑨ Feature Extraction ─────────────────────────────────────────────────────
+# ── ⑧ Feature Extraction ─────────────────────────────────────────────────────
 # extract_rep_features() runs all spatial / temporal / control features.
 # When phase_segmentation is enabled and the phase column is populated,
 # features in PHASE_AWARE_FEATURE_FAMILIES are also emitted per (rep_id, phase).
@@ -195,7 +195,7 @@ features:
     enabled: true
     registry: COMPENSATION_RULES   # dispatched via features/compensation.py
 
-# ── ⑩ Biomechanical Proxy Modeling ───────────────────────────────────────────
+# ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────────
 biomech:
   enabled: false
   anthropometric_model: winter_1990   # segment mass ratio reference (Winter 1990)
@@ -205,7 +205,7 @@ biomech:
   use_visibility_weight: true
   minimum_visible_landmark_ratio: 0.6
 
-# ── ⑪ Biomarker Derivation ───────────────────────────────────────────────────
+# ── ⑩ Biomarker Derivation ───────────────────────────────────────────────────
 biomarker:
   enabled: false
   emit_provenance: true       # attach source_fields to all biomarkers
@@ -230,8 +230,8 @@ output:
   save_report: false
   report_path: "data/processed/report.json"
 
-# ── ⑬ Robustness Simulation ──────────────────────────────────────────────────
-# Called separately via scripts/run_robustness_experiment.py, outside ①–⑪.
+# ── ⑫ Robustness Simulation ──────────────────────────────────────────────────
+# Called separately via scripts/run_robustness_experiment.py, outside ①–⑩.
 # Mirrors the documented robustness condition matrix.
 simulation:
   enabled: false

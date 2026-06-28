@@ -6,7 +6,7 @@
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
 `ExerciseContext`, and returns the backward-compatible `ExerciseDefinition` object
-used by downstream stages ④-⑪.
+used by downstream stages ④-⑨.
 
 Exercise definitions describe what the movement means. Annotation describes where
 the movement happened in a recording.
@@ -24,9 +24,9 @@ Pose CSV + annotation + exercise YAML artifacts
 → ⑤ Normalization
 → ⑥ Canonicalization              coordinate-candidate priors
 → ⑦ Segmentation                  rep/phase settings
-→ ⑨ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
-→ ⑩ Biomech Proxy                 biomechanical_focus
-→ ⑪ Biomarker Derivation          compensation_candidates
+→ ⑧ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
+→ ⑨ Biomech Proxy                 biomechanical_focus
+→ ⑩ Biomarker Derivation          compensation_candidates
 ```
 
 Exercise-specific behavior should be represented as YAML data rather than Python
@@ -432,7 +432,7 @@ quality_rules:
   allow_partial_feature_output: bool
 ```
 
-These thresholds are consumed by ④ Preprocessing and ⑨ Feature Extraction.
+These thresholds are consumed by ④ Preprocessing and ⑧ Feature Extraction.
 
 ---
 
@@ -463,7 +463,7 @@ and then sync `docs/`.
 
 ## 7. Provenance Convention
 
-Every biomarker produced by ⑨-⑩ must include `source_fields` pointing to the
+Every biomarker produced by ⑧-⑧ must include `source_fields` pointing to the
 definition fields that drove the computation.
 
 ```text

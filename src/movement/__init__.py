@@ -12,12 +12,12 @@ Pipeline steps:
     ⑤  normalization          body-relative coordinate normalization
     ⑥  canonicalization       optional analysis-space candidate evidence
     ⑦  segmentation           semi-automatic rep splitter + intra-rep phase splitter
-    ⑨  features               side-role context + spatial / temporal / control features
+    ⑧  features               side-role context + spatial / temporal / control features
                                (rep-level and phase-level when ⑦ has populated phase column)
-    ⑩  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
-    ⑪  biomarker              interpretable digital biomarkers with provenance
-    ⑫  visualization          per-step visualization and reporting
-    ⑬  simulation             robustness simulation (outside run_pipeline)
+    ⑨  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
+    ⑩  biomarker              interpretable digital biomarkers with provenance
+    ⑪  visualization          per-step visualization and reporting
+    ⑫  simulation             robustness simulation (outside run_pipeline)
 
 Step activation: enabled flags in configs/pipeline_default.yaml.
 Terminology: docs/terminology.md.
@@ -179,25 +179,25 @@ __all__ = [
     # ⑦ segmentation
     "segment_reps",
     "segment_phases",
-    # ⑨ feature side-role context
+    # ⑧ feature side-role context
     "resolve_side_role_context",
     "SideRoleContextThresholds",
     "SideRoleContextReport",
-    # ⑨ features (prefer direct import from submodules)
+    # ⑧ features (prefer direct import from submodules)
     "FeatureContext",
     "FeatureRecord",
     "apply_feature_context",
     "resolve_feature_context",
     "summarize_phase_to_rep",
-    # ⑩ biomech proxy (prefer direct import from submodules)
+    # ⑨ biomech proxy (prefer direct import from submodules)
     "BiomechRecord",
-    # ⑪ biomarker
+    # ⑩ biomarker
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
     "load_fms_mapping",
     "traffic_light_for_score",
-    # ⑫ visualization
+    # ⑪ visualization
     "create_pose_animation",
     "create_pose_comparison_animation",
     "plot_reliability_overlay",

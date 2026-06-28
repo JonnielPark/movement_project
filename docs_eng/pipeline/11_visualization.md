@@ -1,10 +1,10 @@
-# 12. Visualization
+# 11. Visualization
 
 **Document Version:** 1.1.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/12_visualization.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
 
-Pipeline step ⑫ is called outside the ①-⑪ runner. It renders pose data,
+Pipeline step ⑪ is called outside the ①-⑩ runner. It renders pose data,
 intermediate reports, features, biomech proxies, and biomarker outputs for
 diagnostic review and dissertation figures.
 
@@ -37,10 +37,10 @@ metrics.
 ⑤ Normalization       raw/norm comparison
 ⑥ Canonicalization    norm/canon/candidate comparison
 ⑦ Segmentation        rep/phase boundaries and failure points
-⑨ Feature Extraction  side-role context, joint angles, ROM, feature availability
-⑩ Biomech Proxy       CoM and moment-arm/load-shift proxies
-⑪ Biomarker Scoring   domain scores, deductions, withheld features
-⑬ Simulation          robustness sensitivity curves
+⑧ Feature Extraction  side-role context, joint angles, ROM, feature availability
+⑨ Biomech Proxy       CoM and moment-arm/load-shift proxies
+⑩ Biomarker Scoring   domain scores, deductions, withheld features
+⑫ Simulation          robustness sensitivity curves
 ```
 
 ---

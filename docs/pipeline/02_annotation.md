@@ -63,7 +63,7 @@ protocol_cycle_id   Int64     원자 반복을 묶는 사용자 안내 기준 cy
 ```text
 exercise_id                   → ③ exercise definition 로딩
 execution_pattern / starting_side
-                               → ④ L/R 점검 및 ⑨ Feature Extraction role context
+                               → ④ L/R 점검 및 ⑧ Feature Extraction role context
 phase                          → 본 단계에서 보존, ⑦에서 수용/거부
 filming provenance             → warning/report 컨텍스트만 제공
 performance provenance         → warning/report 컨텍스트만 제공

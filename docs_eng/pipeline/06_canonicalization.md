@@ -28,9 +28,9 @@ Pose CSV
 → ⑤ Normalization
 → ⑥ Canonicalization       ← this step
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomechanical Proxy
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomechanical Proxy
+→ ⑩ Biomarker Scoring
 ```
 
 Runs after ⑤ Normalization because all priors operate on an existing
@@ -698,7 +698,7 @@ unit = dimensionless_ratio
 
 ## 7. Downstream Rules
 
-- ⑦ Segmentation, ⑨ Feature Extraction, ⑩ Biomechanical Proxy, and ⑪ Biomarker
+- ⑦ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, and ⑩ Biomarker
   Scoring consume `norm` coordinates by default.
 - Downstream features must declare `recording_view_only`,
   `corrected_3d_hypothesis`, or `dual_domain_compare` before using corrected
@@ -711,7 +711,7 @@ unit = dimensionless_ratio
 - ④ Preprocessing may mark reliability violations before scale computation,
   ⑤ Normalization owns body-relative scaling, and ⑥ Canonicalization owns
   canonical candidate coordinates.
-- ⑩ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
+- ⑨ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
   moment-arm, and load-shift proxies. It must not infer absolute force, torque,
   or calibrated physical distances from this step.
 - Corrected candidate outputs are not used downstream until feature-specific

@@ -5,7 +5,7 @@
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③은 `exercise_id`로 exercise YAML artifact를 로드하고 `ExerciseContext`를
-조립한 뒤, 후속 단계 ④-⑪이 사용하는 하위 호환 `ExerciseDefinition` 객체를 반환한다.
+조립한 뒤, 후속 단계 ④-⑨이 사용하는 하위 호환 `ExerciseDefinition` 객체를 반환한다.
 
 운동 정의는 동작이 무엇을 의미하는가를 기술한다. Annotation은 녹화 안에서 그 동작이 어디서
 발생했는가를 기술한다.
@@ -23,9 +23,9 @@ Pose CSV + annotation + exercise YAML artifacts
 → ⑤ Normalization
 → ⑥ Canonicalization              coordinate-candidate priors
 → ⑦ Segmentation                  rep/phase settings
-→ ⑨ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
-→ ⑩ Biomech Proxy                 biomechanical_focus
-→ ⑪ Biomarker Derivation          compensation_candidates
+→ ⑧ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
+→ ⑨ Biomech Proxy                 biomechanical_focus
+→ ⑩ Biomarker Derivation          compensation_candidates
 ```
 
 운동별 동작은 가능한 한 Python 분기가 아니라 YAML 데이터로 표현한다.
@@ -408,7 +408,7 @@ quality_rules:
   allow_partial_feature_output: bool
 ```
 
-이 threshold는 ④ Preprocessing과 ⑨ Feature Extraction에서 소비한다.
+이 threshold는 ④ Preprocessing과 ⑧ Feature Extraction에서 소비한다.
 
 ---
 
@@ -436,7 +436,7 @@ quality_rules:
 
 ## 7. Provenance 규약 (Provenance Convention)
 
-⑨-⑩에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
+⑧-⑧에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
 포함해야 한다.
 
 ```text

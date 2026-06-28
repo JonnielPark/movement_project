@@ -11,7 +11,7 @@ Activation by laterality:
     alternating          → per-rep side-role context
     unilateral_*         → declared side is the expected active side
 
-Pipeline position: inside ⑨ Feature Extraction after ⑦ segmentation.
+Pipeline position: inside ⑧ Feature Extraction after ⑦ segmentation.
 Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
 Column convention: <landmark>_norm_x/y/z (normalized coordinates).
 """

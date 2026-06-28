@@ -1,10 +1,10 @@
-# 12. 시각화 (Visualization)
+# 11. 시각화 (Visualization)
 
 **문서 버전:** 1.1.0
 **최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/12_visualization.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/11_visualization.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑫은 ①-⑪ runner 밖에서 호출된다. Pose data, 중간 report, feature, biomech
+파이프라인 단계 ⑪은 ①-⑩ runner 밖에서 호출된다. Pose data, 중간 report, feature, biomech
 proxy, biomarker output을 diagnostic review와 논문 figure용으로 렌더링한다.
 
 Visualization 함수는 figure object를 반환하며 입력 데이터를 변경하면 안 된다.
@@ -35,10 +35,10 @@ computed-but-withheld feature와 low-confidence depth-dependent metric을 숨기
 ⑤ Normalization       raw/norm 비교
 ⑥ Canonicalization    norm/canon/candidate 비교
 ⑦ Segmentation        rep/phase boundary와 failure point
-⑨ Feature Extraction  side-role context, joint angle, ROM, feature availability
-⑩ Biomech Proxy       CoM과 moment-arm/load-shift proxy
-⑪ Biomarker Scoring   domain score, deduction, withheld feature
-⑬ Simulation          robustness sensitivity curve
+⑧ Feature Extraction  side-role context, joint angle, ROM, feature availability
+⑨ Biomech Proxy       CoM과 moment-arm/load-shift proxy
+⑩ Biomarker Scoring   domain score, deduction, withheld feature
+⑫ Simulation          robustness sensitivity curve
 ```
 
 ---

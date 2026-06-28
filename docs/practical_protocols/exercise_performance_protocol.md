@@ -90,5 +90,5 @@ rep_unit
 protocol_cycle_id
 ```
 
-이 field들은 report, ⑨ Feature Extraction role context, feature availability, interpretation-confidence note를
+이 field들은 report, ⑧ Feature Extraction role context, feature availability, interpretation-confidence note를
 위한 provenance이다. 그 자체로 자동 movement-quality penalty가 되지 않는다.

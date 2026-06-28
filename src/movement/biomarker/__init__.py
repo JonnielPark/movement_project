@@ -1,7 +1,7 @@
 """
-⑪ Biomarker Derivation
+⑩ Biomarker Derivation
 
-Integrates ⑨ feature extraction and ⑩ biomechanical proxy modeling results
+Integrates ⑧ feature extraction and ⑨ biomechanical proxy modeling results
 into interpretable digital biomarkers (BiomarkerRecord).
 
 Every BiomarkerRecord must include source_fields (provenance).

@@ -26,9 +26,9 @@ Pose CSV
 → ⑤ Normalization          ← this step
 → ⑥ Canonicalization
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomechanical Proxy
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomechanical Proxy
+→ ⑩ Biomarker Scoring
 ```
 
 Runs after ④ Preprocessing so unreliable hip/shoulder landmarks are corrected,
@@ -168,15 +168,15 @@ final-score contribution flag is emitted by ⑤.
 
 - ⑥ Canonicalization consumes `norm` coordinates and may add `canon` or
   corrected-3D-hypothesis candidate families.
-- ⑦ Segmentation, ⑨ Feature Extraction, ⑩ Biomechanical Proxy, and
-  ⑪ Biomarker Scoring consume `norm` coordinates by default.
+- ⑦ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, and
+  ⑩ Biomarker Scoring consume `norm` coordinates by default.
 - Downstream features must declare `recording_view_only`,
   `corrected_3d_hypothesis`, or `dual_domain_compare` before using candidate
   coordinates produced by ⑥.
 - ⑤ must not hide monocular-depth errors. If raw/model depth is unstable before
   movement onset, that instability remains visible in `norm`; ⑥ may mark a
   candidate as low confidence or not available.
-- ⑩ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
+- ⑨ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
   moment-arm, and load-shift proxies. It must not infer absolute force, torque,
   or calibrated physical distances from this step.
 

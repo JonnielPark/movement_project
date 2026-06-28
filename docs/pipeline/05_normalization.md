@@ -24,9 +24,9 @@ Pose CSV
 → ⑤ Normalization          ← 본 단계
 → ⑥ Canonicalization
 → ⑦ Segmentation
-→ ⑨ Feature Extraction
-→ ⑩ Biomechanical Proxy
-→ ⑪ Biomarker Scoring
+→ ⑧ Feature Extraction
+→ ⑨ Biomechanical Proxy
+→ ⑩ Biomarker Scoring
 ```
 
 ④ Preprocessing 이후에 실행된다. 신뢰도 낮은 hip/shoulder landmark가 척도 기준에 영향을 주기
@@ -158,13 +158,13 @@ contribution flag를 방출하지 않는다.
 
 - ⑥ Canonicalization은 `norm` 좌표를 입력으로 받아 `canon` 또는 corrected-3D-hypothesis 후보
   좌표 계열을 추가할 수 있다.
-- ⑦ Segmentation, ⑨ Feature Extraction, ⑩ Biomechanical Proxy, ⑪ Biomarker Scoring은 기본적으로
+- ⑦ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, ⑩ Biomarker Scoring은 기본적으로
   `norm` 좌표를 소비한다.
 - 후속 feature가 ⑥의 후보 좌표를 사용하려면 먼저 `recording_view_only`,
   `corrected_3d_hypothesis`, 또는 `dual_domain_compare` 평가 domain을 선언해야 한다.
 - ⑤는 단안 depth 오류를 숨기지 않는다. 운동 시작 전 raw/model depth가 불안정하면 그 불안정성은
   `norm`에도 남는다. ⑥은 후보를 low confidence 또는 not available로 표시할 수 있다.
-- ⑩ Biomechanical Proxy는 normalized coordinate로 상대 CoM, moment-arm, load-shift proxy를 계산한다.
+- ⑨ Biomechanical Proxy는 normalized coordinate로 상대 CoM, moment-arm, load-shift proxy를 계산한다.
   이 단계에서 절대 force, torque, calibrated physical distance를 추론해서는 안 된다.
 
 ---

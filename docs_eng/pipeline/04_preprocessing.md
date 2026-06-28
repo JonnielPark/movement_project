@@ -85,7 +85,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     flags anatomically impossible configurations only.
-    Exercise-specific ROM assessment belongs to ⑨ Feature Extraction.
+    Exercise-specific ROM assessment belongs to ⑧ Feature Extraction.
 
 velocity outliers
     body-scale-normalized frame-to-frame jumps above threshold.
@@ -112,7 +112,7 @@ generic fallback     skip
 
 High-confidence swap candidates exchange paired landmark labels for the affected
 frame. Coordinate values are not modified. Low-confidence cases are flagged only
-and left for ⑨ Feature Extraction role-context handling or manual review.
+and left for ⑧ Feature Extraction role-context handling or manual review.
 
 ### Short-Gap Interpolation
 
@@ -183,7 +183,7 @@ infer near/far/unknown side context
 apply optional smoothing/interpolation only to far-side low-confidence landmarks
 interpolate short low-confidence gaps
 report unresolved long gaps as low confidence
-emit feature-availability hooks for ⑨ and ⑩
+emit feature-availability hooks for ⑧ and ⑨
 ```
 
 Not allowed:
@@ -265,7 +265,7 @@ be kept as a separate numbered check near the end, clearly marked as diagnostic
 evidence rather than target-recording movement quality.
 
 Frames are never silently deleted. Exact feature-level exclusion is decided later
-by ⑨ Feature Extraction and ⑪ Biomarker Scoring.
+by ⑧ Feature Extraction and ⑩ Biomarker Scoring.
 
 ---
 
@@ -293,4 +293,4 @@ Kalman filtering is not active in the current preprocessing scope.
 - Per-feature landmark coverage summaries for availability resolution.
 - Reliability-weighted interpolation/smoothing after real-sample review.
 - Per-exercise velocity thresholds when justified by tests.
-- Before/after quality visualization in ⑪.
+- Before/after quality visualization in ⑩.

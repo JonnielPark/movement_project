@@ -5,7 +5,7 @@
 **Korean Sync:** `docs/pipeline/01_validation.md` is the same-version Korean source.
 
 Pipeline step ① checks structural integrity of input pose data. It does not
-modify data and is distinct from ⑫ robustness evaluation.
+modify data and is distinct from ⑪ robustness evaluation.
 
 ---
 
