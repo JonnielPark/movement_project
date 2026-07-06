@@ -1,7 +1,7 @@
 # 10. Biomarker Scoring
 
-**Document Version:** 1.6.0
-**Last Updated:** 2026-07-04
+**Document Version:** 1.6.2
+**Last Updated:** 2026-07-07
 **Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
 
 Pipeline step ⑩ wraps ⑧ `FeatureRecord` and ⑨ `BiomechRecord` outputs into
@@ -179,6 +179,19 @@ biomarker:
     spatial.movement_path.arc_length_xy.right_hip.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.left_knee.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.right_knee.turnaround_hold: upper_bound_only
+  baseline_generation:
+    enabled: true
+    generate_when_missing: true
+    source_mode: current_run
+    baseline_status: provisional
+    source_type: current_recording
+    pose_backend: mediapipe
+    coordinate_mode: norm
+    output_dir: data/reference/baselines
+    active_metrics_path: data/reference/baseline_zscore.json
+    qc_output_dir: data/reference/baseline_qc
+    mirror_active_metrics: false
+    use_generated_for_current_scoring: true
 ```
 
 Domain assignment is by record ID prefix.
@@ -939,7 +952,7 @@ records where the floor affected the domain.
 
 ```text
 File       data/reference/baseline_zscore.json
-Generator  scripts/compute_baseline.py
+Generator  scripts/generate_baseline.py
 Schema     { exercise_id: { metric_id: {"mean": float, "std": float} } }
 ```
 
@@ -951,6 +964,15 @@ Baseline statistics are tied to the exact exercise definition and feature schema
 that generated them. If an authored exercise is promoted or the feature set
 changes, the previous baseline entry is invalid until regenerated or explicitly
 version-guarded.
+
+Baseline generation is a ⑩ scoring sub-policy, not a separate numbered pipeline
+stage. Baseline generation and baseline adoption are separate actions. When
+`biomarker.baseline_generation.enabled` and `generate_when_missing` are true, ⑩
+may generate a provisional baseline if the selected exercise has no active
+baseline entry. This opens the scoring path for smoke testing, but it must not
+silently promote the generated baseline into the active research baseline.
+Generated baselines should be reviewed through their QC/provenance metadata
+before they are used as an active baseline.
 
 Baseline-view compatibility is also a metadata contract, not a pose-derived
 inference. For view-sensitive recording-view features, especially movement path and
@@ -1011,6 +1033,24 @@ natural variability       estimated across reviewed reps/recordings/subjects
 model error distribution  observed under the actual pose backend and pipeline
 ```
 
+Reference construction is therefore a research task. Users must build or choose
+the reference material that defines "expected" movement for the target exercise:
+
+```text
+synthetic reference       controlled synthetic or demonstration sequence
+reviewed-good examples   researcher-reviewed executions judged suitable for
+                         provisional/reviewed engineering reference
+custom expected values    exercise-specific values or tolerance bands chosen
+                         from pilot experiments, advisor review, or study design
+```
+
+The exercise YAML and default scoring config can seed feature selection,
+eligibility, and default gravity. They cannot discover normative mean/std values
+by themselves. If a user wants exercise-specific or participant-specific scoring,
+the required reference recordings, reviewed-good examples, or custom tolerance
+values must be collected and documented by the user before the resulting scores
+are interpreted beyond smoke-test behavior.
+
 Baseline generation therefore uses tiers.
 
 ```text
@@ -1035,14 +1075,26 @@ locked_baseline
     scoring-policy change requires a new baseline version.
 ```
 
-The current `baseline_zscore.json` schema stores only metric statistics. Future
-development should add a metadata sidecar or schema v2 that records:
+The current `baseline_zscore.json` schema stores only metric statistics and is
+kept as the backward-compatible active metrics store. New generation should write
+a generated baseline bundle first, with human-readable metadata separated from
+numeric metric statistics:
+
+```text
+data/reference/baselines/<baseline_id>/
+    baseline.yaml      reviewable metadata, status, and paths
+    metrics.json       { metric_id: {"mean": float, "std": float} }
+    qc.json            included/withheld metric audit and source provenance
+```
+
+`baseline.yaml` should record:
 
 ```text
 exercise_id
 definition_version
 baseline_status          provisional | reviewed | locked
 source_type              synthetic | reviewed_recordings | mixed
+source_mode              current_run | single_file | manifest
 pose_backend             mediapipe | yolo | other
 coordinate_mode          norm by default
 camera_view_family       front | front_oblique | side | rear_oblique | unknown
@@ -1056,6 +1108,10 @@ withheld_metric_count
 created_from_manifest
 created_at
 pipeline_version_or_commit
+metrics_path
+qc_path
+active_for_scoring       false for generated baselines until promoted
+used_for_current_scoring true only for current-run provisional bootstrap
 ```
 
 For newly authored user exercises, the recommended path is:
@@ -1063,7 +1119,7 @@ For newly authored user exercises, the recommended path is:
 ```text
 author exercise definition
 → run stage checks and feature/biomech extraction
-→ create provisional baseline from synthetic or reviewed-good examples
+→ generate a provisional baseline from synthetic or reviewed-good examples
 → inspect score sensitivity, deductions, and withheld evidence
 → promote to reviewed baseline only after enough representative executions exist
 ```
@@ -1075,11 +1131,18 @@ author exercise definition
 Baseline generation should be driven by the exercise definition and a reviewed
 recording manifest, not by hidden exercise-specific branches.
 
+For the current implementation, this procedure can be executed explicitly through
+`scripts/generate_baseline.py` or automatically inside ⑩ when
+`biomarker.baseline_generation.enabled` is true. Automatic generation currently
+supports `source_mode = current_run`; this is a provisional bootstrap for opening
+the scoring path, not a reviewed reference baseline. Reviewed baselines still
+require user-supplied reference recordings or a manifest.
+
 Required procedure:
 
 ```text
 1. Load the canonical exercise definition and protocol files.
-2. Read a manifest of baseline candidate recordings/reps.
+2. Read a manifest of baseline-source recordings/reps.
 3. Run the same ①-⑨ pipeline used for evaluation.
 4. Collect FeatureRecord and BiomechRecord rows.
 5. Include records only when their effective scoring gravity is non-zero.
@@ -1089,13 +1152,23 @@ Required procedure:
 6. Preserve all low_confidence/not_assessed rows as baseline QC; low-confidence
    rows included in provisional statistics must still be labeled as such.
 7. Compute per-metric mean/std with the scoring σ floor.
-8. Save metric statistics and baseline provenance.
-9. Re-run ⑩ on held-out examples to inspect score scale and deductions.
+8. Save a generated baseline bundle (`baseline.yaml`, `metrics.json`, `qc.json`).
+9. Optionally mirror the generated metrics into the backward-compatible active
+   `baseline_zscore.json` only after explicit promotion or a development-only
+   compatibility step.
+10. Re-run ⑩ on held-out examples to inspect score scale and deductions.
 ```
 
-The existing `scripts/compute_baseline.py` is the minimal synthetic/provisional
-entry point. It should be expanded before reviewed baselines are created so it
-can accept a manifest, emit QC metadata, and label the resulting baseline tier.
+`source_mode = current_run` uses the current pipeline's already-computed
+FeatureRecord and BiomechRecord rows as the temporary reference. This mode can
+fill default metadata and produce a complete baseline bundle, but it is a
+self-reference: it should be labeled `provisional`, used for inspection, and
+replaced by synthetic/reference/reviewed-good material before study scoring.
+
+`scripts/generate_baseline.py` is the baseline-generation entry point. The name
+is used because it describes the research workflow more accurately than
+"compute": the script generates a provisional or reviewed baseline bundle for
+inspection instead of silently declaring active scoring statistics.
 
 ---
 
@@ -1200,7 +1273,7 @@ src/movement/biomarker/scoring.py         BiomarkerScoreRecord, baseline IO,
 src/movement/record_metadata.py           shared record context metadata fields
 src/movement/biomarker/interpretation.py  YAML rule loader and InterpretationRecord
 data/definitions/interpretation_rules/    per-exercise interpretation rules
-scripts/compute_baseline.py               baseline generator
+scripts/generate_baseline.py              baseline generator
 data/reference/baseline_zscore.json       current metric-statistics store
 tests/test_biomarker_scoring_weights.py   weights and bounds
 tests/test_biomarker_scoring_availability.py availability gravity and withheld audit

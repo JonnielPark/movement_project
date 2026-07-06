@@ -55,6 +55,14 @@ def _resolve_path(p: str | Path) -> Path:
     return p if p.is_absolute() else _PROJECT_ROOT / p
 
 
+def _display_path(path: Path | str) -> str:
+    path = Path(path)
+    try:
+        return str(path.resolve().relative_to(_PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def _unique_non_null_strings(df: pd.DataFrame, column: str) -> list[str]:
     if column not in df.columns:
         return []
@@ -298,6 +306,22 @@ class PhaseSegmentationConfig:
 
 
 @dataclass
+class BaselineGenerationConfig:
+    enabled: bool = True
+    generate_when_missing: bool = True
+    source_mode: str = "current_run"
+    baseline_status: str = "provisional"
+    source_type: str = "current_recording"
+    pose_backend: str = "mediapipe"
+    coordinate_mode: str = "norm"
+    output_dir: str = "data/reference/baselines"
+    active_metrics_path: str = "data/reference/baseline_zscore.json"
+    qc_output_dir: str = "data/reference/baseline_qc"
+    mirror_active_metrics: bool = False
+    use_generated_for_current_scoring: bool = True
+
+
+@dataclass
 class BiomarkerConfig:
     enabled: bool = False
     emit_provenance: bool = True
@@ -310,6 +334,9 @@ class BiomarkerConfig:
     feature_score_weight_overrides: dict[str, float] | None = None
     feature_score_direction_overrides: dict[str, str] | None = None
     score_bounds: dict[str, float] | None = None
+    baseline_generation: BaselineGenerationConfig = field(
+        default_factory=BaselineGenerationConfig
+    )
 
 
 # backward-compatibility alias
@@ -444,6 +471,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     bio = raw.get("biomech", {})
     # backward-compat: fall back to 'scoring' key if 'biomarker' is absent
     bm = raw.get("biomarker", raw.get("scoring", {}))
+    bgen = bm.get("baseline_generation", {}) or {}
     out = raw.get("output", {})
 
     return PipelineConfig(
@@ -696,6 +724,25 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 "feature_score_direction_overrides"
             ),
             score_bounds=bm.get("score_bounds"),
+            baseline_generation=BaselineGenerationConfig(
+                enabled=bool(bgen.get("enabled", True)),
+                generate_when_missing=bool(bgen.get("generate_when_missing", True)),
+                source_mode=bgen.get("source_mode", "current_run"),
+                baseline_status=bgen.get("baseline_status", "provisional"),
+                source_type=bgen.get("source_type", "current_recording"),
+                pose_backend=bgen.get("pose_backend", "mediapipe"),
+                coordinate_mode=bgen.get("coordinate_mode", "norm"),
+                output_dir=bgen.get("output_dir", "data/reference/baselines"),
+                active_metrics_path=bgen.get(
+                    "active_metrics_path",
+                    "data/reference/baseline_zscore.json",
+                ),
+                qc_output_dir=bgen.get("qc_output_dir", "data/reference/baseline_qc"),
+                mirror_active_metrics=bool(bgen.get("mirror_active_metrics", False)),
+                use_generated_for_current_scoring=bool(
+                    bgen.get("use_generated_for_current_scoring", True)
+                ),
+            ),
         ),
         output=OutputConfig(
             save_processed=out.get("save_processed", False),
@@ -1109,14 +1156,131 @@ def run_pipeline(
                 "[Step ⑩] Biomarker Derivation: exercise_def not available — skipped."
             )
         else:
-            from movement.biomarker.scoring import derive_biomarkers
+            from movement.biomarker.scoring import (
+                derive_biomarkers,
+                generate_baseline_from_records,
+                load_baseline,
+            )
 
             def_version = exercise_def.version
+            baseline_metrics_for_scoring = None
+            baseline_path_for_scoring = _resolve_path(
+                config.biomarker.baseline_generation.active_metrics_path
+            )
+            baseline_generation = config.biomarker.baseline_generation
+
+            if (
+                baseline_generation.enabled
+                and baseline_generation.generate_when_missing
+            ):
+                existing_baseline = load_baseline(
+                    baseline_path_for_scoring,
+                    exercise_def.exercise_id,
+                )
+                if existing_baseline:
+                    report["baseline_generation"] = {
+                        "status": "active_baseline_exists",
+                        "baseline_path": _display_path(baseline_path_for_scoring),
+                        "metric_count": len(existing_baseline),
+                    }
+                elif baseline_generation.source_mode != "current_run":
+                    warnings.warn(
+                        "[Step ⑩] Baseline auto-generation skipped: only "
+                        "source_mode='current_run' is implemented for automatic "
+                        "scoring-stage bootstrap.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    report["baseline_generation"] = {
+                        "status": "skipped",
+                        "reason": "unsupported_source_mode",
+                        "source_mode": baseline_generation.source_mode,
+                    }
+                elif not feat_records and not biomech_records:
+                    warnings.warn(
+                        "[Step ⑩] Baseline auto-generation skipped: no "
+                        "FeatureRecord or BiomechRecord rows are available.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    report["baseline_generation"] = {
+                        "status": "skipped",
+                        "reason": "no_source_records",
+                        "source_mode": baseline_generation.source_mode,
+                    }
+                else:
+                    generated = generate_baseline_from_records(
+                        feat_records,
+                        biomech_records,
+                        exercise_definition=exercise_def,
+                        baseline_status=baseline_generation.baseline_status,
+                        source_type=baseline_generation.source_type,
+                        source_mode=baseline_generation.source_mode,
+                        pose_backend=baseline_generation.pose_backend,
+                        coordinate_mode=baseline_generation.coordinate_mode,
+                        output_dir=_resolve_path(baseline_generation.output_dir),
+                        active_metrics_path=baseline_path_for_scoring,
+                        qc_output_dir=_resolve_path(baseline_generation.qc_output_dir),
+                        mirror_active_metrics=(
+                            baseline_generation.mirror_active_metrics
+                        ),
+                        used_for_current_scoring=(
+                            baseline_generation.use_generated_for_current_scoring
+                        ),
+                        source_files=([config.input.path] if config.input.path else []),
+                        annotation_files=(
+                            [config.annotation.path]
+                            if config.annotation.enabled and config.annotation.path
+                            else []
+                        ),
+                        domain_feature_family_weights=(
+                            config.biomarker.domain_feature_family_weights
+                        ),
+                        low_confidence_score_weights=(
+                            config.biomarker.low_confidence_score_weights
+                        ),
+                        depth_dependency_score_weights=(
+                            config.biomarker.depth_dependency_score_weights
+                        ),
+                        scoring_focus_weights=(config.biomarker.scoring_focus_weights),
+                        feature_score_weight_overrides=(
+                            config.biomarker.feature_score_weight_overrides
+                        ),
+                        feature_score_direction_overrides=(
+                            config.biomarker.feature_score_direction_overrides
+                        ),
+                    )
+                    if (
+                        baseline_generation.use_generated_for_current_scoring
+                        and generated["metrics"]
+                    ):
+                        baseline_metrics_for_scoring = generated["metrics"]
+                    report["baseline_generation"] = {
+                        "status": (
+                            "generated" if generated["metrics"] else "generated_empty"
+                        ),
+                        "baseline_id": generated["baseline_id"],
+                        "source_mode": baseline_generation.source_mode,
+                        "baseline_status": baseline_generation.baseline_status,
+                        "source_type": baseline_generation.source_type,
+                        "baseline_dir": _display_path(generated["baseline_dir"]),
+                        "metrics_path": _display_path(generated["metrics_path"]),
+                        "qc_path": _display_path(generated["qc_path"]),
+                        "baseline_path": _display_path(generated["baseline_path"]),
+                        "metric_count": len(generated["metrics"]),
+                        "used_for_current_scoring": bool(baseline_metrics_for_scoring),
+                        "mirrored_active_metrics": bool(
+                            baseline_generation.mirror_active_metrics
+                        ),
+                    }
+
             biomarker_records, score_records = derive_biomarkers(
                 feat_records=feat_records,
                 biomech_records=biomech_records,
                 exercise_definition=exercise_def,
                 definition_version=def_version,
+                baseline_path=baseline_path_for_scoring,
+                baseline_metrics=baseline_metrics_for_scoring,
                 domain_weights=config.biomarker.domain_weights,
                 domain_feature_family_weights=(
                     config.biomarker.domain_feature_family_weights

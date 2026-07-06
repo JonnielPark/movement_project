@@ -1,7 +1,7 @@
 # 10. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.6.0
-**최종 갱신:** 2026-07-04
+**문서 버전:** 1.6.2
+**최종 갱신:** 2026-07-07
 **영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑩은 ⑧ `FeatureRecord`와 ⑨ `BiomechRecord`를 해석 가능한 biomarker record로
@@ -173,6 +173,19 @@ biomarker:
     spatial.movement_path.arc_length_xy.right_hip.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.left_knee.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.right_knee.turnaround_hold: upper_bound_only
+  baseline_generation:
+    enabled: true
+    generate_when_missing: true
+    source_mode: current_run
+    baseline_status: provisional
+    source_type: current_recording
+    pose_backend: mediapipe
+    coordinate_mode: norm
+    output_dir: data/reference/baselines
+    active_metrics_path: data/reference/baseline_zscore.json
+    qc_output_dir: data/reference/baseline_qc
+    mirror_active_metrics: false
+    use_generated_for_current_scoring: true
 ```
 
 Domain은 record ID prefix로 배정한다.
@@ -850,7 +863,7 @@ domain_score        = max(floor_dynamic, raw_domain_score)
 
 ```text
 File       data/reference/baseline_zscore.json
-Generator  scripts/compute_baseline.py
+Generator  scripts/generate_baseline.py
 Schema     { exercise_id: { metric_id: {"mean": float, "std": float} } }
 ```
 
@@ -861,6 +874,13 @@ pass-through biomarker record는 반환한다.
 Baseline statistics는 그것을 생성한 exercise definition 및 feature schema에 묶인다. Authoring
 운동이 승격되거나 feature set이 바뀌면 기존 baseline entry는 재생성하거나 명시적으로 version
 guard를 두기 전까지 invalid다.
+
+Baseline generation은 별도 번호가 붙은 pipeline stage가 아니라 ⑩ scoring의 하위 정책이다.
+Baseline 생성과 baseline 채택은 별도 동작이다. `biomarker.baseline_generation.enabled`와
+`generate_when_missing`이 true이면 ⑩은 선택한 운동의 active baseline entry가 없을 때
+provisional baseline을 생성할 수 있다. 이는 scoring path를 smoke-test하기 위한 것이며,
+생성된 baseline을 active research baseline으로 조용히 승격해서는 안 된다. 생성된 baseline은
+active baseline으로 사용하기 전에 QC/provenance metadata로 검토해야 한다.
 
 Baseline-view compatibility도 pose-derived inference가 아니라 metadata contract로 다룬다.
 Movement path 및 frontal-plane compensation처럼 view-sensitive한 recording-view feature에서는 baseline과
@@ -917,6 +937,22 @@ natural variability       reviewed rep/recording/subject에서 추정한 자연 
 model error distribution  실제 pose backend와 pipeline에서 관측되는 오류 분포
 ```
 
+따라서 reference 구축은 별도의 연구 작업이다. 사용자는 대상 운동에서 무엇을 "기대되는" 움직임으로
+볼지 정하는 reference material을 직접 구축하거나 선택해야 한다.
+
+```text
+synthetic reference       통제된 synthetic 또는 demonstration sequence
+reviewed-good examples   provisional/reviewed engineering reference로 적합하다고
+                         연구자가 검토한 실행
+custom expected values    pilot experiment, 지도/자문 검토, 연구 설계에서 정한
+                         운동별 값 또는 tolerance band
+```
+
+운동 YAML과 default scoring config는 feature selection, eligibility, 기본 gravity를 제공할 수
+있다. 하지만 normative mean/std를 스스로 발견하지는 못한다. 사용자가 운동별 또는 개인 맞춤
+scoring을 원한다면, 점수를 smoke-test 이상으로 해석하기 전에 reference recording,
+reviewed-good example, 또는 custom tolerance 값을 직접 수집하고 문서화해야 한다.
+
 따라서 baseline 생성은 tier로 구분한다.
 
 ```text
@@ -940,14 +976,25 @@ locked_baseline
     새 baseline version이 필요하다.
 ```
 
-현재 `baseline_zscore.json` schema는 metric statistics만 저장한다. 향후 개발에서는 metadata
-sidecar 또는 schema v2를 추가해 다음 정보를 기록해야 한다.
+현재 `baseline_zscore.json` schema는 metric statistics만 저장하며 backward-compatible active
+metrics store로 유지한다. 새로운 생성 흐름은 numeric metric statistics와 사람이 검토할
+metadata를 분리한 generated baseline bundle을 먼저 저장해야 한다.
+
+```text
+data/reference/baselines/<baseline_id>/
+    baseline.yaml      검토 가능한 metadata, status, path
+    metrics.json       { metric_id: {"mean": float, "std": float} }
+    qc.json            included/withheld metric audit 및 source provenance
+```
+
+`baseline.yaml`에는 다음 정보를 기록한다.
 
 ```text
 exercise_id
 definition_version
 baseline_status          provisional | reviewed | locked
 source_type              synthetic | reviewed_recordings | mixed
+source_mode              current_run | single_file | manifest
 pose_backend             mediapipe | yolo | other
 coordinate_mode          기본값 norm
 camera_view_family       front | front_oblique | side | rear_oblique | unknown
@@ -961,6 +1008,10 @@ withheld_metric_count
 created_from_manifest
 created_at
 pipeline_version_or_commit
+metrics_path
+qc_path
+active_for_scoring       생성 baseline은 승격 전까지 false
+used_for_current_scoring current-run provisional bootstrap일 때만 true
 ```
 
 새 authoring 운동의 권장 흐름:
@@ -980,11 +1031,17 @@ pipeline_version_or_commit
 Baseline generation은 hidden exercise-specific branch가 아니라 exercise definition과 reviewed
 recording manifest를 기준으로 동작해야 한다.
 
+현재 구현에서는 이 절차를 `scripts/generate_baseline.py`로 명시적으로 실행하거나,
+`biomarker.baseline_generation.enabled`가 true일 때 ⑩ 내부에서 자동 실행할 수 있다. 자동 생성은
+현재 `source_mode = current_run`을 지원한다. 이 모드는 scoring path를 열기 위한 provisional
+bootstrap이지 reviewed reference baseline이 아니다. Reviewed baseline은 여전히 사용자가 제공한
+reference recording 또는 manifest가 필요하다.
+
 필수 절차:
 
 ```text
 1. Canonical exercise definition 및 protocol 파일을 로드한다.
-2. Baseline candidate recording/rep manifest를 읽는다.
+2. Baseline source recording/rep manifest를 읽는다.
 3. Evaluation과 같은 ①-⑨ pipeline을 실행한다.
 4. FeatureRecord와 BiomechRecord row를 수집한다.
 5. Effective scoring gravity가 0이 아닌 record만 포함한다. 즉 `availability == assessed`
@@ -993,12 +1050,20 @@ recording manifest를 기준으로 동작해야 한다.
 6. 모든 low_confidence/not_assessed row는 baseline QC로 보존한다. Provisional statistics에
    포함된 low-confidence row도 해당 상태를 숨기지 않고 계속 표시해야 한다.
 7. Scoring σ floor를 적용해 metric별 mean/std를 계산한다.
-8. Metric statistics와 baseline provenance를 저장한다.
-9. Held-out example에서 ⑩을 다시 실행해 score scale과 deduction을 점검한다.
+8. Generated baseline bundle(`baseline.yaml`, `metrics.json`, `qc.json`)을 저장한다.
+9. 명시적 승격 또는 개발용 호환 단계가 있을 때만 generated metrics를 backward-compatible active
+   `baseline_zscore.json`에 mirror한다.
+10. Held-out example에서 ⑩을 다시 실행해 score scale과 deduction을 점검한다.
 ```
 
-현재 `scripts/compute_baseline.py`는 최소 synthetic/provisional entry point다. Reviewed baseline을
-만들기 전에는 manifest 입력, QC metadata 출력, baseline tier label을 받을 수 있도록 확장해야 한다.
+`source_mode = current_run`은 현재 pipeline에서 이미 계산된 FeatureRecord와 BiomechRecord row를
+임시 reference로 사용한다. 이 모드는 default metadata를 채워 완전한 baseline bundle을 만들 수
+있지만 self-reference다. 따라서 `provisional`로 표시하고 inspection에 사용해야 하며, 연구 점수화
+전에는 synthetic/reference/reviewed-good material로 대체해야 한다.
+
+`scripts/generate_baseline.py`를 baseline-generation entry point로 사용한다. 이 이름은
+"compute"보다 연구 workflow를 더 정확히 드러낸다. 즉 script는 active 기준값을 조용히
+확정하는 것이 아니라, 검토할 provisional 또는 reviewed baseline bundle을 생성한다.
 
 ---
 
@@ -1102,7 +1167,7 @@ src/movement/biomarker/scoring.py         BiomarkerScoreRecord, baseline IO,
 src/movement/record_metadata.py           공유 record context metadata field
 src/movement/biomarker/interpretation.py  YAML rule loader and InterpretationRecord
 data/definitions/interpretation_rules/    per-exercise interpretation rules
-scripts/compute_baseline.py               baseline generator
+scripts/generate_baseline.py              baseline generator
 data/reference/baseline_zscore.json       현재 metric-statistics 저장소
 tests/test_biomarker_scoring_weights.py   weights and bounds
 tests/test_biomarker_scoring_availability.py availability gravity and withheld audit

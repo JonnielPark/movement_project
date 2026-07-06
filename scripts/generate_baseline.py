@@ -1,15 +1,16 @@
 """
-Compute baseline metric statistics for biomarker scoring.
+Generate baseline metric statistics for biomarker scoring.
 
 The script runs the same code-backed ①-⑨ path used by stage-check notebooks,
-builds per-metric mean/std entries, and writes a separate QC/provenance JSON.
+builds per-metric mean/std entries, and writes a baseline bundle for review.
 
 The metric-statistics output remains backward compatible:
     { exercise_id: { metric_id: {"mean": float, "std": float} } }
 
 Usage:
-    python scripts/compute_baseline.py
-    python scripts/compute_baseline.py --exercise squat --baseline-status provisional
+    python scripts/generate_baseline.py
+    python scripts/generate_baseline.py --exercise squat \
+        --baseline-status provisional
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +52,7 @@ _DEFAULT_ANN = (
 )
 _DEFAULT_DEFS = _PROJECT_ROOT / "data/definitions/exercises"
 _DEFAULT_OUTPUT = _PROJECT_ROOT / "data/reference/baseline_zscore.json"
+_DEFAULT_BASELINES_DIR = _PROJECT_ROOT / "data/reference/baselines"
 
 
 def _read_existing_baseline(path: Path) -> dict[str, dict[str, dict[str, float]]]:
@@ -74,7 +77,80 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
-def compute_baseline(
+def _baseline_id(
+    *,
+    exercise_id: str,
+    definition_version: str,
+    baseline_status: str,
+    created_at: datetime,
+) -> str:
+    date_token = created_at.strftime("%Y%m%d")
+    version_token = str(definition_version).replace(".", "_")
+    return f"{exercise_id}_{version_token}_{baseline_status}_{date_token}"
+
+
+def _write_baseline_bundle(
+    *,
+    baseline_root: Path,
+    baseline_id: str,
+    exercise_def: Any,
+    baseline_status: str,
+    source_type: str,
+    source_mode: str,
+    pose_backend: str,
+    coordinate_mode: str,
+    metrics: dict[str, dict[str, float]],
+    qc_payload: dict[str, Any],
+    created_at: datetime,
+) -> dict[str, Path]:
+    baseline_root.mkdir(parents=True, exist_ok=True)
+    metrics_path = baseline_root / "metrics.json"
+    qc_path = baseline_root / "qc.json"
+    metadata_path = baseline_root / "baseline.yaml"
+
+    metrics_path.write_text(
+        json.dumps(metrics, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    qc_path.write_text(
+        json.dumps(qc_payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+    metadata = {
+        "baseline_id": baseline_id,
+        "exercise_id": exercise_def.exercise_id,
+        "exercise_definition_version": exercise_def.version,
+        "baseline_status": baseline_status,
+        "source_type": source_type,
+        "source_mode": source_mode,
+        "pose_backend": pose_backend,
+        "coordinate_mode": coordinate_mode,
+        "created_at": created_at.isoformat(),
+        "metrics_path": "metrics.json",
+        "qc_path": "qc.json",
+        "active_for_scoring": False,
+    }
+
+    def _yaml_scalar(value: Any) -> str:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return str(value)
+
+    metadata_lines = [
+        f"{key}: {_yaml_scalar(value)}" for key, value in metadata.items()
+    ]
+    metadata_path.write_text("\n".join(metadata_lines) + "\n", encoding="utf-8")
+
+    return {
+        "baseline_dir": baseline_root,
+        "metadata_path": metadata_path,
+        "metrics_path": metrics_path,
+        "qc_path": qc_path,
+    }
+
+
+def generate_baseline(
     *,
     csv_path: Path,
     ann_path: Path | None,
@@ -82,8 +158,11 @@ def compute_baseline(
     definitions_dir: Path,
     output_path: Path,
     qc_output_path: Path | None = None,
+    baseline_output_dir: Path | None = None,
+    mirror_active_metrics: bool = False,
     baseline_status: str = "provisional",
     source_type: str = "synthetic",
+    source_mode: str = "single_file",
     pose_backend: str = "mediapipe",
     coordinate_mode: str = "norm",
     manifest_path: Path | None = None,
@@ -94,7 +173,7 @@ def compute_baseline(
     feature_score_weight_overrides: dict[str, float] | None = None,
     feature_score_direction_overrides: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Generate baseline statistics and QC metadata for one exercise."""
+    """Generate a reviewable baseline bundle for one exercise."""
 
     if baseline_status not in BASELINE_STATUSES:
         valid = ", ".join(BASELINE_STATUSES)
@@ -127,6 +206,18 @@ def compute_baseline(
     print(
         "[baseline] Exercise definition loaded: "
         f"{exercise_def.exercise_id} v{exercise_def.version}"
+    )
+    created_at = datetime.now(timezone.utc)
+    baseline_id = _baseline_id(
+        exercise_id=exercise_def.exercise_id,
+        definition_version=exercise_def.version,
+        baseline_status=baseline_status,
+        created_at=created_at,
+    )
+    baseline_dir = (
+        baseline_output_dir.resolve()
+        if baseline_output_dir is not None
+        else (_DEFAULT_BASELINES_DIR / baseline_id).resolve()
     )
     default_pipeline = load_pipeline_config(
         _PROJECT_ROOT / "configs/pipeline_default.yaml"
@@ -217,11 +308,6 @@ def compute_baseline(
     )
     print(f"[baseline] Built baseline statistics: {len(new_metrics)} metrics")
 
-    existing = _read_existing_baseline(output_path)
-    existing[exercise_id] = new_metrics
-    save_baseline(existing, output_path)
-    print(f"[baseline] Saved metric statistics: {_display_path(output_path)}")
-
     qc_payload = build_baseline_qc(
         feat_records,
         biomech_records,
@@ -244,6 +330,35 @@ def compute_baseline(
     )
     qc_payload["recording_id"] = recording_id_from_pose_csv(csv_path)
     qc_payload["pipeline_report_keys"] = sorted(report.keys())
+    qc_payload["baseline_id"] = baseline_id
+    qc_payload["created_at"] = created_at.isoformat()
+    qc_payload["source_mode"] = source_mode
+    qc_payload["used_for_current_scoring"] = False
+
+    baseline_paths = _write_baseline_bundle(
+        baseline_root=baseline_dir,
+        baseline_id=baseline_id,
+        exercise_def=exercise_def,
+        baseline_status=baseline_status,
+        source_type=source_type,
+        source_mode=source_mode,
+        pose_backend=pose_backend,
+        coordinate_mode=coordinate_mode,
+        metrics=new_metrics,
+        qc_payload=qc_payload,
+        created_at=created_at,
+    )
+    print(
+        "[baseline] Saved baseline bundle: "
+        f"{_display_path(baseline_paths['baseline_dir'])}"
+    )
+
+    if mirror_active_metrics:
+        existing = _read_existing_baseline(output_path)
+        existing[exercise_id] = new_metrics
+        save_baseline(existing, output_path)
+        print(f"[baseline] Saved metric statistics: {_display_path(output_path)}")
+
     save_baseline_qc(qc_payload, resolved_qc_output)
     print(f"[baseline] Saved QC metadata: {_display_path(resolved_qc_output)}")
 
@@ -256,6 +371,11 @@ def compute_baseline(
             break
 
     return {
+        "baseline_id": baseline_id,
+        "baseline_dir": baseline_paths["baseline_dir"],
+        "metadata_path": baseline_paths["metadata_path"],
+        "metrics_path": baseline_paths["metrics_path"],
+        "bundle_qc_path": baseline_paths["qc_path"],
         "baseline_path": output_path,
         "qc_path": resolved_qc_output,
         "metrics": new_metrics,
@@ -263,8 +383,8 @@ def compute_baseline(
     }
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Compute biomarker baseline.")
+def main(*, default_mirror_active_metrics: bool = False) -> None:
+    parser = argparse.ArgumentParser(description="Generate biomarker baseline.")
     parser.add_argument("--input", default=str(_DEFAULT_INPUT), help="Pose CSV path")
     parser.add_argument("--ann", default=str(_DEFAULT_ANN), help="Annotation CSV path")
     parser.add_argument("--exercise", default="squat", help="Exercise ID")
@@ -277,7 +397,32 @@ def main() -> None:
     parser.add_argument(
         "--qc-output",
         default=None,
-        help="Output QC JSON path; defaults to data/reference/baseline_qc/<exercise>_baseline_qc.json",
+        help=(
+            "Output QC JSON path; defaults to "
+            "data/reference/baseline_qc/<exercise>_baseline_qc.json"
+        ),
+    )
+    parser.add_argument(
+        "--baseline-output-dir",
+        default=None,
+        help=(
+            "Baseline bundle directory; defaults to "
+            "data/reference/baselines/<baseline_id>"
+        ),
+    )
+    mirror_group = parser.add_mutually_exclusive_group()
+    mirror_group.add_argument(
+        "--mirror-active-metrics",
+        dest="mirror_active_metrics",
+        action="store_true",
+        default=default_mirror_active_metrics,
+        help="Also mirror generated metrics into data/reference/baseline_zscore.json",
+    )
+    mirror_group.add_argument(
+        "--no-mirror-active-metrics",
+        dest="mirror_active_metrics",
+        action="store_false",
+        help="Do not mirror generated metrics into data/reference/baseline_zscore.json",
     )
     parser.add_argument(
         "--baseline-status",
@@ -289,6 +434,11 @@ def main() -> None:
         "--source-type",
         default="synthetic",
         help="Baseline source type, e.g. synthetic or reviewed_recordings",
+    )
+    parser.add_argument(
+        "--source-mode",
+        default="single_file",
+        help="Baseline source mode, e.g. single_file, current_run, or manifest",
     )
     parser.add_argument(
         "--pose-backend",
@@ -303,25 +453,36 @@ def main() -> None:
     parser.add_argument(
         "--manifest",
         default=None,
-        help="Optional manifest path recorded as provenance; single-file mode still reads --input",
+        help=(
+            "Optional manifest path recorded as provenance; "
+            "single-file mode still reads --input"
+        ),
     )
     parser.add_argument(
         "--low-confidence-biomech-weight",
         type=float,
         default=0.1,
-        help="Scoring gravity used when including low-confidence biomech records in provisional baseline stats",
+        help=(
+            "Scoring gravity used when including low-confidence biomech records "
+            "in provisional baseline stats"
+        ),
     )
     args = parser.parse_args()
 
-    compute_baseline(
+    generate_baseline(
         csv_path=Path(args.input),
         ann_path=Path(args.ann) if args.ann else None,
         exercise_id=args.exercise,
         definitions_dir=Path(args.defs),
         output_path=Path(args.output),
         qc_output_path=Path(args.qc_output) if args.qc_output else None,
+        baseline_output_dir=(
+            Path(args.baseline_output_dir) if args.baseline_output_dir else None
+        ),
+        mirror_active_metrics=args.mirror_active_metrics,
         baseline_status=args.baseline_status,
         source_type=args.source_type,
+        source_mode=args.source_mode,
         pose_backend=args.pose_backend,
         coordinate_mode=args.coordinate_mode,
         manifest_path=Path(args.manifest) if args.manifest else None,
