@@ -300,6 +300,22 @@ biomarker:
     spatial.movement_path.arc_length_xy.right_hip.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.left_knee.turnaround_hold: upper_bound_only
     spatial.movement_path.arc_length_xy.right_knee.turnaround_hold: upper_bound_only
+  # Baseline generation is a ⑩ scoring sub-policy. The default current-run mode
+  # opens the score path for provisional inspection only; reviewed/reference
+  # baselines still require user-supplied reference recordings or custom bands.
+  baseline_generation:
+    enabled: true
+    generate_when_missing: true
+    source_mode: current_run
+    baseline_status: provisional
+    source_type: current_recording
+    pose_backend: mediapipe
+    coordinate_mode: norm
+    output_dir: data/reference/baselines
+    active_metrics_path: data/reference/baseline_zscore.json
+    qc_output_dir: data/reference/baseline_qc
+    mirror_active_metrics: false
+    use_generated_for_current_scoring: true
 
 # ── Output ────────────────────────────────────────────────────────────────────
 output:

@@ -8,9 +8,12 @@ from movement.biomarker.scoring import (
     build_baseline_from_records,
     build_baseline_qc,
 )
+from movement.core.io import load_pose_csv
 from movement.exercise_definition import load_exercise_definition
 from movement.features import FeatureRecord
-from scripts.compute_baseline import compute_baseline
+from movement.pipeline import run_pipeline
+from movement.stage_context import build_stage_check_pipeline_config
+from scripts.generate_baseline import generate_baseline
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFINITIONS_DIR = _PROJECT_ROOT / "data" / "definitions" / "exercises"
@@ -90,11 +93,12 @@ def test_baseline_qc_tracks_included_and_withheld_records():
     assert "monocular_biomech_proxy_low_confidence" not in qc["withheld_reason_counts"]
 
 
-def test_compute_baseline_writes_provisional_stats_and_qc(tmp_path):
+def test_generate_baseline_writes_provisional_stats_bundle_and_qc(tmp_path):
     baseline_path = tmp_path / "baseline_zscore.json"
     qc_path = tmp_path / "squat_baseline_qc.json"
+    baseline_dir = tmp_path / "squat_baseline"
 
-    result = compute_baseline(
+    result = generate_baseline(
         csv_path=_PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic.csv",
         ann_path=(
             _PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic_annotation.csv"
@@ -103,17 +107,26 @@ def test_compute_baseline_writes_provisional_stats_and_qc(tmp_path):
         definitions_dir=_DEFINITIONS_DIR,
         output_path=baseline_path,
         qc_output_path=qc_path,
+        baseline_output_dir=baseline_dir,
+        mirror_active_metrics=False,
         baseline_status="provisional",
         source_type="synthetic",
         pose_backend="mediapipe",
     )
 
-    baseline_payload = json.loads(baseline_path.read_text(encoding="utf-8"))
     qc_payload = json.loads(qc_path.read_text(encoding="utf-8"))
+    generated_metrics = json.loads((baseline_dir / "metrics.json").read_text())
+    generated_qc = json.loads((baseline_dir / "qc.json").read_text())
+    baseline_metadata = (baseline_dir / "baseline.yaml").read_text(encoding="utf-8")
 
-    assert baseline_payload["squat"]
-    assert any(key.startswith("biomech.") for key in baseline_payload["squat"])
-    assert result["metrics"] == baseline_payload["squat"]
+    assert not baseline_path.exists()
+    assert generated_metrics
+    assert any(key.startswith("biomech.") for key in generated_metrics)
+    assert result["metrics"] == generated_metrics
+    assert generated_qc["baseline_id"] == result["baseline_id"]
+    assert "active_for_scoring: false" in baseline_metadata
+    assert "metrics_path: metrics.json" in baseline_metadata
+    assert result["baseline_dir"] == baseline_dir.resolve()
     assert qc_payload["exercise_id"] == "squat"
     assert qc_payload["definition_version"] == "0.6.0"
     assert qc_payload["baseline_status"] == "provisional"
@@ -175,5 +188,51 @@ def test_compute_baseline_writes_provisional_stats_and_qc(tmp_path):
     }
     assert qc_payload["recording_count"] == 1
     assert qc_payload["rep_count"] >= 1
-    assert qc_payload["included_metric_count"] == len(baseline_payload["squat"])
+    assert qc_payload["included_metric_count"] == len(generated_metrics)
     assert qc_payload["withheld_metric_count"] >= 1
+
+
+def test_pipeline_auto_generates_current_run_baseline_when_missing(tmp_path):
+    baseline_path = tmp_path / "baseline_zscore.json"
+    baseline_output_dir = tmp_path / "baselines"
+    qc_output_dir = tmp_path / "baseline_qc"
+    pose_csv = _PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic.csv"
+    annotation_csv = (
+        _PROJECT_ROOT / "data/pose/sample/mediapipe_squat_synthetic_annotation.csv"
+    )
+    raw_df = load_pose_csv(pose_csv)
+    cfg = build_stage_check_pipeline_config(
+        exercise_id="squat",
+        definitions_dir=_DEFINITIONS_DIR,
+        annotation_csv=annotation_csv,
+        enable_validation=True,
+        enable_annotation=True,
+        enable_preprocessing=True,
+        enable_normalization=True,
+        enable_canonicalization=True,
+        enable_rep_segmentation=True,
+        enable_phase_segmentation=True,
+        enable_features=True,
+        enable_role_context=True,
+        enable_biomech=True,
+        enable_biomarker=True,
+    )
+    cfg.input.path = str(pose_csv)
+    cfg.biomarker.baseline_generation.active_metrics_path = str(baseline_path)
+    cfg.biomarker.baseline_generation.output_dir = str(baseline_output_dir)
+    cfg.biomarker.baseline_generation.qc_output_dir = str(qc_output_dir)
+    cfg.biomarker.baseline_generation.mirror_active_metrics = False
+    cfg.biomarker.baseline_generation.use_generated_for_current_scoring = True
+
+    _, report = run_pipeline(raw_df, cfg)
+
+    generated = report["baseline_generation"]
+    assert generated["status"] == "generated"
+    assert generated["source_mode"] == "current_run"
+    assert generated["used_for_current_scoring"] is True
+    assert generated["mirrored_active_metrics"] is False
+    assert generated["metric_count"] > 0
+    assert not baseline_path.exists()
+    assert (Path(generated["metrics_path"])).exists()
+    assert (Path(generated["qc_path"])).exists()
+    assert report["biomarker_scores"]

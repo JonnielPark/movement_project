@@ -40,6 +40,7 @@ import warnings
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -708,6 +709,99 @@ def save_baseline(
         json.dump(baseline_all, f, indent=2, ensure_ascii=False)
 
 
+def _read_all_baselines(
+    path: Path | str,
+) -> dict[str, dict[str, dict[str, float]]]:
+    path = Path(path)
+    if not path.exists():
+        return {}
+    try:
+        with path.open(encoding="utf-8") as fp:
+            data = json.load(fp)
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _baseline_bundle_id(
+    *,
+    exercise_id: str,
+    definition_version: str,
+    baseline_status: str,
+    created_at: datetime,
+) -> str:
+    version_token = str(definition_version).replace(".", "_")
+    date_token = created_at.strftime("%Y%m%d")
+    return f"{exercise_id}_{version_token}_{baseline_status}_{date_token}"
+
+
+def _yaml_scalar(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "null"
+    return str(value)
+
+
+def _write_baseline_bundle(
+    *,
+    baseline_dir: Path,
+    baseline_id: str,
+    exercise_definition: "ExerciseDefinition",
+    baseline_status: str,
+    source_type: str,
+    source_mode: str,
+    pose_backend: str,
+    coordinate_mode: str,
+    metrics: Mapping[str, Mapping[str, float]],
+    qc_payload: Mapping[str, Any],
+    created_at: datetime,
+    active_for_scoring: bool,
+    used_for_current_scoring: bool,
+) -> dict[str, Path]:
+    baseline_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = baseline_dir / "metrics.json"
+    qc_path = baseline_dir / "qc.json"
+    metadata_path = baseline_dir / "baseline.yaml"
+
+    metrics_path.write_text(
+        json.dumps(dict(metrics), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    qc_path.write_text(
+        json.dumps(dict(qc_payload), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+    metadata = {
+        "baseline_id": baseline_id,
+        "exercise_id": exercise_definition.exercise_id,
+        "exercise_definition_version": exercise_definition.version,
+        "baseline_status": baseline_status,
+        "source_type": source_type,
+        "source_mode": source_mode,
+        "pose_backend": pose_backend,
+        "coordinate_mode": coordinate_mode,
+        "created_at": created_at.isoformat(),
+        "metrics_path": "metrics.json",
+        "qc_path": "qc.json",
+        "active_for_scoring": active_for_scoring,
+        "used_for_current_scoring": used_for_current_scoring,
+    }
+    metadata_path.write_text(
+        "\n".join(f"{key}: {_yaml_scalar(value)}" for key, value in metadata.items())
+        + "\n",
+        encoding="utf-8",
+    )
+
+    return {
+        "baseline_dir": baseline_dir,
+        "metadata_path": metadata_path,
+        "metrics_path": metrics_path,
+        "qc_path": qc_path,
+    }
+
+
 def _record_value_is_finite(record: Any) -> bool:
     value = getattr(record, "value", None)
     if value is None:
@@ -976,6 +1070,125 @@ def save_baseline_qc(qc_payload: Mapping[str, Any], path: Path | str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dict(qc_payload), f, indent=2, ensure_ascii=False)
+
+
+def generate_baseline_from_records(
+    feat_records: list["FeatureRecord"],
+    biomech_records: list["BiomechRecord"],
+    *,
+    exercise_definition: "ExerciseDefinition",
+    baseline_status: str = "provisional",
+    source_type: str = "current_recording",
+    source_mode: str = "current_run",
+    pose_backend: str = "mediapipe",
+    coordinate_mode: str = "norm",
+    output_dir: Path | str | None = None,
+    active_metrics_path: Path | str | None = None,
+    qc_output_dir: Path | str | None = None,
+    mirror_active_metrics: bool = False,
+    used_for_current_scoring: bool = False,
+    source_files: list[str] | None = None,
+    annotation_files: list[str] | None = None,
+    manifest_path: str | None = None,
+    domain_feature_family_weights: Mapping[str, Mapping[str, float]] | None = None,
+    low_confidence_score_weights: Mapping[str, float] | None = None,
+    depth_dependency_score_weights: Mapping[str, float] | None = None,
+    scoring_focus_weights: Mapping[str, float] | None = None,
+    feature_score_weight_overrides: Mapping[str, float] | None = None,
+    feature_score_direction_overrides: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """Generate a reviewable ⑩ baseline bundle from already-computed records.
+
+    This is the scoring-stage bootstrap path used when a baseline is missing.
+    It fills default provenance/policy metadata, but metric mean/std values still
+    come from the provided FeatureRecord and BiomechRecord values.
+    """
+
+    output_root = Path(output_dir or _PROJECT_ROOT / "data" / "reference" / "baselines")
+    active_path = Path(
+        active_metrics_path
+        or _PROJECT_ROOT / "data" / "reference" / "baseline_zscore.json"
+    )
+    qc_root = Path(qc_output_dir or active_path.parent / "baseline_qc")
+
+    created_at = datetime.now(timezone.utc)
+    baseline_id = _baseline_bundle_id(
+        exercise_id=exercise_definition.exercise_id,
+        definition_version=str(exercise_definition.version),
+        baseline_status=baseline_status,
+        created_at=created_at,
+    )
+    baseline_dir = output_root / baseline_id
+
+    metrics = build_baseline_from_records(
+        feat_records,
+        biomech_records,
+        domain_feature_family_weights=domain_feature_family_weights,
+        low_confidence_score_weights=low_confidence_score_weights,
+        depth_dependency_score_weights=depth_dependency_score_weights,
+        scoring_focus_weights=scoring_focus_weights,
+        feature_score_weight_overrides=feature_score_weight_overrides,
+        feature_score_direction_overrides=feature_score_direction_overrides,
+    )
+    qc_payload = build_baseline_qc(
+        feat_records,
+        biomech_records,
+        exercise_definition=exercise_definition,
+        baseline_metrics=metrics,
+        baseline_status=baseline_status,
+        source_type=source_type,
+        pose_backend=pose_backend,
+        coordinate_mode=coordinate_mode,
+        source_files=list(source_files or []),
+        annotation_files=list(annotation_files or []),
+        manifest_path=manifest_path,
+        domain_feature_family_weights=domain_feature_family_weights,
+        low_confidence_score_weights=low_confidence_score_weights,
+        depth_dependency_score_weights=depth_dependency_score_weights,
+        scoring_focus_weights=scoring_focus_weights,
+        feature_score_weight_overrides=feature_score_weight_overrides,
+        feature_score_direction_overrides=feature_score_direction_overrides,
+    )
+    qc_payload["baseline_id"] = baseline_id
+    qc_payload["created_at"] = created_at.isoformat()
+    qc_payload["source_mode"] = source_mode
+    qc_payload["used_for_current_scoring"] = bool(used_for_current_scoring)
+
+    bundle_paths = _write_baseline_bundle(
+        baseline_dir=baseline_dir,
+        baseline_id=baseline_id,
+        exercise_definition=exercise_definition,
+        baseline_status=baseline_status,
+        source_type=source_type,
+        source_mode=source_mode,
+        pose_backend=pose_backend,
+        coordinate_mode=coordinate_mode,
+        metrics=metrics,
+        qc_payload=qc_payload,
+        created_at=created_at,
+        active_for_scoring=bool(mirror_active_metrics),
+        used_for_current_scoring=bool(used_for_current_scoring),
+    )
+
+    if mirror_active_metrics:
+        existing = _read_all_baselines(active_path)
+        existing[exercise_definition.exercise_id] = metrics
+        save_baseline(existing, active_path)
+
+    qc_path = qc_root / f"{exercise_definition.exercise_id}_baseline_qc.json"
+    save_baseline_qc(qc_payload, qc_path)
+
+    return {
+        "baseline_id": baseline_id,
+        "baseline_dir": bundle_paths["baseline_dir"],
+        "metadata_path": bundle_paths["metadata_path"],
+        "metrics_path": bundle_paths["metrics_path"],
+        "bundle_qc_path": bundle_paths["qc_path"],
+        "baseline_path": active_path,
+        "qc_path": qc_path,
+        "metrics": metrics,
+        "qc": qc_payload,
+    }
 
 
 # ── Scoring engine ────────────────────────────────────────────────────────────
@@ -1695,6 +1908,7 @@ def derive_biomarkers(
     definition_version: str,
     *,
     baseline_path: Path | str | None = None,
+    baseline_metrics: Mapping[str, Mapping[str, float]] | None = None,
     domain_weights: Mapping[str, float] | None = None,
     domain_feature_family_weights: Mapping[str, Mapping[str, float]] | None = None,
     low_confidence_score_weights: Mapping[str, float] | None = None,
@@ -1710,9 +1924,10 @@ def derive_biomarkers(
     1. BiomarkerRecord list — individual metrics with provenance (pass-through).
     2. BiomarkerScoreRecord list — per-rep composite movement quality scores.
 
-    Scoring (step 2) requires a synthetic-normal baseline entry for the target
-    exercise. If the file or exercise entry is absent, step 2 is skipped with a
-    UserWarning. Generate or extend the baseline with scripts/compute_baseline.py.
+    Scoring (step 2) requires baseline metrics for the target exercise. They may
+    come from `baseline_metrics` supplied by the ⑩ baseline-generation policy or
+    from the baseline JSON file. If neither is available, step 2 is skipped with
+    a UserWarning. Generate or extend the baseline with scripts/generate_baseline.py.
 
     Parameters
     ----------
@@ -1722,6 +1937,8 @@ def derive_biomarkers(
     definition_version : exercise YAML version (exercise_def.version)
     baseline_path      : path to baseline JSON.
                          None → data/reference/baseline_zscore.json
+    baseline_metrics   : optional in-memory {metric_id: {"mean", "std"}} baseline
+                         for this exercise, used before loading baseline_path.
     domain_weights     : optional relative score-domain weights.
                          Defaults to equal normalized weights across domains.
     domain_feature_family_weights : optional relative feature-family budgets
@@ -1763,17 +1980,29 @@ def derive_biomarkers(
             pass
 
     # ── 2. Composite score computation ───────────────────────────────────────
-    if baseline_path is None:
-        baseline_path = _PROJECT_ROOT / "data" / "reference" / "baseline_zscore.json"
-
-    baseline = load_baseline(baseline_path, exercise_definition.exercise_id)
+    if baseline_metrics is None:
+        if baseline_path is None:
+            baseline_path = (
+                _PROJECT_ROOT / "data" / "reference" / "baseline_zscore.json"
+            )
+        baseline = load_baseline(baseline_path, exercise_definition.exercise_id)
+    else:
+        baseline_path = baseline_path or "<in-memory baseline_metrics>"
+        baseline = {
+            str(metric_id): {
+                "mean": float(stats["mean"]),
+                "std": float(stats["std"]),
+            }
+            for metric_id, stats in baseline_metrics.items()
+            if "mean" in stats and "std" in stats
+        }
 
     if not baseline:
         warnings.warn(
             "[biomarker] Baseline entry unavailable for "
             f"exercise_id='{exercise_definition.exercise_id}' at '{baseline_path}'. "
             "BiomarkerScoreRecord computation skipped. "
-            "Run scripts/compute_baseline.py to generate or extend the baseline.",
+            "Run scripts/generate_baseline.py to generate or extend the baseline.",
             UserWarning,
             stacklevel=2,
         )
@@ -1882,6 +2111,7 @@ __all__ = [
     "normalize_domain_feature_family_weights",
     "build_baseline_from_records",
     "build_baseline_qc",
+    "generate_baseline_from_records",
     "save_baseline",
     "save_baseline_qc",
     "load_baseline",
