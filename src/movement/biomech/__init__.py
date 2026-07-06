@@ -24,6 +24,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from movement.record_metadata import (
+    COMMON_RECORD_METADATA_FIELDS,
+    EVALUATION_DOMAINS,
+    EVIDENCE_AXES,
+    apply_common_record_metadata,
+)
+
 if TYPE_CHECKING:
     import pandas as pd
     from movement.definitions.exercise_definition import ExerciseDefinition
@@ -50,6 +57,13 @@ class BiomechRecord:
     depth_dependency                 : dependency on monocular model-depth evidence
     model_depth_reliability          : reliability of pose-estimator depth evidence
     landmark_quality                 : landmark quality summary when available
+    focus_tier                       : scoring-intent tier for downstream audit
+    landmark_ids                     : canonical landmark ids represented
+    support_role                     : support/proxy role
+    coordinate_reference             : coordinate family used by the proxy
+    evaluation_domain                : scoring/evaluation evidence domain
+    evidence_axes                    : coordinate axes used by the calculation
+    feature_family                   : broad feature family used by scoring/audits
     """
 
     metric_id: str
@@ -67,6 +81,13 @@ class BiomechRecord:
     depth_dependency: str = "high"
     model_depth_reliability: str = "low"
     landmark_quality: str = "unknown"
+    focus_tier: str = "primary"
+    landmark_ids: list[str] = field(default_factory=list)
+    support_role: str | None = None
+    coordinate_reference: str = "unknown"
+    evaluation_domain: str = "unknown"
+    evidence_axes: str | None = None
+    feature_family: str | None = None
 
     def __post_init__(self) -> None:
         if self.unit not in (
@@ -107,6 +128,28 @@ class BiomechRecord:
                 "monocular_biomech_proxy_low_confidence",
                 "model_depth_reliability_low",
             ]
+        valid_focus_tiers = {
+            "primary",
+            "secondary",
+            "context_constraint",
+            "compensation",
+            "diagnostic",
+        }
+        if self.focus_tier not in valid_focus_tiers:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid focus_tier "
+                f"{self.focus_tier!r}."
+            )
+        if self.evaluation_domain not in EVALUATION_DOMAINS:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid evaluation_domain "
+                f"{self.evaluation_domain!r}."
+            )
+        if self.evidence_axes is not None and self.evidence_axes not in EVIDENCE_AXES:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': invalid evidence_axes "
+                f"{self.evidence_axes!r}."
+            )
 
 
 def extract_rep_biomech(
@@ -184,6 +227,8 @@ def extract_rep_biomech(
         records += compute_com_metrics(df, exercise_definition, weights=w)
         records += compute_moment_arms(df, exercise_definition, weights=w)
 
+    for record in records:
+        apply_common_record_metadata(record, exercise_definition=exercise_definition)
     return records
 
 
@@ -203,6 +248,13 @@ BIOMECH_REQUIRED_COLUMNS = [
     "depth_dependency",
     "model_depth_reliability",
     "landmark_quality",
+    "focus_tier",
+    "landmark_ids",
+    "support_role",
+    "coordinate_reference",
+    "evaluation_domain",
+    "evidence_axes",
+    "feature_family",
 ]
 
 
@@ -279,7 +331,11 @@ def save_biomech_outputs(
     qc_path = output_path / f"{recording_id}_biomech_qc.json"
 
     csv_df = biomech_df.copy()
-    for column in ("source_fields", "availability_reasons"):
+    for column in required:
+        if column not in csv_df.columns:
+            csv_df[column] = ""
+    csv_df = csv_df[required + [c for c in csv_df.columns if c not in required]]
+    for column in ("source_fields", "availability_reasons", "landmark_ids"):
         if column in csv_df.columns:
             csv_df[column] = csv_df[column].map(_serialize_biomech_output_value)
     csv_df.to_csv(csv_path, index=False, encoding="utf-8")

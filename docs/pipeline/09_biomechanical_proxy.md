@@ -1,7 +1,7 @@
 # 09. 생체역학 프록시 (Biomechanical Proxy)
 
-**문서 버전:** 1.3.0
-**최종 갱신:** 2026-06-28
+**문서 버전:** 1.3.1
+**최종 갱신:** 2026-06-29
 **영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑨는 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
@@ -136,8 +136,9 @@ rep_id = None
 ```
 
 이는 rep-level moment-arm median을 `rep_id`에 대해 회귀한 OLS slope이다.
-최소 3 반복이 필요하며, 그보다 적으면 load-shift record를 만들지 않는다.
-이 지표는 상대 추세이며 피로 진단이 아니다.
+비유한한(non-finite) moment-arm median은 fitting 전에 제외한다. 서로 다른
+`rep_id`를 가진 유효 rep가 최소 3개 필요하며, 그보다 적으면 load-shift record를
+만들지 않는다. 이 지표는 상대 추세이며 피로 진단이 아니다.
 
 ## 5. Visibility 처리 (Visibility Handling)
 
@@ -237,7 +238,7 @@ biomech_records = extract_rep_biomech(
 - rep annotation이 있으면 rep별 record 계산
 - annotation이 없으면 sequence-level record로 fallback
 - quality_rules에서 visibility threshold 참조
-- 3개 이상의 rep에서 moment-arm metric이 있으면 load-shift record 추가
+- 3개 이상의 유효 rep에서 moment-arm metric이 있으면 load-shift record 추가
 ```
 
 ## 8. Provenance

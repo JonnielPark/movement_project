@@ -595,9 +595,7 @@ def _landmark_jitter_score(
     else:
         accel = np.zeros(len(df), dtype=float)
 
-    _, low_visibility = _landmark_visibility(
-        df, landmark, visibility_threshold
-    )
+    _, low_visibility = _landmark_visibility(df, landmark, visibility_threshold)
 
     score = np.maximum.reduce(
         [
@@ -752,24 +750,26 @@ def _feature_availability_summary(
     )
 
     if reliability == "not_assessed":
-        not_assessed.append("spatial.symmetry.*")
-        reasons.setdefault("spatial.symmetry.*", []).append(
+        not_assessed.append("spatial.role_alignment.*")
+        reasons.setdefault("spatial.role_alignment.*", []).append(
             "view_metric_reliability_not_assessed"
         )
     elif reliability == "low":
-        low_confidence.append("spatial.symmetry.*")
-        reasons.setdefault("spatial.symmetry.*", []).append(
+        low_confidence.append("spatial.role_alignment.*")
+        reasons.setdefault("spatial.role_alignment.*", []).append(
             "view_metric_reliability_low"
         )
     elif is_bilateral and zones and set(zones).issubset({"Z3", "Z7"}):
-        low_confidence.append("spatial.symmetry.*")
-        reasons.setdefault("spatial.symmetry.*", []).append(
+        low_confidence.append("spatial.role_alignment.*")
+        reasons.setdefault("spatial.role_alignment.*", []).append(
             "side_view_low_left_right_reliability"
         )
 
     if num_high_jitter_far_side > 0:
-        low_confidence.append("spatial.symmetry.*")
-        reasons.setdefault("spatial.symmetry.*", []).append("far_side_jitter_present")
+        low_confidence.append("spatial.role_alignment.*")
+        reasons.setdefault("spatial.role_alignment.*", []).append(
+            "far_side_jitter_present"
+        )
 
     low_confidence = sorted(set(low_confidence))
     not_assessed = sorted(set(not_assessed))
@@ -876,15 +876,15 @@ def _run_far_side_stabilization(
         observed_low_confidence_far = (side == "far_side") & (
             observed_low_visibility | ~observed_lm_mask | swap_corrected
         )
-        observed_high_jitter_far = (side == "far_side") & (
-            observed_score >= 1.0
-        ) & observed_low_confidence_far
+        observed_high_jitter_far = (
+            (side == "far_side") & (observed_score >= 1.0) & observed_low_confidence_far
+        )
         post_low_confidence_far = (side == "far_side") & (
             low_visibility | ~lm_mask | swap_corrected
         )
-        post_high_jitter_far = (side == "far_side") & (
-            score >= 1.0
-        ) & post_low_confidence_far
+        post_high_jitter_far = (
+            (side == "far_side") & (score >= 1.0) & post_low_confidence_far
+        )
         unstable_far = post_low_confidence_far | post_high_jitter_far
 
         (
@@ -1265,9 +1265,7 @@ def preprocess_pose_dataframe(
                 config.interpolation.enabled
                 and config.interpolation.post_velocity_check
             ),
-            "num_post_velocity_rejected_landmark_frames": (
-                n_post_velocity_rejected
-            ),
+            "num_post_velocity_rejected_landmark_frames": (n_post_velocity_rejected),
         },
         "smoothing_summary": {
             "enabled": config.smoothing.enabled,

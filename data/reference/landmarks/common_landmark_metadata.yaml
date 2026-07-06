@@ -1,0 +1,319 @@
+version: 0.2.0
+schema: common_landmark_metadata
+description: >
+  Stable anatomical metadata for canonical pose landmarks. Feature, biomech,
+  and biomarker records reference these rows through landmark_ids instead of
+  duplicating body_region, side, or default joint-action labels.
+
+defaults:
+  paired_with: null
+  proximal_landmarks: []
+  distal_landmarks: []
+  derived_from_landmarks: []
+  segment_proximal: []
+  segment_distal: []
+  default_joint_actions: []
+  joint_profile: null
+  support_capable: false
+  default_evidence_axes: xyz
+  default_depth_sensitivity: moderate
+
+landmarks:
+  nose:
+    body_region: head
+    side: midline
+    landmark_type: surface_landmark
+    default_depth_sensitivity: high
+  left_eye_inner:
+    body_region: head
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_eye_inner
+    default_depth_sensitivity: high
+  left_eye:
+    body_region: head
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_eye
+    default_depth_sensitivity: high
+  left_eye_outer:
+    body_region: head
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_eye_outer
+    default_depth_sensitivity: high
+  right_eye_inner:
+    body_region: head
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_eye_inner
+    default_depth_sensitivity: high
+  right_eye:
+    body_region: head
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_eye
+    default_depth_sensitivity: high
+  right_eye_outer:
+    body_region: head
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_eye_outer
+    default_depth_sensitivity: high
+  left_ear:
+    body_region: head
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_ear
+    default_depth_sensitivity: high
+  right_ear:
+    body_region: head
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_ear
+    default_depth_sensitivity: high
+  mouth_left:
+    body_region: head
+    side: left
+    landmark_type: surface_landmark
+    paired_with: mouth_right
+    default_depth_sensitivity: high
+  mouth_right:
+    body_region: head
+    side: right
+    landmark_type: surface_landmark
+    paired_with: mouth_left
+    default_depth_sensitivity: high
+
+  left_shoulder:
+    body_region: shoulder
+    side: left
+    landmark_type: joint_center
+    paired_with: right_shoulder
+    distal_landmarks: [left_elbow]
+    segment_distal: [left_upper_arm]
+    default_joint_actions: [shoulder.flexion_extension]
+    joint_profile: shoulder
+  right_shoulder:
+    body_region: shoulder
+    side: right
+    landmark_type: joint_center
+    paired_with: left_shoulder
+    distal_landmarks: [right_elbow]
+    segment_distal: [right_upper_arm]
+    default_joint_actions: [shoulder.flexion_extension]
+    joint_profile: shoulder
+  left_elbow:
+    body_region: elbow
+    side: left
+    landmark_type: joint_center
+    paired_with: right_elbow
+    proximal_landmarks: [left_shoulder]
+    distal_landmarks: [left_wrist]
+    segment_proximal: [left_upper_arm]
+    segment_distal: [left_forearm]
+    default_joint_actions: [elbow.flexion_extension]
+    joint_profile: elbow
+  right_elbow:
+    body_region: elbow
+    side: right
+    landmark_type: joint_center
+    paired_with: left_elbow
+    proximal_landmarks: [right_shoulder]
+    distal_landmarks: [right_wrist]
+    segment_proximal: [right_upper_arm]
+    segment_distal: [right_forearm]
+    default_joint_actions: [elbow.flexion_extension]
+    joint_profile: elbow
+  left_wrist:
+    body_region: wrist
+    side: left
+    landmark_type: joint_center
+    paired_with: right_wrist
+    proximal_landmarks: [left_elbow]
+    segment_proximal: [left_forearm]
+    default_joint_actions: [wrist.flexion_extension]
+    joint_profile: wrist
+    support_capable: true
+  right_wrist:
+    body_region: wrist
+    side: right
+    landmark_type: joint_center
+    paired_with: left_wrist
+    proximal_landmarks: [right_elbow]
+    segment_proximal: [right_forearm]
+    default_joint_actions: [wrist.flexion_extension]
+    joint_profile: wrist
+    support_capable: true
+  left_pinky:
+    body_region: hand
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_pinky
+    proximal_landmarks: [left_wrist]
+  right_pinky:
+    body_region: hand
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_pinky
+    proximal_landmarks: [right_wrist]
+  left_index:
+    body_region: hand
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_index
+    proximal_landmarks: [left_wrist]
+  right_index:
+    body_region: hand
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_index
+    proximal_landmarks: [right_wrist]
+  left_thumb:
+    body_region: hand
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_thumb
+    proximal_landmarks: [left_wrist]
+  right_thumb:
+    body_region: hand
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_thumb
+    proximal_landmarks: [right_wrist]
+
+  left_hip:
+    body_region: hip
+    side: left
+    landmark_type: joint_center
+    paired_with: right_hip
+    distal_landmarks: [left_knee]
+    segment_distal: [left_thigh]
+    default_joint_actions: [hip.flexion_extension]
+    joint_profile: hip
+  right_hip:
+    body_region: hip
+    side: right
+    landmark_type: joint_center
+    paired_with: left_hip
+    distal_landmarks: [right_knee]
+    segment_distal: [right_thigh]
+    default_joint_actions: [hip.flexion_extension]
+    joint_profile: hip
+  left_knee:
+    body_region: knee
+    side: left
+    landmark_type: joint_center
+    paired_with: right_knee
+    proximal_landmarks: [left_hip]
+    distal_landmarks: [left_ankle]
+    segment_proximal: [left_thigh]
+    segment_distal: [left_shank]
+    default_joint_actions: [knee.flexion_extension]
+    joint_profile: knee
+  right_knee:
+    body_region: knee
+    side: right
+    landmark_type: joint_center
+    paired_with: left_knee
+    proximal_landmarks: [right_hip]
+    distal_landmarks: [right_ankle]
+    segment_proximal: [right_thigh]
+    segment_distal: [right_shank]
+    default_joint_actions: [knee.flexion_extension]
+    joint_profile: knee
+  left_ankle:
+    body_region: ankle
+    side: left
+    landmark_type: joint_center
+    paired_with: right_ankle
+    proximal_landmarks: [left_knee]
+    distal_landmarks: [left_heel, left_foot_index]
+    segment_proximal: [left_shank]
+    segment_distal: [left_foot]
+    default_joint_actions: [ankle.dorsiflexion_plantarflexion]
+    joint_profile: ankle
+    support_capable: true
+    default_depth_sensitivity: high
+  right_ankle:
+    body_region: ankle
+    side: right
+    landmark_type: joint_center
+    paired_with: left_ankle
+    proximal_landmarks: [right_knee]
+    distal_landmarks: [right_heel, right_foot_index]
+    segment_proximal: [right_shank]
+    segment_distal: [right_foot]
+    default_joint_actions: [ankle.dorsiflexion_plantarflexion]
+    joint_profile: ankle
+    support_capable: true
+    default_depth_sensitivity: high
+  left_heel:
+    body_region: foot
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_heel
+    proximal_landmarks: [left_ankle]
+    segment_proximal: [left_foot]
+    support_capable: true
+    default_depth_sensitivity: high
+  right_heel:
+    body_region: foot
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_heel
+    proximal_landmarks: [right_ankle]
+    segment_proximal: [right_foot]
+    support_capable: true
+    default_depth_sensitivity: high
+  left_foot_index:
+    body_region: foot
+    side: left
+    landmark_type: surface_landmark
+    paired_with: right_foot_index
+    proximal_landmarks: [left_ankle]
+    segment_proximal: [left_foot]
+    support_capable: true
+    default_depth_sensitivity: high
+  right_foot_index:
+    body_region: foot
+    side: right
+    landmark_type: surface_landmark
+    paired_with: left_foot_index
+    proximal_landmarks: [right_ankle]
+    segment_proximal: [right_foot]
+    support_capable: true
+    default_depth_sensitivity: high
+
+  hip_center:
+    body_region: pelvis
+    side: midline
+    landmark_type: derived_center
+    derived_from_landmarks: [left_hip, right_hip]
+    default_joint_actions: [pelvis.control_proxy]
+    joint_profile: pelvis_reference
+    default_depth_sensitivity: moderate
+  shoulder_center:
+    body_region: trunk
+    side: midline
+    landmark_type: derived_center
+    derived_from_landmarks: [left_shoulder, right_shoulder]
+    default_joint_actions: [trunk.control_proxy]
+    joint_profile: trunk_reference
+    default_depth_sensitivity: moderate
+  support_center:
+    body_region: support_base
+    side: midline
+    landmark_type: derived_center
+    default_joint_actions: [support_base.control]
+    joint_profile: support_base
+    support_capable: true
+    default_evidence_axes: xy
+    default_depth_sensitivity: low
+  whole_body_com:
+    body_region: whole_body_com
+    side: midline
+    landmark_type: proxy
+    default_joint_actions: [whole_body_com.motion]
+    joint_profile: whole_body_com
+    default_depth_sensitivity: high

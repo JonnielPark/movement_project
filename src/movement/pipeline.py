@@ -203,7 +203,7 @@ class NormalizationConfig:
 @dataclass
 class FloorRelativeCorrectionConfig:
     enabled: bool = False
-    method: str = "support_contact_plane"
+    method: str = "support_plane_alignment"
     coordinate_mode: str = "norm"
     vertical_axis: str = "y"
     support_landmarks: list[str] = field(default_factory=list)
@@ -246,9 +246,11 @@ MotionAttributionConfig = RoleContextConfig
 
 @dataclass
 class SpatialConfig:
-    rom: bool = False
-    symmetry: bool = False
-    shape: bool = False
+    range_of_motion: bool = False
+    role_alignment: bool = False
+    movement_path: bool = False
+    support_consistency: bool = False
+    phase_profile: bool = False
 
 
 @dataclass
@@ -301,6 +303,12 @@ class BiomarkerConfig:
     emit_provenance: bool = True
     unit: str = "torso_length_ratio"
     domain_weights: dict[str, float] | None = None
+    domain_feature_family_weights: dict[str, dict[str, float]] | None = None
+    scoring_focus_weights: dict[str, float] | None = None
+    low_confidence_score_weights: dict[str, float] | None = None
+    depth_dependency_score_weights: dict[str, float] | None = None
+    feature_score_weight_overrides: dict[str, float] | None = None
+    feature_score_direction_overrides: dict[str, str] | None = None
     score_bounds: dict[str, float] | None = None
 
 
@@ -536,7 +544,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             ),
             support_plane_alignment=FloorReferenceConfig(
                 enabled=bool(support_alias.get("enabled", False)),
-                method=support_alias.get("method", "support_contact_plane"),
+                method=support_alias.get("method", "support_plane_alignment"),
                 coordinate_mode=can.get(
                     "coordinate_mode",
                     support_alias.get("coordinate_mode", "norm"),
@@ -616,7 +624,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         ),
         floor_relative_correction=FloorRelativeCorrectionConfig(
             enabled=bool(frc.get("enabled", False)),
-            method=frc.get("method", "support_contact_plane"),
+            method=frc.get("method", "support_plane_alignment"),
             coordinate_mode=frc.get("coordinate_mode", "norm"),
             vertical_axis=frc.get("vertical_axis", "y"),
             support_landmarks=list(frc.get("support_landmarks", []) or []),
@@ -652,9 +660,11 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 mode=rc.get("mode", "conservative"),
             ),
             spatial=SpatialConfig(
-                rom=sp.get("rom", False),
-                symmetry=sp.get("symmetry", False),
-                shape=sp.get("shape", False),
+                range_of_motion=sp.get("range_of_motion", False),
+                role_alignment=sp.get("role_alignment", False),
+                movement_path=sp.get("movement_path", False),
+                support_consistency=sp.get("support_consistency", False),
+                phase_profile=sp.get("phase_profile", False),
             ),
             temporal=TemporalConfig(
                 tempo=te.get("tempo", False),
@@ -677,6 +687,14 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             emit_provenance=bool(bm.get("emit_provenance", True)),
             unit=bm.get("unit", "torso_length_ratio"),
             domain_weights=bm.get("domain_weights"),
+            domain_feature_family_weights=bm.get("domain_feature_family_weights"),
+            scoring_focus_weights=bm.get("scoring_focus_weights"),
+            low_confidence_score_weights=bm.get("low_confidence_score_weights"),
+            depth_dependency_score_weights=bm.get("depth_dependency_score_weights"),
+            feature_score_weight_overrides=bm.get("feature_score_weight_overrides"),
+            feature_score_direction_overrides=bm.get(
+                "feature_score_direction_overrides"
+            ),
             score_bounds=bm.get("score_bounds"),
         ),
         output=OutputConfig(
@@ -710,7 +728,8 @@ def run_pipeline(
         Landmark name list. None uses movement.config.LANDMARKS.
     ann_df : pd.DataFrame | None, optional
         Pre-loaded annotation table (output of annotation.load_annotation_csv).
-        None falls back to whole-sequence annotation in step ②.
+        If None, step ② loads config.annotation.path when provided, then falls
+        back to whole-sequence annotation.
 
     Returns
     -------
@@ -739,9 +758,12 @@ def run_pipeline(
 
     # ── ② Annotation ─────────────────────────────────────────────────────────
     if config.annotation.enabled:
-        from movement.stages.annotation import apply_annotation
+        from movement.stages.annotation import apply_annotation, load_annotation_csv
 
-        df, ann_report = apply_annotation(df, ann_df)
+        annotation_df = ann_df
+        if annotation_df is None and config.annotation.path:
+            annotation_df = load_annotation_csv(_resolve_path(config.annotation.path))
+        df, ann_report = apply_annotation(df, annotation_df)
         report["annotation"] = ann_report
 
     # ── ③ Exercise Definition Loading ────────────────────────────────────────
@@ -1012,7 +1034,7 @@ def run_pipeline(
                 detectability_report.as_dict()
             )
             feat_records = extract_rep_features(df, exercise_def)
-            feat_records += summarize_phase_to_rep(feat_records)
+            feat_records += summarize_phase_to_rep(feat_records, exercise_def)
             report["features"] = [
                 {
                     "feature_id": r.feature_id,
@@ -1031,6 +1053,13 @@ def run_pipeline(
                     "depth_dependency": r.depth_dependency,
                     "model_depth_reliability": r.model_depth_reliability,
                     "landmark_quality": r.landmark_quality,
+                    "focus_tier": r.focus_tier,
+                    "landmark_ids": r.landmark_ids,
+                    "support_role": r.support_role,
+                    "coordinate_reference": r.coordinate_reference,
+                    "evaluation_domain": r.evaluation_domain,
+                    "evidence_axes": r.evidence_axes,
+                    "feature_family": r.feature_family,
                 }
                 for r in feat_records
             ]
@@ -1062,6 +1091,13 @@ def run_pipeline(
                     "depth_dependency": r.depth_dependency,
                     "model_depth_reliability": r.model_depth_reliability,
                     "landmark_quality": r.landmark_quality,
+                    "focus_tier": r.focus_tier,
+                    "landmark_ids": r.landmark_ids,
+                    "support_role": r.support_role,
+                    "coordinate_reference": r.coordinate_reference,
+                    "evaluation_domain": r.evaluation_domain,
+                    "evidence_axes": r.evidence_axes,
+                    "feature_family": r.feature_family,
                 }
                 for r in biomech_records
             ]
@@ -1082,6 +1118,22 @@ def run_pipeline(
                 exercise_definition=exercise_def,
                 definition_version=def_version,
                 domain_weights=config.biomarker.domain_weights,
+                domain_feature_family_weights=(
+                    config.biomarker.domain_feature_family_weights
+                ),
+                scoring_focus_weights=config.biomarker.scoring_focus_weights,
+                low_confidence_score_weights=(
+                    config.biomarker.low_confidence_score_weights
+                ),
+                depth_dependency_score_weights=(
+                    config.biomarker.depth_dependency_score_weights
+                ),
+                feature_score_weight_overrides=(
+                    config.biomarker.feature_score_weight_overrides
+                ),
+                feature_score_direction_overrides=(
+                    config.biomarker.feature_score_direction_overrides
+                ),
                 score_bounds=config.biomarker.score_bounds,
             )
             report["biomarker"] = [b.as_dict() for b in biomarker_records]

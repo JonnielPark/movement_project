@@ -209,7 +209,7 @@ Current active or planned priors:
 
 | Prior | Status | Purpose | Guardrail |
 |---|---|---|---|
-| `support_plane_alignment` | implemented, disabled by default | Pose-internal pseudo-floor/support-plane review from support-contact landmarks. Wraps the older `floor_relative_correction` logic. | Does not lock feet to the floor; not camera calibration. |
+| `support_plane_alignment` | implemented, disabled by default | Pose-internal pseudo-floor/support-plane review from exercise-defined support landmarks. Wraps the older `floor_relative_correction` logic. | Does not lock feet to the floor; not camera calibration. |
 | `movement_plane_alignment` | prototype, disabled by default | Capped rigid rotation around the vertical axis using the dominant hip-knee-ankle movement direction. | Preserves out-of-plane residuals for compensation review. |
 | `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Zero-gravity scoring candidate; not lens correction, reprojection, or far-side coordinate invention. |
 | `anthropometric_skeleton_prior` | planned, disabled by default | Uses loose body-segment length plausibility ranges as an engineering envelope for monocular-depth review. | Not empirical P5/P95 until raw row-level data are available; not skeleton template fitting. |
@@ -240,7 +240,7 @@ Current promoted stack:
 4. recording-view-constrained skeleton placement: rv_skeleton_fit
 5. bounded recording-view residual variant: rv_skeleton_fit_bounded_xy
 6. visible-support mirrored anchor prior
-7. bounded pre/post standing support-anchor blend
+7. bounded pre/post standing support-landmark blend
 8. whole-video planted support temporal memory
 9. scoring-readiness and bend-flip provenance gates
 ```
@@ -296,7 +296,7 @@ common_subject_skeleton_profile
   not rescaled to cm or m.
 
 exercise_support_context
-  Exercise id, kinetic chain, base of support, support surface, support-contact
+  Exercise id, kinetic chain, base of support, support surface, support landmark
   landmarks, primary support pair, and any rep/phase/ready-window labels.
 
 solver_config

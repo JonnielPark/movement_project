@@ -10,7 +10,7 @@ emitted at both rep-level (phase=None) and phase-level (phase='Descent', etc.),
 enabling the hierarchical analysis structure described in dissertation §5.5.
 
 Submodules:
-    features.spatial   → ROM, left/right symmetry, trajectory shape
+    features.spatial   → range of motion, role alignment, movement path, support consistency
     features.temporal  → tempo, inter-rep variability
     features.control   → CoM stability, compensation movements
 
@@ -22,9 +22,18 @@ Unit convention       : torso_length_ratio (dimensionless) or degree.
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from movement.record_metadata import (
+    COMMON_RECORD_METADATA_FIELDS,
+    EVALUATION_DOMAINS,
+    EVIDENCE_AXES,
+    apply_common_record_metadata,
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -36,9 +45,9 @@ class FeatureRecord:
 
     Parameters
     ----------
-    feature_id    : unique identifier (e.g. 'spatial.rom.left_knee')
+    feature_id    : unique identifier (e.g. 'spatial.range_of_motion.xy.left_knee')
                     Phase-level records append a phase suffix:
-                    'spatial.rom.left_knee.descent'
+                    'spatial.range_of_motion.xy.left_knee.descent'
     exercise_id   : exercise identifier
     rep_id        : rep number (None = sequence-level feature)
     value         : feature value
@@ -51,6 +60,15 @@ class FeatureRecord:
                     camera-zone view reliability
     model_depth_reliability : pose-estimator depth confidence for this recording
     landmark_quality : feature-level landmark evidence summary
+    focus_tier     : scoring-intent tier derived from the exercise definition
+                    (primary, secondary, context_constraint, compensation,
+                    diagnostic)
+    landmark_ids   : canonical landmark ids represented by this record
+    support_role   : support/proxy role of the represented landmark
+    coordinate_reference : coordinate family used by the feature
+    evaluation_domain : scoring/evaluation evidence domain
+    evidence_axes  : coordinate axes used by the calculation
+    feature_family : broad feature family used by scoring and audits
     """
 
     feature_id: str
@@ -69,6 +87,13 @@ class FeatureRecord:
     depth_dependency: str = "unknown"
     model_depth_reliability: str = "unknown"
     landmark_quality: str = "unknown"
+    focus_tier: str = "primary"
+    landmark_ids: list[str] = field(default_factory=list)
+    support_role: str | None = None
+    coordinate_reference: str = "unknown"
+    evaluation_domain: str = "unknown"
+    evidence_axes: str | None = None
+    feature_family: str | None = None
 
     def __post_init__(self) -> None:
         if not self.source_fields:
@@ -105,6 +130,28 @@ class FeatureRecord:
             raise ValueError(
                 f"FeatureRecord '{self.feature_id}': invalid landmark_quality "
                 f"{self.landmark_quality!r}."
+            )
+        valid_focus_tiers = {
+            "primary",
+            "secondary",
+            "context_constraint",
+            "compensation",
+            "diagnostic",
+        }
+        if self.focus_tier not in valid_focus_tiers:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid focus_tier "
+                f"{self.focus_tier!r}."
+            )
+        if self.evaluation_domain not in EVALUATION_DOMAINS:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid evaluation_domain "
+                f"{self.evaluation_domain!r}."
+            )
+        if self.evidence_axes is not None and self.evidence_axes not in EVIDENCE_AXES:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': invalid evidence_axes "
+                f"{self.evidence_axes!r}."
             )
 
 
@@ -205,8 +252,9 @@ class AnalysisDisruptingPatternDetectabilityReport:
 
 PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset(
     {
-        "spatial.rom",
-        "spatial.shape",
+        "spatial.range_of_motion",
+        "spatial.movement_path",
+        "spatial.support_consistency",
         "temporal.tempo",
         "control.stability",
     }
@@ -260,7 +308,7 @@ def resolve_feature_context(
         return FeatureContext(
             laterality=laterality,
             role_mode="bilateral_symmetry",
-            role_context={"symmetry_context": "bilateral_symmetric"},
+            role_context={"role_alignment_context": "bilateral_symmetric"},
             role_confidence="not_assessed",
             context_reasons=[
                 "bilateral_symmetric_uses_symmetry_or_side_bias_context",
@@ -338,7 +386,7 @@ def _record_needs_feature_context(
     feature_context: FeatureContext,
 ) -> bool:
     if feature_context.role_mode == "bilateral_symmetry":
-        return record.feature_id.startswith("spatial.symmetry.")
+        return record.feature_id.startswith("spatial.role_alignment.")
 
     if feature_context.role_mode == "active_side":
         if feature_context.role_confidence != "assessed":
@@ -416,15 +464,27 @@ def _feature_metric_aliases(feature_id: str, exercise_definition: Any) -> list[s
     ).lower()
 
     aliases: list[str] = []
-    if feature_id.startswith("spatial.symmetry."):
+    if feature_id.startswith("spatial.role_alignment.left_right.support_consistency_"):
         aliases.extend(
             [
+                "support_consistency",
+                "step_width",
+                "centerline_stability",
+                "foot_contact",
+            ]
+        )
+    elif feature_id.startswith("spatial.role_alignment."):
+        aliases.extend(
+            [
+                "role_alignment",
                 "bilateral_symmetry",
                 "upper_limb_symmetry",
                 "side_to_side_comparison",
             ]
         )
-    elif feature_id.startswith("spatial.rom."):
+    elif feature_id.startswith(
+        ("spatial.range_of_motion.xy.", "spatial.range_of_motion.xyz.")
+    ):
         if primary_plane == "sagittal":
             aliases.extend(
                 [
@@ -436,10 +496,19 @@ def _feature_metric_aliases(feature_id: str, exercise_definition: Any) -> list[s
                     "hip_height",
                 ]
             )
-        aliases.append("rom")
-    elif feature_id.startswith("spatial.shape."):
+        aliases.append("range_of_motion")
+    elif feature_id.startswith("spatial.movement_path."):
         aliases.extend(
             ["active_hand_trajectory", "hip_position", "depth", "step_length"]
+        )
+    elif feature_id.startswith("spatial.support_consistency."):
+        aliases.extend(
+            [
+                "support_consistency",
+                "step_width",
+                "centerline_stability",
+                "foot_contact",
+            ]
         )
     elif feature_id.startswith("temporal.tempo."):
         aliases.extend(["tempo", "smoothness"])
@@ -518,6 +587,30 @@ def _depth_dependency_for_record(
         return record.depth_dependency
 
     feature_id = record.feature_id
+    if feature_id.startswith("spatial.range_of_motion.xy."):
+        return "none"
+    if feature_id.startswith("spatial.range_of_motion.xyz."):
+        return "moderate"
+    if "spatial.movement_path.arc_length_xyz." in feature_id:
+        return "high"
+    if "spatial.movement_path.arc_length_xy." in feature_id:
+        return "none"
+    if "spatial.movement_path.axis_path_z." in feature_id:
+        return "high"
+    if feature_id.startswith("temporal."):
+        return "none"
+    if feature_id.startswith("control.compensation.heel_lift"):
+        return "none"
+    if feature_id.startswith("control.compensation.pelvis_rotation"):
+        return "high"
+    if feature_id.startswith("control.compensation.excessive_trunk_flexion.xyz"):
+        return "moderate"
+    if ".xyz" in feature_id and feature_id.startswith("control.compensation."):
+        return "high"
+    normalized_tokens = f".{feature_id.lower()}."
+    if ".xy." in normalized_tokens and feature_id.startswith("control.compensation."):
+        return "none"
+
     high_keys = {
         "bilateral_symmetry",
         "side_to_side_comparison",
@@ -539,7 +632,7 @@ def _depth_dependency_for_record(
         "lateral_shift",
         "step_length",
         "active_hand_trajectory",
-        "rom",
+        "range_of_motion",
     }
     low_keys = {
         "frontal_alignment",
@@ -558,18 +651,14 @@ def _depth_dependency_for_record(
     if metric_key in low_keys:
         return "low" if metric_key not in {"tempo", "smoothness"} else "none"
 
-    if feature_id.startswith("spatial.symmetry."):
+    if feature_id.startswith("spatial.role_alignment."):
         return "high"
-    if feature_id.startswith("temporal."):
-        return "none"
-    if feature_id.startswith("spatial.rom.") or feature_id.startswith(
-        "control.stability."
-    ):
+    if feature_id.startswith("control.stability."):
         return "moderate"
     if feature_id.startswith("control.compensation.pelvis_rotation"):
         return "high"
     if feature_id.startswith("control.compensation.knee_"):
-        return "low"
+        return "none"
     return "unknown"
 
 
@@ -598,6 +687,106 @@ def _matches_feature_family(feature_id: str, family_pattern: str) -> bool:
 def _downgrade_availability(current: str, candidate: str) -> str:
     rank = {"assessed": 0, "low_confidence": 1, "not_assessed": 2}
     return candidate if rank[candidate] > rank[current] else current
+
+
+def _feature_id_mentions_any(feature_id: str, tokens: Iterable[str]) -> bool:
+    normalized = feature_id.lower()
+    for token in tokens:
+        key = str(token).strip().lower()
+        if key and key in normalized:
+            return True
+    return False
+
+
+def _focus_tokens(exercise_definition: Any, group: str) -> list[str]:
+    landmarks = getattr(exercise_definition, "landmarks", None)
+    joint_actions = getattr(exercise_definition, "joint_actions", {}) or {}
+    biomech = getattr(exercise_definition, "biomechanical_focus", None)
+
+    tokens: list[str] = []
+    if group == "primary":
+        tokens.extend(getattr(landmarks, "primary_joints", []) or [])
+        tokens.extend(getattr(exercise_definition, "primary_body_regions", []) or [])
+        tokens.extend(getattr(biomech, "main_load_regions", []) or [])
+    elif group == "secondary":
+        tokens.extend(getattr(landmarks, "secondary_joints", []) or [])
+
+    for action in joint_actions.get(group, []) or []:
+        tokens.extend(str(action).split("_"))
+        tokens.append(str(action))
+
+    return _unique_preserve_order([str(token) for token in tokens if str(token)])
+
+
+def _feature_focus_tier(
+    record: FeatureRecord,
+    exercise_definition: Any,
+) -> str:
+    """Infer scoring-intent tier from feature provenance and exercise definition."""
+
+    feature_id = record.feature_id
+    source_fields = set(record.source_fields)
+    reasons = set(record.availability_reasons)
+    is_recording_view_xy_scoring = (
+        "spatial.movement_path.recording_view_xy_scoring" in source_fields
+    )
+
+    if (
+        any("axis_diagnostic" in field for field in source_fields)
+        and not is_recording_view_xy_scoring
+        or any("diagnostic_report_only" in reason for reason in reasons)
+    ):
+        return "diagnostic"
+
+    if feature_id.startswith("control.compensation."):
+        return "compensation"
+
+    if (
+        feature_id.startswith("spatial.support_consistency.")
+        or feature_id.startswith(
+            "spatial.role_alignment.left_right.support_consistency_"
+        )
+        or any(
+            field == "support" or field.startswith("support.")
+            for field in source_fields
+        )
+    ):
+        return "context_constraint"
+
+    if any(
+        ".secondary" in field or field.endswith(".secondary") for field in source_fields
+    ):
+        return "secondary"
+
+    if any(
+        ".primary" in field or field.endswith(".primary") for field in source_fields
+    ):
+        return "primary"
+
+    if _feature_id_mentions_any(
+        feature_id, _focus_tokens(exercise_definition, "primary")
+    ):
+        return "primary"
+
+    if _feature_id_mentions_any(
+        feature_id, _focus_tokens(exercise_definition, "secondary")
+    ):
+        return "secondary"
+
+    # Preserve legacy behavior for generic feature records whose intent has not
+    # yet been classified by the exercise definition.
+    return "primary"
+
+
+_SELF_REFERENCE_CONTROL_FEATURE_PREFIXES: tuple[str, ...] = (
+    "control.stability.hip_center_x_std",
+    "control.stability.hip_center_z_std",
+    "control.compensation.lateral_pelvic_shift",
+)
+
+
+def _is_self_reference_control_feature(feature_id: str) -> bool:
+    return feature_id.startswith(_SELF_REFERENCE_CONTROL_FEATURE_PREFIXES)
 
 
 def annotate_feature_availability(
@@ -672,20 +861,32 @@ def annotate_feature_availability(
         record.landmark_quality = _landmark_quality_from_reasons(
             summary, record.availability_reasons
         )
+        record.focus_tier = _feature_focus_tier(record, exercise_definition)
+        if _is_self_reference_control_feature(record.feature_id):
+            record.availability = "not_assessed"
+            record.focus_tier = "diagnostic"
+            record.availability_reasons = _unique_preserve_order(
+                list(record.availability_reasons)
+                + ["coordinate_reference_self_measurement"]
+            )
+        apply_common_record_metadata(record, exercise_definition=exercise_definition)
 
     return records
 
 
 _FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
     "spatial": {
-        "rom": "compute_rom",
-        "symmetry": "compute_symmetry",
-        "shape": "compute_shape",
+        "range_of_motion": "compute_range_of_motion",
+        "role_alignment": "compute_role_alignment",
+        "movement_path": "compute_movement_path",
+        "support_consistency": "compute_support_consistency",
+        "phase_profile": "summarize_phase_to_rep",
     },
     "temporal": {
         "tempo": "compute_tempo",
         "rep_duration": "compute_tempo",
         "variability": "compute_variability",
+        "phase_profile": "summarize_phase_to_rep",
     },
     "control": {
         "stability": "compute_stability",
@@ -798,7 +999,10 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "asymmetric_depth",
             "insufficient_head_descent",
         ],
-        "linked_feature_domain_entries": ["spatial.depth_proxy", "spatial.rom"],
+        "linked_feature_domain_entries": [
+            "spatial.depth_proxy",
+            "spatial.range_of_motion",
+        ],
         "basis": "Depth variation is pose-detectable when rep boundaries and reference landmarks are stable.",
     },
     "excessive_trunk_flexion": {
@@ -875,7 +1079,10 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "visibility_dependency": "high",
         "annotation_fallback": "head_proxy note when nose is unstable",
         "linked_compensation_candidates": ["head_forward_shift"],
-        "linked_feature_domain_entries": ["spatial.depth_proxy", "spatial.shape"],
+        "linked_feature_domain_entries": [
+            "spatial.depth_proxy",
+            "spatial.movement_path",
+        ],
         "basis": "Head trajectory relative to hand/shoulder landmarks can indicate forward drift.",
     },
     "elbow_flare": {
@@ -1182,16 +1389,66 @@ def _emit_rep_level(
 ) -> "list[FeatureRecord]":
     """Compute all rep-level features (phase=None)."""
     from movement.features.control import compute_compensation, compute_stability
-    from movement.features.spatial import compute_rom, compute_shape, compute_symmetry
+    from movement.features.spatial import (
+        compute_range_of_motion,
+        compute_movement_path,
+        compute_support_consistency,
+        compute_role_alignment,
+    )
 
     records: list[FeatureRecord] = []
-    records += compute_rom(df_rep, exercise_definition, rep_id=rep_id)
-    records += compute_symmetry(df_rep, exercise_definition, rep_id=rep_id)
-    records += compute_shape(df_rep, exercise_definition, rep_id=rep_id)
+    records += compute_range_of_motion(df_rep, exercise_definition, rep_id=rep_id)
+    records += compute_role_alignment(df_rep, exercise_definition, rep_id=rep_id)
+    records += compute_movement_path(df_rep, exercise_definition, rep_id=rep_id)
+    records += compute_support_consistency(df_rep, exercise_definition, rep_id=rep_id)
     records += compute_stability(df_rep, exercise_definition, rep_id=rep_id)
     # Compensation is always rep-level (candidates span phase boundaries)
     records += compute_compensation(df_rep, exercise_definition, rep_id=rep_id)
     return records
+
+
+def _with_phase(
+    rec: FeatureRecord,
+    *,
+    phase_suffix: str,
+    phase_label: str,
+    phase_source_fields: list[str],
+) -> FeatureRecord:
+    """Return a phase-level copy while preserving feature metadata."""
+
+    return FeatureRecord(
+        feature_id=rec.feature_id + phase_suffix,
+        exercise_id=rec.exercise_id,
+        rep_id=rec.rep_id,
+        value=rec.value,
+        unit=rec.unit,
+        source_fields=_unique_preserve_order(rec.source_fields + phase_source_fields),
+        note=rec.note,
+        phase=phase_label,
+        view_reliability=rec.view_reliability,
+        availability=rec.availability,
+        availability_reasons=list(rec.availability_reasons),
+        camera_zone=rec.camera_zone,
+        role_context=dict(rec.role_context) if rec.role_context else None,
+        depth_dependency=rec.depth_dependency,
+        model_depth_reliability=rec.model_depth_reliability,
+        landmark_quality=rec.landmark_quality,
+        focus_tier=rec.focus_tier,
+        landmark_ids=list(rec.landmark_ids),
+        support_role=rec.support_role,
+        coordinate_reference=rec.coordinate_reference,
+        evaluation_domain=rec.evaluation_domain,
+        evidence_axes=rec.evidence_axes,
+        feature_family=rec.feature_family,
+    )
+
+
+def _phase_label_to_suffix(phase_label: str) -> str:
+    """Convert a human-readable exercise phase label to a feature-id suffix."""
+
+    suffix = re.sub(r"[^0-9A-Za-z]+", "_", str(phase_label).strip())
+    suffix = suffix.strip("_").lower()
+    return suffix or "unknown_phase"
 
 
 def _emit_phase_level(
@@ -1204,74 +1461,79 @@ def _emit_phase_level(
     Compute phase-level features for one (rep_id, phase) segment.
 
     Only PHASE_AWARE_FEATURE_FAMILIES are computed at phase level; others stay
-    rep-level only.  Each feature_id gets a lowercased phase suffix so that
+    rep-level only.  Each feature_id gets a lower-snake-case phase suffix so that
     rep-level and phase-level IDs remain distinct in the baseline namespace.
     """
-    from movement.features.spatial import compute_rom, compute_shape
+    from movement.features.spatial import (
+        compute_range_of_motion,
+        compute_movement_path,
+        compute_support_consistency,
+    )
     from movement.features.control import compute_stability
     from movement.features.temporal import compute_tempo
 
     if len(df_phase) == 0:
         return []
 
-    phase_suffix = "." + phase_label.lower()
+    phase_suffix = "." + _phase_label_to_suffix(phase_label)
     ps_fields = _phase_source_fields(exercise_definition)
 
     records: list[FeatureRecord] = []
 
-    for rec in compute_rom(df_phase, exercise_definition, rep_id=rep_id):
+    for rec in compute_range_of_motion(df_phase, exercise_definition, rep_id=rep_id):
         records.append(
-            FeatureRecord(
-                feature_id=rec.feature_id + phase_suffix,
-                exercise_id=rec.exercise_id,
-                rep_id=rep_id,
-                value=rec.value,
-                unit=rec.unit,
-                source_fields=rec.source_fields + ps_fields,
-                note=rec.note,
-                phase=phase_label,
+            _with_phase(
+                rec,
+                phase_suffix=phase_suffix,
+                phase_label=phase_label,
+                phase_source_fields=ps_fields,
             )
         )
 
-    for rec in compute_shape(df_phase, exercise_definition, rep_id=rep_id):
+    for rec in compute_movement_path(
+        df_phase,
+        exercise_definition,
+        rep_id=rep_id,
+        include_support_consistency_axis_diagnostics=False,
+    ):
         records.append(
-            FeatureRecord(
-                feature_id=rec.feature_id + phase_suffix,
-                exercise_id=rec.exercise_id,
-                rep_id=rep_id,
-                value=rec.value,
-                unit=rec.unit,
-                source_fields=rec.source_fields + ps_fields,
-                note=rec.note,
-                phase=phase_label,
+            _with_phase(
+                rec,
+                phase_suffix=phase_suffix,
+                phase_label=phase_label,
+                phase_source_fields=ps_fields,
+            )
+        )
+
+    for rec in compute_support_consistency(
+        df_phase, exercise_definition, rep_id=rep_id
+    ):
+        records.append(
+            _with_phase(
+                rec,
+                phase_suffix=phase_suffix,
+                phase_label=phase_label,
+                phase_source_fields=ps_fields,
             )
         )
 
     for rec in compute_stability(df_phase, exercise_definition, rep_id=rep_id):
         records.append(
-            FeatureRecord(
-                feature_id=rec.feature_id + phase_suffix,
-                exercise_id=rec.exercise_id,
-                rep_id=rep_id,
-                value=rec.value,
-                unit=rec.unit,
-                source_fields=rec.source_fields + ps_fields,
-                note=rec.note,
-                phase=phase_label,
+            _with_phase(
+                rec,
+                phase_suffix=phase_suffix,
+                phase_label=phase_label,
+                phase_source_fields=ps_fields,
             )
         )
 
     for rec in compute_tempo(df_phase, exercise_definition, rep_id=rep_id):
         records.append(
-            FeatureRecord(
-                feature_id=rec.feature_id + phase_suffix,
-                exercise_id=rec.exercise_id,
-                rep_id=rep_id,
-                value=rec.value,
-                unit=rec.unit,
-                source_fields=rec.source_fields + ps_fields,
-                note=rec.note,
-                phase=phase_label,
+            _with_phase(
+                rec,
+                phase_suffix=phase_suffix,
+                phase_label=phase_label,
+                phase_source_fields=ps_fields,
             )
         )
 
@@ -1293,16 +1555,16 @@ def extract_rep_features(
     segment.  The rep-level records (phase=None) are always emitted regardless.
 
     Per-rep features (one record per rep_id, phase=None):
-        spatial  : ROM, symmetry, trajectory shape
+        spatial  : range of motion, role alignment, movement path, support consistency
         control  : CoM stability, compensation arc length
 
     Phase-level features (one record per rep_id × phase, when phase column is set):
-        spatial  : ROM, trajectory shape (per Descent/Ascent/etc.)
+        spatial  : range of motion and movement path (per Descent/Ascent/etc.)
         control  : CoM stability (per phase)
 
     Sequence-level features (rep_id = None):
         temporal : tempo per rep, inter-rep variability (requires ≥ 2 reps)
-        spatial  : symmetry, shape over the full sequence (when no reps found)
+        spatial  : role alignment and movement path over the full sequence (when no reps found)
 
     Parameters
     ----------
@@ -1354,15 +1616,17 @@ def extract_rep_features(
     else:
         # No rep annotation: sequence-level fallback
         from movement.features.spatial import (
-            compute_rom,
-            compute_shape,
-            compute_symmetry,
+            compute_range_of_motion,
+            compute_movement_path,
+            compute_support_consistency,
+            compute_role_alignment,
         )
         from movement.features.control import compute_compensation, compute_stability
 
-        records += compute_rom(df, exercise_definition)
-        records += compute_symmetry(df, exercise_definition)
-        records += compute_shape(df, exercise_definition)
+        records += compute_range_of_motion(df, exercise_definition)
+        records += compute_role_alignment(df, exercise_definition)
+        records += compute_movement_path(df, exercise_definition)
+        records += compute_support_consistency(df, exercise_definition)
         records += compute_stability(df, exercise_definition)
         records += compute_compensation(df, exercise_definition)
 
@@ -1371,15 +1635,59 @@ def extract_rep_features(
     return annotate_feature_availability(records, df, exercise_definition)
 
 
-def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecord]":
+def _is_hold_phase_label(phase_label: str) -> bool:
+    suffix = _phase_label_to_suffix(phase_label)
+    return suffix == "hold" or suffix.endswith("_hold")
+
+
+def _ordered_phase_labels(
+    group: list[FeatureRecord],
+    exercise_definition: Any | None,
+) -> list[str]:
+    observed = list(
+        dict.fromkeys(str(r.phase) for r in group if r.phase is not None).keys()
+    )
+    ps = getattr(exercise_definition, "phase_segmentation", None)
+    sequence = list(getattr(ps, "phase_sequence", None) or [])
+    if sequence:
+        ordered = [str(label) for label in sequence if str(label) in observed]
+        extras = [label for label in observed if label not in ordered]
+        return ordered + extras
+    return observed
+
+
+def _phase_duration_ratio_pair(
+    group: list[FeatureRecord],
+    exercise_definition: Any | None,
+) -> tuple[str, str] | None:
+    phases = [
+        label
+        for label in _ordered_phase_labels(group, exercise_definition)
+        if not _is_hold_phase_label(label)
+    ]
+    if len(phases) < 2:
+        return None
+    return phases[0], phases[-1]
+
+
+def summarize_phase_to_rep(
+    records: "list[FeatureRecord]",
+    exercise_definition: Any | None = None,
+) -> "list[FeatureRecord]":
     """
     Derive rep-level summary features from phase-level FeatureRecords.
 
     Dissertation §5.5: hierarchical summary structure.
 
     Currently computes:
-        - Descent/Ascent duration ratio  (requires temporal.tempo phase-level records)
-        - Phase ROM asymmetry            (Descent vs Ascent mean ROM difference)
+        - Descent/Ascent ROM ratio, for exercise definitions whose phase model
+          explicitly uses those labels.
+        - Temporal duration ratio between the first and last non-hold labels in
+          exercise_definition.phase_segmentation.phase_sequence.
+
+    This is intentionally template-specific. Generic phase-profile aggregates
+    must be designed from the exercise-defined phase sequence before they are
+    used for scoring.
 
     Parameters
     ----------
@@ -1408,16 +1716,16 @@ def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecor
     for (ex_id, rep_id), group_iter in groupby(phase_recs_sorted, key=_key):
         group = list(group_iter)
 
-        # Descent vs Ascent mean ROM ratio
+        # Template-specific Descent vs Ascent mean ROM ratio.
         descent_rom = [
             r.value
             for r in group
-            if r.phase == "Descent" and "spatial.rom" in r.feature_id
+            if r.phase == "Descent" and "spatial.range_of_motion" in r.feature_id
         ]
         ascent_rom = [
             r.value
             for r in group
-            if r.phase == "Ascent" and "spatial.rom" in r.feature_id
+            if r.phase == "Ascent" and "spatial.range_of_motion" in r.feature_id
         ]
 
         if descent_rom and ascent_rom:
@@ -1430,21 +1738,67 @@ def summarize_phase_to_rep(records: "list[FeatureRecord]") -> "list[FeatureRecor
             merged_fields = list(dict.fromkeys(f for sf in ps_fields for f in sf))
             if not merged_fields:
                 merged_fields = ["phase_segmentation.phase_sequence"]
-            summary.append(
-                FeatureRecord(
-                    feature_id="spatial.phase_rom_ratio.descent_ascent",
+            record = FeatureRecord(
+                feature_id="spatial.phase_profile.range_of_motion_ratio.descent_ascent",
+                exercise_id=ex_id,
+                rep_id=rep_id,
+                value=round(ratio, 4),
+                unit="dimensionless",
+                source_fields=merged_fields,
+                note=(
+                    "Ratio of mean Descent ROM to mean Ascent ROM per rep. "
+                    "Values > 1 indicate larger descent range of motion."
+                ),
+                phase=None,
+            )
+            apply_common_record_metadata(record)
+            summary.append(record)
+
+        phase_pair = _phase_duration_ratio_pair(group, exercise_definition)
+        if phase_pair is not None:
+            phase_a, phase_b = phase_pair
+            suffix_a = _phase_label_to_suffix(phase_a)
+            suffix_b = _phase_label_to_suffix(phase_b)
+            duration_by_phase = {
+                str(r.phase): float(r.value)
+                for r in group
+                if r.phase is not None
+                and r.feature_id.startswith("temporal.tempo.rep_duration.")
+            }
+            value_a = duration_by_phase.get(phase_a)
+            value_b = duration_by_phase.get(phase_b)
+            if value_a is not None and value_b is not None and value_b > 0:
+                ratio = value_a / value_b
+                pair_records = [r for r in group if r.phase in {phase_a, phase_b}]
+                ps_fields = [r.source_fields for r in pair_records]
+                merged_fields = list(dict.fromkeys(f for sf in ps_fields for f in sf))
+                for field_name in [
+                    "feature_domains.temporal.phase_profile",
+                    "phase_segmentation.phase_sequence",
+                    f"temporal.tempo.rep_duration.{suffix_a}",
+                    f"temporal.tempo.rep_duration.{suffix_b}",
+                ]:
+                    if field_name not in merged_fields:
+                        merged_fields.append(field_name)
+                record = FeatureRecord(
+                    feature_id=(
+                        "temporal.phase_profile.duration_ratio."
+                        f"{suffix_a}_{suffix_b}"
+                    ),
                     exercise_id=ex_id,
                     rep_id=rep_id,
                     value=round(ratio, 4),
                     unit="dimensionless",
                     source_fields=merged_fields,
                     note=(
-                        "Ratio of mean Descent ROM to mean Ascent ROM per rep. "
-                        "Values > 1 indicate larger descent range of motion."
+                        f"Ratio of {phase_a} duration to {phase_b} duration "
+                        "for this rep. Values > 1 indicate a longer first phase."
                     ),
                     phase=None,
+                    depth_dependency="none",
                 )
-            )
+                apply_common_record_metadata(record)
+                summary.append(record)
 
     return summary
 
@@ -1479,6 +1833,8 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
                 "depth_dependency",
                 "model_depth_reliability",
                 "landmark_quality",
+                "focus_tier",
+                *COMMON_RECORD_METADATA_FIELDS,
             ]
         )
 
@@ -1500,6 +1856,13 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
             "depth_dependency": r.depth_dependency,
             "model_depth_reliability": r.model_depth_reliability,
             "landmark_quality": r.landmark_quality,
+            "focus_tier": r.focus_tier,
+            "landmark_ids": r.landmark_ids,
+            "support_role": r.support_role,
+            "coordinate_reference": r.coordinate_reference,
+            "evaluation_domain": r.evaluation_domain,
+            "evidence_axes": r.evidence_axes,
+            "feature_family": r.feature_family,
         }
         for r in records
     ]
@@ -1520,6 +1883,13 @@ FEATURE_REQUIRED_COLUMNS = [
     "depth_dependency",
     "model_depth_reliability",
     "landmark_quality",
+    "focus_tier",
+    "landmark_ids",
+    "support_role",
+    "coordinate_reference",
+    "evaluation_domain",
+    "evidence_axes",
+    "feature_family",
     "camera_zone",
     "role_context",
 ]
@@ -1611,7 +1981,16 @@ def save_feature_outputs(
     qc_path = output_path / f"{recording_id}_feature_qc.json"
 
     csv_df = feature_df.copy()
-    for column in ("source_fields", "availability_reasons", "role_context"):
+    for column in required:
+        if column not in csv_df.columns:
+            csv_df[column] = ""
+    csv_df = csv_df[required + [c for c in csv_df.columns if c not in required]]
+    for column in (
+        "source_fields",
+        "availability_reasons",
+        "landmark_ids",
+        "role_context",
+    ):
         if column in csv_df.columns:
             csv_df[column] = csv_df[column].map(_serialize_feature_output_value)
     csv_df.to_csv(csv_path, index=False, encoding="utf-8")

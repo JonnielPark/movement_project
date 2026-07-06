@@ -1,0 +1,331 @@
+version: 0.2.0
+schema: joint_profiles
+description: >
+  Joint/profile-specific interpretation metadata. Action names inside each
+  profile are local to that profile; global action ids add the profile
+  namespace, for example ankle.dorsiflexion_plantarflexion.
+
+profiles:
+  shoulder:
+    joint_model: primary_axis_flexion_extension_with_scapular_proxy
+    anatomical_actions:
+      primary:
+        - flexion_extension
+      secondary:
+        - scapular_stability_proxy
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: [frontal_proxy]
+    feature_templates:
+      range_of_motion:
+        - spatial.range_of_motion.xy.{side}_shoulder_angle
+        - spatial.range_of_motion.xyz.{side}_shoulder_angle
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_shoulder
+        - spatial.movement_path.arc_length_xyz.{side}_shoulder
+      role_alignment:
+        - spatial.role_alignment.left_right.range_of_motion_xy.shoulder
+      planned_compensation_candidates:
+        - shoulder_asymmetry
+        - shoulder_collapse
+        - shoulder_elevation_compensation
+        - scapular_instability_proxy
+    reliability_priors:
+      sagittal_view:
+        shoulder_rom: moderate
+        shoulder_movement_path: moderate
+        scapular_stability_proxy: low_confidence
+      front_view:
+        shoulder_symmetry: moderate
+        scapular_stability_proxy: low_confidence
+      unknown_view:
+        shoulder_rom: low_confidence
+        movement_path: low_confidence
+        scapular_stability_proxy: low_confidence
+
+  elbow:
+    joint_model: primary_axis_flexion_extension
+    anatomical_actions:
+      primary:
+        - flexion_extension
+      secondary: []
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: []
+    feature_templates:
+      range_of_motion:
+        - spatial.range_of_motion.xy.{side}_elbow_angle
+        - spatial.range_of_motion.xyz.{side}_elbow_angle
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_elbow
+        - spatial.movement_path.arc_length_xyz.{side}_elbow
+      role_alignment:
+        - spatial.role_alignment.left_right.range_of_motion_xy.elbow
+      planned_compensation_candidates:
+        - elbow_flare
+        - elbow_asymmetry
+    reliability_priors:
+      sagittal_view:
+        elbow_rom: moderate
+        elbow_movement_path: moderate
+        elbow_tracking_proxy: low_confidence
+      front_view:
+        elbow_symmetry: moderate
+        elbow_tracking_proxy: low_confidence
+      unknown_view:
+        elbow_rom: low_confidence
+        movement_path: low_confidence
+
+  wrist:
+    joint_model: endpoint_support_proxy
+    anatomical_actions:
+      primary:
+        - flexion_extension
+      secondary: []
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: []
+    feature_templates:
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_wrist
+        - spatial.movement_path.arc_length_xyz.{side}_wrist
+      support_consistency:
+        - spatial.support_consistency.point_drift_xy.{side}_wrist
+      planned_compensation_candidates:
+        - hand_foot_repositioning
+        - missed_shoulder_tap
+    reliability_priors:
+      sagittal_view:
+        wrist_movement_path: moderate
+        support_consistency_xy: moderate
+      front_view:
+        wrist_movement_path: moderate
+        support_consistency_xy: moderate
+      unknown_view:
+        movement_path: low_confidence
+        support_consistency_xy: low_confidence
+
+  hip:
+    joint_model: primary_axis_flexion_extension
+    anatomical_actions:
+      primary:
+        - flexion_extension
+      secondary: []
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: []
+    feature_templates:
+      range_of_motion:
+        - spatial.range_of_motion.xy.{side}_hip_angle
+        - spatial.range_of_motion.xyz.{side}_hip_angle
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_hip
+        - spatial.movement_path.arc_length_xyz.{side}_hip
+      role_alignment:
+        - spatial.role_alignment.left_right.range_of_motion_xy.hip
+    reliability_priors:
+      sagittal_view:
+        hip_rom: high
+        hip_xy_movement_path: moderate
+        hip_z_movement_path: low
+      front_view:
+        hip_rom: moderate
+        hip_xy_movement_path: moderate
+      unknown_view:
+        hip_rom: low_confidence
+        movement_path: low_confidence
+
+  knee:
+    joint_model: primary_axis_flexion_extension
+    anatomical_actions:
+      primary:
+        - flexion_extension
+      secondary:
+        - varus_valgus_proxy
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: [frontal]
+    feature_templates:
+      range_of_motion:
+        - spatial.range_of_motion.xy.{side}_knee_angle
+        - spatial.range_of_motion.xyz.{side}_knee_angle
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_knee
+        - spatial.movement_path.arc_length_xyz.{side}_knee
+      role_alignment:
+        - spatial.role_alignment.left_right.range_of_motion_xy.knee
+      compensation_links:
+        - control.compensation.knee_valgus.xy.{side}
+        - control.compensation.knee_varus.xy.{side}
+    reliability_priors:
+      sagittal_view:
+        knee_rom: high
+        knee_xy_movement_path: moderate
+        knee_valgus_varus: low
+      front_view:
+        knee_rom: moderate
+        knee_xy_movement_path: moderate
+        knee_valgus_varus: moderate
+      unknown_view:
+        knee_rom: low_confidence
+        knee_xy_movement_path: low_confidence
+        knee_valgus_varus: low_confidence
+
+  ankle:
+    joint_model: primary_axis_flexion_extension
+    anatomical_actions:
+      primary:
+        - dorsiflexion_plantarflexion
+      secondary:
+        - inversion_eversion_proxy
+        - foot_heading_proxy
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: [frontal, transverse_proxy]
+    feature_templates:
+      range_of_motion:
+        - spatial.range_of_motion.xy.{side}_ankle_angle
+        - spatial.range_of_motion.xyz.{side}_ankle_angle
+      movement_path:
+        - spatial.movement_path.arc_length_xy.{side}_ankle
+        - spatial.movement_path.arc_length_xyz.{side}_ankle
+      support_consistency:
+        - spatial.support_consistency.point_drift_xy.{side}_ankle
+      compensation_links:
+        - control.compensation.heel_lift.xy.{side}
+        - control.compensation.foot_heading_proxy.{side}
+    reliability_priors:
+      sagittal_view:
+        ankle_rom: moderate
+        ankle_xy_movement_path: moderate
+        ankle_z_movement_path: low
+        support_consistency_xy: high
+      front_view:
+        ankle_rom: low
+        stance_width_xy: high
+        support_consistency_xy: moderate
+      unknown_view:
+        ankle_rom: low_confidence
+        movement_path: low_confidence
+        support_consistency_xy: moderate
+
+  pelvis_reference:
+    joint_model: derived_reference_proxy
+    anatomical_actions:
+      primary:
+        - control_proxy
+      secondary:
+        - lateral_tilt_proxy
+        - anterior_posterior_tilt_proxy
+        - rotation_proxy
+        - weight_shift_control
+    typical_motion_planes:
+      primary: [recording_view_xy]
+      secondary: [frontal_proxy, sagittal_proxy, transverse_proxy]
+    feature_templates:
+      stability:
+        - control.stability.hip_center_x_std
+        - control.stability.hip_center_z_std
+        - control.stability.hip_center_support_center_xy_drift
+      compensation_links:
+        - control.compensation.lateral_pelvic_shift.xy
+        - control.compensation.pelvis_rotation.xyz
+      planned_compensation_candidates:
+        - hip_drop
+        - hip_pike
+        - pelvis_rotation
+        - pelvis_lateral_tilt_proxy
+        - pelvis_anterior_posterior_tilt_proxy
+    reliability_priors:
+      sagittal_view:
+        pelvis_control_xy: moderate
+        pelvis_rotation_depth_proxy: low
+      front_view:
+        pelvis_lateral_shift: moderate
+        pelvis_lateral_tilt_proxy: moderate
+        pelvis_rotation_depth_proxy: low
+      unknown_view:
+        pelvis_control: low_confidence
+        pelvis_rotation_depth_proxy: low_confidence
+
+  trunk_reference:
+    joint_model: derived_reference_proxy
+    anatomical_actions:
+      primary:
+        - control_proxy
+      secondary:
+        - flexion_extension_proxy
+        - lateral_flexion_proxy
+        - rotation_proxy
+    typical_motion_planes:
+      primary: [sagittal]
+      secondary: [frontal_proxy, transverse_proxy]
+    feature_templates:
+      compensation_links:
+        - control.compensation.excessive_trunk_flexion.xy
+        - control.compensation.excessive_trunk_flexion.xyz
+      planned_compensation_candidates:
+        - trunk_rotation
+        - lateral_trunk_lean
+    reliability_priors:
+      sagittal_view:
+        trunk_flexion: moderate
+        trunk_rotation_depth_proxy: low
+      front_view:
+        trunk_lateral_flexion_proxy: moderate
+        trunk_rotation_depth_proxy: low
+      unknown_view:
+        trunk_control: low_confidence
+
+  support_base:
+    joint_model: derived_support_reference
+    anatomical_actions:
+      primary:
+        - control
+      secondary: []
+    typical_motion_planes:
+      primary: [recording_view_xy]
+      secondary: []
+    feature_templates:
+      support_consistency:
+        - spatial.support_consistency.center_drift_xy
+        - spatial.support_consistency.width_variation_xy
+      diagnostic:
+        - spatial.support_consistency.axis_path_xy.<landmark>
+        - spatial.support_consistency.axis_path_z.<landmark>
+    reliability_priors:
+      sagittal_view:
+        support_consistency_xy: high
+        support_depth_z: low
+      front_view:
+        support_consistency_xy: high
+        support_depth_z: low
+      unknown_view:
+        support_consistency_xy: moderate
+        support_depth_z: low_confidence
+
+  whole_body_com:
+    joint_model: whole_body_proxy
+    anatomical_actions:
+      primary:
+        - motion
+      secondary: []
+    typical_motion_planes:
+      primary: [xyz_proxy]
+      secondary: []
+    feature_templates:
+      biomechanical_proxy:
+        - biomech.com.range_x
+        - biomech.com.range_z
+        - biomech.com.path_length
+    reliability_priors:
+      sagittal_view:
+        com_range_x: moderate
+        com_range_z: low
+        com_path_length: low_confidence
+      front_view:
+        com_range_x: moderate
+        com_range_z: low
+        com_path_length: low_confidence
+      unknown_view:
+        com_motion: low_confidence

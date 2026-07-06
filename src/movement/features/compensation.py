@@ -5,10 +5,9 @@ Each rule function:
     signature : (df: pd.DataFrame, ex_id: str, rep_id: int | None) -> list[FeatureRecord]
     unit      : torso_length_ratio (geometric) or degree (angular)
 
-Axis convention (normalized coordinates):
-    x : lateral  — positive toward subject's right
-    y : sagittal — positive forward (depth)
-    z : vertical — positive upward
+Axis convention follows the project-wide monocular pose policy:
+    x/y : recording-view camera plane
+    z   : model depth, low-confidence unless separately validated
 
 Implemented rules:
     knee_valgus              frontal-plane medial knee deviation from hip-ankle line
@@ -16,7 +15,7 @@ Implemented rules:
     lateral_pelvic_shift     peak lateral pelvis-center displacement from rep baseline
     excessive_trunk_flexion  peak trunk lean angle from vertical (degrees)
     heel_lift                peak heel elevation relative to rep minimum
-    pelvic_rotation          left-right hip depth asymmetry (transverse-plane proxy)
+    pelvis_rotation          left-right hip depth asymmetry (transverse-plane proxy)
 
 Not yet implemented (candidates accepted by YAML, no rule registered):
     asymmetric_depth, foot_external_rotation_proxy, tempo_instability
@@ -32,7 +31,6 @@ import pandas as pd
 
 from movement.features import FeatureRecord
 
-
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 
 
@@ -45,11 +43,14 @@ def _get_norm_xyz(df: pd.DataFrame, landmark: str) -> np.ndarray:
     return df[cols].values.astype(float)
 
 
-def _frontal_knee_deviation(df: pd.DataFrame, side: str) -> np.ndarray:
+def _recording_view_knee_deviation(df: pd.DataFrame, side: str) -> np.ndarray:
     """
-    Signed perpendicular distance of the knee from the hip-ankle line in the frontal
-    plane (x-z). Positive = medial (valgus) for the left side; negative = medial
-    (valgus) for the right side. Returns (T,) array in torso_length_ratio units.
+    Signed perpendicular distance of the knee from the hip-ankle line in the
+    recording-view plane (x-y).
+
+    Positive = medial/valgus proxy for the left side; negative = medial/valgus
+    proxy for the right side. Returns (T,) in torso_length_ratio units. This is
+    a camera-plane tracking proxy, not a calibrated anatomical frontal plane.
     """
     try:
         hip = _get_norm_xyz(df, f"{side}_hip")
@@ -58,13 +59,12 @@ def _frontal_knee_deviation(df: pd.DataFrame, side: str) -> np.ndarray:
     except KeyError:
         return np.full(len(df), np.nan)
 
-    # Frontal plane slices: column 0 = x (lateral), column 2 = z (vertical)
-    hip_xz = hip[:, [0, 2]]
-    knee_xz = knee[:, [0, 2]]
-    ankle_xz = ankle[:, [0, 2]]
+    hip_xy = hip[:, [0, 1]]
+    knee_xy = knee[:, [0, 1]]
+    ankle_xy = ankle[:, [0, 1]]
 
-    line_vec = ankle_xz - hip_xz  # hip → ankle
-    knee_vec = knee_xz - hip_xz  # hip → knee
+    line_vec = ankle_xy - hip_xy
+    knee_vec = knee_xy - hip_xy
 
     # 2D signed cross product (perpendicular distance × |line_vec|)
     cross = line_vec[:, 0] * knee_vec[:, 1] - line_vec[:, 1] * knee_vec[:, 0]
@@ -83,7 +83,7 @@ def _rule_knee_valgus(
     df: pd.DataFrame, ex_id: str, rep_id: int | None
 ) -> list[FeatureRecord]:
     """
-    Peak medial deviation of each knee from the frontal-plane hip-ankle line.
+    Peak medial deviation of each knee from the recording-view hip-ankle line.
 
     Positive = valgus (inward/medial collapse). Computed as the 95th percentile
     of the signed deviation across frames (robust peak estimate).
@@ -92,20 +92,23 @@ def _rule_knee_valgus(
     records: list[FeatureRecord] = []
     # left: positive cross = medial; right: negate so positive = medial
     for side, valgus_sign in (("left", 1.0), ("right", -1.0)):
-        signed_dist = _frontal_knee_deviation(df, side)
+        signed_dist = _recording_view_knee_deviation(df, side)
         valgus_index = valgus_sign * signed_dist
         if np.all(np.isnan(valgus_index)):
             continue
         peak = float(np.nanpercentile(valgus_index, 95))
         records.append(
             FeatureRecord(
-                feature_id=f"control.compensation.knee_valgus.{side}",
+                feature_id=f"control.compensation.knee_valgus.xy.{side}",
                 exercise_id=ex_id,
                 rep_id=rep_id,
                 value=round(peak, 4),
                 unit="torso_length_ratio",
                 source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
-                note="frontal-plane medial knee deviation; positive = valgus (inward collapse)",
+                note=(
+                    "recording-view hip-knee-ankle medial deviation proxy; "
+                    "positive = valgus-like inward collapse"
+                ),
             )
         )
     return records
@@ -123,20 +126,23 @@ def _rule_knee_varus(
     records: list[FeatureRecord] = []
     # left: negative cross = lateral; right: positive cross = lateral
     for side, varus_sign in (("left", -1.0), ("right", 1.0)):
-        signed_dist = _frontal_knee_deviation(df, side)
+        signed_dist = _recording_view_knee_deviation(df, side)
         varus_index = varus_sign * signed_dist
         if np.all(np.isnan(varus_index)):
             continue
         peak = float(np.nanpercentile(varus_index, 95))
         records.append(
             FeatureRecord(
-                feature_id=f"control.compensation.knee_varus.{side}",
+                feature_id=f"control.compensation.knee_varus.xy.{side}",
                 exercise_id=ex_id,
                 rep_id=rep_id,
                 value=round(peak, 4),
                 unit="torso_length_ratio",
                 source_fields=[f"{side}_hip", f"{side}_knee", f"{side}_ankle"],
-                note="frontal-plane lateral knee deviation; positive = varus (outward bow)",
+                note=(
+                    "recording-view hip-knee-ankle lateral deviation proxy; "
+                    "positive = varus-like outward bow"
+                ),
             )
         )
     return records
@@ -164,7 +170,7 @@ def _rule_lateral_pelvic_shift(
 
     return [
         FeatureRecord(
-            feature_id="control.compensation.lateral_pelvic_shift",
+            feature_id="control.compensation.lateral_pelvic_shift.xy",
             exercise_id=ex_id,
             rep_id=rep_id,
             value=round(peak, 4),
@@ -179,10 +185,11 @@ def _rule_excessive_trunk_flexion(
     df: pd.DataFrame, ex_id: str, rep_id: int | None
 ) -> list[FeatureRecord]:
     """
-    Peak forward lean angle of the trunk from the vertical axis (z-axis).
+    Peak trunk-line angle from the recording-view vertical axis.
 
-    Trunk vector = shoulder-center minus hip-center. Angle computed as
-    arccos of the normalized trunk vector's z-component.
+    Emits an `xy` recording-view candidate and an `xyz` depth-mixed comparative
+    candidate. Both use the image vertical axis; the `xyz` variant adds model
+    depth to the vector norm and therefore carries reduced default gravity.
     Unit: degree.
     """
     try:
@@ -197,25 +204,53 @@ def _rule_excessive_trunk_flexion(
     hip_center = (left_hip + right_hip) / 2.0
     trunk_vec = shoulder_center - hip_center  # (T, 3), points upward
 
-    trunk_norm = np.linalg.norm(trunk_vec, axis=1, keepdims=True)
+    trunk_xy = trunk_vec[:, [0, 1]]
+    trunk_xy_norm = np.linalg.norm(trunk_xy, axis=1, keepdims=True)
     with np.errstate(invalid="ignore", divide="ignore"):
-        trunk_unit = np.where(trunk_norm > 1e-8, trunk_vec / trunk_norm, np.nan)
+        trunk_xy_unit = np.where(
+            trunk_xy_norm > 1e-8, trunk_xy / trunk_xy_norm, np.nan
+        )
 
-    cos_angle = np.clip(trunk_unit[:, 2], -1.0, 1.0)
-    angle_deg = np.degrees(np.arccos(cos_angle))
+    cos_xy = np.clip(np.abs(trunk_xy_unit[:, 1]), -1.0, 1.0)
+    angle_xy_deg = np.degrees(np.arccos(cos_xy))
 
-    peak = float(np.nanpercentile(angle_deg, 95))
+    trunk_xyz_norm = np.linalg.norm(trunk_vec, axis=1, keepdims=True)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        trunk_xyz_unit = np.where(
+            trunk_xyz_norm > 1e-8, trunk_vec / trunk_xyz_norm, np.nan
+        )
+
+    cos_xyz = np.clip(np.abs(trunk_xyz_unit[:, 1]), -1.0, 1.0)
+    angle_xyz_deg = np.degrees(np.arccos(cos_xyz))
+
+    peak_xy = float(np.nanpercentile(angle_xy_deg, 95))
+    peak_xyz = float(np.nanpercentile(angle_xyz_deg, 95))
 
     return [
         FeatureRecord(
-            feature_id="control.compensation.excessive_trunk_flexion",
+            feature_id="control.compensation.excessive_trunk_flexion.xy",
             exercise_id=ex_id,
             rep_id=rep_id,
-            value=round(peak, 2),
+            value=round(peak_xy, 2),
             unit="degree",
             source_fields=["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
-            note="peak trunk lean from vertical (z-axis); larger = more forward lean",
-        )
+            note=(
+                "peak recording-view trunk-line angle from image vertical; "
+                "larger = more apparent forward/lateral lean"
+            ),
+        ),
+        FeatureRecord(
+            feature_id="control.compensation.excessive_trunk_flexion.xyz",
+            exercise_id=ex_id,
+            rep_id=rep_id,
+            value=round(peak_xyz, 2),
+            unit="degree",
+            source_fields=["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+            note=(
+                "peak depth-mixed trunk-line angle from image vertical; "
+                "comparative evidence only under monocular depth"
+            ),
+        ),
     ]
 
 
@@ -223,9 +258,11 @@ def _rule_heel_lift(
     df: pd.DataFrame, ex_id: str, rep_id: int | None
 ) -> list[FeatureRecord]:
     """
-    Peak heel elevation above the rep-minimum heel height.
+    Peak recording-view heel elevation above the rep support baseline.
 
-    Non-zero values indicate loss of heel contact with the ground.
+    Non-zero values may indicate loss of heel contact with the ground. This
+    intentionally uses the camera-plane vertical axis instead of monocular
+    model depth; depth-sensitive heel-lift diagnostics need a separate feature.
     Unit: torso_length_ratio.
     """
     records: list[FeatureRecord] = []
@@ -235,33 +272,37 @@ def _rule_heel_lift(
         except KeyError:
             continue
 
-        heel_z = heel[:, 2]
-        min_z = float(np.nanmin(heel_z))
-        lift = heel_z - min_z
+        heel_y = heel[:, 1]
+        support_y = float(np.nanpercentile(heel_y, 95))
+        lift = support_y - heel_y
         peak = float(np.nanpercentile(lift, 95))
 
         records.append(
             FeatureRecord(
-                feature_id=f"control.compensation.heel_lift.{side}",
+                feature_id=f"control.compensation.heel_lift.xy.{side}",
                 exercise_id=ex_id,
                 rep_id=rep_id,
                 value=round(peak, 4),
                 unit="torso_length_ratio",
                 source_fields=[f"{side}_heel"],
-                note="peak heel elevation above rep-minimum; non-zero = heel-lift compensation",
+                note=(
+                    "peak recording-view heel elevation above rep support baseline; "
+                    "non-zero = heel-lift compensation proxy"
+                ),
             )
         )
     return records
 
 
-def _rule_pelvic_rotation(
+def _rule_pelvis_rotation(
     df: pd.DataFrame, ex_id: str, rep_id: int | None
 ) -> list[FeatureRecord]:
     """
     Peak left-right hip depth asymmetry as a proxy for transverse-plane pelvic rotation.
 
-    Computed as the absolute difference in y-axis (sagittal depth) between the
-    left and right hip. 95th-percentile peak across frames.
+    Computed as the absolute difference in model-depth z between the left and
+    right hip. 95th-percentile peak across frames. This is depth-sensitive
+    evidence and should remain low-gravity/report-only unless validated.
     Unit: torso_length_ratio.
     """
     try:
@@ -270,18 +311,21 @@ def _rule_pelvic_rotation(
     except KeyError:
         return []
 
-    depth_diff = np.abs(left_hip[:, 1] - right_hip[:, 1])
+    depth_diff = np.abs(left_hip[:, 2] - right_hip[:, 2])
     peak = float(np.nanpercentile(depth_diff, 95))
 
     return [
         FeatureRecord(
-            feature_id="control.compensation.pelvic_rotation",
+            feature_id="control.compensation.pelvis_rotation.xyz",
             exercise_id=ex_id,
             rep_id=rep_id,
             value=round(peak, 4),
             unit="torso_length_ratio",
             source_fields=["left_hip", "right_hip"],
-            note="peak left-right hip depth asymmetry; proxy for transverse-plane pelvic rotation",
+            note=(
+                "peak left-right hip model-depth asymmetry; proxy for "
+                "transverse-plane pelvic rotation"
+            ),
         )
     ]
 
@@ -294,7 +338,7 @@ COMPENSATION_RULES: dict[str, Callable] = {
     "lateral_pelvic_shift": _rule_lateral_pelvic_shift,
     "excessive_trunk_flexion": _rule_excessive_trunk_flexion,
     "heel_lift": _rule_heel_lift,
-    "pelvis_rotation": _rule_pelvic_rotation,
+    "pelvis_rotation": _rule_pelvis_rotation,
 }
 
 _UNIMPLEMENTED: set[str] = {

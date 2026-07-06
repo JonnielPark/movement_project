@@ -2,7 +2,7 @@ exercise_id: squat
 display_name: Bodyweight Squat
 description: Bilateral lower-body closed-chain movement emphasizing hip, knee, and
   ankle coordination.
-version: 0.5.2
+version: 0.6.0
 tags:
 - bodyweight
 - lower_body
@@ -110,5 +110,16 @@ authoring_inference:
   inferred_secondary_joint_actions:
   - pelvis_lateral_tilt_proxy
   - pelvis_rotation_proxy
+authoring_provenance:
+  authoring_mode: canonical_view
+  generated_by: exercise_authoring_notebook
+  source_status: draft
+  source_authoring_exercise_id: draft_squat
+  source_artifact_exercise_id: draft_squat
+  canonical_exercise_id: squat
+  promotion_status: reviewed_canonical
+  resolved_review_items:
+  - biomechanical_identity
+  deferred_review_items: []
 notes: Squat is a suitable reference exercise for validating bilateral symmetry, sagittal-plane
   ROM, COM displacement, and lower-limb compensation indicators.

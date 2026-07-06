@@ -26,7 +26,7 @@ annotation:
 exercise_definition:
   enabled: true
   definitions_dir: "data/definitions/exercises"
-  # null = derived from annotation exercise_type column; still null → generic fallback
+  # null = derived from annotation exercise_id column; still null → generic fallback
   exercise_id: null
 
 # ── ④ Preprocessing ──────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ canonicalization:
     residual_warn_torso: 0.08
   support_plane_alignment:
     enabled: false
-    method: support_contact_plane
+    method: support_plane_alignment
     vertical_axis: y
     support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
     diagnostic_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
@@ -141,7 +141,7 @@ canonicalization:
   # support_plane_alignment.
   floor_relative_correction:
     enabled: false
-    method: support_contact_plane
+    method: support_plane_alignment
     coordinate_mode: norm
     vertical_axis: y
     support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
@@ -188,7 +188,12 @@ features:
       ambiguous: 0.55         # τ_ambiguous < share ≤ τ_active → ambiguous
       swap: 0.85              # legacy auto_correct threshold; no coordinate changes
     mode: conservative        # conservative | auto_correct
-  spatial:    {rom: true, symmetry: true, shape: true}
+  spatial:
+    range_of_motion: true
+    movement_path: true
+    support_consistency: true
+    role_alignment: true
+    phase_profile: true
   temporal:   {tempo: true, variability: true}
   control:    {stability: true, compensation: true}
   compensation:
@@ -222,6 +227,79 @@ biomarker:
     temporal: 1.0
     control: 1.0
     biomech: 1.0
+  # Within-domain feature-family budgets. Configured domains do not redistribute
+  # a missing/withheld family budget to remaining families.
+  domain_feature_family_weights:
+    spatial:
+      range_of_motion: 0.60
+      movement_path: 0.15
+      support_consistency: 0.05
+      role_alignment: 0.15
+      phase_profile: 0.05
+    temporal:
+      tempo: 0.25
+      variability: 0.50
+      phase_profile: 0.25
+  # Exercise-definition scoring intent. Focus gravity is multiplied with
+  # availability/depth/feature override gravity; it does not replace those gates.
+  scoring_focus_weights:
+    primary: 1.0
+    secondary: 0.45
+    context_constraint: 0.6
+    compensation: 0.5
+    diagnostic: 0.0
+  # Scoring-stage gravity for low-confidence records. This keeps monocular
+  # biomech/depth evidence visible without treating it as full-strength evidence.
+  low_confidence_score_weights:
+    spatial: 0.0
+    temporal: 0.0
+    control: 0.0
+    biomech: 0.1
+  # Evidence gravity by depth-dependency class. Features remain visible in
+  # biomarkers/deduction audit; this only controls score contribution strength.
+  depth_dependency_score_weights:
+    none: 1.0
+    low: 1.0
+    moderate: 0.5
+    high: 0.1
+    unknown: 0.3
+  # Feature-id gravity overrides for evidence that should remain visible but
+  # currently has weak direct movement-quality interpretation under monocular
+  # pose. Fixed closed-chain ankle support-landmark path is withheld from scoring;
+  # support-consistency scoring should use a separate recording-view feature family.
+  feature_score_weight_overrides:
+    spatial.movement_path.arc_length_xy.left_ankle.*: 0.0
+    spatial.movement_path.arc_length_xy.right_ankle.*: 0.0
+    spatial.movement_path.arc_length_xyz.left_ankle.*: 0.0
+    spatial.movement_path.arc_length_xyz.right_ankle.*: 0.0
+    spatial.movement_path.arc_length_xyz.left_knee.*: 0.0
+    spatial.movement_path.arc_length_xyz.right_knee.*: 0.0
+    spatial.range_of_motion.xyz.*: 0.25
+    control.compensation.knee_valgus.xy.*: 0.25
+    control.compensation.knee_varus.xy.*: 0.25
+    control.compensation.excessive_trunk_flexion.xy: 0.5
+    control.compensation.excessive_trunk_flexion.xyz: 0.25
+    spatial.range_of_motion.xy.left_hip_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xy.right_hip_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xy.left_knee_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xy.right_knee_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xy.left_ankle_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xy.right_ankle_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.left_hip_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.right_hip_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.left_knee_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.right_knee_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.left_ankle_angle.turnaround_hold: 0.0
+    spatial.range_of_motion.xyz.right_ankle_angle.turnaround_hold: 0.0
+  # Directional baseline matching. Stable bottom-position lower-body path can
+  # be lower than the provisional baseline without representing a movement fault.
+  feature_score_direction_overrides:
+    spatial.support_consistency.*: upper_bound_only
+    spatial.role_alignment.left_right.support_consistency_xy_drift.*: upper_bound_only
+    spatial.movement_path.arc_length_xy.left_hip.turnaround_hold: upper_bound_only
+    spatial.movement_path.arc_length_xy.right_hip.turnaround_hold: upper_bound_only
+    spatial.movement_path.arc_length_xy.left_knee.turnaround_hold: upper_bound_only
+    spatial.movement_path.arc_length_xy.right_knee.turnaround_hold: upper_bound_only
 
 # ── Output ────────────────────────────────────────────────────────────────────
 output:

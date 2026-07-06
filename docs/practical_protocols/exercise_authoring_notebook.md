@@ -27,7 +27,7 @@ reason 4   향후 web UI도 같은 spec과 generator를 재사용 가능
 
 Authoring UI는 연구자에게 movement archetype을 직접 고르게 하지 않고, 원자적인 movement
 descriptor를 먼저 수집해야 한다. Primary/secondary joint actions를 먼저 선택하고,
-support/contact pattern, laterality, posture, body geometry, primary body regions와 함께
+support pattern, laterality, posture, body geometry, primary body regions와 함께
 해석한다. Export되는 `movement_template_id`는 이 joint-action-plus-context 조합에서
 산출한다. Legacy `movement_pattern` key는 별도 registry migration을 계획하기 전까지 내부
 호환 alias로 남을 수 있다.
@@ -357,7 +357,7 @@ in-memory view의 `authoring_provenance`로 이동한다. 이 방식은 기존 c
 
 ```text
 exercise identity and classification
-support/contact template
+support template
 draft phase model
 landmark set and draft angle triplets
 rep/phase segmentation templates

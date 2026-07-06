@@ -171,7 +171,7 @@ Output
 | ⑤ Normalization | Preprocessed DataFrame | Translates coordinates relative to the hip center and scales them by the sequence-level median torso length. | Normalized DataFrame |
 | ⑥ Canonicalization | Normalized DataFrame, exercise/camera/support priors | Optionally emits analysis-space candidate coordinate families using support-plane, movement-plane, protocol-height, or anthropometric priors. Raw/norm/candidate coordinate families remain separate and every candidate is reported with confidence, burden, residual, and sensitivity provenance. | Optional candidate coordinate columns, canonicalization report, correction diagnostics |
 | ⑦ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
-| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role settings | Resolves side-role context inside feature extraction, then computes rep-level and phase-level ROM, symmetry, trajectory, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, feature-role-context report, audit reports |
+| ⑧ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role settings | Resolves side-role context inside feature extraction, then computes rep-level and phase-level range of motion, role alignment, movement path, tempo, variability, and compensation features; reports feature-registry coverage, compensation-candidate availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, feature-role-context report, audit reports |
 | ⑨ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
 | ⑩ Biomarker Derivation | FeatureRecord, BiomechRecord, baseline | Converts individual metrics into BiomarkerRecord entries and derives Z-score-based domain scores and composite scores. Coordinate-correction magnitude and observation quality are interpreted separately from the movement-quality score as data-confidence/provenance information. | BiomarkerRecord, BiomarkerScoreRecord, InterpretationRecord |
 | ⑪ Visualization | Per-step DataFrames, records, reports | Visualizes confidence, joint angles, phases, features, and biomarker results as diagnostic and result charts. | figures |
@@ -185,7 +185,7 @@ Detailed formulas live in the step documents. At the overview level, the active
 families are:
 
 ```text
-Spatial            ROM, left/right symmetry, trajectory shape, compensation candidates
+Spatial            range of motion, role alignment, movement path, compensation candidates
 Temporal           tempo and inter-rep variability
 Control            CoM stability, path consistency, smoothness, provenance gates
 Biomech proxy      CoM trajectory, moment-arm proxies, relative load-shift tendency

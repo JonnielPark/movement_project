@@ -1,7 +1,7 @@
 # 07. 세그멘테이션 (Segmentation)
 
-**문서 버전:** 1.3.3
-**최종 갱신:** 2026-06-25
+**문서 버전:** 1.3.4
+**최종 갱신:** 2026-07-04
 **영문 동기화:** `docs_eng/pipeline/07_segmentation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑦은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
@@ -96,6 +96,67 @@ recording_view_raw
 예를 들어 squat phase splitting은 `recording_view_raw`의 `hip_center`와 `image_y`를 사용해
 눈에 보이는 recording-plane hip trajectory를 따라 descent/ascent를 나눌 수 있다. 이는
 normalized coordinate를 바꾸거나 raw coordinate를 scoring feature로 승격하는 것이 아니다.
+
+### 2.1 Phase Label Vocabulary
+
+Phase label은 exercise-defined kinematic/task label이다. `Descent`와 `Ascent` 한 쌍으로
+하드코딩하지 않는다. Exercise definition은 registry template 또는 authoring bundle에서
+`phase_sequence`를 선택하고, segmentation은 reference signal이 이를 뒷받침할 때 해당 순서를
+채운다.
+
+대표 label group:
+
+```text
+vertical/resistance cycle
+    Start_Hold, Descent, Turnaround_Hold, Ascent, Top_Hold, Reset
+
+flexion-extension cycle
+    Flexion, Flexion_Hold, Extension, Extension_Hold, Return
+
+push/pull cycle
+    Lowering, Bottom_Hold, Press, Pull, Top_Hold, Lockout, Return
+
+reach/return cycle
+    Reach, Reach_Hold, Return, Recenter
+
+support/alternating cycle
+    Support, Weight_Shift, Unweight, Lift, Tap, Replant, Return
+
+directional reach/step cycle
+    Step_Out, Step_In, Forward_Reach, Backward_Return, Lateral_Reach,
+    Medial_Return
+
+rotation/control cycle
+    Rotate_Left, Rotate_Right, Rotate, Rotation_Hold, AntiRotation_Hold, Return
+
+static/control cycle
+    Hold, Drift, Correction, Failure_Point
+```
+
+사람이 읽는 phase label은 `phase` column에 그대로 보존한다. Phase-specific suffix가 필요한
+feature ID에서는 같은 label을 lower snake case로 바꿔 사용한다. 예:
+`Turnaround_Hold` → `turnaround_hold`.
+
+`eccentric`, `isometric`, `concentric` 같은 kinetic term은 `phase_model`의 기대 비율이나 해석
+note에는 등장할 수 있지만, exercise definition이 명시적으로 task label로 승격하지 않는 한
+primary phase label로 쓰지 않는다. 단일 카메라 pose만으로 force나 muscle-action ground truth를
+암시하지 않기 위해서다.
+
+`Turnaround_Hold`, `Top_Hold`, `Reach_Hold` 같은 optional label은 해당 option이 켜져 있고
+accepted 된 경우에만 출력한다. Optional phase가 불명확하면 coarse phase sequence로 계속
+진행하고 `optional_phase` failure point를 기록한다.
+
+현재 구현 상태:
+
+```text
+implemented
+    Segmentation은 구현된 template에 대해 exercise-defined phase_sequence를 읽을 수 있고,
+    phase-level feature record는 관측된 phase label을 보존한다.
+
+limited
+    현재 rep-level spatial.phase_profile aggregate는 아직 Descent/Ascent ROM ratio에 특화되어
+    있다. Generic phase-profile aggregate는 scoring에 쓰기 전에 명시적으로 설계해야 한다.
+```
 
 ---
 

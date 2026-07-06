@@ -1,4 +1,72 @@
 version: 0.1.0
+phase_label_vocabulary:
+  policy:
+    description: >
+      Phase labels are exercise-defined kinematic or task labels. They are not
+      limited to Descent/Ascent, and feature ID suffixes should preserve the
+      selected label semantics in lower snake case.
+    feature_id_suffix_case: lower_snake_case
+    kinetic_labels_not_for_feature_ids: [eccentric, isometric, concentric]
+    optional_labels:
+      - Turnaround_Hold
+      - Top_Hold
+      - Bottom_Hold
+      - Reach_Hold
+      - Rotation_Hold
+  categories:
+    vertical_resistance_cycle:
+      - Start_Hold
+      - Descent
+      - Turnaround_Hold
+      - Ascent
+      - Top_Hold
+      - Reset
+    flexion_extension_cycle:
+      - Flexion
+      - Flexion_Hold
+      - Extension
+      - Extension_Hold
+      - Return
+    push_pull_cycle:
+      - Lowering
+      - Bottom_Hold
+      - Press
+      - Pull
+      - Top_Hold
+      - Lockout
+      - Return
+    reach_return_cycle:
+      - Reach
+      - Reach_Hold
+      - Return
+      - Recenter
+    support_alternating_cycle:
+      - Support
+      - Weight_Shift
+      - Unweight
+      - Lift
+      - Tap
+      - Replant
+      - Return
+    directional_reach_step_cycle:
+      - Step_Out
+      - Step_In
+      - Forward_Reach
+      - Backward_Return
+      - Lateral_Reach
+      - Medial_Return
+    rotation_control_cycle:
+      - Rotate_Left
+      - Rotate_Right
+      - Rotate
+      - Rotation_Hold
+      - AntiRotation_Hold
+      - Return
+    static_control_cycle:
+      - Hold
+      - Drift
+      - Correction
+      - Failure_Point
 templates:
   descent_ascent_hip_center:
     implementation_status: implemented

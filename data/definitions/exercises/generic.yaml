@@ -56,7 +56,7 @@ compensation_candidates: []
 
 feature_domains:
   spatial:
-    - rom
+    - range_of_motion
   temporal:
     - tempo
     - rep_duration

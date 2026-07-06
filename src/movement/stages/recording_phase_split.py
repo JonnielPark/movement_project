@@ -40,11 +40,15 @@ def expected_phase_order_from_exercise(exercise_definition: Any) -> list[str]:
     """
     Return the phase order implied by an exercise definition.
 
-    For two-phase resistance exercises with turnaround_hold enabled, inserts
-    Turnaround_Hold between the first and last configured phases.
+    For two-phase resistance exercises with turnaround_hold enabled, insert
+    Turnaround_Hold between the first and last configured phases. If the
+    exercise definition does not provide a phase sequence, use this
+    recording-plane QC helper's explicit default order.
     """
     ps = getattr(exercise_definition, "phase_segmentation", None)
-    sequence = list(getattr(ps, "phase_sequence", None) or ["Descent", "Ascent"])
+    sequence = list(getattr(ps, "phase_sequence", None) or [])
+    if not sequence:
+        return list(DEFAULT_RECORDING_PHASE_ORDER)
     hold = getattr(ps, "turnaround_hold", None)
     hold_enabled = bool(getattr(hold, "enabled", False))
     if hold_enabled and len(sequence) == 2 and "Turnaround_Hold" not in sequence:

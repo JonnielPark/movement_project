@@ -19,7 +19,7 @@
 ## 1. 연구 내 역할 (Study Role)
 
 파이크 푸쉬업은 inverted upper-body closed-chain task이다. shoulder/elbow ROM과 symmetry,
-head descent, inverted-V 유지, hip-height change, 어려운 bodyweight task에서의 support stability를
+head descent, inverted-V 유지, hip-height change, 어려운 bodyweight task에서의 support consistency를
 관찰하는 데 사용한다.
 
 self-occlusion과 partial completion이 흔하므로 visibility limit와 performance failure-point
@@ -30,7 +30,7 @@ self-occlusion과 partial completion이 흔하므로 visibility limit와 perform
 | Item | Current setting | Interpretation intent |
 |---|---|---|
 | Classification | bilateral symmetric, inverted closed-chain | upper-body support task |
-| Primary joints | shoulder, elbow, wrist, trunk | push mechanics and support stability |
+| Primary joints | shoulder, elbow, wrist, trunk | push mechanics and support consistency |
 | Segmentation | nose/head vertical trajectory, descent/ascent | head descent as depth proxy |
 | Performance | 10 reps 또는 clean maximum with failure provenance | partial completion이 예상되는 어려운 task |
 | Camera | Z3/Z7, H1 | head descent와 hip position을 위한 low side view |
@@ -45,7 +45,7 @@ head descent              nose 또는 head proxy
 shoulder ROM              shoulder angle and side symmetry
 elbow ROM                 push-phase control and flare tendency
 hip height                hip_center and hip angle
-support stability         wrist/ankle/foot contact trajectories
+support consistency         wrist/ankle/foot contact trajectories
 upper-limb symmetry       left/right shoulder and elbow features
 ```
 

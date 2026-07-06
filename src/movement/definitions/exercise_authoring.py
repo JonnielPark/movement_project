@@ -15,7 +15,6 @@ from typing import Any, Iterable, Mapping
 
 import yaml
 
-
 _REGISTRY_FILES: dict[str, str] = {
     "schema": "exercise_authoring_schema.yaml",
     "movement_patterns": "movement_patterns.yaml",
@@ -817,11 +816,11 @@ def _camera_observation_purposes(
         return [
             "shoulder_elbow_sagittal_rom",
             "trunk_hip_alignment",
-            "support_stability",
+            "support_consistency",
         ]
     if has_anti_rotation:
         return [
-            "pelvic_rotation",
+            "pelvis_rotation",
             "weight_shift_control",
             "lateral_sway",
         ]

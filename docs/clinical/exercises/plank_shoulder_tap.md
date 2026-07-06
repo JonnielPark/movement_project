@@ -83,7 +83,7 @@ annotation note, protocol warning, interpretation limitation으로 다룬다.
 초기 고가치 규칙:
 
 ```text
-pelvic_rotation
+pelvis_rotation
 lateral_pelvic_shift
 hip_drop
 side_order_error

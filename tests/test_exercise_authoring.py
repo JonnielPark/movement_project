@@ -63,6 +63,15 @@ def test_authoring_registries_load_current_template_set():
         ]
         == "planned"
     )
+    phase_vocabulary = registries["phase_templates"]["phase_label_vocabulary"]
+    assert phase_vocabulary["policy"]["feature_id_suffix_case"] == "lower_snake_case"
+    assert "Descent" in phase_vocabulary["categories"]["vertical_resistance_cycle"]
+    assert "Lift" in phase_vocabulary["categories"]["support_alternating_cycle"]
+    assert "Reach" in phase_vocabulary["categories"]["reach_return_cycle"]
+    assert "Rotate_Left" in phase_vocabulary["categories"]["rotation_control_cycle"]
+    assert (
+        "eccentric" in phase_vocabulary["policy"]["kinetic_labels_not_for_feature_ids"]
+    )
     assert (
         registries["performance_templates"]["templates"]["timed_hold_seconds"][
             "implementation_status"
@@ -820,6 +829,13 @@ def test_split_exercise_context_loads_backward_compatible_definition():
     assert context.exercise_identity["support"]["base_of_support"] == "bilateral_feet"
     assert "rep_segmentation" not in context.exercise_identity
     assert "feature_domains" not in context.exercise_identity
+    assert "status" not in context.exercise_identity
+    assert "requires_review" not in context.exercise_identity
+    provenance = context.exercise_identity["authoring_provenance"]
+    assert provenance["authoring_mode"] == "canonical_view"
+    assert provenance["source_authoring_exercise_id"] == "draft_squat"
+    assert provenance["canonical_exercise_id"] == "squat"
+    assert provenance["promotion_status"] == "reviewed_canonical"
 
     assert definition.exercise_id == "squat"
     assert definition.rep_segmentation is not None
@@ -835,7 +851,19 @@ def test_split_exercise_context_loads_backward_compatible_definition():
     assert definition.phase_segmentation.split_logic == "local_maximum"
     assert definition.performance_protocol is not None
     assert definition.camera_protocol is not None
-    assert definition.feature_domains.spatial[:2] == ["rom", "symmetry"]
+    assert definition.feature_domains.spatial[:2] == [
+        "range_of_motion",
+        "role_alignment",
+    ]
+    assert (
+        context.performance_protocol["authoring_provenance"]["promotion_status"]
+        == "reviewed_canonical"
+    )
+    assert (
+        context.camera_protocol["camera_protocol"]["selected_view"]["position_id"]
+        == "front_oblique/H2"
+    )
+    assert "zones" in context.camera_protocol["view_metric_reliability"]
     assert context.analysis_profile["rep_segmentation"]["reference_landmark"] == (
         "hip_center"
     )

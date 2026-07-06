@@ -364,6 +364,7 @@ class QualityRules:
     exclude_rep_if_critical_landmark_missing: bool = True
     exclude_rep_if_phase_missing: bool = False
     allow_partial_feature_output: bool = True
+    raw: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -508,6 +509,9 @@ class ExerciseDefinition:
     view_metric_reliability : dict[str, Any]
         Per-camera-zone metric reliability prior. It is used for confidence and
         feature-availability reporting, not for coordinate correction.
+    support_context : dict[str, Any]
+        Raw support block from the exercise definition. Downstream feature
+        stages use it as provenance for closed-chain support-landmark diagnostics.
     """
 
     exercise_id: str
@@ -528,6 +532,7 @@ class ExerciseDefinition:
     performance_protocol: PerformanceProtocolSpec | None = None
     camera_protocol: CameraProtocolSpec | None = None
     view_metric_reliability: dict[str, Any] = field(default_factory=dict)
+    support_context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -1044,6 +1049,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             allow_partial_feature_output=bool(
                 qr.get("allow_partial_feature_output", True)
             ),
+            raw=deepcopy(qr),
         ),
         rep_segmentation=_parse_rep_segmentation(raw.get("rep_segmentation")),
         phase_segmentation=_parse_phase_segmentation(raw.get("phase_segmentation")),
@@ -1052,6 +1058,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
         ),
         camera_protocol=_parse_camera_protocol(raw.get("camera_protocol")),
         view_metric_reliability=dict(raw.get("view_metric_reliability") or {}),
+        support_context=dict(raw.get("support") or {}),
     )
 
 

@@ -34,9 +34,9 @@ def test_feature_registry_audit_reports_connected_and_unsupported_yaml_entries()
     report = audit_feature_registry(exercise)
 
     assert report.connected_feature_domain_entries["spatial"] == [
-        "rom",
-        "symmetry",
-        "shape",
+        "range_of_motion",
+        "role_alignment",
+        "movement_path",
     ]
     assert "rep_duration" in report.connected_feature_domain_entries["temporal"]
     assert "com_stability" in report.connected_feature_domain_entries["control"]

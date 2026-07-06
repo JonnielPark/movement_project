@@ -86,7 +86,7 @@ as annotation note, protocol warning, or interpretation limitation unless valida
 High-value early rules:
 
 ```text
-pelvic_rotation
+pelvis_rotation
 lateral_pelvic_shift
 hip_drop
 side_order_error

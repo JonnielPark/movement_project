@@ -2,6 +2,7 @@ import pandas as pd
 
 from movement.pipeline import NormalizationConfig, PreprocessingConfig
 from movement.stage_context import (
+    DEFAULT_STAGE_CHECK_EXERCISE_ID,
     build_stage_check_pipeline_config,
     prepare_previous_stage_inputs,
     recording_id_from_pose_csv,
@@ -75,6 +76,10 @@ def test_resolve_target_definitions_dir_falls_back_to_runtime_definitions():
     assert (definitions_dir / "squat.yaml").exists()
 
 
+def test_default_stage_check_exercise_id_uses_promoted_squat():
+    assert DEFAULT_STAGE_CHECK_EXERCISE_ID == "squat"
+
+
 def test_recording_id_from_pose_csv_uses_pose_filename_convention():
     recording_id = recording_id_from_pose_csv(
         "data/pose/example/p01_squat_set1_output_pose.csv"
@@ -99,6 +104,8 @@ def test_build_stage_check_pipeline_config_copies_stage_configs():
         enable_phase_segmentation=True,
         enable_features=True,
         enable_role_context=True,
+        enable_biomech=True,
+        enable_biomarker=True,
     )
 
     assert cfg.annotation.enabled is True
@@ -108,5 +115,7 @@ def test_build_stage_check_pipeline_config_copies_stage_configs():
     assert cfg.phase_segmentation.enabled is True
     assert cfg.features.enabled is True
     assert cfg.features.role_context.enabled is True
+    assert cfg.biomech.enabled is True
+    assert cfg.biomarker.enabled is True
     assert cfg.normalization.model_depth_scale == 0.5
     assert cfg.normalization is not norm_config

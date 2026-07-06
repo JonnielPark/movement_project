@@ -1,5 +1,5 @@
 exercise_id: squat
-version: 0.5.2
+version: 0.6.0
 performance_protocol:
   prescription:
     target_sets: 3
@@ -32,3 +32,15 @@ performance_protocol:
   - excessive_knee_deviation
   - inconsistent_depth
   - excessive_trunk_flexion
+authoring_provenance:
+  authoring_mode: canonical_view
+  generated_by: exercise_authoring_notebook
+  source_status: draft
+  source_authoring_exercise_id: draft_squat
+  source_artifact_exercise_id: draft_squat
+  canonical_exercise_id: squat
+  promotion_status: reviewed_canonical
+  resolved_review_items:
+  - participant_cues
+  - analysis_disrupting_patterns
+  deferred_review_items: []

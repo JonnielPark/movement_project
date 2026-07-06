@@ -1,8 +1,11 @@
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 
 from movement.stages.recording_phase_split import (
     DEFAULT_RECORDING_PHASE_ORDER,
+    expected_phase_order_from_exercise,
     generate_recording_plane_phase_split,
     promote_phase_split_to_annotation,
     validate_phase_split_for_promotion,
@@ -31,6 +34,12 @@ def _annotation_df() -> pd.DataFrame:
             "end_frame": [5, 11],
             "camera_zone": ["Z8", "Z8"],
         }
+    )
+
+
+def test_expected_phase_order_falls_back_to_recording_qc_default():
+    assert expected_phase_order_from_exercise(SimpleNamespace()) == (
+        DEFAULT_RECORDING_PHASE_ORDER
     )
 
 

@@ -238,7 +238,7 @@ support_surface_height_guard:
 
 visible_support_mirrored_anchor_prior:
   enabled: true
-  mode: ready_window_mirrored_support_anchor
+  mode: ready_window_mirrored_support_landmark
   exercise_definition_gate: true
   required_kinetic_chain: closed_chain
   required_base_of_support: bilateral_feet
@@ -271,7 +271,7 @@ visible_support_mirrored_anchor_prior:
 
 ```yaml
 bounded_pre_post_standing_anchor_blend:
-  mode: start_endpoint_to_end_support_anchor_z_blend
+  mode: start_endpoint_to_end_support_landmark_z_blend
   review_rep_id: 1
   source_family: rv_skeleton_fit_bounded_xy
   family: rv_skeleton_fit_bounded_xy_endpoint_blend
@@ -295,7 +295,7 @@ bounded_pre_post_standing_anchor_blend:
   report_only: false
 
 planted_support_temporal_memory:
-  mode: whole_video_support_anchor_memory_z_only
+  mode: whole_video_support_landmark_memory_z_only
   scope: whole_video
   review_only_candidate: false
   source_family: rv_skeleton_fit_bounded_xy_endpoint_blend

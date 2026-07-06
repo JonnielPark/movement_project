@@ -1,7 +1,7 @@
 # 07. Segmentation
 
-**Document Version:** 1.3.3
-**Last Updated:** 2026-06-25
+**Document Version:** 1.3.4
+**Last Updated:** 2026-07-04
 **Korean Sync:** `docs/pipeline/07_segmentation.md` is the same-version Korean source.
 
 Pipeline step ⑦ confirms repetition boundaries and intra-rep phase labels. It is
@@ -103,6 +103,70 @@ For example, squat phase splitting may use `hip_center` in
 `recording_view_raw` with `image_y` so the descent/ascent split follows the
 visible recording-plane hip trajectory. This does not change normalized
 coordinates or promote raw coordinates to scoring features.
+
+### 2.1 Phase Label Vocabulary
+
+Phase labels are exercise-defined kinematic or task labels. They are not
+hardcoded to `Descent` and `Ascent`. The exercise definition selects a
+`phase_sequence` from a registry template or an authoring bundle, and
+segmentation fills that sequence when the reference signal supports it.
+
+Common label groups include:
+
+```text
+vertical/resistance cycle
+    Start_Hold, Descent, Turnaround_Hold, Ascent, Top_Hold, Reset
+
+flexion-extension cycle
+    Flexion, Flexion_Hold, Extension, Extension_Hold, Return
+
+push/pull cycle
+    Lowering, Bottom_Hold, Press, Pull, Top_Hold, Lockout, Return
+
+reach/return cycle
+    Reach, Reach_Hold, Return, Recenter
+
+support/alternating cycle
+    Support, Weight_Shift, Unweight, Lift, Tap, Replant, Return
+
+directional reach/step cycle
+    Step_Out, Step_In, Forward_Reach, Backward_Return, Lateral_Reach,
+    Medial_Return
+
+rotation/control cycle
+    Rotate_Left, Rotate_Right, Rotate, Rotation_Hold, AntiRotation_Hold, Return
+
+static/control cycle
+    Hold, Drift, Correction, Failure_Point
+```
+
+Human-readable phase labels are preserved in the `phase` column. Feature IDs use
+the same labels converted to lower snake case when a phase-specific suffix is
+needed, for example `Turnaround_Hold` → `turnaround_hold`.
+
+Kinetic terms such as `eccentric`, `isometric`, and `concentric` may appear in a
+`phase_model` expectation or interpretation note, but they are not used as
+primary phase labels unless the exercise definition explicitly promotes them as
+task labels. This prevents the pipeline from implying force or muscle-action
+ground truth from monocular pose alone.
+
+Optional labels such as `Turnaround_Hold`, `Top_Hold`, or `Reach_Hold` are only
+emitted when the corresponding option is enabled and accepted. If an optional
+phase is unclear, segmentation continues with the coarser phase sequence and
+records an `optional_phase` failure point.
+
+Current implementation status:
+
+```text
+implemented
+    Segmentation can consume an exercise-defined phase_sequence for implemented
+    templates, and phase-level feature records preserve the observed phase label.
+
+limited
+    The current rep-level spatial.phase_profile aggregate is still specific to
+    Descent/Ascent ROM ratio. Generic phase-profile aggregates must be designed
+    explicitly before they are used for scoring.
+```
 
 ---
 

@@ -163,6 +163,40 @@ def test_pipeline_annotation_report_consumes_performance_provenance():
     assert performance["score_penalty_applied"] is False
 
 
+def test_pipeline_annotation_loads_config_path_when_ann_df_is_absent(tmp_path):
+    pose_df = pd.DataFrame({"frame": range(5)})
+    ann_path = tmp_path / "annotation.csv"
+    ann_path.write_text(
+        "\n".join(
+            [
+                "segment_type,set_id,rep_id,start_frame,end_frame,use_for_analysis,exercise_id,execution_pattern",
+                "rep,1,1,1,3,true,squat,bilateral",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    config = PipelineConfig()
+    config.validation.enabled = False
+    config.annotation.enabled = True
+    config.annotation.path = str(ann_path)
+    config.exercise_definition.enabled = False
+    config.preprocessing.enabled = False
+    config.normalization.enabled = False
+    config.rep_segmentation.enabled = False
+    config.phase_segmentation.enabled = False
+    config.features.role_context.enabled = False
+    config.features.enabled = False
+    config.biomech.enabled = False
+    config.biomarker.enabled = False
+
+    df, report = run_pipeline(pose_df, config)
+
+    assert report["annotation"]["annotation_provided"] is True
+    assert df.loc[1, "segment_type"] == "rep"
+    assert df.loc[1, "rep_id"] == 1
+    assert df.loc[1, "exercise_id"] == "squat"
+
+
 def test_pipeline_exercise_definition_uses_exercise_id():
     pose_df = pd.DataFrame({"frame": range(4)})
     ann_df = pd.DataFrame(

@@ -1,5 +1,5 @@
 exercise_id: squat
-version: 0.5.2
+version: 0.6.0
 view_requirements:
   preferred_views:
   - front_oblique
@@ -28,6 +28,86 @@ view_requirements:
   - 32
   occlusion_risk: medium
 camera_protocol:
+  selected_view:
+    view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H2
+    position_id: front_oblique/H2
+    recommendation_status: recommended
+  recommended_view_positions:
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H2
+  non_recommended_view_positions:
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H1
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H1
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H1
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H1
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H1
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H2
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H2
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H2
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H2
+  - view_family: front
+    member_zones:
+    - Z1
+    height: H3
+  - view_family: front_oblique
+    member_zones:
+    - Z2
+    - Z8
+    height: H3
+  - view_family: side
+    member_zones:
+    - Z3
+    - Z7
+    height: H3
+  - view_family: rear_oblique
+    member_zones:
+    - Z4
+    - Z6
+    height: H3
+  - view_family: rear
+    member_zones:
+    - Z5
+    height: H3
+  recommendation_source: authoring_axes
   recommended_zones:
   - Z2
   - Z8
@@ -37,12 +117,94 @@ camera_protocol:
   - 200
   - 250
   primary_observation_purpose:
+  - frontal_knee_alignment
   - knee_valgus
   - hip_flexion_depth
+  - bilateral_support_symmetry
   out_of_zone_policy: warn_and_continue
   coordinate_correction: none
 view_metric_reliability:
   structure: bilateral_symmetric
+  position_recommendation:
+    selected:
+      view_family: front_oblique
+      member_zones:
+      - Z2
+      - Z8
+      height: H2
+      position_id: front_oblique/H2
+      recommendation_status: recommended
+    recommended_view_positions:
+    - view_family: front_oblique
+      member_zones:
+      - Z2
+      - Z8
+      height: H2
+    non_recommended_view_positions:
+    - view_family: front
+      member_zones:
+      - Z1
+      height: H1
+    - view_family: front_oblique
+      member_zones:
+      - Z2
+      - Z8
+      height: H1
+    - view_family: side
+      member_zones:
+      - Z3
+      - Z7
+      height: H1
+    - view_family: rear_oblique
+      member_zones:
+      - Z4
+      - Z6
+      height: H1
+    - view_family: rear
+      member_zones:
+      - Z5
+      height: H1
+    - view_family: front
+      member_zones:
+      - Z1
+      height: H2
+    - view_family: side
+      member_zones:
+      - Z3
+      - Z7
+      height: H2
+    - view_family: rear_oblique
+      member_zones:
+      - Z4
+      - Z6
+      height: H2
+    - view_family: rear
+      member_zones:
+      - Z5
+      height: H2
+    - view_family: front
+      member_zones:
+      - Z1
+      height: H3
+    - view_family: front_oblique
+      member_zones:
+      - Z2
+      - Z8
+      height: H3
+    - view_family: side
+      member_zones:
+      - Z3
+      - Z7
+      height: H3
+    - view_family: rear_oblique
+      member_zones:
+      - Z4
+      - Z6
+      height: H3
+    - view_family: rear
+      member_zones:
+      - Z5
+      height: H3
   zones:
     Z1:
       bilateral_symmetry: high
@@ -99,3 +261,15 @@ view_metric_reliability:
       hip_center_stability: moderate
       tempo: high
       smoothness: moderate
+authoring_provenance:
+  authoring_mode: canonical_view
+  generated_by: exercise_authoring_notebook
+  source_status: draft
+  source_authoring_exercise_id: draft_squat
+  source_artifact_exercise_id: draft_squat
+  canonical_exercise_id: squat
+  promotion_status: reviewed_canonical
+  resolved_review_items:
+  - view_metric_reliability
+  - primary_observation_purpose
+  deferred_review_items: []

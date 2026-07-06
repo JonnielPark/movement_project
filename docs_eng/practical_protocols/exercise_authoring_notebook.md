@@ -29,7 +29,7 @@ Any new dependency must be decided separately before adding a package.
 
 The authoring UI should collect atomic movement descriptors rather than ask the
 researcher to choose a movement archetype directly. Primary and secondary joint
-actions are selected first, then interpreted with support/contact pattern,
+actions are selected first, then interpreted with support pattern,
 laterality, posture, body geometry, and primary body regions. The exported
 `movement_template_id` is derived from that joint-action-plus-context
 combination. The legacy `movement_pattern` key may still appear as an internal
@@ -128,7 +128,7 @@ option:
 |---|---|---|
 | `standing` | Upright body orientation with feet or one foot acting as the main support base. | squat, lunge, hip hinge, step-up, balance reach |
 | `floor_supported_prone` | Body faces the floor and is supported by hands, feet, forearms, or knees. Body shape is refined by `body_geometry`. | plank, plank shoulder tap, mountain climber, pike push-up |
-| `kneeling` | One or both knees are primary support contacts. | tall-kneeling reach, half-kneeling press, kneeling push-up |
+| `kneeling` | One or both knees are primary support landmarks. | tall-kneeling reach, half-kneeling press, kneeling push-up |
 | `seated` | Pelvis is supported by a seat or floor, with trunk and limb motion analyzed from a seated base. | seated march, seated trunk rotation, seated shoulder raise |
 | `supine` | Body lies face-up. | dead bug, glute bridge, supine heel slide, hollow hold |
 | `side_lying` | Body lies on one side or is side-supported. | side plank, side-lying hip abduction, clamshell |
@@ -397,7 +397,7 @@ Generated automatically:
 
 ```text
 exercise identity and classification
-support/contact template
+support template
 draft phase model
 landmark set and draft angle triplets
 rep/phase segmentation templates

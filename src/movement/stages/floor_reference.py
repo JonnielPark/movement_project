@@ -1,4 +1,4 @@
-"""Floor-relative normalization filter for static support-contact exercises.
+"""Floor-relative normalization filter for static support-consistency exercises.
 
 This module estimates an apparent pseudo-floor inside the normalized pose
 coordinate system and attenuates only the floor-tilt component. It does not
@@ -36,7 +36,7 @@ class FloorReferenceConfig:
     """
 
     enabled: bool = False
-    method: str = "support_contact_plane"
+    method: str = "support_plane_alignment"
     coordinate_mode: str = "norm"
     vertical_axis: str = "y"
     support_landmarks: list[str] = field(default_factory=list)
@@ -55,7 +55,7 @@ class FloorReferenceConfig:
 class FloorReferenceReport:
     """Summary of the pseudo-floor fit and correction magnitude."""
 
-    method: str = "support_contact_plane"
+    method: str = "support_plane_alignment"
     enabled: bool = False
     status: str = "disabled"
     coordinate_mode: str = "norm"
@@ -305,6 +305,10 @@ def _collect_anchor_points(
         cols = _coord_columns(landmark, config.coordinate_mode)
         values = df[[cols["x"], cols["y"], cols["z"]]].astype(float)
         valid = values.notna().all(axis=1)
+        valid &= pd.Series(
+            np.isfinite(values.to_numpy(dtype=float)).all(axis=1),
+            index=values.index,
+        )
 
         visibility_col = f"{landmark}_visibility"
         if visibility_col in df.columns:
@@ -338,7 +342,7 @@ def apply_floor_relative_correction(
     landmarks: list[str],
     config: FloorReferenceConfig | None = None,
 ) -> tuple[pd.DataFrame, FloorReferenceReport]:
-    """Apply optional support-contact pseudo-floor correction.
+    """Apply optional support-consistency pseudo-floor correction.
 
     Parameters
     ----------
@@ -346,7 +350,7 @@ def apply_floor_relative_correction(
         Pose dataframe after ⑤ Normalization when coordinate_mode="norm".
     landmarks : list[str]
         Landmark names to receive `<landmark>_floor_x/y/z` columns. The
-        fitted support-contact plane is applied to every requested landmark,
+        fitted support-consistency plane is applied to every requested landmark,
         not only to the foot anchors used for fitting.
     config : FloorReferenceConfig, optional
         Correction settings. Disabled configs return a copy with a disabled report.
@@ -365,10 +369,10 @@ def apply_floor_relative_correction(
     if not config.enabled:
         return result, _empty_report(config, "disabled")
 
-    if config.method != "support_contact_plane":
+    if config.method != "support_plane_alignment":
         raise ValueError(
             "Unsupported floor-relative correction method: "
-            f"{config.method!r}. Use 'support_contact_plane'."
+            f"{config.method!r}. Use 'support_plane_alignment'."
         )
     if config.correction_transform not in {"rigid_rotation", "vertical_shear"}:
         raise ValueError(

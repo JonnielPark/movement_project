@@ -21,7 +21,7 @@ Related:
 
 Pike push-up is an inverted upper-body closed-chain task. It is used to observe
 shoulder/elbow ROM and symmetry, head descent, inverted-V maintenance, hip-height
-change, and support stability under a difficult bodyweight task.
+change, and support consistency under a difficult bodyweight task.
 
 It is also useful for testing visibility limits and performance failure-point
 recording because self-occlusion and partial completion are common.
@@ -31,7 +31,7 @@ recording because self-occlusion and partial completion are common.
 | Item | Current setting | Interpretation intent |
 |---|---|---|
 | Classification | bilateral symmetric, inverted closed-chain | upper-body support task |
-| Primary joints | shoulder, elbow, wrist, trunk | push mechanics and support stability |
+| Primary joints | shoulder, elbow, wrist, trunk | push mechanics and support consistency |
 | Segmentation | nose/head vertical trajectory, descent/ascent | head descent as depth proxy |
 | Performance | 10 reps or clean maximum with failure provenance | difficult task with partial completion expected |
 | Camera | Z3/Z7, H1 | low side view for head descent and hip position |
@@ -46,7 +46,7 @@ head descent              nose or head proxy
 shoulder ROM              shoulder angle and side symmetry
 elbow ROM                 push-phase control and flare tendency
 hip height                hip_center and hip angle
-support stability         wrist/ankle/foot contact trajectories
+support consistency         wrist/ankle/foot contact trajectories
 upper-limb symmetry       left/right shoulder and elbow features
 ```
 
