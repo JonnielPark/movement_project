@@ -220,7 +220,7 @@ formal canonicalization artifact 요구사항이라는 뜻이다. 보정 좌표�
 4. recording-view-constrained skeleton placement: rv_skeleton_fit
 5. bounded recording-view residual variant: rv_skeleton_fit_bounded_xy
 6. visible-support mirrored anchor prior
-7. bounded pre/post standing support-anchor blend
+7. bounded pre/post standing support-landmark blend
 8. whole-video planted support temporal memory
 9. scoring-readiness 및 bend-flip provenance gate
 ```
@@ -273,7 +273,7 @@ common_subject_skeleton_profile
   ratio. Height는 readable nominal length에만 사용할 수 있으며, 좌표를 cm 또는 m로 rescale하지 않는다.
 
 exercise_support_context
-  exercise id, kinetic chain, base of support, support surface, support-contact
+  exercise id, kinetic chain, base of support, support surface, support landmark
   landmark, primary support pair, rep/phase/ready-window label.
 
 solver_config

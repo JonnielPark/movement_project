@@ -1,7 +1,7 @@
 # 09. Biomechanical Proxy
 
-**Document Version:** 1.3.0
-**Last Updated:** 2026-06-28
+**Document Version:** 1.3.1
+**Last Updated:** 2026-06-29
 **Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
 
 Pipeline step ⑨ computes simplified biomechanical proxy metrics from normalized
@@ -143,8 +143,9 @@ rep_id = None
 ```
 
 This is an ordinary least-squares slope of rep-level moment-arm medians against
-`rep_id`. It requires at least 3 reps; otherwise no load-shift record is emitted.
-The metric is a relative trend, not a fatigue diagnosis.
+`rep_id`. Non-finite moment-arm medians are excluded before fitting. It requires
+at least 3 finite reps with distinct `rep_id` values; otherwise no load-shift
+record is emitted. The metric is a relative trend, not a fatigue diagnosis.
 
 ## 5. Visibility Handling
 
@@ -246,7 +247,7 @@ Behavior:
 - Computes per-rep records when rep annotation exists
 - Falls back to sequence-level records when annotation is absent
 - Reads visibility threshold from quality_rules
-- Appends load-shift records when at least 3 reps provide moment-arm metrics
+- Appends load-shift records when at least 3 finite reps provide moment-arm metrics
 ```
 
 ## 8. Provenance

@@ -1,7 +1,7 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.6.2
-**최종 갱신:** 2026-06-20
+**문서 버전:** 1.6.4
+**최종 갱신:** 2026-06-29
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③은 `exercise_id`로 exercise YAML artifact를 로드하고 `ExerciseContext`를
@@ -113,6 +113,28 @@ directory, git-tracked authoring example directory 순서로 탐색할 수 있�
 local draft가 review 중에는 example bundle보다 우선한다. Pipeline 기본값은 project-wide registry와
 `generic` fallback definition을 포함하는 canonical definition directory로 유지한다.
 
+Authoring draft 승격은 local review보다 엄격한 계약을 따른다.
+
+```text
+draft artifact id       draft_<exercise_name> 또는 다른 review-only id
+canonical artifact id   squat 같은 안정적인 public exercise_id
+runtime directories     data/definitions/* 및 data/protocols/*
+status/requires_review  official top-level YAML에서 제거
+authoring provenance    authoring_provenance에 보존
+baseline status         승격된 정의 기준으로 재생성하기 전까지 invalid
+```
+
+승격은 단순 파일명 변경이 아니다. 승격된 artifact는 모든 split YAML에서 canonical
+`exercise_id`를 사용해야 하고, authoring 선택값은 provenance로 보존해야 하며,
+review-required field는 해결하거나 명시적으로 deferred 상태로 남긴 뒤 runtime canonical
+artifact를 대체해야 한다. Stage-check notebook은 그 후 draft bundle이 아니라 canonical
+`exercise_id`를 다시 사용해야 한다.
+
+기존 score baseline은 승격 후 조용히 재사용하면 안 된다. Baseline entry는 그것을 생성한 운동
+정의와 feature schema에 대해서만 유효하다. 승격된 authoring artifact가 이전 canonical definition을
+대체하면, 해당 `exercise_id`의 기존 `baseline_zscore.json` entry는 제거하거나 version guard를
+둬야 하며, 현재 pipeline으로 새 reference distribution을 만들기 전까지는 사용하지 않는다.
+
 `exercise_id`가 없거나 일치하는 YAML이 없으면 `generic.yaml`을 로드한다. Generic mode는 ROM,
 tempo, stability 같은 exercise-agnostic feature만 활성화한다. Compensation biomarker는 산출하지
 않는다.
@@ -182,7 +204,7 @@ classification:
 양측 대칭 운동은 반복별 active-side context를 건너뛸 수 있고, 편측/교대 운동은 active-side 또는
 role metadata를 보존해야 한다.
 
-`movement_template_id`는 posture, support/contact pattern, laterality, primary
+`movement_template_id`는 posture, support pattern, laterality, primary
 regions, joint actions, planes 같은 authoring axis 조합에서 도출한다. 이는 공개 운동명이 아니라
 분석 템플릿/family 이름이다. 마이그레이션 동안 기존 YAML은 `movement_pattern`을 계속 노출할 수
 있으며, loader는 새 field가 없으면 이를 `movement_template_id`로 mirror한다.
@@ -230,6 +252,10 @@ support:
   support_surface: floor | mat | bench | wall | ...
   weight_bearing_regions: list[string]
 ```
+
+Runtime `ExerciseDefinition`은 이 block을 `support_context`로 보존한다. 후속 feature 단계는 이를
+closed-chain support-landmark path check 같은 provenance 및 report-only support diagnostic에 사용할
+수 있다. 이는 `exercise_id` branch나 hidden coordinate correction이 되면 안 된다.
 
 `phase_model`은 하나의 반복 또는 task cycle 구조를 기술한다.
 
@@ -406,9 +432,21 @@ quality_rules:
   exclude_rep_if_critical_landmark_missing: bool
   exclude_rep_if_phase_missing: bool
   allow_partial_feature_output: bool
+  range_of_motion_targets:
+    spatial.range_of_motion.xy.<joint_angle>:
+      scoring_mode: minimum_sufficient_band
+      minimum_sufficient_deg: float
+      excessive_threshold_deg: optional float
+      soft_tolerance_deg: float
+      excessive_penalty_scale: float
+      apply_to_phase_suffixes: [full_rep, descent, ascent]
 ```
 
-이 threshold는 ④ Preprocessing과 ⑧ Feature Extraction에서 소비한다.
+Visibility와 gap threshold는 ④ Preprocessing과 ⑧ Feature Extraction에서 소비한다.
+`range_of_motion_targets`는 ⑩ Biomarker Scoring에서 소비한다. 운동별 기능적 ROM band를 정의하는 필드이며,
+예를 들어 squat knee ROM은 synthetic baseline 평균보다 크다고 감점하기보다 ROM이 부족할 때
+주로 감점해야 한다. 이 target은 reviewed-good example이나 문헌 기반 값이 충분해지기 전까지
+provisional이며, global rule이 아니라 운동별 rule로 유지한다.
 
 ---
 

@@ -120,6 +120,18 @@ class TestMinRepGuard:
         results = compute_load_shift(recs)
         assert len(results) == 1
 
+    def test_all_nan_values_produce_no_output(self):
+        recs = _make_records("knee", "left", [float("nan"), float("nan"), float("nan")])
+        results = compute_load_shift(recs)
+        assert results == []
+
+    def test_nan_values_are_excluded_before_slope_fit(self):
+        recs = _make_records("knee", "left", [0.50, float("nan"), 0.30, 0.20])
+        results = compute_load_shift(recs)
+        assert len(results) == 1
+        assert results[0].value < 0
+        assert results[0].n_frames_used == 3
+
 
 # ── metric_id and unit ────────────────────────────────────────────────────────
 

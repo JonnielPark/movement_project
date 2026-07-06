@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.6.2
-**최종 갱신:** 2026-06-27
+**문서 버전:** 1.6.3
+**최종 갱신:** 2026-07-04
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -61,6 +61,11 @@
 | 시점-지표 신뢰도 (View-metric reliability) | 특정 camera zone이 특정 metric family를 얼마나 잘 뒷받침하는지 나타내는 운동 정의 수준의 prior. 좌표 보정이나 landmark 품질과 분리되며, `high`, `moderate`, `low`, `not_assessed` 같은 값으로 보고와 scoring eligibility를 안내한다. |
 | 피처 컨텍스트 해석 (Feature-context resolution) | ⑧ Feature Extraction 앞단의 준비 단계. 운동 정의, segmentation, side-role evidence, bilateral-symmetry context, 관측 신뢰도를 `role_context`, availability reason, `source_fields`로 변환한다. 좌표를 수정하거나 rep/phase를 다시 라벨링하거나 score를 만들지 않는다. |
 | 피처 산출 가능성 (Feature availability) | landmark coverage, geometry plausibility, swap risk, view-metric reliability를 확인한 뒤, 계산 가능한 값이 scoring에 들어갈 수 있는지 결정하는 피처별 판정. 숫자값을 계산할 수 있다는 사실과 구분한다. |
+| 관절 범위 (Range of motion) | 관절 각도 범위 근거를 나타내는 spatial feature family. `spatial.range_of_motion.xy.<joint_angle>`와 `spatial.range_of_motion.xyz.<joint_angle>`처럼 명시적 `xy`/`xyz` variant로 방출한다. 이전 내부 `rom` family 이름을 대체한다. |
+| 움직임 경로 (Movement path) | landmark path length 근거를 나타내는 spatial feature family. `spatial.movement_path.arc_length_xy.<landmark>` 또는 `spatial.movement_path.arc_length_xyz.<landmark>`로 방출하고, 단일축 `axis_path_*` diagnostic은 명시적으로 승격하기 전까지 report-only로 둔다. 이전 내부 `trajectory` 또는 `shape` family 이름을 대체한다. |
+| 지지 일관성 (Support consistency) | support-point drift, support-width variation, support-center drift처럼 recording-view에서 고정 지지 조건이 얼마나 일관되게 보이는지 나타내는 spatial feature family. CoP/CoM류 생체역학적 안정성 proxy가 아니며, 부하 중심 또는 질량 중심 해석은 ⑨ Biomechanical Proxy에서 다룬다. |
+| 역할 정렬 (Role alignment) | 좌/우, 전/후, 지지/이동, active/passive side처럼 운동 정의에서 기대되는 역할 간 비교를 나타내는 spatial feature family. Bilateral squat에서는 현재 좌우 range-of-motion 또는 support-consistency 비교를 방출하지만, 용어 자체는 bilateral symmetry에만 한정되지 않는다. |
+| 구간 프로파일 (Phase profile) | Kinematic phase 사이에서 feature 값의 양상이 어떻게 달라지는지 rep 단위로 요약하는 domain-local summary layer. 예: `spatial.phase_profile.range_of_motion_ratio.descent_ascent`. 같은 패턴은 향후 `temporal.phase_profile.*`, `control.phase_profile.*`, `biomech.phase_profile.*` 아래에도 존재할 수 있으며, 별도 segmentation 단계가 아니다. |
 | 후보 근거 (Candidate evidence) | Availability, confidence, visibility, burden, residual, sensitivity 정보를 담는 계산 후보 좌표 family 또는 후보 비교. Scoring 전에 생성되며 score gravity나 final-score contribution을 정의하지 않는다. |
 | 카메라 근측/원측 (Near-side / far-side) | 카메라 기준 visibility context. `Near-side`는 카메라에 더 가까운 landmark 또는 body side, `far-side`는 카메라에서 더 먼 쪽을 뜻한다. 해부학적 품질 라벨이 아니라 관측 신뢰도 판단에 사용한다. |
 | 원측 jitter (Far-side jitter) | 카메라에서 먼 쪽 landmark의 불안정성. visibility drop, velocity/acceleration spike, segment-length inconsistency, swap risk로 요약한다. 보상 움직임 지표가 아니라 data-confidence signal이다. |
@@ -73,9 +78,9 @@
 |---|---|
 | 분석 좌표 표준화 (Analysis-space canonicalization) | ⑤의 `norm` 좌표를 입력으로 받아 일관된 단안 관찰 편향을 줄이기 위한 후보 좌표 계열을 추가할 수 있는 파이프라인 단계 ⑥. 좋은 동작으로 맞추는 template fitting이나 절대 3D 복원이 아니다. |
 | 표준 분석 좌표계 (Canonical analysis space) | 골반 중심, 몸통 길이, 운동별 주 운동 평면, 지지면 prior 등을 이용해 정의하는 분석용 좌표계. 해부학적 절대 좌표나 calibrated world coordinate가 아니라, 관절의 상대 궤적과 시간적 변화량을 비교하기 위한 좌표 표현이다. |
-| Pseudo-floor reference | 실제 바닥의 물리적 위치가 아니라, 단안 pose 좌표계 안에서 접지 랜드마크로 추정한 apparent floor 기준. 카메라 캘리브레이션이나 절대 3D 복원이 아니다. |
-| 바닥 기준 보정 (Floor-relative correction) | 정적 접지 운동에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
-| 접지 랜드마크 (Support-contact landmark) | 스쿼트의 발, 플랭크의 손/발처럼 운동 정의상 바닥 또는 지지면과 접촉한다고 기대되는 랜드마크. 실제 보상 움직임을 지울 위험이 있으므로, 항상 고정 anchor로 쓰지 않고 visibility와 안정성 조건을 통과한 경우에만 pseudo-floor 추정에 사용한다. |
+| Pseudo-floor reference | 실제 바닥의 물리적 위치가 아니라, 단안 pose 좌표계 안에서 운동정의 기반 지지 랜드마크로 추정한 apparent floor 기준. 카메라 캘리브레이션이나 절대 3D 복원이 아니다. |
+| 바닥 기준 보정 (Floor-relative correction) | 정적 support-consistency 맥락에서 pseudo-floor reference의 기울기 성분을 이용해 apparent floor artifact를 완화하는 support-plane prior. 현재는 analysis-space canonicalization의 `support_plane_alignment` 하위 필터로 다룬다. raw/norm 좌표는 보존하고, canon 좌표와 residual을 새 칼럼으로만 추가한다. |
+| 지지 랜드마크 (Support landmark) | 스쿼트의 발, 플랭크의 손/발처럼 운동 정의상 바닥 또는 지지면 접촉에 참여한다고 기대되는 랜드마크. 실제 보상 움직임을 지울 위험이 있으므로, 항상 고정 anchor로 쓰지 않고 visibility와 안정성 조건을 통과한 경우에만 pseudo-floor 추정에 사용한다. |
 | 프로토콜 높이 기반 좌우폭 정렬 (Protocol-height lateral-width alignment) | 관찰된 카메라 높이가 운동별 촬영 프로토콜과 맞는지 먼저 확인한 뒤, 해당 height level에 맞는 신체 anchor를 사용해 depth-dependent lateral-width bias를 완화하는 candidate-evidence canonicalization prior. H1은 지지/발목 높이 anchor, H2는 골반/hip-center anchor, H3는 어깨선 anchor를 사용한다. 렌즈 캘리브레이션, perspective reprojection, template fitting이 아니다. |
 | 인체계측 스켈레톤 prior (Anthropometric skeleton prior) | 단안 depth 동작을 검토하기 위한 느슨한 신체 분절 길이 plausibility envelope. Stage A에서는 Size Korea aggregate ratio를 engineering envelope로만 사용할 수 있으며, empirical percentile prior, calibrated 3D reconstruction, subject-specific skeleton fitting이 아니다. |
 | 보수적 engineering range (Conservative engineering range) | aggregate anthropometric ratio 주변에 연구자가 넓게 정의한 tolerance. impossible skeleton behavior와 data-confidence 문제를 잡기 위한 것이며 population P5/P95 추정이 아니다. |

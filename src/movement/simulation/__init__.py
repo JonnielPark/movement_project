@@ -10,7 +10,7 @@ Submodule:
   simulation.synthetic → synthetic data generation and condition injection functions
 
 Supported simulation conditions:
-  - ROM restriction : artificially reduce joint range of motion
+  - ROM restriction : artificially reduce range of motion of motion
   - Gaussian noise  : coordinate noise (σ in torso_length_ratio units)
   - Occlusion       : set landmark visibility to 0 and coordinates to NaN
   - Velocity spike  : insert position jumps at specified frames

@@ -206,9 +206,13 @@ def _smooth_trace(
     Returns (smoothed_trace, method_used).
     Falls back gracefully when scipy is unavailable or trace is too short.
     """
+    trace = np.asarray(trace, dtype=float)
     n = len(trace)
+    finite_count = int(np.isfinite(trace).sum())
 
-    if not _HAS_SCIPY or n < 4:
+    if not _HAS_SCIPY or n < 4 or finite_count < max(4, polyorder + 2):
+        return trace.copy(), "none"
+    if finite_count < n:
         return trace.copy(), "none"
 
     if method == "savitzky_golay":
@@ -376,11 +380,11 @@ def _assign_simple_labels(
     half_window: int,
 ) -> dict[int, str]:
     """
-    Assign phase labels for the simple two-phase (Descent/Ascent) case.
+    Assign phase labels for a simple two-phase exercise-defined sequence.
 
     Returns a mapping {local_frame_index: phase_label}.
     When turnaround_hold_enabled, frames within ±half_window of the inflection
-    are labeled 'Turnaround_Hold', sandwiched between the two directional phases.
+    are labeled 'Turnaround_Hold', sandwiched between the two configured phases.
     """
     label_map: dict[int, str] = {}
     if len(phase_sequence) < 2:
@@ -573,6 +577,23 @@ def segment_reps(
         .bfill()
         .to_numpy(dtype=float)
     )
+    finite_trace = trace_clean[np.isfinite(trace_clean)]
+
+    if len(finite_trace) == 0:
+        failure = _make_failure_point(
+            "rep_boundary_001",
+            start_frame=frame_vals[0],
+            end_frame=frame_vals[-1],
+            reason="no_finite_reference_trace",
+        )
+        result.loc[analysis_indices, "rep_segmentation_status"] = "failed"
+        result.loc[analysis_indices, "rep_segmentation_failure_id"] = failure[
+            "failure_id"
+        ]
+        report.status = "failed"
+        report.failure_points = [failure]
+        report.rejected_reason = "reference trajectory has no finite values"
+        return result, report
 
     smoothed, smoothing_method_used = _smooth_trace(
         trace_clean,
@@ -584,7 +605,7 @@ def segment_reps(
     report.smoothing_method = smoothing_method_used
 
     if (
-        float(np.nanmax(smoothed) - np.nanmin(smoothed))
+        float(np.max(finite_trace) - np.min(finite_trace))
         <= _MIN_TRACE_RANGE_FOR_REP_DETECTION
     ):
         failure = _make_failure_point(
@@ -710,9 +731,9 @@ def segment_phases(
     The reference-landmark trajectory (e.g., hip-center vertical position) is
     smoothed with a Savitzky-Golay filter, then the local minimum (or maximum)
     frame is detected as the turn-around point.  Frames before the inflection
-    are labeled with the first element of `phase_sequence` (e.g., 'Descent'),
-    frames after with the last (e.g., 'Ascent').  An optional `Turnaround_Hold`
-    window is inserted around the motion-reversal frame.
+    are labeled with the first element of `phase_sequence`, frames after with
+    the last configured element.  An optional `Turnaround_Hold` window is
+    inserted around the motion-reversal frame.
 
     Frames that already have explicit phase annotations are honored as ground
     truth and are not overwritten.
@@ -829,6 +850,15 @@ def segment_phases(
             .bfill()
             .to_numpy(dtype=float)
         )
+        if not np.isfinite(trace_clean).any():
+            reports.append(
+                PhaseSegmentationReport(
+                    rep_id=rid,
+                    fps_used=fps,
+                    rejected_reason="reference trajectory has no finite values",
+                )
+            )
+            continue
 
         smoothed, smoothing_method_used = _smooth_trace(
             trace_clean,

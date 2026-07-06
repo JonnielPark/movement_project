@@ -8,6 +8,7 @@ from movement.exercise_definition import (
     SmoothingSpec,
     TurnaroundHoldSpec,
 )
+from movement.stages import segmentation as segmentation_module
 from movement.segmentation import segment_phases
 
 
@@ -118,6 +119,34 @@ def test_segment_phases_records_too_short_rep_without_labels():
     assert reports[0].rep_id == 1
     assert reports[0].phase_assignments == {}
     assert reports[0].rejected_reason == "rep too short: 3 < 4 frames"
+
+
+def test_segment_phases_rejects_non_finite_reference_without_smoothing(monkeypatch):
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("savgol_filter should not run on a non-finite trace")
+
+    monkeypatch.setattr(
+        segmentation_module._scipy_signal,
+        "savgol_filter",
+        fail_if_called,
+    )
+
+    df, reports = segment_phases(
+        _phase_df([np.nan, np.nan, np.nan, np.nan]),
+        _phase_definition(
+            smoothing=SmoothingSpec(
+                method="savitzky_golay",
+                window_frames=3,
+                polyorder=1,
+            ),
+        ),
+    )
+
+    assert df["phase"].isna().all()
+    assert len(reports) == 1
+    assert reports[0].phase_assignments == {}
+    assert reports[0].smoothing_method == "none"
+    assert reports[0].rejected_reason == "reference trajectory has no finite values"
 
 
 def test_segment_phases_uses_deterministic_global_extremum_policy():

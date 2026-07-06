@@ -32,9 +32,9 @@ compensation_candidates:
 - phase_timing_asymmetry
 feature_domains:
   spatial:
-  - rom
-  - symmetry
-  - shape
+  - range_of_motion
+  - role_alignment
+  - movement_path
   - alignment
   - depth_proxy
   - support_width

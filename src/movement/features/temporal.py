@@ -71,12 +71,16 @@ def compute_tempo(
         duration = float(ts.iloc[-1] - ts.iloc[0])
         records.append(
             FeatureRecord(
-                feature_id=f"temporal.tempo.rep_{int(rid)}",
+                feature_id="temporal.tempo.rep_duration",
                 exercise_id=ex_id,
                 rep_id=int(rid),
                 value=round(duration, 3),
                 unit="second",
-                source_fields=["feature_domains.temporal"],
+                source_fields=[
+                    "feature_domains.temporal.tempo",
+                    "segmentation.rep_id",
+                    "timestamp",
+                ],
             )
         )
 
@@ -109,6 +113,9 @@ def compute_variability(
             rep_id=None,
             value=round(cv, 4),
             unit="dimensionless_cv",
-            source_fields=["feature_domains.temporal"],
+            source_fields=[
+                "feature_domains.temporal.variability",
+                "temporal.tempo.rep_duration",
+            ],
         )
     ]

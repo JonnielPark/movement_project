@@ -312,7 +312,7 @@ def restrict_rom(
     landmarks_triplet: tuple[str, str, str],
     rep_frames: list[tuple[int, int]] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Artificially restrict joint range of motion.
+    """Artificially restrict range of motion of motion.
 
     Adjusts the distal landmark position so that the included angle does not
     exceed restriction_deg in frames where the joint exceeds the limit.

@@ -25,6 +25,7 @@ from movement.definitions.exercise_definition import load_exercise_definition
 from movement.pipeline import (
     AnnotationConfig,
     BiomechConfig,
+    BiomarkerConfig,
     ExerciseDefinitionConfig,
     FeaturesConfig,
     NormalizationConfig,
@@ -48,7 +49,7 @@ DEFAULT_STAGE_CHECK_POSE_CSV = Path(
 DEFAULT_STAGE_CHECK_ANNOTATION_CSV = Path(
     "data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv"
 )
-DEFAULT_STAGE_CHECK_EXERCISE_ID = "draft_squat"
+DEFAULT_STAGE_CHECK_EXERCISE_ID = "squat"
 
 _STAGE_ORDER: dict[str, int] = {
     "validation": 1,
@@ -206,6 +207,7 @@ def build_stage_check_pipeline_config(
     enable_features: bool = False,
     enable_role_context: bool = False,
     enable_biomech: bool = False,
+    enable_biomarker: bool = False,
     fps_default: float = 30.0,
 ) -> PipelineConfig:
     """Build a standard stage-check PipelineConfig for notebooks.
@@ -261,6 +263,7 @@ def build_stage_check_pipeline_config(
     cfg.features = FeaturesConfig(enabled=enable_features)
     cfg.features.role_context = RoleContextConfig(enabled=enable_role_context)
     cfg.biomech = BiomechConfig(enabled=enable_biomech)
+    cfg.biomarker = BiomarkerConfig(enabled=enable_biomarker)
     return cfg
 
 

@@ -7,7 +7,7 @@ from movement.features import FeatureRecord
 def test_feature_record_requires_source_fields():
     with pytest.raises(ValueError, match="source_fields is empty"):
         FeatureRecord(
-            feature_id="spatial.rom.left_knee",
+            feature_id="spatial.range_of_motion.xy.left_knee",
             exercise_id="squat",
             rep_id=1,
             value=42.0,
@@ -19,7 +19,7 @@ def test_feature_record_requires_source_fields():
 def test_biomarker_record_requires_source_fields():
     with pytest.raises(ValueError, match="source_fields is empty"):
         BiomarkerRecord(
-            biomarker_id="spatial.rom.left_knee",
+            biomarker_id="spatial.range_of_motion.xy.left_knee",
             exercise_id="squat",
             definition_version="0.5.2",
             source_fields=[],

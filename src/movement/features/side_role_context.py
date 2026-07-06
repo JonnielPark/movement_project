@@ -2,7 +2,7 @@
 Feature Extraction side-role context helper
 
 Compares per-rep observed motion energy against the expected active side
-(from execution_pattern / starting_side) and flags side-role consistency.
+(from execution_pattern / starting_side) and flags side-role alignment.
 
 Does not modify coordinates. Adds per-rep metadata columns only.
 

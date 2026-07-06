@@ -104,12 +104,26 @@ def compute_load_shift(
         if len(rep_vals) < _MIN_REPS:
             continue
 
-        rep_vals_sorted = sorted(rep_vals, key=lambda x: x[0])
+        rep_vals_sorted = [
+            (rep_id, value)
+            for rep_id, value in sorted(rep_vals, key=lambda x: x[0])
+            if np.isfinite(float(rep_id)) and np.isfinite(float(value))
+        ]
+        if len(rep_vals_sorted) < _MIN_REPS:
+            continue
+
         rep_ids = np.array([v[0] for v in rep_vals_sorted], dtype=float)
         medians = np.array([v[1] for v in rep_vals_sorted], dtype=float)
+        if len(np.unique(rep_ids)) < _MIN_REPS:
+            continue
 
-        # OLS slope via numpy polyfit (degree-1 polynomial)
-        slope = float(np.polyfit(rep_ids, medians, 1)[0])
+        rep_centered = rep_ids - float(np.mean(rep_ids))
+        median_centered = medians - float(np.mean(medians))
+        denominator = float(np.sum(rep_centered * rep_centered))
+        if denominator <= 0.0:
+            continue
+
+        slope = float(np.sum(rep_centered * median_centered) / denominator)
 
         sf = list(source_map.get((ex_id, joint, side), []))
         sf.append("biomech.load_shift.compute_load_shift")
@@ -124,7 +138,7 @@ def compute_load_shift(
                 source_fields=sf,
                 note=_make_note(joint, side, slope),
                 visibility_weight_applied=False,
-                n_frames_used=len(rep_vals),
+                n_frames_used=len(rep_vals_sorted),
                 n_frames_excluded_low_visibility=0,
             )
         )

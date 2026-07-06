@@ -131,9 +131,12 @@ def test_short_gap_interpolation_separates_observed_reliability_from_usability()
     )
     assert report["worst_landmarks_by_unusable"] == []
     assert report["frames_with_many_unusable_landmarks"] == []
-    assert report["rule_contribution_summary"][
-        "landmark_frames_recovered_by_interpolation"
-    ] >= 1
+    assert (
+        report["rule_contribution_summary"][
+            "landmark_frames_recovered_by_interpolation"
+        ]
+        >= 1
+    )
 
 
 def test_post_interpolation_velocity_check_rejects_implausible_recovered_frame():
@@ -175,9 +178,7 @@ def test_post_interpolation_velocity_check_rejects_implausible_recovered_frame()
     )
     assert report["interpolation_summary"]["post_velocity_check_enabled"] is True
     assert (
-        report["interpolation_summary"][
-            "num_post_velocity_rejected_landmark_frames"
-        ]
+        report["interpolation_summary"]["num_post_velocity_rejected_landmark_frames"]
         == 1
     )
     right_knee_qc = next(
@@ -248,21 +249,14 @@ def test_far_side_jitter_metadata_and_symmetry_availability_gate():
     assert far_summary["enabled"] is True
     assert far_summary["camera_side_inference"]["observed_zones"] == ["Z3"]
     assert far_summary["num_far_side_landmark_frames"] > 0
-    assert (
-        far_summary["num_observed_low_confidence_far_side_landmark_frames"] > 0
-    )
+    assert far_summary["num_observed_low_confidence_far_side_landmark_frames"] > 0
     assert far_summary["num_observed_high_jitter_far_side_landmark_frames"] > 0
     assert (
-        far_summary[
-            "num_post_preprocessing_low_confidence_far_side_landmark_frames"
-        ]
+        far_summary["num_post_preprocessing_low_confidence_far_side_landmark_frames"]
         > 0
     )
     assert (
-        far_summary[
-            "num_post_preprocessing_high_jitter_far_side_landmark_frames"
-        ]
-        > 0
+        far_summary["num_post_preprocessing_high_jitter_far_side_landmark_frames"] > 0
     )
     assert far_summary["jitter_detection_policy"] == (
         "conservative_motion_spike_with_low_confidence_context"
@@ -271,7 +265,7 @@ def test_far_side_jitter_metadata_and_symmetry_availability_gate():
     assert pre_df.loc[3, "right_knee_camera_side"] == "far_side"
     assert pre_df.loc[3, "preprocessing_confidence"] == "low_confidence"
     assert availability["symmetry_gate_ready"] is False
-    assert "spatial.symmetry.*" in availability["low_confidence_feature_families"]
+    assert "spatial.role_alignment.*" in availability["low_confidence_feature_families"]
 
 
 def test_far_side_jitter_gate_ignores_small_high_visibility_wobble():
@@ -305,19 +299,12 @@ def test_far_side_jitter_gate_ignores_small_high_visibility_wobble():
 
     assert far_summary["num_far_side_landmark_frames"] > 0
     assert far_summary["num_observed_high_jitter_far_side_landmark_frames"] == 0
+    assert far_summary["num_observed_low_confidence_far_side_landmark_frames"] == 0
     assert (
-        far_summary["num_observed_low_confidence_far_side_landmark_frames"] == 0
+        far_summary["num_post_preprocessing_high_jitter_far_side_landmark_frames"] == 0
     )
     assert (
-        far_summary[
-            "num_post_preprocessing_high_jitter_far_side_landmark_frames"
-        ]
-        == 0
-    )
-    assert (
-        far_summary[
-            "num_post_preprocessing_low_confidence_far_side_landmark_frames"
-        ]
+        far_summary["num_post_preprocessing_low_confidence_far_side_landmark_frames"]
         == 0
     )
     assert pre_df.loc[3, "right_knee_confidence_note"] == ""

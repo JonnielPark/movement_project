@@ -21,8 +21,8 @@ templates:
       - pelvis_rotation
       - tempo_instability
     feature_domains:
-      spatial: [rom, symmetry, shape, depth_proxy, alignment]
-      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
+      spatial: [range_of_motion, role_alignment, movement_path, depth_proxy, alignment]
+      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio, phase_profile]
       control: [stability, compensation, com_stability, pelvis_stability, lateral_shift]
       biomechanical_proxy: [com_displacement, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy]
     quality_rules:
@@ -59,8 +59,8 @@ templates:
       - tempo_instability
       - phase_timing_asymmetry
     feature_domains:
-      spatial: [rom, symmetry, shape, alignment, depth_proxy, support_width]
-      temporal: [tempo, rep_duration, eccentric_duration, concentric_duration, timing_ratio, left_right_timing_variability]
+      spatial: [range_of_motion, role_alignment, movement_path, alignment, depth_proxy, support_consistency]
+      temporal: [tempo, rep_duration, eccentric_duration, concentric_duration, timing_ratio, phase_profile, left_right_timing_variability]
       control: [stability, compensation, com_stability, pelvis_stability, lateral_shift, balance_control, joint_tracking_error]
       biomechanical_proxy: [com_displacement, com_velocity_proxy, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy, compensation_load_shift_proxy]
     quality_rules:
@@ -97,8 +97,8 @@ templates:
       - lateral_trunk_lean
       - tempo_instability
     feature_domains:
-      spatial: [rom, symmetry, shape, alignment, depth_proxy, reach_distance]
-      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio]
+      spatial: [range_of_motion, role_alignment, movement_path, alignment, depth_proxy, reach_distance]
+      temporal: [tempo, rep_duration, eccentric_duration, isometric_duration, concentric_duration, timing_ratio, phase_profile]
       control: [stability, compensation, com_stability, trunk_stability, joint_tracking_error, movement_smoothness]
       biomechanical_proxy: [com_displacement, segment_length_normalized_displacement, moment_arm_proxy, relative_joint_load_proxy, support_moment_proxy, compensation_load_shift_proxy]
     quality_rules:
@@ -137,8 +137,8 @@ templates:
       - tempo_instability
       - movement_discontinuity
     feature_domains:
-      spatial: [alignment, symmetry, reach_distance, support_width, base_of_support_width]
-      temporal: [tempo, rep_duration, phase_duration, rhythm_consistency, left_right_timing_variability, pause_duration]
+      spatial: [alignment, role_alignment, movement_path, reach_distance, support_consistency]
+      temporal: [tempo, rep_duration, phase_duration, rhythm_consistency, phase_profile, left_right_timing_variability, pause_duration]
       control: [stability, compensation, com_stability, trunk_stability, pelvis_stability, balance_control, lateral_shift, rotation_control, movement_smoothness, endpoint_control]
       biomechanical_proxy: [com_displacement, com_velocity_proxy, segment_length_normalized_displacement, support_moment_proxy, load_distribution_proxy, compensation_load_shift_proxy]
     quality_rules:

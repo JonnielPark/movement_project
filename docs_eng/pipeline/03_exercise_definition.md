@@ -1,7 +1,7 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.6.2
-**Last Updated:** 2026-06-20
+**Document Version:** 1.6.4
+**Last Updated:** 2026-06-29
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
@@ -122,6 +122,30 @@ the example bundle during review. The canonical definition directory remains the
 pipeline default because it contains the project-wide registry and `generic`
 fallback definition.
 
+Authoring draft promotion follows a stricter contract than local review:
+
+```text
+draft artifact id       draft_<exercise_name> or another review-only id
+canonical artifact id   stable public exercise_id such as squat
+runtime directories     data/definitions/* and data/protocols/*
+status/requires_review  removed from official top-level YAML
+authoring provenance    retained under authoring_provenance
+baseline status         invalid until regenerated for the promoted definition
+```
+
+Promotion is not a blind file rename. The promoted artifacts must use the
+canonical `exercise_id` in all split YAML files, keep the authoring selections as
+provenance, resolve or explicitly defer review-required fields, and then replace
+the runtime canonical artifacts. Stage-check notebooks should then return to the
+canonical `exercise_id` rather than reading a draft bundle.
+
+Existing score baselines must not be silently reused after promotion. A baseline
+entry is valid only for the exercise definition and feature schema that generated
+it. When a promoted authoring artifact replaces an older canonical definition,
+the old `baseline_zscore.json` entry for that `exercise_id` should be removed or
+version-guarded until a new reference distribution is generated through the
+current pipeline.
+
 If `exercise_id` is missing or no matching YAML exists, `generic.yaml` is loaded.
 Generic mode activates only exercise-agnostic features such as ROM, tempo, and
 stability. Compensation biomarkers are not produced.
@@ -193,7 +217,7 @@ Extraction. Bilateral symmetric tasks may skip per-rep active-side context;
 unilateral or alternating tasks should preserve active-side or role metadata.
 
 `movement_template_id` is derived from selected authoring axes such as posture,
-support/contact pattern, laterality, primary regions, joint actions, and planes.
+support pattern, laterality, primary regions, joint actions, and planes.
 It names the analysis template/family, not the public exercise name. During
 migration, existing YAML may still expose `movement_pattern`; loaders mirror it
 as `movement_template_id` when the new field is absent.
@@ -244,6 +268,11 @@ support:
   support_surface: floor | mat | bench | wall | ...
   weight_bearing_regions: list[string]
 ```
+
+The runtime `ExerciseDefinition` preserves this block as `support_context`.
+Downstream feature stages may use it for provenance and report-only support
+diagnostics, such as closed-chain support-landmark path checks. This must not
+become an `exercise_id` branch or a hidden coordinate correction.
 
 `phase_model` describes one repetition or task cycle.
 
@@ -430,9 +459,23 @@ quality_rules:
   exclude_rep_if_critical_landmark_missing: bool
   exclude_rep_if_phase_missing: bool
   allow_partial_feature_output: bool
+  range_of_motion_targets:
+    spatial.range_of_motion.xy.<joint_angle>:
+      scoring_mode: minimum_sufficient_band
+      minimum_sufficient_deg: float
+      excessive_threshold_deg: optional float
+      soft_tolerance_deg: float
+      excessive_penalty_scale: float
+      apply_to_phase_suffixes: [full_rep, descent, ascent]
 ```
 
-These thresholds are consumed by ④ Preprocessing and ⑧ Feature Extraction.
+The visibility and gap thresholds are consumed by ④ Preprocessing and ⑧ Feature
+Extraction. `range_of_motion_targets` is consumed by ⑩ Biomarker Scoring. It defines
+exercise-specific functional ROM bands: for example, squat knee ROM should be
+penalized primarily when it is insufficient, not simply because it is larger than
+the synthetic baseline mean. These targets are provisional until reviewed-good
+examples or literature-informed values are available, and they should remain
+exercise-specific rather than global.
 
 ---
 
