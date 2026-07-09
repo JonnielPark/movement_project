@@ -1,11 +1,12 @@
 """
-⑩ Biomarker Derivation
+⑨ Biomarker Derivation
 
-Integrates ⑧ feature extraction and ⑨ biomechanical proxy modeling results
+Integrates ⑦ feature extraction and ⑧ biomechanical proxy modeling results
 into interpretable digital biomarkers (BiomarkerRecord).
 
-Every BiomarkerRecord must include source_fields (provenance).
-Raises ValueError if source_fields is empty.
+BiomarkerRecord carries explicit operational metadata for scoring and review.
+Optional source_fields may be attached as audit references for reports/debug
+exports, but scoring does not require them.
 
 Unit convention  : torso_length_ratio | degree | dimensionless_cv | second.
 Absolute units (N, kg, m, N·m) are not used.
@@ -29,8 +30,7 @@ class BiomarkerRecord:
     ----------
     biomarker_id      : unique identifier (e.g. 'biomarker.range_of_motion.left_knee')
     exercise_id       : exercise identifier
-    definition_version: exercise definition version this record references (provenance)
-    source_fields     : exercise definition fields that drove this biomarker (provenance)
+    definition_version: exercise definition version this record references
     rep_id            : rep number (None = sequence-level)
     value             : biomarker value
     unit              : torso_length_ratio | degree | dimensionless_cv | second
@@ -54,10 +54,10 @@ class BiomarkerRecord:
     biomarker_id: str
     exercise_id: str
     definition_version: str
-    source_fields: list[str]
     rep_id: int | None
     value: float
     unit: str
+    source_fields: list[str] = field(default_factory=list)
     note: str | None = None
     view_reliability: str | None = None
     availability: str | None = None
@@ -73,13 +73,6 @@ class BiomarkerRecord:
     evaluation_domain: str | None = None
     evidence_axes: str | None = None
     feature_family: str | None = None
-
-    def __post_init__(self) -> None:
-        if not self.source_fields:
-            raise ValueError(
-                f"BiomarkerRecord '{self.biomarker_id}': source_fields is empty. "
-                "Provenance fields from the exercise definition must be specified."
-            )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -239,7 +232,6 @@ BIOMARKER_REQUIRED_COLUMNS = [
     "biomarker_id",
     "exercise_id",
     "definition_version",
-    "source_fields",
     "rep_id",
     "value",
     "unit",
@@ -265,7 +257,6 @@ BIOMARKER_SCORE_REQUIRED_COLUMNS = [
     "final_score",
     "deductions",
     "withheld_features",
-    "source_fields",
     "domain_weights",
     "domain_feature_family_weights",
     "low_confidence_score_weights",
@@ -287,6 +278,7 @@ BIOMARKER_SCORE_ITEM_REQUIRED_COLUMNS = [
     "deduction",
     "value",
     "scoring_mode",
+    "quality_gravity",
     "availability",
     "availability_weight",
     "depth_dependency",
@@ -296,7 +288,7 @@ BIOMARKER_SCORE_ITEM_REQUIRED_COLUMNS = [
     "feature_weight",
     "feature_family",
     "feature_family_weight",
-    "confidence_weight",
+    "scoring_weight",
     "baseline_mean",
     "baseline_std",
     "score_direction",
@@ -405,8 +397,9 @@ def save_biomarker_outputs(
     exercise_id: str,
     output_dir: str | Path,
     project_root: str | Path | None = None,
+    include_audit_references: bool = False,
 ) -> "Any":
-    """Save ⑩ biomarker/score tables and compact QC for follow-along checks."""
+    """Save ⑨ biomarker/score tables and compact QC for follow-along checks."""
 
     import pandas as pd
 
@@ -421,6 +414,10 @@ def save_biomarker_outputs(
     biomarker_df = _records_to_dataframe(biomarker_records, BIOMARKER_REQUIRED_COLUMNS)
     score_df = _records_to_dataframe(score_records, BIOMARKER_SCORE_REQUIRED_COLUMNS)
     score_item_df = score_records_to_item_dataframe(score_records)
+    if not include_audit_references:
+        for dataframe in (biomarker_df, score_df):
+            if "source_fields" in dataframe.columns:
+                dataframe.drop(columns=["source_fields"], inplace=True)
 
     _write_csv_with_json_columns(
         biomarker_df,

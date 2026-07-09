@@ -17,7 +17,7 @@ biomechanical_focus:
   - avoid_knee_valgus
   - avoid_heel_lift
   - avoid_excessive_lateral_shift
-compensation_candidates:
+compensation_patterns:
 - knee_valgus
 - knee_varus
 - asymmetric_depth
@@ -157,7 +157,7 @@ authoring_inference:
   inferred_secondary_joint_actions:
   - pelvis_lateral_tilt_proxy
   - pelvis_rotation_proxy
-  inferred_compensation_candidates:
+  inferred_compensation_patterns:
   - foot_external_rotation_proxy
   inferred_feature_domains:
     control:
@@ -173,10 +173,10 @@ authoring_provenance:
   canonical_exercise_id: squat
   promotion_status: reviewed_canonical
   resolved_review_items:
-  - compensation_candidates
+  - compensation_patterns
   - quality_rules
   - feature_domains
   - context_inferred_joint_actions
-  - context_inferred_compensation_candidates
+  - context_inferred_compensation_patterns
   - context_inferred_feature_domains
   deferred_review_items: []

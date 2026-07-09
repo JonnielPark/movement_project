@@ -1,11 +1,11 @@
 status: draft
 generated_by: exercise_authoring_notebook
 requires_review:
-- compensation_candidates
+- compensation_patterns
 - quality_rules
 - feature_domains
 - context_inferred_joint_actions
-- context_inferred_compensation_candidates
+- context_inferred_compensation_patterns
 - context_inferred_feature_domains
 exercise_id: draft_squat
 analysis_template: bilateral_lower_body_closed_chain
@@ -128,7 +128,7 @@ biomechanical_focus:
   - maintain_trunk_alignment
   - avoid_knee_valgus
   - avoid_heel_lift
-compensation_candidates:
+compensation_patterns:
 - knee_valgus
 - knee_varus
 - asymmetric_depth
@@ -166,7 +166,7 @@ feature_domains:
   - relative_joint_load_proxy
   - compensation_load_shift_proxy
 quality_rules:
-  minimum_visible_landmark_ratio: 0.8
+  minimum_confident_landmark_ratio: 0.8
   minimum_critical_landmark_ratio: 0.9
   max_missing_gap_frames: 10
   max_interpolation_gap_frames: 3
@@ -181,7 +181,7 @@ authoring_inference:
   inferred_secondary_joint_actions:
   - pelvis_lateral_tilt_proxy
   - pelvis_rotation_proxy
-  inferred_compensation_candidates:
+  inferred_compensation_patterns:
   - foot_external_rotation_proxy
   inferred_feature_domains:
     control:
@@ -190,5 +190,5 @@ authoring_inference:
     - compensation_load_shift_proxy
   requires_review:
   - context_inferred_joint_actions
-  - context_inferred_compensation_candidates
+  - context_inferred_compensation_patterns
   - context_inferred_feature_domains

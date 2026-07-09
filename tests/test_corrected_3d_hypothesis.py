@@ -2,7 +2,7 @@ import pandas as pd
 
 from movement.stages.corrected_3d_hypothesis import (
     SupportWidthStabilityConfig,
-    build_corrected_3d_hypothesis_candidates,
+    build_corrected_3d_hypothesis_evidence,
     build_support_width_stability_sensitivity_report,
     collect_corrected_3d_sensitivity_rows,
     summarize_corrected_3d_sensitivity_reports,
@@ -54,11 +54,11 @@ def _pipeline_pose_with_review_family() -> pd.DataFrame:
     return pd.concat([df, review_cols], axis=1)
 
 
-def test_support_width_stability_report_compares_norm_and_candidate_family():
+def test_support_width_stability_report_compares_norm_and_coordinate_family():
     df = _pose_with_review_family()
     burden = pd.DataFrame(
         {
-            "candidate_family": ["review"],
+            "coordinate_family": ["review"],
             "stage": ["planted_support_temporal_memory"],
             "cap_fraction": [0.20],
         }
@@ -66,25 +66,26 @@ def test_support_width_stability_report_compares_norm_and_candidate_family():
 
     report = build_support_width_stability_sensitivity_report(
         df,
-        config=SupportWidthStabilityConfig(candidate_family="review"),
+        config=SupportWidthStabilityConfig(coordinate_family="review"),
         burden_ledger=burden,
     )
 
     row = report.iloc[0]
-    assert row["feature_id"] == "candidate.support_width_stability"
+    assert row["feature_id"] == "analysis.support_width_stability"
     assert row["evaluation_domain"] == "corrected_3d_hypothesis"
     assert row["availability"] == "assessed"
     assert row["confidence"] == "very_low"
+    assert row["quality_gravity"] > 0.0
     assert "score_gravity" not in row
     assert "score_contribution_enabled" not in row
     assert "used_for_score" not in row
     assert round(row["norm_value"], 6) == 0.1
-    assert round(row["corrected_candidate_value"], 6) == 0.0
+    assert round(row["corrected_value"], 6) == 0.0
     assert round(row["delta"], 6) == -0.1
     assert row["correction_burden"] == 0.2
 
 
-def test_support_width_stability_report_marks_missing_candidate_not_assessed():
+def test_support_width_stability_report_marks_missing_analysis_not_assessed():
     df = _pose_with_review_family().drop(
         columns=[
             "left_ankle_review_x",
@@ -98,37 +99,38 @@ def test_support_width_stability_report_marks_missing_candidate_not_assessed():
 
     report = build_support_width_stability_sensitivity_report(
         df,
-        config=SupportWidthStabilityConfig(candidate_family="review"),
+        config=SupportWidthStabilityConfig(coordinate_family="review"),
     )
 
     row = report.iloc[0]
     assert row["availability"] == "not_assessed"
-    assert "missing_candidate_columns" in row["availability_reasons"]
+    assert row["quality_gravity"] == 0.0
+    assert "missing_corrected_columns" in row["availability_reasons"]
     assert "score_gravity" not in row
     assert "score_contribution_enabled" not in row
     assert "used_for_score" not in row
 
 
-def test_corrected_3d_hypothesis_result_keeps_coordinates_as_candidate_evidence():
+def test_corrected_3d_hypothesis_result_keeps_coordinates_as_analysis_evidence():
     df = _pose_with_review_family()
-    result = build_corrected_3d_hypothesis_candidates(
+    result = build_corrected_3d_hypothesis_evidence(
         df,
         landmarks=["left_ankle", "right_ankle"],
         solver_config={"output_family": "review"},
         burden_ledger=pd.DataFrame(
-            {"candidate_family": ["review"], "cap_fraction": [0.1]}
+            {"coordinate_family": ["review"], "cap_fraction": [0.1]}
         ),
     )
 
-    assert result.corrected_candidate_df.equals(df)
-    assert result.readiness_provenance["status"] == "candidate_evidence"
+    assert result.analysis_coordinate_df.equals(df)
+    assert result.readiness_provenance["status"] == "analysis_evidence"
     assert result.readiness_provenance["used_for_features_or_scores"] is False
     assert result.readiness_provenance["downstream_coordinate_mode"] == "norm"
     assert "score_gravity" not in result.readiness_provenance
     assert "feature_depth_gravity" not in result.readiness_provenance
     assert (
         result.norm_vs_corrected_sensitivity_report.loc[0, "feature_id"]
-        == "candidate.support_width_stability"
+        == "analysis.support_width_stability"
     )
 
     result_dict = result.as_dict()
@@ -171,20 +173,21 @@ def test_pipeline_emits_corrected_3d_review_without_scoring_use():
 
     review = report["corrected_3d_hypothesis_review"]
     row = review["norm_vs_corrected_sensitivity_report"][0]
-    assert row["feature_id"] == "candidate.support_width_stability"
+    assert row["feature_id"] == "analysis.support_width_stability"
     assert row["availability"] == "low_confidence"
+    assert row["quality_gravity"] > 0.0
     assert "missing_burden_ledger" in row["availability_reasons"]
     assert "score_gravity" not in row
     assert "score_contribution_enabled" not in row
     assert "used_for_score" not in row
-    assert review["readiness_provenance"]["status"] == "candidate_evidence"
+    assert review["readiness_provenance"]["status"] == "analysis_evidence"
     assert review["readiness_provenance"]["used_for_features_or_scores"] is False
     assert report["canonicalization"]["corrected_3d_hypothesis"]["review_status"] == (
-        "candidate_evidence"
+        "analysis_evidence"
     )
 
 
-def test_multi_recording_sensitivity_summary_keeps_candidate_evidence():
+def test_multi_recording_sensitivity_summary_keeps_analysis_evidence():
     reports = [
         {
             "recording_id": "r1",
@@ -192,11 +195,12 @@ def test_multi_recording_sensitivity_summary_keeps_candidate_evidence():
             "corrected_3d_hypothesis_review": {
                 "norm_vs_corrected_sensitivity_report": [
                     {
-                        "feature_id": "candidate.support_width_stability",
+                        "feature_id": "analysis.support_width_stability",
                         "norm_value": 0.10,
-                        "corrected_candidate_value": 0.05,
+                        "corrected_value": 0.05,
                         "delta_abs": 0.05,
                         "correction_burden": 0.2,
+                        "quality_gravity": 0.05,
                         "availability": "assessed",
                     }
                 ]
@@ -208,11 +212,12 @@ def test_multi_recording_sensitivity_summary_keeps_candidate_evidence():
             "corrected_3d_hypothesis_review": {
                 "norm_vs_corrected_sensitivity_report": [
                     {
-                        "feature_id": "candidate.support_width_stability",
+                        "feature_id": "analysis.support_width_stability",
                         "norm_value": 0.30,
-                        "corrected_candidate_value": 0.10,
+                        "corrected_value": 0.10,
                         "delta_abs": 0.20,
                         "correction_burden": 0.9,
+                        "quality_gravity": 0.1,
                         "availability": "low_confidence",
                     }
                 ]
@@ -228,12 +233,13 @@ def test_multi_recording_sensitivity_summary_keeps_candidate_evidence():
     assert "score_contribution_enabled" not in rows.columns
     assert "used_for_score" not in rows.columns
     item = summary.iloc[0]
-    assert item["feature_id"] == "candidate.support_width_stability"
+    assert item["feature_id"] == "analysis.support_width_stability"
     assert item["exercise_id"] == "squat"
     assert item["n_recordings"] == 2
     assert item["n_assessed"] == 1
     assert item["n_low_confidence"] == 1
     assert item["max_correction_burden"] == 0.9
+    assert round(item["median_quality_gravity"], 6) == 0.075
     assert "max_score_gravity" not in summary.columns
     assert "score_contribution_enabled" not in summary.columns
     assert "used_for_score" not in summary.columns

@@ -1,19 +1,25 @@
-# 06. Canonicalization
+# 05-1. Canonicalization
 
-**Document Version:** 2.0.0
-**Last Updated:** 2026-06-16
-**Korean Sync:** `docs/pipeline/06_canonicalization.md` is the same-version Korean source.
+**Document Version:** 2.3.1
+**Last Updated:** 2026-07-09
+**Korean Sync:** `docs/pipeline/05_1_canonicalization.md` is the same-version Korean source.
 
-Pipeline step ⑥ consumes `norm` coordinates from ⑤ Normalization and may add
-analysis-space candidate coordinate families such as `canon` or
-`corrected_3d_hypothesis`. It is a report-first candidate-evidence stage: every
-coordinate candidate must be accompanied by availability, confidence, residual,
-burden, and sensitivity provenance.
+Canonicalization is no longer a required standalone pipeline step. It is the
+optional ⑤-1 substage of [05_normalization.md](05_normalization.md): it consumes
+`norm` coordinates from ⑤ Normalization and may add analysis-space
+coordinate families such as `canon` or `corrected_3d_hypothesis`. This file is
+kept as the detailed reference for the optional filters and their provenance
+contract.
 
 This step does not estimate absolute forces, absolute torque, calibrated 3D, or
 absolute body dimensions. It does not fit the pose to a good-movement template.
 The default downstream coordinate mode remains `norm` unless a later
 feature/scoring policy explicitly declares otherwise.
+
+**Current status:** merged under ⑤ Normalization as optional ⑤-1
+canonicalization filters. The root-level YAML key `canonicalization` is retained
+only as a backward-compatible alias; new configs should use
+`normalization.canonicalization`.
 
 ---
 
@@ -26,29 +32,34 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Canonicalization       ← this step
-→ ⑦ Segmentation
-→ ⑧ Feature Extraction
-→ ⑨ Biomechanical Proxy
-→ ⑩ Biomarker Scoring
+   └─ ⑤-1 Optional Canonicalization filters       ← this reference
+→ ⑥ Segmentation
+→ ⑦ Feature Extraction
+→ ⑧ Biomechanical Proxy
+→ ⑨ Biomarker Scoring
 ```
 
 Runs after ⑤ Normalization because all priors operate on an existing
 body-relative coordinate family. It should preserve `raw` and `norm` columns and
-add candidate columns only.
+add analysis-space columns only.
 
 ---
 
 ## 2. Input And Coordinate-Family Contract
 
-Required input is the ⑤ `norm` coordinate family:
+Required input is normalized pose data: preprocessed pose data plus the ⑤
+body-relative `norm` coordinate family and depth-evidence metadata. After ①
+schema harmonization and ⑤ Normalization, `norm` should have an xyz column
+shape. The important distinction is whether `norm_z` contains finite depth
+evidence or only `NaN` placeholders.
 
 Raw coordinates are never overwritten.
 
 ```text
 left_knee_x       original x
 left_knee_norm_x  base normalized x from ⑤
-left_knee_canon_x optional canonical candidate x from ⑥
+left_knee_canon_x optional canonicalized x from ⑤-1
+left_knee_canon_z optional canonical depth hypothesis z from ⑤-1
 ```
 
 Coordinate families have fixed meanings.
@@ -56,40 +67,52 @@ Coordinate families have fixed meanings.
 ```text
 raw      original pose coordinates
 norm     hip-torso normalized coordinates from ⑤
-canon    optional analysis-space candidate coordinates from ⑥
+canon    optional analysis-space coordinates from ⑤-1
 ```
 
-Future corrected-3D-hypothesis families must follow the same additive rule, for
-example `<landmark>_<output_family>_<axis>`. Candidate columns must not replace
-`norm`.
+The canonicalization output should be described as canonicalized pose data:
+
+```text
+Canonicalized pose data = normalized pose data + analysis-space coordinates + analysis-evidence report
+```
+
+When `norm_z` is a placeholder, ⑤-1 may fill a `canon_z` analysis evidence only when a
+prior such as `xy_depth_lift` is explicitly enabled. In that case `canon_z` is
+a canonical depth hypothesis, not observed depth. Future corrected-3D-hypothesis
+families must follow the same additive rule, for example
+`<landmark>_<output_family>_<axis>`. Analysis-space columns must not replace `norm`.
 
 ---
 
 ## 3. Configuration Contract
 
-Detailed defaults live in `configs/pipeline_default.yaml`. The stable ⑥ contract
-is:
+Detailed defaults live in `configs/pipeline_default.yaml`. The stable ⑤-1
+configuration contract is nested under `normalization`:
 
 ```yaml
-canonicalization:
-  enabled: false
-  coordinate_mode: norm
-  output_prefix: canon
-  report_only: true
-  downstream_coordinate_mode: norm
-  data_confidence: ...
-  support_plane_alignment: ...
-  movement_plane_alignment: ...
-  protocol_height_lateral_width_alignment: ...
-  anthropometric_skeleton_prior: ...
-  corrected_3d_hypothesis:
+normalization:
+  canonicalization:
     enabled: false
-    output_family: corrected_3d_hypothesis
+    coordinate_mode: norm
+    output_prefix: canon
+    report_only: true
     downstream_coordinate_mode: norm
-    emit_sensitivity_report: true
-    support_pair: [left_ankle, right_ankle]
-    report_burden_before_feature_use: true
-    require_feature_domain_declaration: true
+    data_confidence: ...
+    support_plane_alignment: ...
+    movement_plane_alignment: ...
+    protocol_height_lateral_width_alignment: ...
+    xy_depth_lift:
+      enabled: false
+      method: recording_view_depth_hypothesis
+    anthropometric_skeleton_prior: ...
+    corrected_3d_hypothesis:
+      enabled: false
+      output_family: corrected_3d_hypothesis
+      downstream_coordinate_mode: norm
+      emit_sensitivity_report: true
+      support_pair: [left_ankle, right_ankle]
+      report_burden_before_feature_use: true
+      require_feature_domain_declaration: true
 ```
 
 `report_only: true` means `canon` coordinates and reports may be created, but
@@ -101,26 +124,35 @@ evidence, and an explicit docs update before code promotion.
 is treated as a backward-compatible alias for `support_plane_alignment`; new work
 should prefer the canonicalization key.
 
-⑥ Canonicalization does not assign score gravity. Corrected-depth and
-canonicalization candidates expose evidence only: availability, confidence,
-visibility, residuals, correction burden, and norm-vs-candidate sensitivity.
-Scoring gravity belongs to the later biomarker/scoring policy. The current
-development policy keeps corrected-depth contribution at zero there, but that
-policy is intentionally not encoded as a ⑥ output field.
+⑤-1 Canonicalization does not assign score-policy weights or final-score
+contribution. Corrected-depth and canonicalization analysis evidence expose evidence
+summaries only: availability, confidence, `quality_gravity`, and
+norm-vs-analysis sensitivity. Raw residuals and correction burden remain
+report-local diagnostics. The current development policy keeps corrected-depth
+score contribution at zero in ⑨, but that policy is intentionally not encoded as
+a ⑤-1 output field.
 
 ---
 
 ## 4. Report Contract
 
 `apply_canonicalization(df, landmarks, config)` returns a DataFrame with additive
-candidate columns and a `canonicalization_report`.
+analysis-space columns and a `canonicalization_report`.
 
 ```python
 {
     "enabled": bool,
-    "candidate_available": bool,
-    "candidate_confidence": "not_available" | "high" | "moderate" | "low",
+    "evidence_available": bool,
+    "evidence_confidence": "not_available" | "high" | "moderate" | "low",
+    "quality_gravity": float,
     "burden_level": "none" | "low" | "moderate" | "high",
+    "input_pose_data_state": "normalized_pose_data" | str,
+    "output_pose_data_state": "canonicalized_pose_data" | str,
+    "input_coordinate_families": list[str],
+    "output_coordinate_families": list[str],
+    "input_coordinate_axes": dict[str, list[str]],
+    "output_coordinate_axes": dict[str, list[str]],
+    "added_coordinate_family": "canon" | str | None,
     "coordinate_mode": "norm",
     "output_prefix": "canon",
     "report_only": bool,
@@ -140,17 +172,20 @@ candidate columns and a `canonicalization_report`.
         "support_plane_alignment": dict | None,
         "movement_plane_alignment": dict | None,
         "protocol_height_lateral_width_alignment": dict | None,
+        "xy_depth_lift": dict | None,
         "anthropometric_skeleton_prior": dict | None,
     },
 }
 ```
 
-The public canonicalization summary should prefer `candidate_available`,
-`candidate_confidence`, and `burden_level`. The legacy `status` and prior-level
-statuses remain as debugging/provenance fields so earlier reports can still be
-interpreted, but they are not the primary readiness surface after prototype
-review. Score gravity and final-score contribution flags are intentionally absent
-from ⑥ Canonicalization reports.
+The public canonicalization summary should prefer `evidence_available`,
+`evidence_confidence`, and `quality_gravity`. `burden_level` remains a
+report-local diagnostic summary for review, not a required downstream payload
+field. The legacy `status` and prior-level statuses remain as
+debugging/provenance fields so earlier reports can still be interpreted, but
+they are not the primary readiness surface after prototype review. Score-policy
+weights and final-score contribution flags are intentionally absent from ⑤-1
+Canonicalization reports.
 
 Routine notebook review should show a prior evidence table rather than prior
 counts. The table is derived from `canonicalization_report.prior_reports` and the
@@ -159,18 +194,18 @@ active `CanonicalizationConfig`:
 ```text
 prior_id
 configured_on
-candidate_available
+evidence_available
 reason
 key_metric
 ```
 
-`candidate_confidence` and `burden_level` belong to the whole canonicalization
-candidate summary, not to each prior row. Keeping them out of the prior evidence
-table avoids implying that a prior-specific confidence or burden score was
-computed.
+`evidence_confidence`, `quality_gravity`, and `burden_level` belong to the
+whole canonicalization evidence summary, not to each prior row. Keeping them
+out of the prior evidence table avoids implying that a prior-specific confidence
+or burden score was computed.
 
 `configured_on` comes from each prior config's `enabled` flag.
-`candidate_available` is true when the prior report status is `applied` or
+`evidence_available` is true when the prior report status is `applied` or
 `warning`. `reason` should be a short human-readable status or confidence-note
 summary. `key_metric` should expose the most relevant prior-specific diagnostic,
 such as support anchor frames, movement rotation/residual, or protocol camera
@@ -186,9 +221,9 @@ the earlier stage checks: `Data Setup`, `Direct Canonicalization Test`, numbered
 checks, `Pipeline Integration`, and `Check Summary`. Its setup must prepare the
 same previous-stage input chain used by ⑤ Normalization: validation,
 annotation, exercise definition loading, preprocessing, and normalization.
-Canonicalization should be tested on the normalized preprocessed dataframe, not
+Canonicalization should be tested on normalized preprocessed pose data, not
 on a raw-pose dataframe that was normalized in isolation, so preprocessing
-validity/usability provenance is available when candidate evidence is reviewed.
+validity/usability provenance is available when analysis evidence is reviewed.
 
 Visualization in the stage-check notebook should stay compact: one normalized
 vs canonical comparison is enough for pose inspection, with a separate
@@ -209,27 +244,112 @@ Current active or planned priors:
 
 | Prior | Status | Purpose | Guardrail |
 |---|---|---|---|
+| `xy_depth_lift` | planned, disabled by default | Recording-view-constrained depth hypothesis that fills `canon_z` planned patterns from `norm_x/y` when `norm_z` is only a placeholder, as expected for YOLO-style 2D pose backends. | Not 3D reconstruction, measured depth, or subject-specific skeleton fitting; does not create score-policy weight. |
 | `support_plane_alignment` | implemented, disabled by default | Pose-internal pseudo-floor/support-plane review from exercise-defined support landmarks. Wraps the older `floor_relative_correction` logic. | Does not lock feet to the floor; not camera calibration. |
 | `movement_plane_alignment` | prototype, disabled by default | Capped rigid rotation around the vertical axis using the dominant hip-knee-ankle movement direction. | Preserves out-of-plane residuals for compensation review. |
-| `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Zero-gravity scoring candidate; not lens correction, reprojection, or far-side coordinate invention. |
+| `protocol_height_lateral_width_alignment` | prototype, disabled by default | Uses camera-height metadata as a gate before conservative lateral-width attenuation around H1/H2/H3 body anchors. | Analysis evidence with zero default score contribution; not lens correction, reprojection, or far-side coordinate invention. |
 | `anthropometric_skeleton_prior` | planned, disabled by default | Uses loose body-segment length plausibility ranges as an engineering envelope for monocular-depth review. | Not empirical P5/P95 until raw row-level data are available; not skeleton template fitting. |
 
 Current prior order:
 
 ```text
-1. support_plane_alignment
-2. movement_plane_alignment
-3. protocol_height_lateral_width_alignment
-4. anthropometric_skeleton_prior
+1. xy_depth_lift
+2. support_plane_alignment
+3. movement_plane_alignment
+4. protocol_height_lateral_width_alignment
+5. anthropometric_skeleton_prior
 ```
 
-### 5.1 Promoted Corrected-3D-Hypothesis Candidate Policy
+`xy_depth_lift` can be a required analysis prior only when finite `norm_z`
+evidence is unavailable. For MediaPipe-style inputs with finite model-depth
+`norm_z`, it remains disabled by default or may be used only for sensitivity
+comparison.
+
+### 5.1 XY Depth Lift Evidence Contract
+
+The default `xy_depth_lift` method is `recording_view_depth_hypothesis`. Its
+purpose is not to recover calibrated 3D from 2D recording-view coordinates. It
+creates an analysis z estimate and provenance so later depth-sensitive features
+can explain why they are withheld or low confidence.
+
+Required input:
+
+```text
+norm_pose_df
+  DataFrame with <landmark>_norm_x/y/z columns. <landmark>_norm_z may be a
+  NaN placeholder when the backend did not provide z.
+
+landmarks
+  Ordered landmark names used by the pipeline run.
+
+exercise_context
+  Exercise id, kinetic chain, support landmarks, support pair, movement plane,
+  and camera protocol.
+
+depth_prior_config
+  Segment prior source, correction caps, temporal smoothness, confidence gates,
+  near/far-side sign policy, and rejection rules.
+```
+
+Base generation rules:
+
+```text
+1. Copy norm_x/y into canon_x/y.
+2. Compute each segment's recording-view length d_xy.
+3. If a loose segment target or envelope exists and d_xy is inside the envelope,
+   analysis dz_abs may be computed as sqrt(max(target_length^2 - d_xy^2, 0)).
+4. Do not assign z sign arbitrarily. Sign may be assigned only when a documented
+   sign prior exists, such as near/far-side evidence, support contact, or
+   stable-frame memory.
+5. If d_xy already exceeds the target/envelope, reject the analysis evidence with
+   `projected_length_exceeds_prior` instead of inventing z to fit it.
+6. Frames or segments that fail temporal continuity or correction caps remain
+   evidence unavailable.
+```
+
+Required output:
+
+```text
+<landmark>_canon_x/y/z
+canonical_depth_hypothesis_available
+canonical_depth_hypothesis_confidence
+canonical_depth_hypothesis_quality_gravity
+canonical_depth_hypothesis_rejection_reason
+```
+
+The report-local burden/residual diagnostics must contain at least:
+
+```text
+frame
+landmark_or_segment
+source_axes = xy
+target_axes = xyz
+d_xy_torso_ratio
+target_length_torso_ratio
+analysis_dz_torso_ratio
+cap_torso_ratio
+cap_fraction
+residual_before_torso
+residual_after_torso
+accepted
+rejection_reason
+confidence
+used_for_features_or_scores = false
+```
+
+`xy_depth_lift` output is analysis evidence. A post-⑥ feature may use this z
+analysis evidence only after declaring `evaluation_domain = canonical_depth_hypothesis`
+or `dual_domain_compare`; it must not contribute to the default composite score
+until ⑨ Scoring explicitly promotes nonzero score-policy weight.
+
+### 5.2 Promoted Corrected-3D-Hypothesis Review Policy
 
 The p01 squat correction review established the first promoted
-corrected-3D-hypothesis candidate policy for ⑥ Canonicalization. Promotion means
-the candidate family, burden ledger, residuals, and readiness gates are formal
-canonicalization artifact requirements. It does not mean the corrected coordinates
-are calibrated 3D, ground truth, a good-movement template, or scoring input.
+corrected-3D-hypothesis review policy for ⑤-1 Canonicalization. Promotion means
+the coordinate family, quality summary, burden ledger, residual diagnostics, and
+readiness gates are formal canonicalization artifact requirements. It does not
+mean the corrected coordinates are calibrated 3D, ground truth, a good-movement
+template, or scoring input.
 
 Current promoted stack:
 
@@ -245,14 +365,14 @@ Current promoted stack:
 9. scoring-readiness and bend-flip provenance gates
 ```
 
-The last reviewed p01 candidate family was
+The last reviewed p01 coordinate family was
 `rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory`. The public evaluation
 notebooks do not run this solver yet; they keep downstream coordinate mode on
 `norm` until the solver is moved into `src/movement/` with a tested contract.
 The reviewed parameter values are preserved as a historical snapshot in
-`docs_eng/pipeline/06_canonicalization_p01_squat_review_snapshot.md`.
+`docs_eng/pipeline/05_1_canonicalization_p01_squat_review_snapshot.md`.
 
-Retired tuning candidates are no longer active code/config branches:
+Retired tuning branches are no longer active code/config branches:
 
 ```text
 paired target unification
@@ -274,10 +394,10 @@ They may be reintroduced only through the docs-first path: define the research
 need in `docs_eng/`, sync `docs/`, add config/report fields, and compare ON/OFF
 behavior across multiple recordings or exercises.
 
-### 5.2 Corrected-3D-Hypothesis Solver Promotion Contract
+### 5.3 Corrected-3D-Hypothesis Solver Promotion Contract
 
 Before the former p01 correction solver is moved into `src/movement/`, it must be
-implemented as a report-first candidate generator with the following minimal
+implemented as a report-first analysis-evidence generator with the following minimal
 contract. This is a solver contract, not a scoring contract.
 
 Required input:
@@ -300,18 +420,18 @@ exercise_support_context
   landmarks, primary support pair, and any rep/phase/ready-window labels.
 
 solver_config
-  Source family, output family, correction caps, strengths, visibility gates,
+  Source family, output family, correction caps, strengths, confidence gates,
   support-width no-worsen guard, bend-side guard, and report settings. The p01
   review values are preserved in
-  `06_canonicalization_p01_squat_review_snapshot.md`.
+  `05_1_canonicalization_p01_squat_review_snapshot.md`.
 ```
 
 Required output:
 
 ```text
-corrected_candidate_df
+analysis_coordinate_df
   Same frame index and row order as norm_pose_df.
-  Candidate columns must be additive only. A family-specific convention such as
+  Analysis-space columns must be additive only. A family-specific convention such as
   <landmark>_<output_family>_<axis> is allowed only when the result report also
   exposes the exact coordinate-column map.
 
@@ -319,15 +439,15 @@ burden_ledger
   Frame/stage/landmark or segment-level correction burden table.
 
 residual_report
-  Segment-length, support-width, support-surface, bend-side, and visibility
-  residuals before and after candidate generation.
+  Segment-length, support-width, support-surface, bend-side, and confidence
+  residuals before and after analysis-evidence generation.
 
 norm_vs_corrected_sensitivity_report
   Feature-level comparison table for any feature considered for
   corrected-3D-hypothesis use.
 
 readiness_provenance
-  Candidate availability, confidence, status, and rejection reasons.
+  Evidence availability, confidence, status, and rejection reasons.
 ```
 
 The burden ledger must contain at least:
@@ -335,7 +455,7 @@ The burden ledger must contain at least:
 ```text
 frame
 rep_id or phase label when available
-candidate_family
+coordinate_family
 stage
 landmark_or_segment
 axis
@@ -346,7 +466,7 @@ residual_before_torso
 residual_after_torso
 accepted
 rejection_reason
-visibility_min
+confidence_min
 confidence
 used_for_features_or_scores = false
 ```
@@ -358,24 +478,25 @@ feature_id
 evaluation_domain
 source_evidence
 norm_value
-corrected_candidate_value
+corrected_value
 delta
 delta_abs
 correction_burden
 residual
 availability
 confidence
+quality_gravity
 ```
 
 Promotion gates:
 
 ```text
 1. raw, norm, and existing canon columns are never overwritten.
-2. No candidate is emitted without burden and residual reports.
-3. No feature may consume a candidate unless its evaluation_domain is declared as
+2. No analysis evidence is emitted without burden and residual reports.
+3. No feature may consume a analysis evidence unless its evaluation_domain is declared as
    corrected_3d_hypothesis or dual_domain_compare.
-4. Canonicalization must not decide score gravity or final-score contribution.
-   It emits only candidate evidence for the later scoring policy.
+4. Canonicalization must not decide score-policy weight or final-score contribution.
+   It emits only analysis evidence for the later scoring policy.
 5. A correction step must be rejected or marked not_assessed when it worsens a
    configured hard residual gate such as support width, bend-side consistency, or
    support-surface plausibility.
@@ -389,17 +510,17 @@ Minimum implementation target for the first module extraction:
 
 ```text
 module path      src/movement/stages/corrected_3d_hypothesis.py
-primary function build_corrected_3d_hypothesis_candidates(...)
+primary function build_corrected_3d_hypothesis_evidence(...)
 return object    Corrected3DHypothesisResult
-default mode     candidate evidence only, downstream_coordinate_mode = norm
-first feature    candidate.support_width_stability sensitivity only
+default mode     analysis evidence only, downstream_coordinate_mode = norm
+first feature    analysis.support_width_stability sensitivity only
 ```
 
-### 5.3 First Sensitivity Target: `candidate.support_width_stability`
+### 5.4 First Sensitivity Target: `analysis.support_width_stability`
 
-The first code-backed sensitivity target is a candidate-evidence comparison of
+The first code-backed sensitivity target is a analysis-evidence comparison of
 support width stability. It does not create corrected coordinates.
-It only compares an existing candidate coordinate family with the base `norm`
+It only compares an existing analysis-space coordinate family with the base `norm`
 family.
 
 Definition:
@@ -407,40 +528,42 @@ Definition:
 ```text
 support_pair          left_ankle, right_ankle by default
 norm_width(t)         distance between support_pair in norm axes [x, y]
-candidate_width(t)    distance between support_pair in candidate axes [x, y, z]
+analysis_width(t)    distance between support_pair in coordinate axes [x, y, z]
 stability_value       P95(width) - P05(width), in torso-length ratio
-delta                 candidate_stability_value - norm_stability_value
+delta                 analysis_stability_value - norm_stability_value
 ```
 
-The `norm` value intentionally uses recording-plane axes only. The candidate
+The `norm` value intentionally uses recording-plane axes only. The analysis-space value
 value may include model-depth or corrected-depth axes, but remains
-low-confidence corrected-3D-hypothesis evidence. When candidate coordinate
+low-confidence corrected-3D-hypothesis evidence. When analysis-space coordinate
 columns are absent, the feature is `not_assessed`; the function must not create a
-candidate by itself.
+analysis evidence by itself.
 
 Required output row:
 
 ```text
-feature_id = candidate.support_width_stability
+feature_id = analysis.support_width_stability
 evaluation_domain = corrected_3d_hypothesis
-source_evidence = norm support-pair width versus existing candidate family
+source_evidence = norm support-pair width versus existing coordinate family
 norm_value
-corrected_candidate_value
+corrected_value
 delta
 delta_abs
 correction_burden
 residual
 availability
 confidence
+quality_gravity
 ```
 
-`correction_burden` is taken from the supplied burden ledger when available. A
-missing ledger makes the row `low_confidence` even if candidate columns are
-present. High burden or non-finite values keep the row as low-confidence
-candidate evidence and can lower availability to `low_confidence` or
-`not_assessed`.
+`quality_gravity` is the downstream trust summary for the row. `correction_burden`
+and residual details are report-local diagnostics taken from the supplied burden
+ledger and comparison residual when available. A missing ledger makes the row
+`low_confidence` even if analysis-space columns are present. High burden or non-finite
+values keep the row as low-confidence analysis evidence and can lower
+availability to `low_confidence` or `not_assessed`.
 
-### 5.4 Pipeline Review Surface
+### 5.5 Pipeline Review Surface
 
 When `canonicalization.corrected_3d_hypothesis.enabled = true` and
 `emit_sensitivity_report = true`, `run_pipeline` emits a top-level report block:
@@ -448,13 +571,13 @@ When `canonicalization.corrected_3d_hypothesis.enabled = true` and
 ```python
 {
     "corrected_3d_hypothesis_review": {
-        "num_candidate_rows": int,
+        "num_analysis_rows": int,
         "num_burden_rows": int,
         "residual_report": dict,
         "norm_vs_corrected_sensitivity_report": list[dict],
         "num_sensitivity_rows": int,
         "readiness_provenance": {
-            "status": "candidate_evidence",
+            "status": "analysis_evidence",
             "used_for_features_or_scores": False,
             "downstream_coordinate_mode": "norm",
         },
@@ -462,17 +585,18 @@ When `canonicalization.corrected_3d_hypothesis.enabled = true` and
 }
 ```
 
-This block is a candidate-evidence surface. It must not alter `df`, downstream
+This block is a analysis-evidence surface. It must not alter `df`, downstream
 coordinate mode, feature extraction, biomechanical proxies, biomarker records,
-or final scores. If the configured candidate family columns are absent, the
+or final scores. If the configured coordinate family columns are absent, the
 sensitivity row is still emitted as `not_assessed` so the reason is visible in
-the report. Score gravity is intentionally deferred to the later scoring policy.
+the report. Score-policy weight is intentionally deferred to the later scoring
+policy.
 
-### 5.5 Multi-Recording / Multi-Exercise Sensitivity Surface
+### 5.6 Multi-Recording / Multi-Exercise Sensitivity Surface
 
 Multi-recording review starts by aggregating already generated pipeline reports.
 The aggregation helper reads `corrected_3d_hypothesis_review` blocks and returns
-grouped candidate-evidence rows. Required grouping fields:
+grouped analysis-evidence rows. Required grouping fields:
 
 ```text
 feature_id
@@ -483,16 +607,18 @@ n_assessed
 n_low_confidence
 n_not_assessed
 median_norm_value
-median_corrected_candidate_value
+median_corrected_value
 median_delta_abs
 max_correction_burden
+median_quality_gravity
 ```
 
 The summary does not decide whether a feature should affect the final score. It
 only shows whether enough recordings exist to review stability, availability,
-burden, and norm-vs-candidate sensitivity. Assigning nonzero score gravity
-remains deferred to a later scoring-policy task after this summary is reviewed
-across multiple recordings and exercises.
+`quality_gravity`, report-local burden diagnostics, and norm-vs-analysis
+sensitivity. Assigning nonzero score-policy weight remains deferred to a later
+scoring-policy task after this summary is reviewed across multiple recordings
+and exercises.
 
 Body-axis alignment is intentionally not active. It may be reconsidered only
 after the anthropometric skeleton prior is specified, because pelvis/shoulder
@@ -512,7 +638,7 @@ Allowed uses:
 
 ```text
 - flag segment lengths that are anatomically implausible after normalization
-- create candidate depth residual evidence when bounded and small
+- create analysis depth residual evidence when bounded and small
 - downgrade data confidence for affected segment/frame/feature records
 - document why a depth-sensitive feature is withheld or marked low confidence
 ```
@@ -552,7 +678,7 @@ Two-stage evidence model:
 
 | Stage | Data level | Allowed claim | Use |
 |---|---|---|---|
-| Stage A | file design + aggregate statistics | conservative engineering range around aggregate ratios | plausibility flag, low-confidence marking, candidate residual evidence |
+| Stage A | file design + aggregate statistics | conservative engineering range around aggregate ratios | plausibility flag, low-confidence marking, analysis residual evidence |
 | Stage B | de-identified row-level 3D full-body automatic raw data | empirical row-level ratio distribution, P1/P99, P5/P95, stratified checks | narrower prior, height-bin validation, model comparison |
 
 ### 6.3 Aggregate-Only Segment Map
@@ -636,14 +762,14 @@ Questionnaire collection may still keep 5 cm bins for future flexibility.
 
 ### 6.6 Correction And Confidence Policy
 
-The prior may create candidate `canon` coordinates only when all conditions hold:
+The prior may create `canon` analysis-space coordinates only when all conditions hold:
 
 ```text
 1. the segment is available in the prior
 2. x/y evidence does not already violate the plausible range
 3. a bounded depth residual can bring the segment inside the loose range
 4. correction magnitude is below configured cap
-5. landmark visibility and swap-risk gates allow review
+5. landmark confidence and swap-risk gates allow review
 ```
 
 If the x/y projection is already outside the envelope, the system must not invent
@@ -658,7 +784,7 @@ evidence_level
 range_type
 segments_checked
 segments_unavailable
-candidate_corrections
+analysis_corrections
 correction_magnitude_torso
 rejection_reasons
 confidence_downgrade_reasons
@@ -698,24 +824,25 @@ unit = dimensionless_ratio
 
 ## 7. Downstream Rules
 
-- ⑦ Segmentation, ⑧ Feature Extraction, ⑨ Biomechanical Proxy, and ⑩ Biomarker
+- ⑥ Segmentation, ⑦ Feature Extraction, ⑧ Biomechanical Proxy, and ⑨ Biomarker
   Scoring consume `norm` coordinates by default.
 - Downstream features must declare `recording_view_only`,
   `corrected_3d_hypothesis`, or `dual_domain_compare` before using corrected
   coordinates.
-- Corrected-3D-hypothesis coordinates remain candidate evidence in ⑥. The later
-  scoring policy decides any score gravity; the current development plan keeps
-  corrected-depth contribution at zero there.
+- Corrected-3D-hypothesis coordinates remain analysis evidence in ⑥. The later
+  scoring policy decides any score-policy weight; the current development plan
+  keeps corrected-depth contribution at zero there.
 - Corrected-coordinate magnitude and residuals are data-confidence/provenance
   signals, not movement-quality penalties.
 - ④ Preprocessing may mark reliability violations before scale computation,
-  ⑤ Normalization owns body-relative scaling, and ⑥ Canonicalization owns
-  canonical candidate coordinates.
-- ⑨ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
+  ⑤ Normalization owns body-relative scaling, and ⑤-1 Canonicalization owns
+  canonical analysis-space coordinates.
+- ⑧ Biomechanical Proxy uses normalized coordinates to compute relative CoM,
   moment-arm, and load-shift proxies. It must not infer absolute force, torque,
   or calibrated physical distances from this step.
-- Corrected candidate outputs are not used downstream until feature-specific
-  burden, residual, and norm-vs-corrected sensitivity gates are documented.
+- Corrected analysis-space outputs are not used downstream until feature-specific
+  `quality_gravity`, report-local burden/residual diagnostics, and
+  norm-vs-corrected sensitivity gates are documented.
 
 ---
 
@@ -725,9 +852,10 @@ unit = dimensionless_ratio
   8th 3D full-body automatic measurement source.
 - Add row-level empirical prior only if de-identified raw 3D full-body automatic
   measurements become available.
-- Visibility-weighted scale estimation and torso-length outlier handling.
+- confidence-weighted scale estimation and torso-length outlier handling.
 - Per-exercise canonicalization prior selection from exercise definition fields.
-- Robustness evaluation before any corrected coordinate receives nonzero score
-  gravity in a later scoring policy.
+- Robustness evaluation before any corrected coordinate receives nonzero
+  score-policy weight in a later scoring policy.
 - Gradual de-emphasis of the legacy `floor_relative_correction` key once local
   configs no longer depend on it.
+

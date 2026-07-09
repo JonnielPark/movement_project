@@ -41,7 +41,7 @@ class FloorReferenceConfig:
     vertical_axis: str = "y"
     support_landmarks: list[str] = field(default_factory=list)
     diagnostic_landmarks: list[str] = field(default_factory=list)
-    visibility_threshold: float = 0.7
+    confidence_threshold: float = 0.7
     stability_window_frames: int = 5
     max_anchor_residual_torso: float = 0.08
     correction_transform: str = "rigid_rotation"
@@ -310,16 +310,16 @@ def _collect_anchor_points(
             index=values.index,
         )
 
-        visibility_col = f"{landmark}_visibility"
-        if visibility_col in df.columns:
-            valid &= df[visibility_col].astype(float) >= config.visibility_threshold
+        confidence_col = f"{landmark}_confidence"
+        if confidence_col in df.columns:
+            valid &= df[confidence_col].astype(float) >= config.confidence_threshold
         else:
             notes.append(
-                f"{landmark}: visibility column missing; visibility filter skipped"
+                f"{landmark}: confidence column missing; confidence filter skipped"
             )
 
         if not bool(valid.any()):
-            excluded.setdefault(landmark, []).append("no_visible_frames")
+            excluded.setdefault(landmark, []).append("no_confident_frames")
             continue
 
         selected = values.loc[valid]

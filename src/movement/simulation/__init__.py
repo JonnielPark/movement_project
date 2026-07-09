@@ -4,7 +4,7 @@ Robustness Simulation
 Injects artificial conditions into normal synthetic pose data to evaluate the
 engineering robustness of the analysis framework.
 
-Called outside the ①–⑩ pipeline steps; not included in run_pipeline().
+Called outside the ①–⑨ pipeline steps; not included in run_pipeline().
 
 Submodule:
   simulation.synthetic → synthetic data generation and condition injection functions
@@ -12,7 +12,7 @@ Submodule:
 Supported simulation conditions:
   - ROM restriction : artificially reduce range of motion of motion
   - Gaussian noise  : coordinate noise (σ in torso_length_ratio units)
-  - Occlusion       : set landmark visibility to 0 and coordinates to NaN
+  - Occlusion       : set landmark confidence to 0 and coordinates to NaN
   - Velocity spike  : insert position jumps at specified frames
 
 All functions return a pose dataframe in the same column format as the input

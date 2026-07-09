@@ -66,7 +66,7 @@ Notebook은 세 가지 authoring mode를 구분한다:
 | Mode | 목적 | File 정책 | Metadata 정책 |
 |---|---|---|---|
 | `draft_bundle` | Preview와 연구자 검토를 위한 local generated draft. | `data/processed/authoring_drafts/<exercise_id>/` | Top-level `status: draft`, `generated_by`, `requires_review`를 유지한다. |
-| `canonical_loader_view` | 기존 hand-authored 운동 정의가 없었다고 가정하고 pipeline 실행을 시험할 수 있도록 draft bundle을 intended canonical exercise처럼 읽는 loader-time view. | Draft bundle을 재사용하며 duplicate candidate file은 작성하지 않는다. | Draft top-level metadata를 runtime `authoring_provenance`로 이동한다. |
+| `canonical_loader_view` | 기존 hand-authored 운동 정의가 없었다고 가정하고 pipeline 실행을 시험할 수 있도록 draft bundle을 intended canonical exercise처럼 읽는 loader-time view. | Draft bundle을 재사용하며 duplicate draft file은 작성하지 않는다. | Draft top-level metadata를 runtime `authoring_provenance`로 이동한다. |
 | `canonical_install` | 향후 검토 완료 후 runtime `data/definitions/`와 `data/protocols/`로 승격. | Main runtime directories. | 명시적인 연구자 승인이 필요하며 notebook의 기본 동작이 아니다. |
 
 현재 prototype은 `draft_bundle`과 `canonical_loader_view`를 구현한다.
@@ -193,7 +193,7 @@ input이 되기 전에 segmentation review가 필요하다.
 Phase template은 boundary detection에 사용할 coordinate family를 선언할 수 있다. 예를 들어
 squat 계열 template은 descent/ascent detection에 recording-view raw `hip_center` `image_y`를
 사용하면서도, 후속 feature와 scoring 단계는 여전히 normalized coordinate를 소비하게 할 수 있다.
-Report contract는 `docs/pipeline/07_segmentation.md`를 따른다.
+Report contract는 `docs/pipeline/06_segmentation.md`를 따른다.
 
 Notebook은 `phase_template`을 hard-filter하지 않고 앞선 authoring axis로 추천하고 정렬한다.
 추천에는 `posture_type`, `body_geometry`, `support_template`, 선택된 joint actions,
@@ -255,7 +255,7 @@ provenance이다.
 그렇지 않으면 view family만으로 충분하다.
 
 `analysis_template`은 운동별 template이 아니라 analysis-profile family이다. 생성되는 analysis
-profile의 기본 landmark set, biomechanical focus, compensation candidates, feature domains,
+profile의 기본 landmark set, biomechanical focus, compensation patterns, feature domains,
 quality-rule 시작점을 정한다. 현재 key는 lower-body closed-chain, split-stance lower-body loading,
 closed-chain upper-body press, anti-rotation control처럼 넓은 분석 family를 설명할 수는 있지만,
 구체 운동 이름을 담아서는 안 된다.
@@ -331,7 +331,7 @@ exercise_definition:
 `status: draft`, `requires_review` metadata를 유지하므로, 연구자 검토를 거쳐 main
 `data/definitions`와 `data/protocols`로 승격하기 전까지 canonical definition으로 취급하지 않는다.
 
-`canonical_loader_view`는 두 번째 candidate bundle을 작성하지 않는다. 같은 draft file을
+`canonical_loader_view`는 두 번째 draft bundle을 작성하지 않는다. 같은 draft file을
 재사용하고, loader에게 intended canonical `exercise_id`로 노출하라고 요청한다. 예를 들어
 `draft_squat` bundle은 네 개 YAML file을 복사하지 않고 runtime `squat`처럼 평가할 수 있다:
 
@@ -368,7 +368,7 @@ draft view-family/H camera recommendation
 연구자 검토 필요:
 
 ```text
-compensation candidates and implementation feasibility
+compensation patterns and implementation feasibility
 view-metric reliability
 quality thresholds and scoring eligibility
 clinical meaning text
@@ -382,7 +382,7 @@ Draft artifact는 다음 metadata를 포함한다:
 status: draft
 generated_by: exercise_authoring_notebook
 requires_review:
-  - compensation_candidates
+  - compensation_patterns
   - view_metric_reliability
   - quality_rules
   - clinical_meaning
@@ -398,7 +398,7 @@ authoring_provenance:
   source_authoring_exercise_id: draft_squat
   canonical_exercise_id: squat
   requires_review:
-    - compensation_candidates
+    - compensation_patterns
     - view_metric_reliability
 ```
 

@@ -1,8 +1,8 @@
 """
-⑪ Visualization
+⑩ Visualization
 
 Interactive visualization and diagnostic reporting functions for pose data and analysis results.
-Called independently outside the ①–⑩ pipeline steps.
+Called independently outside the ①–⑨ pipeline steps.
 
 Implemented:
     create_pose_animation()            — Plotly interactive 3D pose animation
@@ -95,7 +95,7 @@ def create_pose_animation(
         df=df,
         landmarks=landmarks,
         coord_mode=coord_mode,
-        require_visibility=False,
+        require_confidence=False,
     )
 
     if missing_cols:
@@ -258,7 +258,7 @@ def plot_joint_angle_timeseries(
 ) -> "go.Figure":
     """Plot joint angle time series per frame (unit: degree).
 
-    Rep ranges are shown as background shading for comparison with ⑧ ROM features.
+    Rep ranges are shown as background shading for comparison with ⑦ ROM features.
 
     Parameters
     ----------
@@ -318,7 +318,7 @@ def plot_side_role_context_chart(
     height: int = 300,
     width: int = 900,
 ) -> "go.Figure":
-    """Chart ⑧ Feature Extraction side-role context results per frame.
+    """Chart ⑦ Feature Extraction side-role context results per frame.
 
     Shows detected vs. expected active side and side-role confidence.
 
@@ -336,9 +336,7 @@ def plot_side_role_context_chart(
     -------
     go.Figure
     """
-    raise NotImplementedError(
-        "plot_side_role_context_chart is not yet implemented."
-    )
+    raise NotImplementedError("plot_side_role_context_chart is not yet implemented.")
 
 
 # Legacy alias for older notebooks/imports.
@@ -351,7 +349,7 @@ def plot_biomarker_radar(
     height: int = 500,
     width: int = 600,
 ) -> "go.Figure":
-    """Radar chart of ⑩ biomarker derivation results.
+    """Radar chart of ⑨ biomarker derivation results.
 
     Each axis is one biomarker. If reference_records is provided,
     a comparison overlay is added.
@@ -447,7 +445,7 @@ def create_pose_comparison_animation(
             df=df,
             landmarks=landmarks,
             coord_mode=mode,
-            require_visibility=False,
+            require_confidence=False,
         )
 
         if missing_cols:

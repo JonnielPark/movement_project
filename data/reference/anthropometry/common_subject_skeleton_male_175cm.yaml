@@ -70,7 +70,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Seated shoulder-outside breadth proxy; closer to transverse shoulder
         landmark distance than shoulder length. Compare m298 as sensitivity.
       constraint_notes: Shoulder width is a transverse width proxy, not an internal
@@ -115,7 +115,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Surface hip breadth proxy; can exceed pose-model internal hip-joint distance.
       constraint_notes: Hip width is a surface-width proxy and should use a broad
         tolerance.
@@ -160,7 +160,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Standing vertical proxy; not 3D Euclidean shoulder-center to hip-center
         segment.
       constraint_notes: Torso relation can change with trunk flexion; use as review
@@ -247,7 +247,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark
         convention.
       constraint_notes: Apparent length should be stable, but shoulder/elbow landmark
@@ -292,7 +292,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark
         convention.
       constraint_notes: Apparent length should be stable, but shoulder/elbow landmark
@@ -338,7 +338,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Row-level derivation is discussion-only; aggregate mean difference is
         used here.
       constraint_notes: Wrist landmark noise and hand occlusion may cause apparent
@@ -384,7 +384,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: medium
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Row-level derivation is discussion-only; aggregate mean difference is
         used here.
       constraint_notes: Wrist landmark noise and hand occlusion may cause apparent
@@ -430,7 +430,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: high
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee
         height; vertical-only, not Euclidean 3D segment.
       constraint_notes: Hip and knee landmarks are depth-sensitive in squat and lunge
@@ -476,7 +476,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: high
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee
         height; vertical-only, not Euclidean 3D segment.
       constraint_notes: Hip and knee landmarks are depth-sensitive in squat and lunge
@@ -522,7 +522,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: high
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
       constraint_notes: Ankle visibility and far-side overlap can create apparent
         shank length changes.
@@ -567,7 +567,7 @@ common_subject_skeleton_model:
       occlusion_swap_sensitivity: high
       evidence_level: aggregate_engineering_preview
       range_status: aggregate_engineering_conservative_range
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       notes: Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
       constraint_notes: Ankle visibility and far-side overlap can create apparent
         shank length changes.

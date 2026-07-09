@@ -1,11 +1,11 @@
-# 06 Canonicalization — p01 Squat Review Parameter Snapshot
+# 05-1 Canonicalization — p01 Squat Review Parameter Snapshot
 
 **Version:** 0.1.0  
 **Last Updated:** 2026-06-16  
 **Status:** 과거 review snapshot이며 실행 가능한 pipeline profile이 아니다.
 
 이 파일은 제거된 `notebook_16_closed_chain_stance_corridor_review` profile의 핵심 파라미터를
-보존한다. 원래 YAML은 p01 squat corrected-3D-hypothesis candidate surface를 검토하는 데
+보존한다. 원래 YAML은 p01 squat corrected-3D-hypothesis analysis-evidence surface를 검토하는 데
 사용했다. Retired review setting이 active 또는 dormant pipeline branch처럼 보이면 안 되므로
 `configs/pipeline_runs/` 아래에는 더 이상 두지 않는다.
 
@@ -18,7 +18,7 @@ calibrated 3D, 또는 scoring input이라는 뜻이 아니다.
 profile:
   name: notebook_16_closed_chain_stance_corridor_review
   mode: notebook_review
-  description: p01 squat canonicalization review for the promoted corrected-3D-hypothesis candidate stack
+  description: p01 squat canonicalization review for the promoted corrected-3D-hypothesis analysis-evidence stack
 
 recording_context:
   observed_camera_zone: Z8
@@ -121,7 +121,7 @@ recording_view_constrained_skeleton_fit:
     max_width_z_shift_ratio: 0.25
     bend_side_guard:
       enabled: true
-      mode: soft_reject_candidate_shift
+      mode: soft_reject_analysis_shift
       source_family: norm
       planes: [yz_height_depth, xz_recording_depth]
       near_neutral_tolerance_ratio: 0.010
@@ -138,7 +138,7 @@ within_session_segment_memory:
   review_rep_id: 1
   include_ready_window: true
   include_review_rep: true
-  min_endpoint_visibility: 0.55
+  min_endpoint_confidence: 0.55
   min_stable_frames: 12
   trim_quantile: 0.10
   max_p95_p05_ratio: 0.30
@@ -202,7 +202,7 @@ bounded_recording_view_residual:
     max_width_z_shift_ratio: 0.25
     bend_side_guard:
       enabled: true
-      mode: soft_reject_candidate_shift
+      mode: soft_reject_analysis_shift
       source_family: norm
       planes: [yz_height_depth, xz_recording_depth]
       near_neutral_tolerance_ratio: 0.010
@@ -244,10 +244,10 @@ visible_support_mirrored_anchor_prior:
   required_base_of_support: bilateral_feet
   required_support_surface: floor
   source_family: norm
-  trusted_side_source: visibility_stability
+  trusted_side_source: confidence_stability
   fallback_trusted_side: left
   target_side: auto_opposite
-  candidate_sides: [left, right]
+  review_sides: [left, right]
   body_frame_source: ready_window_median
   body_center_landmarks: [left_hip, right_hip]
   support_landmark_suffixes: [ankle, heel, foot_index]
@@ -297,7 +297,7 @@ bounded_pre_post_standing_anchor_blend:
 planted_support_temporal_memory:
   mode: whole_video_support_landmark_memory_z_only
   scope: whole_video
-  review_only_candidate: false
+  review_only_evidence: false
   source_family: rv_skeleton_fit_bounded_xy_endpoint_blend
   family: rv_skeleton_fit_bounded_xy_endpoint_blend_support_memory
   playback_norm_family: norm
@@ -311,7 +311,7 @@ planted_support_temporal_memory:
   reference:
     source: whole_video_stable_trimmed_median
     trim_quantile: 0.10
-    min_visibility: 0.55
+    min_confidence: 0.55
     max_frame_to_frame_jump_ratio: 0.030
     min_reference_frames: 12
   support_width_no_worsen:
@@ -333,14 +333,14 @@ score_readiness_review:
   rep_id_start: 1
   rep_id_end: 10
   reference_family: norm
-  candidate_family: final_review_output
+  coordinate_family: final_review_output
   bend_epsilon: 0.020
   critical_landmarks_by_side:
     left: [left_hip, left_knee, left_ankle]
     right: [right_hip, right_knee, right_ankle]
   thresholds:
-    min_visibility_p10: 0.50
-    min_visibility_median: 0.65
+    min_confidence_p10: 0.50
+    min_confidence_median: 0.65
     max_bend_flip_frames: 0
     max_knee_flexion_median_abs_delta_deg: 3.0
     max_knee_flexion_p95_abs_delta_deg: 8.0
@@ -391,7 +391,7 @@ review_display:
   playback_anchor:
     enabled: true
     mode: bilateral_ankle_midpoint
-    family: bounded_candidate
+    family: bounded_analysis_evidence
     landmarks: [left_ankle, right_ankle]
     include_height: true
 
@@ -402,3 +402,4 @@ scene_camera:
   top_down_eye: {x: 0.0, y: 0.0, z: 2.6}
   top_down_up: {x: 0.0, y: 1.0, z: 0.0}
 ```
+

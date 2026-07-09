@@ -1,11 +1,12 @@
 """
-⑧ Feature Extraction
+⑦ Feature Extraction
 
 Computes spatial, temporal, and control domain features from normalized pose data.
-Each feature is returned as a FeatureRecord with (value, unit, source_fields)
-so that downstream biomarker derivation (⑩) can trace provenance.
+Each feature is returned as a FeatureRecord with value, unit, and explicit
+operational metadata for downstream biomarker derivation (⑨). Optional
+source_fields may be carried as audit references for reports/debug exports.
 
-When the `phase` column is populated by ⑦ Segmentation, features are
+When the `phase` column is populated by ⑥ Segmentation, features are
 emitted at both rep-level (phase=None) and phase-level (phase='Descent', etc.),
 enabling the hierarchical analysis structure described in dissertation §5.5.
 
@@ -27,6 +28,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import numpy as np
 
 from movement.record_metadata import (
     COMMON_RECORD_METADATA_FIELDS,
@@ -52,8 +55,7 @@ class FeatureRecord:
     rep_id        : rep number (None = sequence-level feature)
     value         : feature value
     unit          : torso_length_ratio | degree | second | dimensionless_cv
-    source_fields : exercise definition fields that drove this feature (provenance).
-                    Phase-level records must include 'phase_segmentation.*' entries.
+    source_fields : optional audit references for reports/debug exports.
     note          : optional interpretation note
     phase         : kinematic phase label (None = rep-level; 'Descent' etc. = phase-level)
     depth_dependency : dependency on monocular depth inference, separate from
@@ -69,6 +71,7 @@ class FeatureRecord:
     evaluation_domain : scoring/evaluation evidence domain
     evidence_axes  : coordinate axes used by the calculation
     feature_family : broad feature family used by scoring and audits
+    quality_gravity : quality-trust multiplier for promoted analysis evidence
     """
 
     feature_id: str
@@ -94,13 +97,9 @@ class FeatureRecord:
     evaluation_domain: str = "unknown"
     evidence_axes: str | None = None
     feature_family: str | None = None
+    quality_gravity: float = 1.0
 
     def __post_init__(self) -> None:
-        if not self.source_fields:
-            raise ValueError(
-                f"FeatureRecord '{self.feature_id}': source_fields is empty. "
-                "Provenance fields from the exercise definition must be specified."
-            )
         valid_reliability = {"high", "moderate", "low", "not_assessed", "unknown"}
         if self.view_reliability not in valid_reliability:
             raise ValueError(
@@ -118,6 +117,11 @@ class FeatureRecord:
             raise ValueError(
                 f"FeatureRecord '{self.feature_id}': invalid depth_dependency "
                 f"{self.depth_dependency!r}."
+            )
+        if self.quality_gravity < 0.0 or self.quality_gravity > 1.0:
+            raise ValueError(
+                f"FeatureRecord '{self.feature_id}': quality_gravity must be "
+                f"between 0 and 1; got {self.quality_gravity}."
             )
         valid_model_depth_reliability = {"high", "moderate", "low", "unknown"}
         if self.model_depth_reliability not in valid_model_depth_reliability:
@@ -199,11 +203,11 @@ class FeatureRegistryCoverageReport:
     external_step_feature_domain_entries: list[dict[str, Any]] = field(
         default_factory=list
     )
-    implemented_compensation_candidates: list[str] = field(default_factory=list)
-    unimplemented_compensation_candidates: list[dict[str, Any]] = field(
+    implemented_compensation_patterns: list[str] = field(default_factory=list)
+    unimplemented_compensation_patterns: list[dict[str, Any]] = field(
         default_factory=list
     )
-    compensation_candidate_availability: list[dict[str, Any]] = field(
+    compensation_pattern_availability: list[dict[str, Any]] = field(
         default_factory=list
     )
 
@@ -213,9 +217,9 @@ class FeatureRegistryCoverageReport:
             "connected_feature_domain_entries": self.connected_feature_domain_entries,
             "unsupported_feature_domain_entries": self.unsupported_feature_domain_entries,
             "external_step_feature_domain_entries": self.external_step_feature_domain_entries,
-            "implemented_compensation_candidates": self.implemented_compensation_candidates,
-            "unimplemented_compensation_candidates": self.unimplemented_compensation_candidates,
-            "compensation_candidate_availability": self.compensation_candidate_availability,
+            "implemented_compensation_patterns": self.implemented_compensation_patterns,
+            "unimplemented_compensation_patterns": self.unimplemented_compensation_patterns,
+            "compensation_pattern_availability": self.compensation_pattern_availability,
         }
 
 
@@ -224,9 +228,7 @@ class AnalysisDisruptingPatternDetectabilityReport:
     """Detectability audit for performance_protocol.analysis_disrupting_patterns."""
 
     exercise_id: str
-    pose_detectable_scoring_candidates: list[dict[str, Any]] = field(
-        default_factory=list
-    )
+    pose_detectable_score_features: list[dict[str, Any]] = field(default_factory=list)
     acquisition_control_factors: list[dict[str, Any]] = field(default_factory=list)
     interpretation_limitation_factors: list[dict[str, Any]] = field(
         default_factory=list
@@ -237,7 +239,7 @@ class AnalysisDisruptingPatternDetectabilityReport:
     def as_dict(self) -> dict[str, Any]:
         return {
             "exercise_id": self.exercise_id,
-            "pose_detectable_scoring_candidates": self.pose_detectable_scoring_candidates,
+            "pose_detectable_score_features": self.pose_detectable_score_features,
             "acquisition_control_factors": self.acquisition_control_factors,
             "interpretation_limitation_factors": self.interpretation_limitation_factors,
             "unknown_patterns": self.unknown_patterns,
@@ -248,7 +250,7 @@ class AnalysisDisruptingPatternDetectabilityReport:
 # ── Phase-aware feature families ─────────────────────────────────────────────
 # These feature families are computed per (rep_id, phase) when the phase column
 # is populated.  control.compensation is rep-level only because compensation
-# candidates span the full rep trajectory (crossing phase boundaries).
+# patterns span the full rep trajectory (crossing phase boundaries).
 
 PHASE_AWARE_FEATURE_FAMILIES: frozenset[str] = frozenset(
     {
@@ -684,9 +686,9 @@ def _matches_feature_family(feature_id: str, family_pattern: str) -> bool:
     )
 
 
-def _downgrade_availability(current: str, candidate: str) -> str:
+def _downgrade_availability(current: str, new_value: str) -> str:
     rank = {"assessed": 0, "low_confidence": 1, "not_assessed": 2}
-    return candidate if rank[candidate] > rank[current] else current
+    return new_value if rank[new_value] > rank[current] else current
 
 
 def _feature_id_mentions_any(feature_id: str, tokens: Iterable[str]) -> bool:
@@ -718,22 +720,15 @@ def _focus_tokens(exercise_definition: Any, group: str) -> list[str]:
     return _unique_preserve_order([str(token) for token in tokens if str(token)])
 
 
-def _feature_focus_tier(
-    record: FeatureRecord,
-    exercise_definition: Any,
-) -> str:
-    """Infer scoring-intent tier from feature provenance and exercise definition."""
+def _feature_focus_tier(record: FeatureRecord, exercise_definition: Any) -> str:
+    """Infer scoring-intent tier from explicit record identifiers and metadata."""
 
     feature_id = record.feature_id
-    source_fields = set(record.source_fields)
     reasons = set(record.availability_reasons)
-    is_recording_view_xy_scoring = (
-        "spatial.movement_path.recording_view_xy_scoring" in source_fields
-    )
 
     if (
-        any("axis_diagnostic" in field for field in source_fields)
-        and not is_recording_view_xy_scoring
+        "axis_path_" in feature_id
+        or "axis_diagnostic" in feature_id
         or any("diagnostic_report_only" in reason for reason in reasons)
     ):
         return "diagnostic"
@@ -741,27 +736,10 @@ def _feature_focus_tier(
     if feature_id.startswith("control.compensation."):
         return "compensation"
 
-    if (
-        feature_id.startswith("spatial.support_consistency.")
-        or feature_id.startswith(
-            "spatial.role_alignment.left_right.support_consistency_"
-        )
-        or any(
-            field == "support" or field.startswith("support.")
-            for field in source_fields
-        )
+    if feature_id.startswith("spatial.support_consistency.") or feature_id.startswith(
+        "spatial.role_alignment.left_right.support_consistency_"
     ):
         return "context_constraint"
-
-    if any(
-        ".secondary" in field or field.endswith(".secondary") for field in source_fields
-    ):
-        return "secondary"
-
-    if any(
-        ".primary" in field or field.endswith(".primary") for field in source_fields
-    ):
-        return "primary"
 
     if _feature_id_mentions_any(
         feature_id, _focus_tokens(exercise_definition, "primary")
@@ -895,7 +873,7 @@ _FEATURE_DOMAIN_EXTRACTOR_REGISTRY: dict[str, dict[str, str]] = {
     },
 }
 _FEATURE_DOMAIN_EXTERNAL_STEPS: dict[str, str] = {
-    "biomechanical_proxy": "09_biomechanical_proxy",
+    "biomechanical_proxy": "08_biomechanical_proxy",
 }
 
 _DEFERRED_COMPENSATION_FEATURE_DESIGN: frozenset[str] = frozenset(
@@ -925,7 +903,7 @@ _DEFERRED_COMPENSATION_FEATURE_DESIGN: frozenset[str] = frozenset(
     }
 )
 
-_POSE_DETECTABLE_SCORING_CANDIDATE = "pose_detectable_scoring_candidate"
+_POSE_DETECTABLE_SCORE_FEATURE = "pose_detectable_score_feature"
 _ACQUISITION_CONTROL_FACTOR = "acquisition_control_factor"
 _INTERPRETATION_LIMITATION_FACTOR = "interpretation_limitation_factor"
 _UNKNOWN_PATTERN = "unknown"
@@ -940,32 +918,32 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_wrist",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": [],
         "basis": (
-            "Arm motion is visible, but whether it assists the movement cannot be "
+            "Arm motion has observable confidence, but whether it assists the movement cannot be "
             "proven from pose trajectories alone."
         ),
     },
     "heel_lift": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": ["left_heel", "right_heel", "left_ankle", "right_ankle"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": None,
-        "linked_compensation_candidates": ["heel_lift"],
+        "linked_compensation_patterns": ["heel_lift"],
         "linked_feature_domain_entries": ["control.compensation"],
-        "basis": "Heel vertical displacement can be estimated from heel landmarks when visible.",
+        "basis": "Heel vertical displacement can be estimated when heel landmark confidence is sufficient.",
     },
     "unstable_foot_contact": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
         "required_landmarks": ["left_ankle", "right_ankle", "left_heel", "right_heel"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": ["spatial.support_width"],
         "basis": (
             "Foot landmark motion can suggest support changes, but true floor contact "
@@ -973,7 +951,7 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         ),
     },
     "excessive_knee_deviation": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": [
             "left_hip",
             "right_hip",
@@ -983,19 +961,19 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_ankle",
         ],
         "view_sensitivity": "high",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": None,
-        "linked_compensation_candidates": ["knee_valgus", "knee_varus"],
+        "linked_compensation_patterns": ["knee_valgus", "knee_varus"],
         "linked_feature_domain_entries": ["control.compensation", "spatial.alignment"],
         "basis": "Knee deviation can map to frontal-plane valgus or varus proxies.",
     },
     "inconsistent_depth": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": ["hip_center", "left_hip", "right_hip"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "rep_segmentation.report",
-        "linked_compensation_candidates": [
+        "linked_compensation_patterns": [
             "asymmetric_depth",
             "insufficient_head_descent",
         ],
@@ -1006,7 +984,7 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "basis": "Depth variation is pose-detectable when rep boundaries and reference landmarks are stable.",
     },
     "excessive_trunk_flexion": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": [
             "left_shoulder",
             "right_shoulder",
@@ -1014,9 +992,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_hip",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": None,
-        "linked_compensation_candidates": ["excessive_trunk_flexion"],
+        "linked_compensation_patterns": ["excessive_trunk_flexion"],
         "linked_feature_domain_entries": [
             "control.compensation",
             "spatial.posture_angle",
@@ -1027,9 +1005,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "classification": _ACQUISITION_CONTROL_FACTOR,
         "required_landmarks": ["left_ankle", "right_ankle", "left_foot", "right_foot"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": ["unstable_step_width"],
+        "linked_compensation_patterns": ["unstable_step_width"],
         "linked_feature_domain_entries": ["spatial.support_width"],
         "basis": "Step changes affect comparability and active-side interpretation before they are score factors.",
     },
@@ -1042,14 +1020,14 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_hip",
         ],
         "view_sensitivity": "high",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "recording_metadata.camera_zone or annotation.note",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": [],
         "basis": "A camera-facing direction change weakens side comparison and is best reported as a limitation.",
     },
     "hip_drop_to_pushup": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": [
             "left_hip",
             "right_hip",
@@ -1057,9 +1035,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_shoulder",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "failure_reason",
-        "linked_compensation_candidates": ["hip_drop"],
+        "linked_compensation_patterns": ["hip_drop"],
         "linked_feature_domain_entries": [
             "control.trunk_stability",
             "spatial.depth_proxy",
@@ -1067,7 +1045,7 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "basis": "Hip-height collapse changes the pike geometry and is observable from hip/shoulder landmarks.",
     },
     "head_forward_shift": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": [
             "nose",
             "left_wrist",
@@ -1076,9 +1054,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_shoulder",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "head_proxy note when nose is unstable",
-        "linked_compensation_candidates": ["head_forward_shift"],
+        "linked_compensation_patterns": ["head_forward_shift"],
         "linked_feature_domain_entries": [
             "spatial.depth_proxy",
             "spatial.movement_path",
@@ -1086,7 +1064,7 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "basis": "Head trajectory relative to hand/shoulder landmarks can indicate forward drift.",
     },
     "elbow_flare": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": [
             "left_shoulder",
             "right_shoulder",
@@ -1096,9 +1074,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_wrist",
         ],
         "view_sensitivity": "high",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": None,
-        "linked_compensation_candidates": ["elbow_flare"],
+        "linked_compensation_patterns": ["elbow_flare"],
         "linked_feature_domain_entries": ["control.compensation", "spatial.alignment"],
         "basis": "Elbow line deviation is pose-readable but view and self-occlusion sensitive.",
     },
@@ -1111,19 +1089,19 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_ankle",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": ["spatial.support_width"],
         "basis": "Support-point changes alter the task reference and should remain a protocol warning.",
     },
     "excessive_pelvic_rotation": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": ["left_hip", "right_hip"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": None,
-        "linked_compensation_candidates": ["pelvis_rotation", "trunk_rotation"],
+        "linked_compensation_patterns": ["pelvis_rotation", "trunk_rotation"],
         "linked_feature_domain_entries": [
             "control.compensation",
             "control.rotation_control",
@@ -1131,17 +1109,17 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
         "basis": "Left-right hip depth asymmetry is a pose-based transverse-plane rotation proxy.",
     },
     "hip_height_drift": {
-        "classification": _POSE_DETECTABLE_SCORING_CANDIDATE,
+        "classification": _POSE_DETECTABLE_SCORE_FEATURE,
         "required_landmarks": ["left_hip", "right_hip"],
         "view_sensitivity": "medium",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "set-level trend note",
-        "linked_compensation_candidates": ["hip_drop", "hip_pike"],
+        "linked_compensation_patterns": ["hip_drop", "hip_pike"],
         "linked_feature_domain_entries": [
             "control.trunk_stability",
             "control.stability",
         ],
-        "basis": "Set-level hip-center vertical drift is visible when hip landmarks remain stable.",
+        "basis": "Set-level hip-center vertical drift is interpretable when hip landmarks remain stable.",
     },
     "base_of_support_shift": {
         "classification": _ACQUISITION_CONTROL_FACTOR,
@@ -1152,9 +1130,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_ankle",
         ],
         "view_sensitivity": "medium",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": ["spatial.support_width"],
         "basis": "Support-width changes can be tracked but true contact changes remain acquisition-control issues.",
     },
@@ -1167,9 +1145,9 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_shoulder",
         ],
         "view_sensitivity": "low",
-        "visibility_dependency": "medium",
+        "confidence_dependency": "medium",
         "annotation_fallback": "annotation.starting_side and performance_protocol.side_sequence",
-        "linked_compensation_candidates": ["left_right_timing_variability"],
+        "linked_compensation_patterns": ["left_right_timing_variability"],
         "linked_feature_domain_entries": ["temporal.left_right_timing_variability"],
         "basis": "Side-order errors are protocol-adherence warnings tied to side-role context.",
     },
@@ -1182,43 +1160,43 @@ _ANALYSIS_DISRUPTING_PATTERN_REGISTRY: dict[str, dict[str, Any]] = {
             "right_shoulder",
         ],
         "view_sensitivity": "high",
-        "visibility_dependency": "high",
+        "confidence_dependency": "high",
         "annotation_fallback": "annotation.note or video_review",
-        "linked_compensation_candidates": [],
+        "linked_compensation_patterns": [],
         "linked_feature_domain_entries": ["spatial.reach_distance"],
         "basis": "Wrist proximity can suggest a missed tap, but true shoulder contact is not proven by pose alone.",
     },
 }
 
 
-def _compensation_candidate_availability(
-    candidate: str,
+def _compensation_pattern_availability(
+    pattern: str,
     *,
     has_rule: bool,
     declared_unimplemented: bool,
     deferred_feature_design: bool,
     control_compensation_enabled: bool,
 ) -> dict[str, Any]:
-    """Return one availability-matrix row for a YAML compensation candidate."""
+    """Return one availability-matrix row for a YAML compensation pattern."""
     if has_rule:
         status = "implemented_rule"
         next_action = "available_for_feature_extraction"
     elif declared_unimplemented:
         status = "declared_unimplemented"
-        next_action = "implement_rule_or_keep_as_explicit_unimplemented_candidate"
+        next_action = "implement_rule_or_keep_as_explicit_unimplemented_pattern"
     elif deferred_feature_design:
         status = "deferred_feature_design"
-        next_action = "define_feature_rule_visibility_policy_and_test_fixture"
+        next_action = "define_feature_rule_confidence_policy_and_test_fixture"
     else:
         status = "no_rule_registered"
         next_action = "register_rule_or_mark_as_deferred_feature_design"
 
-    source_fields = [f"compensation_candidates.{candidate}"]
+    source_fields = [f"compensation_patterns.{pattern}"]
     if control_compensation_enabled:
         source_fields.append("feature_domains.control.compensation")
 
     return {
-        "candidate": candidate,
+        "pattern": pattern,
         "availability_status": status,
         "emits_feature": has_rule,
         "report_reason": status,
@@ -1228,7 +1206,7 @@ def _compensation_candidate_availability(
 
 
 def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageReport:
-    """Report YAML feature-domain and compensation candidates without failing extraction."""
+    """Report YAML feature-domain and compensation patterns without failing extraction."""
     from movement.features.compensation import COMPENSATION_RULES, _UNIMPLEMENTED
 
     feature_domains = getattr(exercise_definition, "feature_domains", None)
@@ -1266,30 +1244,30 @@ def audit_feature_registry(exercise_definition: Any) -> FeatureRegistryCoverageR
     control_entries = set(getattr(feature_domains, "control", []) or [])
     control_compensation_enabled = "compensation" in control_entries
 
-    for candidate in list(
-        getattr(exercise_definition, "compensation_candidates", []) or []
+    for pattern in list(
+        getattr(exercise_definition, "compensation_patterns", []) or []
     ):
-        if candidate in COMPENSATION_RULES:
-            report.implemented_compensation_candidates.append(candidate)
+        if pattern in COMPENSATION_RULES:
+            report.implemented_compensation_patterns.append(pattern)
         else:
             reason = (
                 "declared_unimplemented"
-                if candidate in _UNIMPLEMENTED
+                if pattern in _UNIMPLEMENTED
                 else "no_rule_registered"
             )
-            report.unimplemented_compensation_candidates.append(
+            report.unimplemented_compensation_patterns.append(
                 {
-                    "candidate": candidate,
+                    "pattern": pattern,
                     "reason": reason,
                 }
             )
-        report.compensation_candidate_availability.append(
-            _compensation_candidate_availability(
-                candidate,
-                has_rule=candidate in COMPENSATION_RULES,
-                declared_unimplemented=candidate in _UNIMPLEMENTED,
+        report.compensation_pattern_availability.append(
+            _compensation_pattern_availability(
+                pattern,
+                has_rule=pattern in COMPENSATION_RULES,
+                declared_unimplemented=pattern in _UNIMPLEMENTED,
                 deferred_feature_design=(
-                    candidate in _DEFERRED_COMPENSATION_FEATURE_DESIGN
+                    pattern in _DEFERRED_COMPENSATION_FEATURE_DESIGN
                 ),
                 control_compensation_enabled=control_compensation_enabled,
             )
@@ -1307,8 +1285,8 @@ def audit_analysis_disrupting_patterns(
     exercise_id = getattr(exercise_definition, "exercise_id", "unknown")
 
     report = AnalysisDisruptingPatternDetectabilityReport(exercise_id=exercise_id)
-    declared_candidates = set(
-        getattr(exercise_definition, "compensation_candidates", []) or []
+    declared_patterns = set(
+        getattr(exercise_definition, "compensation_patterns", []) or []
     )
 
     for pattern in patterns:
@@ -1319,10 +1297,10 @@ def audit_analysis_disrupting_patterns(
                 "classification": _UNKNOWN_PATTERN,
                 "required_landmarks": [],
                 "view_sensitivity": "unknown",
-                "visibility_dependency": "unknown",
+                "confidence_dependency": "unknown",
                 "annotation_fallback": None,
-                "linked_compensation_candidates": [],
-                "declared_linked_compensation_candidates": [],
+                "linked_compensation_patterns": [],
+                "declared_linked_compensation_patterns": [],
                 "linked_feature_domain_entries": [],
                 "source_fields": [
                     f"performance_protocol.analysis_disrupting_patterns.{pattern}"
@@ -1330,19 +1308,19 @@ def audit_analysis_disrupting_patterns(
                 "basis": "No detectability classification registered.",
             }
         else:
-            linked_candidates = list(spec.get("linked_compensation_candidates", []))
+            linked_patterns = list(spec.get("linked_compensation_patterns", []))
             item = {
                 "pattern": pattern,
                 "classification": spec["classification"],
                 "required_landmarks": list(spec.get("required_landmarks", [])),
                 "view_sensitivity": spec.get("view_sensitivity", "unknown"),
-                "visibility_dependency": spec.get("visibility_dependency", "unknown"),
+                "confidence_dependency": spec.get("confidence_dependency", "unknown"),
                 "annotation_fallback": spec.get("annotation_fallback"),
-                "linked_compensation_candidates": linked_candidates,
-                "declared_linked_compensation_candidates": [
-                    candidate
-                    for candidate in linked_candidates
-                    if candidate in declared_candidates
+                "linked_compensation_patterns": linked_patterns,
+                "declared_linked_compensation_patterns": [
+                    pattern
+                    for pattern in linked_patterns
+                    if pattern in declared_patterns
                 ],
                 "linked_feature_domain_entries": list(
                     spec.get("linked_feature_domain_entries", [])
@@ -1358,8 +1336,8 @@ def audit_analysis_disrupting_patterns(
 
         report.all_patterns.append(item)
         classification = item["classification"]
-        if classification == _POSE_DETECTABLE_SCORING_CANDIDATE:
-            report.pose_detectable_scoring_candidates.append(item)
+        if classification == _POSE_DETECTABLE_SCORE_FEATURE:
+            report.pose_detectable_score_features.append(item)
         elif classification == _ACQUISITION_CONTROL_FACTOR:
             report.acquisition_control_factors.append(item)
         elif classification == _INTERPRETATION_LIMITATION_FACTOR:
@@ -1371,7 +1349,7 @@ def audit_analysis_disrupting_patterns(
 
 
 def _phase_source_fields(exercise_definition: Any) -> list[str]:
-    """Return source_fields provenance entries for phase segmentation."""
+    """Return optional audit references for phase segmentation."""
     ps = getattr(exercise_definition, "phase_segmentation", None)
     if ps is None:
         return []
@@ -1380,6 +1358,29 @@ def _phase_source_fields(exercise_definition: Any) -> list[str]:
         "phase_segmentation.reference_axis",
         "phase_segmentation.split_logic",
     ]
+
+
+def _has_depth_axis(df: Any) -> bool:
+    """Return True when normalized or raw z coordinates are available."""
+    columns = [str(column) for column in getattr(df, "columns", [])]
+    norm_z_columns = [column for column in columns if column.endswith("_norm_z")]
+    if any(column.endswith("_norm_x") for column in columns):
+        if not norm_z_columns:
+            return False
+        values = df[norm_z_columns].astype(float).to_numpy()
+        return bool(np.isfinite(values).any())
+    raw_z_columns = [
+        column
+        for column in columns
+        if column.endswith("_z")
+        and "_norm_" not in column
+        and "_canon_" not in column
+        and "_corrected_3d_hypothesis_" not in column
+    ]
+    if not raw_z_columns:
+        return False
+    values = df[raw_z_columns].astype(float).to_numpy()
+    return bool(np.isfinite(values).any())
 
 
 def _emit_rep_level(
@@ -1401,9 +1402,10 @@ def _emit_rep_level(
     records += compute_role_alignment(df_rep, exercise_definition, rep_id=rep_id)
     records += compute_movement_path(df_rep, exercise_definition, rep_id=rep_id)
     records += compute_support_consistency(df_rep, exercise_definition, rep_id=rep_id)
-    records += compute_stability(df_rep, exercise_definition, rep_id=rep_id)
-    # Compensation is always rep-level (candidates span phase boundaries)
-    records += compute_compensation(df_rep, exercise_definition, rep_id=rep_id)
+    if _has_depth_axis(df_rep):
+        records += compute_stability(df_rep, exercise_definition, rep_id=rep_id)
+        # Compensation is always rep-level (patterns span phase boundaries)
+        records += compute_compensation(df_rep, exercise_definition, rep_id=rep_id)
     return records
 
 
@@ -1517,15 +1519,16 @@ def _emit_phase_level(
             )
         )
 
-    for rec in compute_stability(df_phase, exercise_definition, rep_id=rep_id):
-        records.append(
-            _with_phase(
-                rec,
-                phase_suffix=phase_suffix,
-                phase_label=phase_label,
-                phase_source_fields=ps_fields,
+    if _has_depth_axis(df_phase):
+        for rec in compute_stability(df_phase, exercise_definition, rep_id=rep_id):
+            records.append(
+                _with_phase(
+                    rec,
+                    phase_suffix=phase_suffix,
+                    phase_label=phase_label,
+                    phase_source_fields=ps_fields,
+                )
             )
-        )
 
     for rec in compute_tempo(df_phase, exercise_definition, rep_id=rep_id):
         records.append(
@@ -1550,7 +1553,7 @@ def extract_rep_features(
     Rep boundaries are read from annotation columns (segment_type, rep_id).
     When annotation columns are absent, all features are computed sequence-level.
 
-    When the `phase` column is populated by ⑦ Segmentation, features
+    When the `phase` column is populated by ⑥ Segmentation, features
     in PHASE_AWARE_FEATURE_FAMILIES are also emitted for each (rep_id, phase)
     segment.  The rep-level records (phase=None) are always emitted regardless.
 
@@ -1627,8 +1630,9 @@ def extract_rep_features(
         records += compute_role_alignment(df, exercise_definition)
         records += compute_movement_path(df, exercise_definition)
         records += compute_support_consistency(df, exercise_definition)
-        records += compute_stability(df, exercise_definition)
-        records += compute_compensation(df, exercise_definition)
+        if _has_depth_axis(df):
+            records += compute_stability(df, exercise_definition)
+            records += compute_compensation(df, exercise_definition)
 
     feature_context = resolve_feature_context(df, exercise_definition)
     records = apply_feature_context(records, feature_context)
@@ -1803,13 +1807,17 @@ def summarize_phase_to_rep(
     return summary
 
 
-def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
+def features_to_dataframe(
+    records: "list[FeatureRecord]",
+    *,
+    include_audit_references: bool = True,
+) -> "pd.DataFrame":
     """
     Convert a list of FeatureRecord objects to a tidy DataFrame.
 
-    Columns include value/unit provenance plus view reliability and availability.
-    source_fields and availability_reasons are serialized as pipe-joined strings
-    for tabular compatibility.
+    Columns include value/unit metadata plus view reliability and availability.
+    source_fields are optional audit references and are included by default for
+    in-memory review compatibility.
     Returns an empty DataFrame (with schema columns) when records is empty.
     """
     import pandas as pd
@@ -1823,7 +1831,6 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
                 "phase",
                 "value",
                 "unit",
-                "source_fields",
                 "note",
                 "view_reliability",
                 "availability",
@@ -1846,7 +1853,6 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
             "phase": r.phase,
             "value": r.value,
             "unit": r.unit,
-            "source_fields": "|".join(r.source_fields),
             "note": r.note,
             "view_reliability": r.view_reliability,
             "availability": r.availability,
@@ -1866,6 +1872,9 @@ def features_to_dataframe(records: "list[FeatureRecord]") -> "pd.DataFrame":
         }
         for r in records
     ]
+    if include_audit_references:
+        for row, record in zip(rows, records, strict=True):
+            row["source_fields"] = "|".join(record.source_fields)
     return pd.DataFrame(rows)
 
 
@@ -1876,7 +1885,6 @@ FEATURE_REQUIRED_COLUMNS = [
     "phase",
     "value",
     "unit",
-    "source_fields",
     "availability",
     "availability_reasons",
     "view_reliability",
@@ -1944,17 +1952,13 @@ def _assert_feature_output_round_trip(
     for column in required_columns:
         if column not in reloaded.columns:
             raise AssertionError(f"Saved feature CSV missing column: {column}")
-    if "source_fields" in reloaded.columns:
-        source_lengths = reloaded["source_fields"].astype(str).str.len()
-        if not source_lengths.gt(0).all():
-            raise AssertionError("Saved feature CSV contains empty source_fields.")
     return reloaded
 
 
-def _missing_feature_source_fields(feature_df: "pd.DataFrame") -> int:
+def _feature_audit_reference_rows(feature_df: "pd.DataFrame") -> int | None:
     if "source_fields" not in feature_df.columns:
-        return len(feature_df)
-    return int(feature_df["source_fields"].fillna("").astype(str).str.len().eq(0).sum())
+        return None
+    return int(feature_df["source_fields"].fillna("").astype(str).str.len().gt(0).sum())
 
 
 def save_feature_outputs(
@@ -1967,8 +1971,9 @@ def save_feature_outputs(
     feature_role_context_report: Any,
     project_root: str | Path | None = None,
     required_columns: list[str] | None = None,
+    include_audit_references: bool = False,
 ) -> "pd.DataFrame":
-    """Save ⑧ Feature Extraction table/context/QC and verify CSV round-trip."""
+    """Save ⑦ Feature Extraction table/context/QC and verify CSV round-trip."""
 
     import pandas as pd
 
@@ -1981,6 +1986,8 @@ def save_feature_outputs(
     qc_path = output_path / f"{recording_id}_feature_qc.json"
 
     csv_df = feature_df.copy()
+    if not include_audit_references and "source_fields" in csv_df.columns:
+        csv_df = csv_df.drop(columns=["source_fields"])
     for column in required:
         if column not in csv_df.columns:
             csv_df[column] = ""
@@ -2031,8 +2038,10 @@ def save_feature_outputs(
             .size()
             .to_dict()
         ),
-        "missing_source_fields": _missing_feature_source_fields(feature_df),
     }
+    audit_rows = _feature_audit_reference_rows(feature_df)
+    if audit_rows is not None:
+        qc_payload["audit_reference_rows"] = audit_rows
     qc_path.write_text(
         json.dumps(qc_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",

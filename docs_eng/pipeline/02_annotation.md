@@ -8,7 +8,7 @@ Pipeline step ② merges user-prepared segment metadata into the pose dataframe.
 It preserves manual labels, filming provenance, and performance provenance.
 It does not estimate rep/phase boundaries, delete frames, or modify coordinates.
 Rep/phase boundary estimation and segmentation failure handling belong to
-[07_segmentation.md](07_segmentation.md).
+[06_segmentation.md](06_segmentation.md).
 
 ---
 
@@ -63,7 +63,7 @@ Downstream use:
 ```text
 exercise_id                   → ③ exercise definition loading
 execution_pattern / starting_side
-                               → ④ L/R checks and ⑧ Feature Extraction role context
+                               → ④ L/R checks and ⑦ Feature Extraction role context
 phase                          → preserved here, accepted/rejected by ⑦
 filming provenance             → warning/report context only
 performance provenance         → warning/report context only

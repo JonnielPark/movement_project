@@ -93,7 +93,7 @@ def test_default_score_bounds_are_zero_to_hundred():
     assert normalize_score_bounds() == {"min": 0.0, "max": 100.0}
 
 
-def test_default_low_confidence_score_weights_keep_biomech_low_gravity():
+def test_default_low_confidence_score_weights_keep_biomech_low_weight():
     assert normalize_low_confidence_score_weights() == {
         "spatial": 0.0,
         "temporal": 0.0,
@@ -424,7 +424,7 @@ def test_feature_score_weight_override_attenuates_matching_feature(tmp_path):
         if item["feature_id"] == "spatial.movement_path.arc_length_xyz.left_ankle"
     )
     assert ankle_deduction["feature_weight"] == 0.1
-    assert ankle_deduction["confidence_weight"] == 0.1
+    assert ankle_deduction["scoring_weight"] == 0.1
     assert score.feature_score_weight_overrides == {
         "spatial.movement_path.arc_length_xyz.left_ankle": 0.1,
     }
@@ -467,7 +467,7 @@ def test_secondary_focus_weight_attenuates_matching_feature(tmp_path):
     deduction = score_records[0].deductions[0]
     assert deduction["focus_tier"] == "secondary"
     assert deduction["focus_weight"] == 0.45
-    assert deduction["confidence_weight"] == 0.45
+    assert deduction["scoring_weight"] == 0.45
     assert deduction["deduction"] == 4.5
 
 
@@ -511,6 +511,43 @@ def test_diagnostic_focus_weight_zero_withholds_feature(tmp_path):
     assert score.deductions == []
     assert score.withheld_features[0]["focus_tier"] == "diagnostic"
     assert score.withheld_features[0]["reasons"] == ["scoring_focus_weight_zero"]
+
+
+def test_quality_gravity_zero_withholds_feature(tmp_path):
+    baseline_path = tmp_path / "baseline.json"
+    baseline = {
+        "squat": {
+            "spatial.range_of_motion.xy.left_knee": {
+                "mean": 90.0,
+                "std": 5.0,
+            }
+        }
+    }
+    baseline_path.write_text(json.dumps(baseline), encoding="utf-8")
+    exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
+    feat_records = [
+        FeatureRecord(
+            feature_id="spatial.range_of_motion.xy.left_knee",
+            exercise_id="squat",
+            rep_id=1,
+            value=80.0,
+            unit="degree",
+            depth_dependency="none",
+            quality_gravity=0.0,
+        )
+    ]
+
+    _, score_records = derive_biomarkers(
+        feat_records,
+        [],
+        exercise,
+        exercise.version,
+        baseline_path=baseline_path,
+    )
+
+    score = score_records[0]
+    assert score.deductions == []
+    assert score.withheld_features[0]["reasons"] == ["quality_gravity_zero"]
 
 
 def test_feature_score_weight_override_prefix_pattern_matches_phase_suffix(tmp_path):
@@ -1035,6 +1072,7 @@ def test_domain_feature_family_weights_do_not_redistribute_withheld_family(
             "feature_id": "spatial.range_of_motion.xy.left_knee",
             "value": 0.0,
             "scoring_mode": "baseline_zscore",
+            "quality_gravity": 1.0,
             "availability": "assessed",
             "availability_weight": 1.0,
             "depth_dependency": "none",
@@ -1044,7 +1082,7 @@ def test_domain_feature_family_weights_do_not_redistribute_withheld_family(
             "feature_weight": 1.0,
             "feature_family": "range_of_motion",
             "feature_family_weight": 0.5,
-            "confidence_weight": 1.0,
+            "scoring_weight": 1.0,
             "baseline_mean": 10.0,
             "baseline_std": 1.0,
             "score_direction": "two_sided",

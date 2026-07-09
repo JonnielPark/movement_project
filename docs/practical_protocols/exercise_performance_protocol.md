@@ -9,7 +9,7 @@
 동일한 failure-point 및 provenance 규칙은 향후 추가 운동에도 적용한다.
 
 카메라 배치는 [camera_protocol.md](camera_protocol.md)를 따른다. 상세 생체역학적 근거와
-scoring-candidate/control-factor 구분은 `docs/clinical/exercises/`에 둔다.
+score-eligible feature/control-factor 구분은 `docs/clinical/exercises/`에 둔다.
 
 ---
 
@@ -46,7 +46,7 @@ left-right sequence
 규칙도 아니다.
 
 분석을 방해하는 수행 패턴은 note에 기록한다. 관절 포인트 시계열에서 반복 가능하게 보이는 패턴은
-scoring candidate가 될 수 있고, 포즈 데이터만으로 안정적으로 분리하기 어려운 패턴은 취득 통제 또는
+score-eligible feature가 될 수 있고, 포즈 데이터만으로 안정적으로 분리하기 어려운 패턴은 취득 통제 또는
 해석 제한 요인으로 남긴다.
 
 ## 3. 운동별 프로토콜 (Per-Exercise Protocols)
@@ -90,5 +90,5 @@ rep_unit
 protocol_cycle_id
 ```
 
-이 field들은 report, ⑧ Feature Extraction role context, feature availability, interpretation-confidence note를
+이 field들은 report, ⑦ Feature Extraction role context, feature availability, interpretation-confidence note를
 위한 provenance이다. 그 자체로 자동 movement-quality penalty가 되지 않는다.

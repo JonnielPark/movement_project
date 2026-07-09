@@ -179,6 +179,33 @@ def test_compute_movement_path_emits_non_support_trajectory_axis_diagnostics():
     )
 
 
+def test_compute_movement_path_accepts_xy_only_without_depth_records():
+    exercise = SimpleNamespace(
+        exercise_id="example_xy_only",
+        classification={"kinetic_chain": "open_chain"},
+        support_context={},
+        landmarks=SimpleNamespace(primary_joints=["left_knee"]),
+    )
+    df = pd.DataFrame(
+        {
+            "left_knee_norm_x": [0.0, 1.0, 1.0],
+            "left_knee_norm_y": [0.0, 0.0, 2.0],
+        }
+    )
+
+    records = compute_movement_path(df, exercise, rep_id=1)
+    by_id = {record.feature_id: record for record in records}
+
+    assert by_id["spatial.movement_path.arc_length_xy.left_knee"].value == 3.0
+    assert by_id["spatial.movement_path.arc_length_xy.left_knee"].depth_dependency == (
+        "none"
+    )
+    assert "spatial.movement_path.axis_path_x.left_knee" in by_id
+    assert "spatial.movement_path.axis_path_y.left_knee" in by_id
+    assert "spatial.movement_path.arc_length_xyz.left_knee" not in by_id
+    assert "spatial.movement_path.axis_path_z.left_knee" not in by_id
+
+
 def test_compute_movement_path_emits_xy_and_xyz_trajectory_variants():
     exercise = SimpleNamespace(
         exercise_id="example_knee_focus",

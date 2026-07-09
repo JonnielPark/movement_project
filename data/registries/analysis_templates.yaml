@@ -11,7 +11,7 @@ templates:
         - maintain_trunk_alignment
         - avoid_knee_valgus
         - avoid_heel_lift
-    compensation_candidates:
+    compensation_patterns:
       - knee_valgus
       - knee_varus
       - asymmetric_depth
@@ -45,7 +45,7 @@ templates:
         - maintain_trunk_alignment
         - avoid_knee_valgus
         - maintain_pelvis_level
-    compensation_candidates:
+    compensation_patterns:
       - knee_valgus
       - asymmetric_knee_flexion
       - asymmetric_hip_flexion
@@ -83,7 +83,7 @@ templates:
         - maintain_trunk_alignment
         - maintain_head_position
         - maintain_support_symmetry
-    compensation_candidates:
+    compensation_patterns:
       - elbow_flare
       - elbow_asymmetry
       - shoulder_asymmetry
@@ -122,7 +122,7 @@ templates:
         - maintain_trunk_alignment
         - maintain_pelvis_level
         - avoid_excessive_rotation
-    compensation_candidates:
+    compensation_patterns:
       - pelvis_rotation
       - trunk_rotation
       - lateral_pelvic_shift

@@ -10,7 +10,7 @@ not a clinical correction standard. The same failure-point and provenance rules
 apply to future exercises.
 
 Camera placement follows [camera_protocol.md](camera_protocol.md). Detailed
-biomechanical rationale and scoring-candidate/control-factor distinctions live in
+biomechanical rationale and score-eligible feature/control-factor distinctions live in
 `docs_eng/clinical/exercises/`.
 
 ---
@@ -49,7 +49,7 @@ This marker is acquisition/annotation provenance. It does not diagnose strength,
 fatigue, or disease, and it is not an automatic score penalty.
 
 Analysis-disrupting patterns are recorded in notes. Patterns reproducibly visible
-in joint-point time series may become scoring candidates; patterns that cannot be
+in joint-point time series may become score-eligible features; patterns that cannot be
 separated reliably from pose data remain acquisition-control or interpretation
 limitation factors.
 
@@ -94,6 +94,6 @@ rep_unit
 protocol_cycle_id
 ```
 
-These fields are provenance for reports, ⑧ Feature Extraction role context, feature
+These fields are provenance for reports, ⑦ Feature Extraction role context, feature
 availability, and interpretation-confidence notes. They are not automatic
 movement-quality penalties by themselves.

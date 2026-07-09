@@ -1,12 +1,12 @@
 """
-⑧ Control Features
+⑦ Control Features
 
 Computes CoM (Center of Mass) horizontal displacement stability and
-compensation movement candidate metrics.
+compensation movement pattern metrics.
 
 Unit convention:
   stability    : torso_length_ratio  (std of CoM horizontal displacement)
-  compensation : torso_length_ratio  (arc length of compensation candidate joint)
+  compensation : torso_length_ratio  (arc length of compensation pattern joint)
 
 Input: normalized pose dataframe (norm columns) and ExerciseDefinition.
 """
@@ -39,7 +39,7 @@ def compute_stability(
     """Compute CoM horizontal displacement stability.
 
     CoM approximation: standard deviation of hip_center(norm) horizontal coordinates.
-    (To be replaced by com.py estimate once ⑨ biomech proxy is used here.)
+    (To be replaced by com.py estimate once ⑧ biomech proxy is used here.)
 
     Unit: torso_length_ratio. Smaller values indicate greater stability.
     """
@@ -88,25 +88,25 @@ def compute_compensation(
     exercise_definition: "ExerciseDefinition",
     rep_id: int | None = None,
 ) -> list[FeatureRecord]:
-    """Dispatch compensation candidates to the rule registry.
+    """Dispatch compensation patterns to the rule registry.
 
-    Each candidate name in exercise_definition.compensation_candidates is
-    looked up in COMPENSATION_RULES (features/compensation.py). Registered
-    candidates are computed and returned as FeatureRecord list. Unregistered
-    candidates emit a UserWarning and are skipped.
+    Each pattern name in exercise_definition.compensation_patterns is looked up
+    in COMPENSATION_RULES (features/compensation.py). Registered patterns are
+    computed and returned as FeatureRecord list. Unregistered patterns emit a
+    UserWarning and are skipped.
 
     See features/compensation.py for implemented rules and axis conventions.
     """
     from movement.features.compensation import dispatch_compensation
 
-    candidates: list[str] = exercise_definition.compensation_candidates or []
-    if not candidates:
+    patterns: list[str] = exercise_definition.compensation_patterns or []
+    if not patterns:
         return []
 
     ex_id = exercise_definition.exercise_id
     records: list[FeatureRecord] = []
 
-    for candidate in candidates:
-        records.extend(dispatch_compensation(candidate, df, ex_id, rep_id))
+    for pattern in patterns:
+        records.extend(dispatch_compensation(pattern, df, ex_id, rep_id))
 
     return records

@@ -21,7 +21,7 @@ pose CSV without guessing which notebook to open.
     22_exercise_definition_test.ipynb
     23_preprocessing_test.ipynb
     24_normalization_test.ipynb
-    25_canonicalization_test.ipynb
+    25_canonicalization_test.ipynb    # optional ⑤-1 normalization substage review
     26_segmentation_test.ipynb
     27_feature_extraction_test.ipynb
     28_biomechanical_proxy_test.ipynb

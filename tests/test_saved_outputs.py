@@ -30,7 +30,6 @@ def _feature_df() -> pd.DataFrame:
                 "phase": None,
                 "value": 0.1,
                 "unit": "dimensionless",
-                "source_fields": ["left_knee_norm_x", "right_knee_norm_x"],
                 "availability": "assessed",
                 "availability_reasons": [],
                 "view_reliability": "recording_view",
@@ -55,11 +54,10 @@ def _biomech_df() -> pd.DataFrame:
                 "rep_id": 1,
                 "value": 0.2,
                 "unit": "torso_length_ratio",
-                "source_fields": ["hip_center_norm_x"],
                 "note": "low-confidence proxy",
-                "visibility_weight_applied": True,
+                "confidence_weight_applied": True,
                 "n_frames_used": 12,
-                "n_frames_excluded_low_visibility": 1,
+                "n_frames_excluded_low_confidence": 1,
                 "availability": "low_confidence",
                 "availability_reasons": ["monocular_biomech_proxy_low_confidence"],
                 "depth_dependency": "high",
@@ -77,7 +75,6 @@ def _biomarker_records() -> list[BiomarkerRecord]:
             biomarker_id="spatial.role_alignment.left_right.range_of_motion_xy.knee",
             exercise_id="draft_squat",
             definition_version="0.1.0",
-            source_fields=["left_knee_norm_x", "right_knee_norm_x"],
             rep_id=1,
             value=0.1,
             unit="dimensionless",
@@ -126,7 +123,6 @@ def _score_records() -> list[BiomarkerScoreRecord]:
                     "availability": "low_confidence",
                 }
             ],
-            source_fields=["analysis.scoring"],
         )
     ]
 
@@ -151,11 +147,12 @@ def test_save_feature_outputs_writes_csv_context_and_qc(tmp_path):
     assert len(saved) == 1
     for column in FEATURE_REQUIRED_COLUMNS:
         assert column in saved.columns
+    assert "source_fields" not in saved.columns
 
     context = json.loads((tmp_path / "p01_squat_set1_feature_context.json").read_text())
     assert context["feature_context"] == {"mode": "test"}
     qc = json.loads((tmp_path / "p01_squat_set1_feature_qc.json").read_text())
-    assert qc["missing_source_fields"] == 0
+    assert "audit_reference_rows" not in qc
 
 
 def test_save_biomech_outputs_writes_csv_and_qc(tmp_path):
@@ -172,6 +169,7 @@ def test_save_biomech_outputs_writes_csv_and_qc(tmp_path):
     assert len(saved) == 1
     for column in BIOMECH_REQUIRED_COLUMNS:
         assert column in saved.columns
+    assert "source_fields" not in saved.columns
 
     qc = json.loads((tmp_path / "p01_squat_set1_biomech_qc.json").read_text())
     assert qc["availability_counts"] == {"low_confidence": 1}
@@ -205,6 +203,8 @@ def test_save_biomarker_outputs_writes_csv_score_and_qc(tmp_path):
         assert column in saved_biomarkers.columns
     for column in BIOMARKER_SCORE_REQUIRED_COLUMNS:
         assert column in saved_scores.columns
+    assert "source_fields" not in saved_biomarkers.columns
+    assert "source_fields" not in saved_scores.columns
     for column in BIOMARKER_SCORE_ITEM_REQUIRED_COLUMNS:
         assert column in saved_score_items.columns
     assert saved_score_items.loc[0, "item_score"] == 98.5

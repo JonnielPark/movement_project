@@ -110,7 +110,7 @@ Feature interpretation은 세 개념을 분리한다:
 ```text
 metric_computed        numeric feature 계산 가능 여부
 view_reliability       camera view가 해당 해석을 지지하는 정도
-feature_availability   visibility, geometry, swap risk, view reliability가 scoring을 허용하는지
+feature_availability   confidence, geometry, swap risk, view reliability가 scoring을 허용하는지
 ```
 
 Reliability levels:
@@ -138,7 +138,7 @@ active_side / support_side
 near_side / far_side
 ```
 
-Side-to-side scoring은 active-side provenance와 near/far visibility reliability가 기록된 경우에만
+Side-to-side scoring은 active-side provenance와 near/far confidence reliability가 기록된 경우에만
 허용한다.
 
 ## 5. 세션 프로토콜 (Session Protocol)
@@ -176,9 +176,9 @@ coordinate reprojection        적용하지 않음
 view_metric_reliability        confidence/provenance gate, 좌표 보정 아님
 ```
 
-⑥ Canonicalization은 pose-internal floor 또는 height prior를 candidate evidence로 추가할 수 있다.
+⑤-1 Canonicalization은 pose-internal floor 또는 height prior를 analysis evidence로 추가할 수 있다.
 이 prior는 side view를 실제 frontal observation으로 만들지 않는다. Bilateral symmetry feature는
-충분한 visibility, plausible segment geometry, 낮은 swap risk, 지지 가능한 view가 확인될 때만
+충분한 confidence, plausible segment geometry, 낮은 swap risk, 지지 가능한 view가 확인될 때만
 scoring에 들어간다.
 
 관련 문서:
@@ -187,5 +187,5 @@ scoring에 들어간다.
 - [02_annotation.md](../pipeline/02_annotation.md)
 - [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
 - [05_normalization.md](../pipeline/05_normalization.md)
-- [06_canonicalization.md](../pipeline/06_canonicalization.md)
-- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)
+- [05_1_canonicalization.md](../pipeline/05_1_canonicalization.md)
+- [11_insilico_simulation.md](../pipeline/11_insilico_simulation.md)

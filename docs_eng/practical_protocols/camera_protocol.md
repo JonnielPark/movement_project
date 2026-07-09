@@ -118,7 +118,7 @@ Feature interpretation separates three concepts:
 ```text
 metric_computed        numeric feature can be calculated
 view_reliability       camera view supports the intended interpretation
-feature_availability   visibility, geometry, swap risk, and view reliability allow scoring
+feature_availability   confidence, geometry, swap risk, and view reliability allow scoring
 ```
 
 Reliability levels:
@@ -147,7 +147,7 @@ near_side / far_side
 ```
 
 Side-to-side scoring is eligible only when active-side provenance and near/far
-visibility reliability are recorded.
+confidence reliability are recorded.
 
 ## 5. Session Protocol
 
@@ -185,10 +185,10 @@ coordinate reprojection        not applied
 view_metric_reliability        confidence/provenance gate, not coordinate correction
 ```
 
-⑥ Canonicalization may add pose-internal floor or height priors as candidate
+⑤-1 Canonicalization may add pose-internal floor or height priors as analysis evidence
 evidence. These priors do not create a true frontal observation from a side view.
 Bilateral symmetry features enter scoring only when the feature-availability gate
-confirms sufficient visibility, plausible segment geometry, low swap risk, and a
+confirms sufficient confidence, plausible segment geometry, low swap risk, and a
 supportive view.
 
 Related documents:
@@ -197,5 +197,5 @@ Related documents:
 - [02_annotation.md](../pipeline/02_annotation.md)
 - [03_exercise_definition.md](../pipeline/03_exercise_definition.md)
 - [05_normalization.md](../pipeline/05_normalization.md)
-- [06_canonicalization.md](../pipeline/06_canonicalization.md)
-- [12_insilico_simulation.md](../pipeline/12_insilico_simulation.md)
+- [05_1_canonicalization.md](../pipeline/05_1_canonicalization.md)
+- [11_insilico_simulation.md](../pipeline/11_insilico_simulation.md)

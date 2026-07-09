@@ -9,7 +9,7 @@ validation exercises. Here, "clinical" means expert movement-observation context
 not disease diagnosis, treatment-effect evidence, or patient classification.
 
 These documents are not execution specifications. The execution source is YAML
-and code. Rationale text may inform future `compensation_candidates`,
+and code. Rationale text may inform future `compensation_patterns`,
 `analysis_disrupting_patterns`, feature registries, or scoring rules only after
 the pipeline docs are updated first.
 
@@ -41,17 +41,17 @@ Do not let a rationale paragraph become a hidden scoring rule.
 
 | Label | Meaning |
 |---|---|
-| Scoring candidate | Pattern likely identifiable from joint-point time series and eligible for future feature/biomarker linkage |
+| Score-eligible feature | Pattern likely identifiable from joint-point time series and eligible for future feature/biomarker linkage |
 | Control factor | Pattern that is hard to separate from acquisition behavior or pose uncertainty |
 | Interpretation-limitation factor | Pattern that should be displayed as a confidence limitation, not a direct penalty |
 | High detectability | Relatively clear under current landmarks and recommended view |
-| Medium detectability | Requires suitable view, visibility, or annotation support |
+| Medium detectability | Requires suitable view, confidence, or annotation support |
 | Low detectability | Difficult from pose time series alone or needs external information |
 
 ## 4. Side-View Rule
 
 In unilateral tasks and side-view recordings, far-side joints may be reliable or
-may degrade because of occlusion and left/right overlap. If far-side visibility
+may degrade because of occlusion and left/right overlap. If far-side confidence
 or jitter is poor, treat the affected feature as unavailable or low-confidence
 rather than poor movement quality.
 

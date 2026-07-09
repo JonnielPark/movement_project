@@ -6,6 +6,7 @@ Unit tests for the FMS-like clinical crosswalk:
     - traffic-light conversion from BiomarkerScoreRecord-like inputs
     - forbidden clinical-assertion vocabulary guard
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

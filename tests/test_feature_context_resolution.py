@@ -116,7 +116,7 @@ def test_extract_rep_features_attaches_context_to_symmetry_records():
             },
         },
         landmarks=SimpleNamespace(primary_joints=[]),
-        compensation_candidates=[],
+        compensation_patterns=[],
     )
     df = pd.DataFrame(
         {

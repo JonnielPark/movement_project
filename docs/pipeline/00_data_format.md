@@ -16,7 +16,7 @@
 one row = one frame
 required scalar columns = frame, timestamp
 coordinate columns = <landmark>_x, <landmark>_y, <landmark>_z
-optional visibility columns = <landmark>_visibility
+optional confidence columns = <landmark>_confidence
 landmark names = src/movement/core/config.py
 ```
 
@@ -25,7 +25,7 @@ landmark names = src/movement/core/config.py
 
 YOLOv11 같은 향후 pose engine은 운동별 예외 처리로 넣지 않고 pose-backend adapter를 통해
 들어오게 한다. Adapter는 native keypoint를 pipeline landmark schema로 mapping하고, native
-confidence를 visibility 또는 confidence provenance로 변환하며, engine name, model version,
+confidence를 confidence 또는 confidence provenance로 변환하며, engine name, model version,
 coordinate convention, depth availability 같은 source metadata를 기록할 수 있다. Engine이
 native depth를 제공하지 않는다면 depth를 신뢰 가능한 evidence로 합성하지 않는다. 대신
 depth-dependent downstream record에는 unavailable 또는 low-confidence provenance를 남기고,
@@ -33,9 +33,9 @@ depth-dependent downstream record에는 unavailable 또는 low-confidence proven
 
 MediaPipe 기반 분석과 점수화가 안정화된 뒤에는 같은 exercise definition을 사용해 MediaPipe와
 YOLOv11 output을 비교하는 engineering model-dependence study를 수행할 수 있다. 비교 항목은
-운동 정의와 canonicalization evidence가 backend별 candidate availability, confidence, burden,
-residual, feature sensitivity를 얼마나 바꾸는지다. 이를 clinical validation이나 특정 pose
-engine이 생체역학적으로 정답이라는 증명으로 표현하지 않는다.
+운동 정의와 canonicalization evidence가 backend별 evidence availability, confidence,
+`quality_gravity`, report-local burden/residual 진단값, feature sensitivity를 얼마나 바꾸는지다.
+이를 clinical validation이나 특정 pose engine이 생체역학적으로 정답이라는 증명으로 표현하지 않는다.
 
 ## 2. 필수 칼럼 (Required Columns)
 
@@ -54,16 +54,16 @@ timestamp    seconds since recording start; float
 left_knee_x
 left_knee_y
 left_knee_z
-left_knee_visibility
+left_knee_confidence
 ```
 
-Visibility는 권장한다. 단안 pose engine은 landmark를 완전히 누락하기보다 low-quality landmark로
-반환하는 경우가 많다. ④ Preprocessing과 후속 reliability gate는 visibility metadata가 있으면 사용한다.
+confidence는 권장한다. 단안 pose engine은 landmark를 완전히 누락하기보다 low-quality landmark로
+반환하는 경우가 많다. ④ Preprocessing과 후속 reliability gate는 confidence metadata가 있으면 사용한다.
 
 ## 4. CSV 예시 (CSV Example)
 
 ```text
-frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
+frame,timestamp,nose_x,nose_y,nose_z,nose_confidence,left_shoulder_x,...
 0,0.000,0.51,0.23,-0.12,0.98,0.42,...
 1,0.033,0.52,0.24,-0.13,0.97,0.43,...
 ```

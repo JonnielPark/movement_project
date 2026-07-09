@@ -1,10 +1,10 @@
-# 11. 시각화 (Visualization)
+# 10. 시각화 (Visualization)
 
-**문서 버전:** 1.1.0
-**최종 갱신:** 2026-05-21
-**영문 동기화:** `docs_eng/pipeline/11_visualization.md`는 동일 버전의 영문 번역본이다.
+**문서 버전:** 1.1.2
+**최종 갱신:** 2026-07-07
+**영문 동기화:** `docs_eng/pipeline/10_visualization.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑪은 ①-⑩ runner 밖에서 호출된다. Pose data, 중간 report, feature, biomech
+파이프라인 단계 ⑩은 ①-⑨ runner 밖에서 호출된다. Pose data, 중간 report, feature, biomech
 proxy, biomarker output을 diagnostic review와 논문 figure용으로 렌더링한다.
 
 Visualization 함수는 figure object를 반환하며 입력 데이터를 변경하면 안 된다.
@@ -15,7 +15,7 @@ Visualization 함수는 figure object를 반환하며 입력 데이터를 변경
 
 ```text
 Diagnostic review
-    raw data, preprocessing, normalization/canonicalization 후보, segmentation boundary,
+    raw data, preprocessing, normalization/canonicalization analysis evidence, segmentation boundary,
     feature availability를 점검한다.
 
 Result reporting
@@ -33,12 +33,12 @@ computed-but-withheld feature와 low-confidence depth-dependent metric을 숨기
 ```text
 ④ Preprocessing       reliability overlay와 before/after quality view
 ⑤ Normalization       raw/norm 비교
-⑥ Canonicalization    norm/canon/candidate 비교
-⑦ Segmentation        rep/phase boundary와 failure point
-⑧ Feature Extraction  side-role context, joint angle, ROM, feature availability
-⑨ Biomech Proxy       CoM과 moment-arm/load-shift proxy
-⑩ Biomarker Scoring   domain score, deduction, withheld feature
-⑫ Simulation          robustness sensitivity curve
+⑤-1 Canonicalization   norm/canon/analysis evidence 비교
+⑥ Segmentation        rep/phase boundary와 failure point
+⑦ Feature Extraction  side-role context, joint angle, ROM, feature availability
+⑧ Biomech Proxy       CoM과 moment-arm/load-shift proxy
+⑨ Biomarker Scoring   domain score, deduction, withheld feature
+⑪ Simulation          robustness sensitivity curve
 ```
 
 ---
@@ -65,13 +65,24 @@ summary를 사용한다.
 
 ```text
 create_pose_animation
-    raw, norm, 사용 가능한 candidate coordinate mode에 대한 Plotly 3D pose animation.
+    raw, norm, 사용 가능한 analysis-space coordinate mode에 대한 Plotly 3D pose animation.
 
 create_pose_comparison_animation
     raw vs norm 또는 norm vs canon처럼 두 coordinate mode를 겹쳐 visual QC를 수행.
 ```
 
-선택 `floor`/candidate coordinate mode는 review tool이며 downstream promotion을 의미하지 않는다.
+선택 `floor`/analysis-space coordinate mode는 review tool이며 downstream promotion을 의미하지 않는다.
+
+발표용 review를 위해 `notebook/20_stage_checks/30_visualization_test.ipynb`는 먼저 감지된
+1번째 rep의 시작부터 10번째 rep의 끝까지를 recording-view orientation으로 보여주는 Plotly
+Play/Pause animation을 구성한다. 이 view는 normalized (`norm`) coordinate를 우선 사용하며,
+rep 사이 transition frame을 유지하여 재생 시간이 실제 기록된 동작 시간에 더 가깝게 유지되도록
+한다. Interactive view를 따로 열거나 슬라이드용으로 화면 녹화할 수 있도록
+`data/processed/visualization/` 아래 HTML playback 파일도 저장한다.
+
+브라우저 기반 Plotly 3D animation은 렌더링 속도의 영향을 받으므로, 노트북은 발표용 playback에서
+렌더링할 frame을 일부 줄일 수 있다. 이때 첫 frame, 마지막 frame, 전체 timestamp duration은
+보존하므로 선택된 10rep 구간의 원본 pose data 자체는 변경하지 않는다.
 
 ---
 
@@ -120,9 +131,11 @@ src/movement/core/utils.py               frame extraction, plot ranges,
 notebook/00_setup/02_raw_visualization_test.ipynb          raw pose animation
 notebook/20_stage_checks/23_preprocessing_test.ipynb             reliability review
 notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
-notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon candidate review
+notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon analysis-evidence review
 notebook/20_stage_checks/27_feature_extraction_test.ipynb
                                                              feature + side-role context review
+notebook/20_stage_checks/30_visualization_test.ipynb             norm recording-view 10-rep
+                                                             presentation playback
 ```
 
 ---

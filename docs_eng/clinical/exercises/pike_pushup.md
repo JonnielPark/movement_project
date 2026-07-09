@@ -23,7 +23,7 @@ Pike push-up is an inverted upper-body closed-chain task. It is used to observe
 shoulder/elbow ROM and symmetry, head descent, inverted-V maintenance, hip-height
 change, and support consistency under a difficult bodyweight task.
 
-It is also useful for testing visibility limits and performance failure-point
+It is also useful for testing confidence limits and performance failure-point
 recording because self-occlusion and partial completion are common.
 
 ## 2. Execution Context
@@ -54,21 +54,21 @@ Expected performance is a data-acquisition reference: hips remain high in an
 inverted V, head descends between the hands, and support points do not shift
 substantially.
 
-## 4. Candidate Patterns
+## 4. Compensation Patterns
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| insufficient head descent | partial depth proxy | high-medium; head proxy needed if nose unstable | pending candidate |
-| head forward shift | load-avoidance trajectory proxy | medium; side view best | pending candidate |
-| elbow flare | altered support strategy | medium; view/elbow visibility dependent | pending candidate |
-| shoulder asymmetry | unequal upper-limb support proxy | medium; self-occlusion sensitive | pending candidate |
-| hip drop | task changes toward regular push-up | high in side view | pending candidate |
-| hip pike variation | changing hip-height strategy | medium | pending candidate |
+| insufficient head descent | partial depth proxy | high-medium; head proxy needed if nose unstable | pending pattern |
+| head forward shift | load-avoidance trajectory proxy | medium; side view best | pending pattern |
+| elbow flare | altered support strategy | medium; view/elbow confidence dependent | pending pattern |
+| shoulder asymmetry | unequal upper-limb support proxy | medium; self-occlusion sensitive | pending pattern |
+| hip drop | task changes toward regular push-up | high in side view | pending pattern |
+| hip pike variation | changing hip-height strategy | medium | pending pattern |
 | hand/foot repositioning | support-reference change | low-medium | control/limitation factor |
-| tempo instability | timing drift under task difficulty | high with stable segmentation | candidate |
+| tempo instability | timing drift under task difficulty | high with stable segmentation | review pattern |
 
 No pike push-up compensation feature is currently implemented in
-`COMPENSATION_RULES`; candidates remain research notes until rules and tests exist.
+`COMPENSATION_RULES`; patterns remain research notes until rules and tests exist.
 
 ## 5. View And Quality Limits
 

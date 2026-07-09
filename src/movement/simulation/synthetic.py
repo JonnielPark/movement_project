@@ -132,7 +132,7 @@ def squat_phase(frame: int, start: int, end: int) -> float:
 def build_frame(
     s: float, rng: np.random.Generator
 ) -> dict[str, tuple[float, float, float, float]]:
-    """Build one synthetic squat frame as landmark x/y/z/visibility tuples."""
+    """Build one synthetic squat frame as landmark x/y/z/confidence tuples."""
     out = {}
     for lm in LANDMARKS:
         x0, y0, z0 = STANDING_POSE[lm]
@@ -140,8 +140,8 @@ def build_frame(
         x = x0 + s * dx + rng.normal(0.0, 0.0015)
         y = y0 + s * dy + rng.normal(0.0, 0.0015)
         z = z0 + s * dz + rng.normal(0.0, 0.0015)
-        vis = float(np.clip(rng.normal(0.96, 0.015), 0.6, 1.0))
-        out[lm] = (round(x, 5), round(y, 5), round(z, 5), round(vis, 4))
+        confidence = float(np.clip(rng.normal(0.96, 0.015), 0.6, 1.0))
+        out[lm] = (round(x, 5), round(y, 5), round(z, 5), round(confidence, 4))
     return out
 
 
@@ -204,11 +204,11 @@ def add_occlusion(
     df: pd.DataFrame,
     target_landmarks: list[str],
     frame_range: tuple[int, int],
-    zero_visibility: bool = True,
+    zero_confidence: bool = True,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Simulate occlusion for specified landmarks over a frame range.
 
-    Coordinates are replaced with NaN and visibility set to 0.0.
+    Coordinates are replaced with NaN and confidence set to 0.0.
 
     Parameters
     ----------
@@ -217,8 +217,8 @@ def add_occlusion(
         Landmark names to occlude.
     frame_range : tuple[int, int]
         (start_frame, end_frame) inclusive.
-    zero_visibility : bool
-        If True, also set visibility columns to 0.0.
+    zero_confidence : bool
+        If True, also set confidence columns to 0.0.
 
     Returns
     -------
@@ -236,17 +236,17 @@ def add_occlusion(
             if col in df_out.columns:
                 df_out.loc[mask, col] = np.nan
                 affected_cols.append(col)
-        if zero_visibility:
-            vis_col = f"{lm}_visibility"
-            if vis_col in df_out.columns:
-                df_out.loc[mask, vis_col] = 0.0
+        if zero_confidence:
+            confidence_col = f"{lm}_confidence"
+            if confidence_col in df_out.columns:
+                df_out.loc[mask, confidence_col] = 0.0
 
     log: dict[str, Any] = {
         "simulation": "occlusion",
         "target_landmarks": target_landmarks,
         "frame_range": list(frame_range),
         "num_frames_affected": num_frames,
-        "zero_visibility": zero_visibility,
+        "zero_confidence": zero_confidence,
         "affected_columns": affected_cols,
     }
     return df_out, log
@@ -438,7 +438,7 @@ def generate_squat_csv(out_dir, fps: int = 30, seed: int = 20260503) -> None:
     pose_path.parent.mkdir(parents=True, exist_ok=True)
     header = ["frame", "timestamp"]
     for lm in LANDMARKS:
-        header += [f"{lm}_x", f"{lm}_y", f"{lm}_z", f"{lm}_visibility"]
+        header += [f"{lm}_x", f"{lm}_y", f"{lm}_z", f"{lm}_confidence"]
 
     with pose_path.open("w", newline="", encoding="utf-8") as f:
         writer = _csv.writer(f)

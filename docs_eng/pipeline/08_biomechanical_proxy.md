@@ -1,10 +1,10 @@
-# 09. Biomechanical Proxy
+# 08. Biomechanical Proxy
 
 **Document Version:** 1.3.1
 **Last Updated:** 2026-06-29
-**Korean Sync:** `docs/pipeline/09_biomechanical_proxy.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/08_biomechanical_proxy.md` is the same-version Korean source.
 
-Pipeline step ⑨ computes simplified biomechanical proxy metrics from normalized
+Pipeline step ⑧ computes simplified biomechanical proxy metrics from normalized
 pose data: center-of-mass (CoM) trajectory proxies, 2D moment-arm proxies, and
 within-set load-shift tendencies. The single-camera setup cannot estimate
 absolute force, torque, calibrated vertical displacement, or subject mass.
@@ -31,23 +31,23 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Canonicalization
-→ ⑦ Segmentation
-→ ⑧ Feature Extraction
-→ ⑨ Biomech Proxy              ← this step
-→ ⑩ Biomarker Scoring
+→ optional ⑤-1 Canonicalization
+→ ⑥ Segmentation
+→ ⑦ Feature Extraction
+→ ⑧ Biomech Proxy              ← this step
+→ ⑨ Biomarker Scoring
 ```
 
 Required inputs:
 
 ```text
 normalized coordinates          <landmark>_norm_x/y/z from ⑤
-visibility columns (optional)   <landmark>_visibility
+confidence columns (optional)   <landmark>_confidence
 rep boundaries                  segment_type == rep, rep_id
 exercise definition fields      landmarks.primary_joints
                                 biomechanical_focus.main_load_regions
                                 biomechanical_focus.expected_com_motion
-                                quality_rules.minimum_visible_landmark_ratio
+                                quality_rules.minimum_confident_landmark_ratio
 ```
 
 The pose dataframe is not modified. This step emits `BiomechRecord` rows.
@@ -60,7 +60,7 @@ Allowed:
 - Population-level segment mass and CoM ratios
 - Whole-body CoM as a segment-mass-weighted proxy
 - 2D moment-arm distances in projected planes as proxy evidence
-- Visibility-based frame exclusion for monocular robustness
+- Confidence-based frame exclusion for monocular robustness
 - Relative joint-to-joint load-distribution tendencies
 ```
 
@@ -94,16 +94,16 @@ mass localization.
 
 This Winter-style model is separate from the Size Korea-derived
 `anthropometric_skeleton_prior` described in
-[06_canonicalization.md](06_canonicalization.md). Winter ratios are used for CoM and
-segment-mass proxy computation inside ⑨. The Size Korea prior is a loose
-segment-length plausibility envelope for monocular-depth confidence and candidate
-evidence inside ⑥. The two priors must not be merged into
+[05_1_canonicalization.md](05_1_canonicalization.md). Winter ratios are used for CoM and
+segment-mass proxy computation inside ⑧. The Size Korea prior is a loose
+segment-length plausibility envelope for monocular-depth confidence and analysis
+evidence inside ⑤-1. The two priors must not be merged into
 one subject-specific skeleton model.
 
 Current policy:
 
 ```text
-Winter anthropometry         CoM / segment-mass proxy in ⑨
+Winter anthropometry         CoM / segment-mass proxy in ⑧
 Size Korea aggregate prior   segment-length plausibility envelope in ⑥
 row-level Size Korea prior   future empirical upgrade only if raw data exist
 foot segment conflict        Size Korea full-body auto source marks foot unavailable;
@@ -147,25 +147,25 @@ This is an ordinary least-squares slope of rep-level moment-arm medians against
 at least 3 finite reps with distinct `rep_id` values; otherwise no load-shift
 record is emitted. The metric is a relative trend, not a fatigue diagnosis.
 
-## 5. Visibility Handling
+## 5. confidence Handling
 
-For each frame, visibility is averaged across primary joints:
+For each frame, confidence is averaged across primary joints:
 
 ```text
-mean_vis(t) < quality_rules.minimum_visible_landmark_ratio → frame excluded
+mean_vis(t) < quality_rules.minimum_confident_landmark_ratio → frame excluded
 otherwise                                                  → frame included
 ```
 
 Record metadata:
 
 ```text
-visibility_weight_applied
+confidence_weight_applied
 n_frames_used
-n_frames_excluded_low_visibility
+n_frames_excluded_low_confidence
 ```
 
-`extract_rep_biomech(..., use_visibility_weight=False)` disables this exclusion
-for ablation experiments in ⑫ simulation.
+`extract_rep_biomech(..., use_confidence_weight=False)` disables this exclusion
+for ablation experiments in ⑪ simulation.
 
 ## 6. Output Contract
 
@@ -179,9 +179,9 @@ class BiomechRecord:
     unit: str
     source_fields: list[str]
     note: str | None
-    visibility_weight_applied: bool
+    confidence_weight_applied: bool
     n_frames_used: int
-    n_frames_excluded_low_visibility: int
+    n_frames_excluded_low_confidence: int
     availability: str = "low_confidence"
     availability_reasons: list[str] = field(default_factory=list)
     depth_dependency: str = "high"
@@ -216,8 +216,8 @@ Saved stage-check outputs:
 data/processed/biomech/<recording_id>_biomech.csv
     Tabular BiomechRecord output. Required columns include metric_id,
     exercise_id, rep_id, value, unit, source_fields, note,
-    visibility_weight_applied, n_frames_used,
-    n_frames_excluded_low_visibility, availability, availability_reasons,
+    confidence_weight_applied, n_frames_used,
+    n_frames_excluded_low_confidence, availability, availability_reasons,
     depth_dependency, model_depth_reliability, and landmark_quality.
 
 data/processed/biomech/<recording_id>_biomech_qc.json
@@ -237,7 +237,7 @@ from movement.biomech import extract_rep_biomech
 biomech_records = extract_rep_biomech(
     df,
     exercise_definition,
-    use_visibility_weight=True,
+    use_confidence_weight=True,
 )
 ```
 
@@ -246,7 +246,7 @@ Behavior:
 ```text
 - Computes per-rep records when rep annotation exists
 - Falls back to sequence-level records when annotation is absent
-- Reads visibility threshold from quality_rules
+- Reads confidence threshold from quality_rules
 - Appends load-shift records when at least 3 finite reps provide moment-arm metrics
 ```
 
@@ -263,9 +263,9 @@ biomech.moment_arm.*    biomechanical_focus.main_load_regions
 biomech.load_shift.*    derived from biomech.moment_arm.* records
 ```
 
-⑩ Biomarker Scoring preserves these fields when converting to biomarker records.
+⑨ Biomarker Scoring preserves these fields when converting to biomarker records.
 Composite scoring should treat `availability != assessed` as withheld or
-minimal-gravity evidence unless a later scoring policy explicitly says otherwise.
+minimal-weight evidence unless a later scoring policy explicitly says otherwise.
 
 ## 9. Code Mapping
 
@@ -273,9 +273,10 @@ minimal-gravity evidence unless a later scoring policy explicitly says otherwise
 src/movement/biomech/__init__.py         BiomechRecord, extract_rep_biomech
 src/movement/biomech/anthropometry.py    segment ratios and endpoints
 src/movement/biomech/com.py              estimate_com, compute_com_metrics,
-                                         compute_visibility_weights
+                                         compute_confidence_weights
 src/movement/biomech/moment_arm.py       compute_moment_arms
 src/movement/biomech/load_shift.py       compute_load_shift
 
 tests/test_biomech_load_shift.py
 ```
+

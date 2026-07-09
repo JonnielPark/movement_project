@@ -1,8 +1,9 @@
 """Analysis-space canonicalization for monocular pose coordinates.
 
-Pipeline step ⑥ consumes ⑤ norm coordinates. It does not reconstruct physical 3D
-or fit the pose to a good-movement template. It preserves raw/norm coordinates and
-emits separate candidate coordinates plus confidence/provenance reports.
+Optional substage ⑤-1 consumes ⑤ norm coordinates. It does not reconstruct
+physical 3D or fit the pose to a good-movement template. It preserves raw/norm
+coordinates and emits separate analysis-space coordinates plus confidence
+reports.
 """
 
 from __future__ import annotations
@@ -13,6 +14,16 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from movement.pose_data_state import (
+    CANONICALIZED_POSE_DATA,
+    NORM_COORDINATE_FAMILY,
+    RAW_COORDINATE_FAMILY,
+    get_coordinate_axes,
+    get_coordinate_families,
+    get_family_axes,
+    get_pose_data_state,
+    set_pose_data_state,
+)
 from movement.stages.floor_reference import (
     FloorReferenceConfig,
     apply_floor_relative_correction,
@@ -49,7 +60,7 @@ class MovementPlaneAlignmentConfig:
     fit_landmarks: list[str] = field(
         default_factory=lambda: list(_DEFAULT_MOVEMENT_PLANE_LANDMARKS)
     )
-    minimum_visible_landmark_ratio: float = 0.7
+    minimum_confident_landmark_ratio: float = 0.7
     correction_strength: float = 0.5
     max_rotation_deg: float = 20.0
     preserve_out_of_plane_residual: bool = True
@@ -74,7 +85,7 @@ class ProtocolHeightLateralWidthAlignmentConfig:
     max_scale_change: float = 0.20
     max_correction_torso: float = 0.15
     min_depth_offset_torso: float = 0.05
-    visibility_threshold: float = 0.6
+    confidence_threshold: float = 0.6
     apply_to_landmarks: list[str] = field(default_factory=list)
     preserve_anchor_landmarks: bool = True
 
@@ -88,6 +99,26 @@ class Corrected3DHypothesisConfig:
     support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
     report_burden_before_feature_use: bool = True
     require_feature_domain_declaration: bool = True
+
+
+@dataclass
+class XYDepthLiftConfig:
+    enabled: bool = False
+    method: str = "recording_view_depth_hypothesis"
+    segment_pairs: list[tuple[str, str]] = field(
+        default_factory=lambda: [
+            ("left_hip", "left_knee"),
+            ("left_knee", "left_ankle"),
+            ("right_hip", "right_knee"),
+            ("right_knee", "right_ankle"),
+            ("left_shoulder", "left_hip"),
+            ("right_shoulder", "right_hip"),
+        ]
+    )
+    default_segment_length_torso: float = 1.0
+    max_depth_torso: float = 0.75
+    confidence_threshold: float = 0.5
+    depth_sign: str = "positive"
 
 
 @dataclass
@@ -109,12 +140,17 @@ class CanonicalizationConfig:
     protocol_height_lateral_width_alignment: (
         ProtocolHeightLateralWidthAlignmentConfig
     ) = field(default_factory=ProtocolHeightLateralWidthAlignmentConfig)
+    xy_depth_lift: XYDepthLiftConfig = field(default_factory=XYDepthLiftConfig)
     corrected_3d_hypothesis: Corrected3DHypothesisConfig = field(
         default_factory=Corrected3DHypothesisConfig
     )
 
 
-def _source_columns(landmark: str, coordinate_mode: str) -> dict[str, str]:
+def _source_columns(
+    landmark: str,
+    coordinate_mode: str,
+    axes: tuple[str, ...] = ("x", "y", "z"),
+) -> dict[str, str]:
     if coordinate_mode == "raw":
         prefix = landmark
     elif coordinate_mode == "norm":
@@ -124,7 +160,7 @@ def _source_columns(landmark: str, coordinate_mode: str) -> dict[str, str]:
             "canonicalization currently supports coordinate_mode 'raw' or 'norm', "
             f"got {coordinate_mode!r}."
         )
-    return {axis: f"{prefix}_{axis}" for axis in ("x", "y", "z")}
+    return {axis: f"{prefix}_{axis}" for axis in axes}
 
 
 def _canon_columns(landmark: str, output_prefix: str) -> dict[str, str]:
@@ -149,13 +185,14 @@ def _copy_base_coordinates(
     landmarks: list[str],
     coordinate_mode: str,
     output_prefix: str,
+    axes: tuple[str, ...] = ("x", "y", "z"),
 ) -> dict[str, Any]:
     output: dict[str, Any] = {}
     missing: list[str] = []
     for landmark in landmarks:
-        src = _source_columns(landmark, coordinate_mode)
+        src = _source_columns(landmark, coordinate_mode, axes)
         dst = _canon_columns(landmark, output_prefix)
-        for axis in ("x", "y", "z"):
+        for axis in axes:
             if src[axis] not in df.columns:
                 missing.append(src[axis])
             else:
@@ -166,6 +203,71 @@ def _copy_base_coordinates(
             f"Missing: {missing[:10]}"
         )
     return output
+
+
+def _source_family(coordinate_mode: str) -> str:
+    if coordinate_mode == "raw":
+        return RAW_COORDINATE_FAMILY
+    if coordinate_mode == "norm":
+        return NORM_COORDINATE_FAMILY
+    raise ValueError(
+        "canonicalization currently supports coordinate_mode 'raw' or 'norm', "
+        f"got {coordinate_mode!r}."
+    )
+
+
+def _resolve_source_axes(
+    df: pd.DataFrame,
+    *,
+    landmarks: list[str],
+    coordinate_mode: str,
+) -> tuple[str, ...]:
+    family = _source_family(coordinate_mode)
+    axes = get_family_axes(df, family, default=())
+    if not axes:
+        axes = [
+            axis
+            for axis in ("x", "y", "z")
+            if all(
+                _source_columns(landmark, coordinate_mode, (axis,))[axis] in df.columns
+                for landmark in landmarks
+            )
+        ]
+    ordered_axes = tuple(axis for axis in ("x", "y", "z") if axis in axes)
+    if "z" in ordered_axes:
+        z_columns = [
+            _source_columns(landmark, coordinate_mode, ("z",))["z"]
+            for landmark in landmarks
+        ]
+        existing_z = [column for column in z_columns if column in df.columns]
+        finite_z = False
+        if existing_z:
+            values = df[existing_z].astype(float).to_numpy()
+            finite_z = bool(np.isfinite(values).any())
+        if not finite_z:
+            ordered_axes = tuple(axis for axis in ordered_axes if axis != "z")
+    if not {"x", "y"}.issubset(ordered_axes):
+        raise ValueError(
+            "canonicalization requires at least x/y source coordinates. "
+            f"Resolved axes for {family!r}: {list(ordered_axes)}"
+        )
+    return ordered_axes
+
+
+def _canonical_axes_from_columns(
+    canonical_columns: dict[str, Any],
+    *,
+    landmarks: list[str],
+    output_prefix: str,
+) -> list[str]:
+    axes: list[str] = []
+    for axis in ("x", "y", "z"):
+        if all(
+            _canon_columns(landmark, output_prefix)[axis] in canonical_columns
+            for landmark in landmarks
+        ):
+            axes.append(axis)
+    return axes
 
 
 def _confidence_level(
@@ -212,28 +314,46 @@ def _canonicalization_burden_level(
     return "low"
 
 
-def _canonicalization_candidate_summary(
+def _quality_gravity_from_confidence(confidence_level: str) -> float:
+    """Map evidence confidence to a downstream quality-trust summary."""
+    return {
+        "high": 1.0,
+        "moderate": 0.5,
+        "low": 0.1,
+        "very_low": 0.05,
+        "not_available": 0.0,
+        "not_emitted": 0.0,
+    }.get(str(confidence_level), 0.0)
+
+
+def _canonicalization_evidence_summary(
     *,
     status: str,
     max_correction: float,
     data_confidence: dict[str, Any],
     config: CanonicalizationDataConfidenceConfig,
 ) -> dict[str, Any]:
-    candidate_available = status in {"applied", "partial"}
-    candidate_confidence = (
+    evidence_available = status in {"applied", "partial"}
+    evidence_confidence = (
         str(data_confidence.get("level", "not_available"))
-        if candidate_available
+        if evidence_available
         else "not_available"
     )
+    quality_gravity = (
+        _quality_gravity_from_confidence(evidence_confidence)
+        if evidence_available
+        else 0.0
+    )
     return {
-        "candidate_available": candidate_available,
-        "candidate_confidence": candidate_confidence,
+        "evidence_available": evidence_available,
+        "evidence_confidence": evidence_confidence,
+        "quality_gravity": quality_gravity,
         "burden_level": (
             _canonicalization_burden_level(
                 max_correction=max_correction,
                 config=config,
             )
-            if candidate_available
+            if evidence_available
             else "none"
         ),
     }
@@ -250,7 +370,7 @@ def _collect_movement_vectors(
     output_prefix: str,
     fit_landmarks: list[str],
     vertical_axis: str,
-    minimum_visible_landmark_ratio: float,
+    minimum_confident_landmark_ratio: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, float], dict[str, list[str]], list[str]]:
     h1_axis, h2_axis = _horizontal_axes(vertical_axis)
     axis_idx = _axis_index()
@@ -278,24 +398,24 @@ def _collect_movement_vectors(
             ]
         )
         valid = np.isfinite(coords).all(axis=1)
-        visibility_col = f"{landmark}_visibility"
-        if visibility_col in df.columns:
-            visibility = df[visibility_col].astype(float).to_numpy()
-            finite_visibility = np.isfinite(visibility)
-            valid &= finite_visibility
-            frame_weights = np.clip(visibility, 0.0, 1.0)
+        confidence_col = f"{landmark}_confidence"
+        if confidence_col in df.columns:
+            confidence = df[confidence_col].astype(float).to_numpy()
+            finite_confidence = np.isfinite(confidence)
+            valid &= finite_confidence
+            frame_weights = np.clip(confidence, 0.0, 1.0)
         else:
             notes.append(
-                f"{landmark}: visibility column missing; movement-plane coverage "
+                f"{landmark}: confidence column missing; movement-plane coverage "
                 "uses finite coordinates only"
             )
             frame_weights = np.ones(len(df), dtype=float)
 
         coverage = float(valid.mean()) if len(valid) else 0.0
         coverage_by_landmark[landmark] = coverage
-        if coverage < minimum_visible_landmark_ratio:
+        if coverage < minimum_confident_landmark_ratio:
             excluded.setdefault(landmark, []).append(
-                "visible_landmark_ratio_below_minimum"
+                "confident_landmark_ratio_below_minimum"
             )
             continue
 
@@ -315,7 +435,7 @@ def _collect_movement_vectors(
         pair_weights = (frame_weights[:-1] + frame_weights[1:]) / 2.0
         pair_valid &= np.isfinite(pair_weights) & (pair_weights > 0.0)
         if not bool(pair_valid.any()):
-            excluded.setdefault(landmark, []).append("no_positive_visibility_weight")
+            excluded.setdefault(landmark, []).append("no_positive_confidence_weight")
             continue
 
         vectors.append(horizontal[pair_valid])
@@ -530,7 +650,9 @@ def _apply_movement_plane_alignment(
         "method": config.method,
         "vertical_axis": vertical_axis,
         "fit_landmarks": fit_landmarks,
-        "minimum_visible_landmark_ratio": float(config.minimum_visible_landmark_ratio),
+        "minimum_confident_landmark_ratio": float(
+            config.minimum_confident_landmark_ratio
+        ),
         "correction_strength": float(config.correction_strength),
         "effective_correction_strength": float(config.correction_strength),
         "max_rotation_deg": float(config.max_rotation_deg),
@@ -568,7 +690,7 @@ def _apply_movement_plane_alignment(
         output_prefix=output_prefix,
         fit_landmarks=fit_landmarks,
         vertical_axis=vertical_axis,
-        minimum_visible_landmark_ratio=float(config.minimum_visible_landmark_ratio),
+        minimum_confident_landmark_ratio=float(config.minimum_confident_landmark_ratio),
     )
     report["num_motion_vectors"] = int(len(horizontal_vectors))
     report["landmark_coverage"] = coverage
@@ -695,7 +817,7 @@ def _protocol_anchor_center(
     *,
     output_prefix: str,
     anchor_landmarks: list[str],
-    visibility_threshold: float,
+    confidence_threshold: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, list[str]], list[str]]:
     coords_by_anchor: list[np.ndarray] = []
     valid_by_anchor: list[np.ndarray] = []
@@ -720,13 +842,13 @@ def _protocol_anchor_center(
             ]
         )
         valid = np.isfinite(coords).all(axis=1)
-        visibility_col = f"{landmark}_visibility"
-        if visibility_col in df.columns:
-            visibility = df[visibility_col].astype(float).to_numpy()
-            valid &= np.isfinite(visibility) & (visibility >= visibility_threshold)
+        confidence_col = f"{landmark}_confidence"
+        if confidence_col in df.columns:
+            confidence = df[confidence_col].astype(float).to_numpy()
+            valid &= np.isfinite(confidence) & (confidence >= confidence_threshold)
         else:
             notes.append(
-                f"{landmark}: visibility column missing; anchor visibility "
+                f"{landmark}: confidence column missing; anchor confidence "
                 "filter skipped"
             )
 
@@ -799,7 +921,7 @@ def _apply_protocol_height_lateral_width_alignment(
         "max_scale_change": float(config.max_scale_change),
         "max_correction_torso": float(config.max_correction_torso),
         "min_depth_offset_torso": float(config.min_depth_offset_torso),
-        "visibility_threshold": float(config.visibility_threshold),
+        "confidence_threshold": float(config.confidence_threshold),
         "num_corrected_values": 0,
         "num_far_side_report_only_values": 0,
         "max_scale_delta": 0.0,
@@ -841,7 +963,7 @@ def _apply_protocol_height_lateral_width_alignment(
         canonical_columns,
         output_prefix=output_prefix,
         anchor_landmarks=anchor_landmarks,
-        visibility_threshold=float(config.visibility_threshold),
+        confidence_threshold=float(config.confidence_threshold),
     )
     report["excluded_landmark_reasons"].update(excluded)
     report["confidence_notes"].extend(notes)
@@ -883,11 +1005,11 @@ def _apply_protocol_height_lateral_width_alignment(
             ]
         )
         valid = anchor_valid & np.isfinite(coords).all(axis=1)
-        visibility_col = f"{landmark}_visibility"
-        if visibility_col in df.columns:
-            visibility = df[visibility_col].astype(float).to_numpy()
-            valid &= np.isfinite(visibility) & (
-                visibility >= config.visibility_threshold
+        confidence_col = f"{landmark}_confidence"
+        if confidence_col in df.columns:
+            confidence = df[confidence_col].astype(float).to_numpy()
+            valid &= np.isfinite(confidence) & (
+                confidence >= config.confidence_threshold
             )
 
         depth_offset = coords[:, axis_idx["z"]] - anchor[:, axis_idx["z"]]
@@ -957,9 +1079,242 @@ def _apply_protocol_height_lateral_width_alignment(
     return updated, report, frame_abs_correction, max_abs, median_abs
 
 
+def _confidence_pair_valid(
+    df: pd.DataFrame,
+    proximal: str,
+    distal: str,
+    threshold: float,
+) -> np.ndarray:
+    valid = np.ones(len(df), dtype=bool)
+    for landmark in (proximal, distal):
+        confidence_col = f"{landmark}_confidence"
+        if confidence_col not in df.columns:
+            continue
+        confidence = df[confidence_col].astype(float).to_numpy()
+        valid &= np.isfinite(confidence) & (confidence >= threshold)
+    return valid
+
+
+def _apply_xy_depth_lift(
+    df: pd.DataFrame,
+    canonical_columns: dict[str, Any],
+    *,
+    landmarks: list[str],
+    output_prefix: str,
+    config: XYDepthLiftConfig,
+) -> tuple[dict[str, Any], dict[str, Any], np.ndarray, float, float]:
+    if config.method != "recording_view_depth_hypothesis":
+        raise ValueError(
+            "Unsupported xy_depth_lift method: "
+            f"{config.method!r}. Use 'recording_view_depth_hypothesis'."
+        )
+    if config.depth_sign not in {"positive", "negative"}:
+        raise ValueError("xy_depth_lift.depth_sign must be 'positive' or 'negative'.")
+
+    report: dict[str, Any] = {
+        "enabled": True,
+        "status": "skipped",
+        "method": config.method,
+        "source_axes": ["x", "y"],
+        "target_axes": ["x", "y", "z"],
+        "segment_pairs": [list(pair) for pair in config.segment_pairs],
+        "default_segment_length_torso": float(config.default_segment_length_torso),
+        "max_depth_torso": float(config.max_depth_torso),
+        "confidence_threshold": float(config.confidence_threshold),
+        "depth_sign": config.depth_sign,
+        "num_accepted_values": 0,
+        "num_rejected_values": 0,
+        "rejection_reasons": {},
+        "max_abs_correction": 0.0,
+        "median_abs_correction": 0.0,
+        "confidence_notes": [
+            "xy_depth_lift emits low-confidence canonical depth hypothesis evidence."
+        ],
+    }
+
+    if config.default_segment_length_torso <= 0:
+        report["confidence_notes"].append("default_segment_length_torso must be > 0.")
+        return canonical_columns, report, np.zeros(len(df), dtype=float), 0.0, 0.0
+    if config.max_depth_torso <= 0:
+        report["confidence_notes"].append("max_depth_torso must be > 0.")
+        return canonical_columns, report, np.zeros(len(df), dtype=float), 0.0, 0.0
+
+    updated = dict(canonical_columns)
+    index = df.index
+    n_frames = len(df)
+    sign = 1.0 if config.depth_sign == "positive" else -1.0
+    frame_abs_correction = np.zeros(n_frames, dtype=float)
+    frame_burden = np.zeros(n_frames, dtype=float)
+    frame_residual = np.full(n_frames, np.nan, dtype=float)
+    frame_available = np.zeros(n_frames, dtype=bool)
+    frame_reason = np.full(n_frames, "", dtype=object)
+    accepted_corrections: list[np.ndarray] = []
+    rejection_counts: dict[str, int] = {}
+
+    for landmark in landmarks:
+        cols = _canon_columns(landmark, output_prefix)
+        if cols["z"] not in updated:
+            updated[cols["z"]] = np.full(n_frames, np.nan, dtype=float)
+
+    def record_rejection(mask: np.ndarray, reason: str) -> None:
+        count = int(np.sum(mask))
+        if count <= 0:
+            return
+        rejection_counts[reason] = rejection_counts.get(reason, 0) + count
+        empty = frame_reason == ""
+        frame_reason[mask & empty] = reason
+
+    for proximal, distal in config.segment_pairs:
+        if proximal not in landmarks or distal not in landmarks:
+            continue
+        prox_cols = _canon_columns(proximal, output_prefix)
+        dist_cols = _canon_columns(distal, output_prefix)
+        required = [
+            prox_cols["x"],
+            prox_cols["y"],
+            prox_cols["z"],
+            dist_cols["x"],
+            dist_cols["y"],
+            dist_cols["z"],
+        ]
+        if any(column not in updated for column in required):
+            continue
+
+        prox_xy = np.column_stack(
+            [
+                _series_from_column_data(updated[prox_cols[axis]], index).to_numpy(
+                    dtype=float
+                )
+                for axis in ("x", "y")
+            ]
+        )
+        dist_xy = np.column_stack(
+            [
+                _series_from_column_data(updated[dist_cols[axis]], index).to_numpy(
+                    dtype=float
+                )
+                for axis in ("x", "y")
+            ]
+        )
+        d_xy = np.linalg.norm(dist_xy - prox_xy, axis=1)
+        target = float(config.default_segment_length_torso)
+        finite = np.isfinite(d_xy)
+        confident = _confidence_pair_valid(
+            df,
+            proximal,
+            distal,
+            float(config.confidence_threshold),
+        )
+        inside_projection = finite & (d_xy <= target)
+        dz_abs = np.sqrt(np.clip(target**2 - d_xy**2, 0.0, None))
+        within_cap = np.isfinite(dz_abs) & (dz_abs <= float(config.max_depth_torso))
+        accepted = confident & inside_projection & within_cap
+
+        record_rejection(~finite, "nonfinite_xy_projection")
+        record_rejection(finite & ~confident, "confidence_below_threshold")
+        record_rejection(
+            finite & confident & ~inside_projection, "projected_length_exceeds_prior"
+        )
+        record_rejection(
+            finite & confident & inside_projection & ~within_cap,
+            "depth_hypothesis_exceeds_cap",
+        )
+
+        if not bool(accepted.any()):
+            continue
+
+        prox_z = _series_from_column_data(updated[prox_cols["z"]], index).to_numpy(
+            dtype=float
+        )
+        prox_z = np.where(np.isfinite(prox_z), prox_z, 0.0)
+        dist_z = _series_from_column_data(updated[dist_cols["z"]], index).to_numpy(
+            dtype=float
+        )
+        dist_z = np.where(np.isfinite(dist_z), dist_z, prox_z + sign * dz_abs)
+        dist_z[accepted] = prox_z[accepted] + sign * dz_abs[accepted]
+        updated[prox_cols["z"]] = prox_z
+        updated[dist_cols["z"]] = dist_z
+
+        segment_3d = np.sqrt(d_xy**2 + (dist_z - prox_z) ** 2)
+        residual = np.abs(segment_3d - target)
+        frame_residual[accepted] = np.nanmax(
+            np.column_stack(
+                [
+                    np.nan_to_num(frame_residual, nan=0.0),
+                    np.nan_to_num(residual, nan=0.0),
+                ]
+            ),
+            axis=1,
+        )[accepted]
+        correction_abs = np.abs(dz_abs)
+        burden = correction_abs / float(config.max_depth_torso)
+        frame_abs_correction = np.maximum(
+            frame_abs_correction,
+            np.nan_to_num(correction_abs, nan=0.0),
+        )
+        frame_burden = np.maximum(frame_burden, np.nan_to_num(burden, nan=0.0))
+        frame_available |= accepted
+        accepted_corrections.append(correction_abs[accepted])
+
+    if accepted_corrections:
+        accepted_values = np.concatenate(accepted_corrections)
+        finite_values = accepted_values[np.isfinite(accepted_values)]
+        report["status"] = "applied"
+        report["num_accepted_values"] = int(len(finite_values))
+        report["max_abs_correction"] = (
+            float(np.max(finite_values)) if len(finite_values) else 0.0
+        )
+        report["median_abs_correction"] = (
+            float(np.median(finite_values)) if len(finite_values) else 0.0
+        )
+    else:
+        report["confidence_notes"].append("No segment passed xy-depth-lift gates.")
+
+    report["num_rejected_values"] = int(sum(rejection_counts.values()))
+    report["rejection_reasons"] = rejection_counts
+
+    updated["canonical_depth_hypothesis_available"] = frame_available
+    updated["canonical_depth_hypothesis_confidence"] = np.where(
+        frame_available,
+        "low",
+        "not_available",
+    )
+    updated["canonical_depth_hypothesis_quality_gravity"] = np.where(
+        frame_available,
+        _quality_gravity_from_confidence("low"),
+        0.0,
+    )
+    updated["canonical_depth_hypothesis_rejection_reason"] = frame_reason
+
+    accepted_burden = frame_burden[frame_available & np.isfinite(frame_burden)]
+    accepted_residual = frame_residual[frame_available & np.isfinite(frame_residual)]
+    report["quality_diagnostics"] = {
+        "max_correction_burden": (
+            float(np.max(accepted_burden)) if accepted_burden.size else None
+        ),
+        "median_correction_burden": (
+            float(np.median(accepted_burden)) if accepted_burden.size else None
+        ),
+        "max_residual_torso": (
+            float(np.max(accepted_residual)) if accepted_residual.size else None
+        ),
+        "median_residual_torso": (
+            float(np.median(accepted_residual)) if accepted_residual.size else None
+        ),
+    }
+
+    return (
+        updated,
+        report,
+        frame_abs_correction,
+        float(report["max_abs_correction"]),
+        float(report["median_abs_correction"]),
+    )
+
+
 def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]:
     data_confidence = {"level": "high", "reasons": []}
-    candidate_summary = _canonicalization_candidate_summary(
+    evidence_summary = _canonicalization_evidence_summary(
         status=status,
         max_correction=0.0,
         data_confidence=data_confidence,
@@ -967,7 +1322,7 @@ def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]
     )
     return {
         "enabled": config.enabled,
-        **candidate_summary,
+        **evidence_summary,
         "status": status,
         "coordinate_mode": config.coordinate_mode,
         "output_prefix": config.output_prefix,
@@ -981,11 +1336,38 @@ def _empty_report(config: CanonicalizationConfig, status: str) -> dict[str, Any]
         "residual_after_fit_torso": None,
         "data_confidence": data_confidence,
         "prior_reports": {
+            "xy_depth_lift": None,
             "support_plane_alignment": None,
             "movement_plane_alignment": None,
             "protocol_height_lateral_width_alignment": None,
         },
     }
+
+
+def _attach_pose_state_report_fields(
+    report: dict[str, Any],
+    *,
+    input_state: str,
+    output_state: str,
+    input_families: list[str],
+    output_families: list[str],
+    added_family: str | None,
+    input_axes: dict[str, list[str]] | None = None,
+    output_axes: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    fields = {
+        "input_pose_data_state": input_state,
+        "output_pose_data_state": output_state,
+        "input_coordinate_families": input_families,
+        "output_coordinate_families": output_families,
+        "added_coordinate_family": added_family,
+    }
+    if input_axes is not None:
+        fields["input_coordinate_axes"] = input_axes
+    if output_axes is not None:
+        fields["output_coordinate_axes"] = output_axes
+    report.update(fields)
+    return report
 
 
 def apply_canonicalization(
@@ -1004,20 +1386,46 @@ def apply_canonicalization(
         config = CanonicalizationConfig()
 
     result = df.copy()
+    input_pose_data_state = get_pose_data_state(df)
+    input_coordinate_families = get_coordinate_families(df)
+    input_coordinate_axes = get_coordinate_axes(df)
     if not config.enabled:
-        return result, _empty_report(config, "disabled")
+        set_pose_data_state(
+            result,
+            input_pose_data_state,
+            input_coordinate_families,
+            input_coordinate_axes,
+        )
+        report = _attach_pose_state_report_fields(
+            _empty_report(config, "disabled"),
+            input_state=input_pose_data_state,
+            output_state=input_pose_data_state,
+            input_families=input_coordinate_families,
+            output_families=input_coordinate_families,
+            added_family=None,
+            input_axes=input_coordinate_axes,
+            output_axes=input_coordinate_axes,
+        )
+        return result, report
 
+    source_axes = _resolve_source_axes(
+        result,
+        landmarks=landmarks,
+        coordinate_mode=config.coordinate_mode,
+    )
     canonical_columns = _copy_base_coordinates(
         result,
         landmarks=landmarks,
         coordinate_mode=config.coordinate_mode,
         output_prefix=config.output_prefix,
+        axes=source_axes,
     )
 
     active_priors: list[str] = []
     applied_priors: list[str] = []
     skipped_priors: dict[str, str] = {}
     prior_reports: dict[str, Any] = {
+        "xy_depth_lift": None,
         "support_plane_alignment": None,
         "movement_plane_alignment": None,
         "protocol_height_lateral_width_alignment": None,
@@ -1027,53 +1435,118 @@ def apply_canonicalization(
     residual_after_fit: float | None = None
     confidence_notes: list[str] = []
 
+    if config.xy_depth_lift.enabled:
+        active_priors.append("xy_depth_lift")
+        if "z" in source_axes:
+            prior_reports["xy_depth_lift"] = {
+                "enabled": True,
+                "status": "skipped",
+                "reason": "source_z_present",
+                "source_axes": list(source_axes),
+                "target_axes": list(source_axes),
+                "confidence_notes": [
+                    "xy_depth_lift is used only when the selected source family has x/y but no z."
+                ],
+            }
+            skipped_priors["xy_depth_lift"] = "skipped"
+            confidence_notes.append(
+                "xy_depth_lift skipped because source z is present."
+            )
+        else:
+            (
+                canonical_columns,
+                xy_lift_report,
+                xy_lift_frame_abs,
+                xy_lift_max_correction,
+                xy_lift_median_correction,
+            ) = _apply_xy_depth_lift(
+                result,
+                canonical_columns,
+                landmarks=landmarks,
+                output_prefix=config.output_prefix,
+                config=config.xy_depth_lift,
+            )
+            prior_reports["xy_depth_lift"] = xy_lift_report
+
+            if xy_lift_report["status"] in {"applied", "warning"}:
+                applied_priors.append("xy_depth_lift")
+                max_correction = max(max_correction, xy_lift_max_correction)
+                median_correction = max(
+                    median_correction,
+                    xy_lift_median_correction,
+                )
+                canonical_columns["canonicalization_correction_abs_frame"] = (
+                    xy_lift_frame_abs
+                )
+                confidence_notes.extend(xy_lift_report["confidence_notes"])
+            else:
+                skipped_priors["xy_depth_lift"] = xy_lift_report["status"]
+                confidence_notes.extend(xy_lift_report["confidence_notes"])
+
     support_config = config.support_plane_alignment
     if support_config.enabled:
         active_priors.append("support_plane_alignment")
-        support_config = replace(support_config, coordinate_mode=config.coordinate_mode)
-        floor_df, floor_report = apply_floor_relative_correction(
-            result,
-            landmarks=landmarks,
-            config=support_config,
-        )
-        floor_report_dict = floor_report.as_dict()
-        prior_reports["support_plane_alignment"] = floor_report_dict
-
-        if floor_report.status in {"applied", "warning"}:
-            applied_priors.append("support_plane_alignment")
-            for landmark in landmarks:
-                dst = _canon_columns(landmark, config.output_prefix)
-                for axis in ("x", "y", "z"):
-                    floor_col = f"{landmark}_floor_{axis}"
-                    if floor_col in floor_df.columns:
-                        canonical_columns[dst[axis]] = floor_df[floor_col]
-
-            for landmark in floor_report.diagnostic_landmarks:
-                floor_height_col = f"{landmark}_floor_height"
-                if floor_height_col in floor_df.columns:
-                    canonical_columns[
-                        f"{landmark}_{config.output_prefix}_support_plane_height"
-                    ] = floor_df[floor_height_col]
-
-            if "floor_correction_abs_frame" in floor_df.columns:
-                canonical_columns["canonicalization_correction_abs_frame"] = floor_df[
-                    "floor_correction_abs_frame"
-                ]
-            if "floor_correction_transform" in floor_df.columns:
-                canonical_columns["canonicalization_support_plane_transform"] = (
-                    floor_df["floor_correction_transform"]
-                )
-
-            max_correction = max(max_correction, floor_report.max_abs_correction)
-            median_correction = max(
-                median_correction,
-                floor_report.median_abs_correction,
+        if "z" not in source_axes:
+            prior_reports["support_plane_alignment"] = {
+                "enabled": True,
+                "status": "skipped",
+                "reason": "missing_source_z",
+                "coordinate_mode": config.coordinate_mode,
+                "confidence_notes": [
+                    "support_plane_alignment requires an x/y/z source family."
+                ],
+            }
+            skipped_priors["support_plane_alignment"] = "skipped"
+            confidence_notes.append(
+                "support_plane_alignment skipped because source z is absent."
             )
-            residual_after_fit = floor_report.anchor_residual_summary.get("max")
-            confidence_notes.extend(floor_report.confidence_notes)
         else:
-            skipped_priors["support_plane_alignment"] = floor_report.status
-            confidence_notes.extend(floor_report.confidence_notes)
+            support_config = replace(
+                support_config, coordinate_mode=config.coordinate_mode
+            )
+            floor_df, floor_report = apply_floor_relative_correction(
+                result,
+                landmarks=landmarks,
+                config=support_config,
+            )
+            floor_report_dict = floor_report.as_dict()
+            prior_reports["support_plane_alignment"] = floor_report_dict
+
+            if floor_report.status in {"applied", "warning"}:
+                applied_priors.append("support_plane_alignment")
+                for landmark in landmarks:
+                    dst = _canon_columns(landmark, config.output_prefix)
+                    for axis in ("x", "y", "z"):
+                        floor_col = f"{landmark}_floor_{axis}"
+                        if floor_col in floor_df.columns:
+                            canonical_columns[dst[axis]] = floor_df[floor_col]
+
+                for landmark in floor_report.diagnostic_landmarks:
+                    floor_height_col = f"{landmark}_floor_height"
+                    if floor_height_col in floor_df.columns:
+                        canonical_columns[
+                            f"{landmark}_{config.output_prefix}_support_plane_height"
+                        ] = floor_df[floor_height_col]
+
+                if "floor_correction_abs_frame" in floor_df.columns:
+                    canonical_columns["canonicalization_correction_abs_frame"] = (
+                        floor_df["floor_correction_abs_frame"]
+                    )
+                if "floor_correction_transform" in floor_df.columns:
+                    canonical_columns["canonicalization_support_plane_transform"] = (
+                        floor_df["floor_correction_transform"]
+                    )
+
+                max_correction = max(max_correction, floor_report.max_abs_correction)
+                median_correction = max(
+                    median_correction,
+                    floor_report.median_abs_correction,
+                )
+                residual_after_fit = floor_report.anchor_residual_summary.get("max")
+                confidence_notes.extend(floor_report.confidence_notes)
+            else:
+                skipped_priors["support_plane_alignment"] = floor_report.status
+                confidence_notes.extend(floor_report.confidence_notes)
 
     if config.movement_plane_alignment.enabled:
         active_priors.append("movement_plane_alignment")
@@ -1200,7 +1673,7 @@ def apply_canonicalization(
         if config.data_confidence.emit
         else {"level": "not_emitted", "reasons": []}
     )
-    candidate_summary = _canonicalization_candidate_summary(
+    evidence_summary = _canonicalization_evidence_summary(
         status=status,
         max_correction=max_correction,
         data_confidence=data_confidence,
@@ -1209,9 +1682,11 @@ def apply_canonicalization(
 
     report = {
         "enabled": True,
-        **candidate_summary,
+        **evidence_summary,
         "status": status,
         "coordinate_mode": config.coordinate_mode,
+        "source_coordinate_family": _source_family(config.coordinate_mode),
+        "source_coordinate_axes": list(source_axes),
         "output_prefix": config.output_prefix,
         "report_only": config.report_only,
         "downstream_coordinate_mode": config.downstream_coordinate_mode,
@@ -1228,14 +1703,14 @@ def apply_canonicalization(
     }
 
     canonical_columns["canonicalization_valid"] = status in {"applied", "partial"}
-    canonical_columns["canonicalization_candidate_available"] = candidate_summary[
-        "candidate_available"
+    canonical_columns["canonicalization_evidence_available"] = evidence_summary[
+        "evidence_available"
     ]
-    canonical_columns["canonicalization_candidate_confidence"] = candidate_summary[
-        "candidate_confidence"
+    canonical_columns["canonicalization_evidence_confidence"] = evidence_summary[
+        "evidence_confidence"
     ]
-    canonical_columns["canonicalization_burden_level"] = candidate_summary[
-        "burden_level"
+    canonical_columns["canonicalization_quality_gravity"] = evidence_summary[
+        "quality_gravity"
     ]
     canonical_columns["canonicalization_status"] = status
     canonical_columns["canonicalization_confidence"] = data_confidence["level"]
@@ -1244,5 +1719,30 @@ def apply_canonicalization(
     result = pd.concat(
         [result, pd.DataFrame(canonical_columns, index=result.index)],
         axis=1,
+    )
+    output_coordinate_families = list(input_coordinate_families)
+    if config.output_prefix not in output_coordinate_families:
+        output_coordinate_families.append(config.output_prefix)
+    output_coordinate_axes = dict(input_coordinate_axes)
+    output_coordinate_axes[config.output_prefix] = _canonical_axes_from_columns(
+        canonical_columns,
+        landmarks=landmarks,
+        output_prefix=config.output_prefix,
+    )
+    set_pose_data_state(
+        result,
+        CANONICALIZED_POSE_DATA,
+        output_coordinate_families,
+        output_coordinate_axes,
+    )
+    _attach_pose_state_report_fields(
+        report,
+        input_state=input_pose_data_state,
+        output_state=CANONICALIZED_POSE_DATA,
+        input_families=input_coordinate_families,
+        output_families=output_coordinate_families,
+        added_family=config.output_prefix,
+        input_axes=input_coordinate_axes,
+        output_axes=output_coordinate_axes,
     )
     return result, report

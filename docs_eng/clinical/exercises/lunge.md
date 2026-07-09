@@ -55,17 +55,17 @@ Expected performance is a data-acquisition reference: stable split stance,
 consistent step length, controlled trunk, and no camera-facing direction change
 during side switching.
 
-## 4. Candidate Patterns
+## 4. Compensation Patterns
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| knee valgus | forward-knee medial deviation during load acceptance | medium; frontal info limited in side view | implemented candidate with view warning |
-| asymmetric knee/hip flexion | role-specific ROM difference | high when active-side metadata exists | candidate / role-based feature |
-| insufficient rear hip extension | rear-limb extension constraint or short step strategy | medium; side view needed | candidate |
-| excessive trunk flexion | forward trunk-lean strategy | high in side view | implemented candidate |
-| lateral trunk lean | side-bending strategy | medium; frontal/oblique better | candidate or limitation |
-| pelvis drop/shift | pelvic-control proxy | medium; view/visibility dependent | candidate |
-| heel lift | ankle/contact proxy requiring forward/trailing role context | medium | implemented candidate |
+| knee valgus | forward-knee medial deviation during load acceptance | medium; frontal info limited in side view | implemented pattern with view warning |
+| asymmetric knee/hip flexion | role-specific ROM difference | high when active-side metadata exists | role-based feature |
+| insufficient rear hip extension | rear-limb extension constraint or short step strategy | medium; side view needed | review pattern |
+| excessive trunk flexion | forward trunk-lean strategy | high in side view | implemented pattern |
+| lateral trunk lean | side-bending strategy | medium; frontal/oblique better | review pattern or limitation |
+| pelvis drop/shift | pelvic-control proxy | medium; view/confidence dependent | review pattern |
+| heel lift | ankle/contact proxy requiring forward/trailing role context | medium | implemented pattern |
 | camera side change | body turns during side switch | high with metadata/video review | control/limitation factor |
 
 ## 5. Role And View Limits
@@ -84,7 +84,7 @@ flexion, and step length. Frontal or oblique views support step width, pelvis
 drop/shift, lateral trunk lean, and frontal knee alignment. These are confidence
 states, not direct penalties.
 
-If one limb is consistently far-side or low-visibility, side-to-side comparison
+If one limb is consistently far-side or low-confidence, side-to-side comparison
 should be unavailable or low-confidence rather than interpreted as unilateral
 movement deficit.
 

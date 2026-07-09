@@ -52,7 +52,7 @@ biomechanical_focus:
   main_load_regions: []
   primary_constraints: []
 
-compensation_candidates: []
+compensation_patterns: []
 
 feature_domains:
   spatial:
@@ -71,11 +71,11 @@ view_requirements:
   acceptable_views:
     - any
   critical_landmarks: [11, 12, 23, 24]
-  visibility_sensitive_landmarks: []
+  confidence_sensitive_landmarks: []
   occlusion_risk: medium
 
 quality_rules:
-  minimum_visible_landmark_ratio: 0.7
+  minimum_confident_landmark_ratio: 0.7
   minimum_critical_landmark_ratio: 0.8
   max_missing_gap_frames: 10
   max_interpolation_gap_frames: 3

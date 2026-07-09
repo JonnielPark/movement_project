@@ -93,7 +93,7 @@ def compute_moment_arms(
     exercise_definition : ExerciseDefinition
     rep_id : int | None
     weights : np.ndarray | None
-        Per-frame visibility weights. Frames with weight = 0 are excluded
+        Per-frame confidence weights. Frames with weight = 0 are excluded
         before computing the median. None = include all frames.
 
     Returns
@@ -117,22 +117,22 @@ def compute_moment_arms(
     com_xyz = estimate_com(df)  # (T, 3)
     T = len(com_xyz)
 
-    # Resolve visibility mask
+    # Resolve confidence mask
     if weights is not None:
         valid_mask = weights > 0
         n_excluded = int(np.sum(~valid_mask))
         n_used = int(np.sum(valid_mask))
-        vis_applied = True
+        confidence_applied = True
     else:
         valid_mask = np.ones(T, dtype=bool)
         n_excluded = 0
         n_used = T
-        vis_applied = False
+        confidence_applied = False
 
     records: list[BiomechRecord] = []
 
     def _append(metric_id: str, dist: np.ndarray, note: str) -> None:
-        dist_valid = dist[valid_mask] if vis_applied else dist
+        dist_valid = dist[valid_mask] if confidence_applied else dist
         median_dist = float(np.nanmedian(dist_valid))
         records.append(
             BiomechRecord(
@@ -143,9 +143,9 @@ def compute_moment_arms(
                 unit="torso_length_ratio",
                 source_fields=source_fields,
                 note=note,
-                visibility_weight_applied=vis_applied,
+                confidence_weight_applied=confidence_applied,
                 n_frames_used=n_used,
-                n_frames_excluded_low_visibility=n_excluded,
+                n_frames_excluded_low_confidence=n_excluded,
             )
         )
 

@@ -93,7 +93,7 @@ def generate_recording_plane_phase_split(
     Generate a semi-automatic phase split from confirmed rep ranges.
 
     The split uses raw image-space hip_center_y and assumes larger y means lower
-    pelvis in the recording. The output is a QC candidate, not a confirmed phase
+    pelvis in the recording. The output is a QC proposal, not a confirmed phase
     annotation until visual review promotes it.
 
     Returns
@@ -138,12 +138,12 @@ def generate_recording_plane_phase_split(
             status = "no_trace"
         else:
             if rep_id in manual_bottom_frame_overrides:
-                candidate = int(manual_bottom_frame_overrides[rep_id])
-                if start <= candidate <= end:
-                    bottom_frame = candidate
+                proposed_bottom_frame = int(manual_bottom_frame_overrides[rep_id])
+                if start <= proposed_bottom_frame <= end:
+                    bottom_frame = proposed_bottom_frame
                     source = "manual_bottom_override"
-                    if candidate in trace_by_frame.index:
-                        bottom_y = float(trace_by_frame.loc[candidate])
+                    if proposed_bottom_frame in trace_by_frame.index:
+                        bottom_y = float(trace_by_frame.loc[proposed_bottom_frame])
                 else:
                     status = "override_out_of_range"
             else:
@@ -195,7 +195,7 @@ def generate_recording_plane_phase_split(
                     "hold_half_window_frames": hold_half_window_frames,
                     "status": status,
                     "note": (
-                        "QC candidate; confirm visually before promoting to "
+                        "QC proposal; confirm visually before promoting to "
                         "phase annotation"
                     ),
                 }
@@ -226,7 +226,7 @@ def validate_phase_split_for_promotion(
     expected_camera_zone: str | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     """
-    Validate whether a phase split candidate can be promoted after visual QC.
+    Validate whether a phase split proposal can be promoted after visual QC.
 
     Validation is structural/provenance only. It does not decide whether the
     visual QC itself passed; that must be confirmed by the researcher.
@@ -424,7 +424,7 @@ def promote_phase_split_to_annotation(
     source_phase_split_file: str | Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any], pd.DataFrame]:
     """
-    Promote a validated phase split candidate to a confirmed annotation dataframe.
+    Promote a validated phase split proposal to a confirmed annotation dataframe.
 
     Raises ValueError unless visual_qc_confirmed is True and structural promotion
     validation passes.

@@ -17,7 +17,7 @@ Implemented rules:
     heel_lift                peak heel elevation relative to rep minimum
     pelvis_rotation          left-right hip depth asymmetry (transverse-plane proxy)
 
-Not yet implemented (candidates accepted by YAML, no rule registered):
+Not yet implemented (patterns accepted by YAML, no rule registered):
     asymmetric_depth, foot_external_rotation_proxy, tempo_instability
 """
 
@@ -187,9 +187,9 @@ def _rule_excessive_trunk_flexion(
     """
     Peak trunk-line angle from the recording-view vertical axis.
 
-    Emits an `xy` recording-view candidate and an `xyz` depth-mixed comparative
-    candidate. Both use the image vertical axis; the `xyz` variant adds model
-    depth to the vector norm and therefore carries reduced default gravity.
+    Emits an `xy` recording-view feature and an `xyz` depth-mixed comparative
+    feature. Both use the image vertical axis; the `xyz` variant adds model
+    depth to the vector norm and therefore carries reduced default scoring weight.
     Unit: degree.
     """
     try:
@@ -207,9 +207,7 @@ def _rule_excessive_trunk_flexion(
     trunk_xy = trunk_vec[:, [0, 1]]
     trunk_xy_norm = np.linalg.norm(trunk_xy, axis=1, keepdims=True)
     with np.errstate(invalid="ignore", divide="ignore"):
-        trunk_xy_unit = np.where(
-            trunk_xy_norm > 1e-8, trunk_xy / trunk_xy_norm, np.nan
-        )
+        trunk_xy_unit = np.where(trunk_xy_norm > 1e-8, trunk_xy / trunk_xy_norm, np.nan)
 
     cos_xy = np.clip(np.abs(trunk_xy_unit[:, 1]), -1.0, 1.0)
     angle_xy_deg = np.degrees(np.arccos(cos_xy))
@@ -302,7 +300,7 @@ def _rule_pelvis_rotation(
 
     Computed as the absolute difference in model-depth z between the left and
     right hip. 95th-percentile peak across frames. This is depth-sensitive
-    evidence and should remain low-gravity/report-only unless validated.
+    evidence and should remain low-weight/report-only unless validated.
     Unit: torso_length_ratio.
     """
     try:
@@ -349,23 +347,23 @@ _UNIMPLEMENTED: set[str] = {
 
 
 def dispatch_compensation(
-    candidate: str,
+    pattern: str,
     df: pd.DataFrame,
     ex_id: str,
     rep_id: int | None,
 ) -> list[FeatureRecord]:
     """
-    Look up candidate in COMPENSATION_RULES and compute.
+    Look up pattern in COMPENSATION_RULES and compute.
 
-    Unregistered candidates emit a UserWarning and return [].
+    Unregistered patterns emit a UserWarning and return [].
     Registered rules that raise an exception emit a UserWarning and return [].
     """
-    rule_fn = COMPENSATION_RULES.get(candidate)
+    rule_fn = COMPENSATION_RULES.get(pattern)
 
     if rule_fn is None:
-        if candidate not in _UNIMPLEMENTED:
+        if pattern not in _UNIMPLEMENTED:
             warnings.warn(
-                f"[compensation] no rule registered for candidate '{candidate}' — skipped.",
+                f"[compensation] no rule registered for pattern '{pattern}' - skipped.",
                 UserWarning,
                 stacklevel=3,
             )
@@ -375,7 +373,7 @@ def dispatch_compensation(
         return rule_fn(df, ex_id, rep_id)
     except Exception as exc:
         warnings.warn(
-            f"[compensation] rule '{candidate}' raised an error: {exc}",
+            f"[compensation] rule '{pattern}' raised an error: {exc}",
             UserWarning,
             stacklevel=3,
         )

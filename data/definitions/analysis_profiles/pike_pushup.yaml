@@ -48,7 +48,7 @@ biomechanical_focus:
   - maintain_neutral_spine_proxy
   - maintain_head_position
   - maintain_support_symmetry
-compensation_candidates:
+compensation_patterns:
 - elbow_flare
 - elbow_asymmetry
 - shoulder_asymmetry

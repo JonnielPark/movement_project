@@ -54,15 +54,15 @@ side order               active side per tap
 Expected performance is a data-acquisition reference: high plank, controlled
 trunk/pelvis rotation, maintained side order, and minimal support repositioning.
 
-## 4. Candidate Patterns
+## 4. Compensation Patterns
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| pelvic rotation | anti-rotation control proxy from hip-depth asymmetry | high-medium in front-oblique view | implemented candidate |
-| lateral pelvic shift | weight shift toward support arm | high-medium; hip-center/view dependent | implemented candidate |
-| hip drop / height drift | trunk/core stability or posture deterioration proxy | medium | pending candidate |
-| shoulder collapse/asymmetry | support-arm stability proxy | medium; shoulder visibility dependent | pending candidate |
-| side order error | protocol-adherence and attribution issue | high with active-hand detection | candidate/protocol warning |
+| pelvic rotation | anti-rotation control proxy from hip-depth asymmetry | high-medium in front-oblique view | implemented pattern |
+| lateral pelvic shift | weight shift toward support arm | high-medium; hip-center/view dependent | implemented pattern |
+| hip drop / height drift | trunk/core stability or posture deterioration proxy | medium | pending pattern |
+| shoulder collapse/asymmetry | support-arm stability proxy | medium; shoulder confidence dependent | pending pattern |
+| side order error | protocol-adherence and attribution issue | high with active-hand detection | protocol warning |
 | missed shoulder tap | true contact uncertainty | low-medium | control/limitation factor |
 | base-of-support shift | support reference changes | low-medium | control/limitation factor |
 

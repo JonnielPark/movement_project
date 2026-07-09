@@ -113,9 +113,7 @@ def test_joint_profiles_keep_local_action_names_private_to_profile():
     assert elbow["anatomical_actions"]["primary"] == ["flexion_extension"]
     assert elbow["anatomical_actions"]["secondary"] == []
     assert "pronation_supination_proxy" not in elbow["anatomical_actions"]["secondary"]
-    assert (
-        "elbow_flare" in elbow["feature_templates"]["planned_compensation_candidates"]
-    )
+    assert "elbow_flare" in elbow["feature_templates"]["planned_compensation_patterns"]
 
     wrist = profiles["wrist"]
     assert wrist["joint_model"] == "endpoint_support_proxy"

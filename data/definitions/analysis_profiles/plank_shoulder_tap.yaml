@@ -49,7 +49,7 @@ biomechanical_focus:
   - avoid_excessive_rotation
   - avoid_excessive_lateral_shift
   - maintain_controlled_tempo
-compensation_candidates:
+compensation_patterns:
 - pelvis_rotation
 - trunk_rotation
 - lateral_pelvic_shift

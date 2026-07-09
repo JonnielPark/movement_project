@@ -566,11 +566,11 @@ def test_generate_authoring_artifacts_split_yaml_responsibilities():
     assert analysis["rep_segmentation"]["reference_axis"] == "image_y"
     assert analysis["phase_segmentation"]["split_logic"] == "local_maximum"
     assert analysis["landmarks"]["model"] == "mediapipe_pose_33"
-    assert "compensation_candidates" in analysis["requires_review"]
+    assert "compensation_patterns" in analysis["requires_review"]
     assert "context_inferred_joint_actions" in analysis["requires_review"]
-    assert "context_inferred_compensation_candidates" in analysis["requires_review"]
+    assert "context_inferred_compensation_patterns" in analysis["requires_review"]
     assert "context_inferred_feature_domains" in analysis["requires_review"]
-    assert "foot_external_rotation_proxy" in analysis["compensation_candidates"]
+    assert "foot_external_rotation_proxy" in analysis["compensation_patterns"]
     assert "joint_tracking_error" in analysis["feature_domains"]["control"]
     assert (
         "compensation_load_shift_proxy"
@@ -620,7 +620,7 @@ def test_context_inference_stays_conservative_without_secondary_planes():
 
     assert exercise["joint_actions"]["secondary"] == ["trunk_flexion_extension"]
     assert "authoring_inference" not in exercise
-    assert "foot_external_rotation_proxy" not in analysis["compensation_candidates"]
+    assert "foot_external_rotation_proxy" not in analysis["compensation_patterns"]
     assert "joint_tracking_error" not in analysis["feature_domains"]["control"]
     assert (
         "compensation_load_shift_proxy"
@@ -789,7 +789,7 @@ def test_authoring_draft_bundle_loads_as_canonical_view(tmp_path):
     assert "biomechanical_identity" in provenance["requires_review"]
     assert context.analysis_profile["exercise_id"] == "squat"
     assert (
-        "compensation_candidates"
+        "compensation_patterns"
         in context.analysis_profile["authoring_provenance"]["requires_review"]
     )
     assert context.performance_protocol["exercise_id"] == "squat"
@@ -868,7 +868,7 @@ def test_split_exercise_context_loads_backward_compatible_definition():
         "hip_center"
     )
     assert (
-        context.analysis_profile["quality_rules"]["minimum_visible_landmark_ratio"]
+        context.analysis_profile["quality_rules"]["minimum_confident_landmark_ratio"]
         == 0.8
     )
 
@@ -882,7 +882,9 @@ def test_analysis_profile_presets_expand_before_definition_parse():
     assert (
         pike.exercise_definition.angle_definitions["left_elbow_angle"]["vertex"] == 13
     )
-    assert pike.exercise_definition.quality_rules.minimum_visible_landmark_ratio == 0.75
+    assert (
+        pike.exercise_definition.quality_rules.minimum_confident_landmark_ratio == 0.75
+    )
 
     assert plank.exercise_definition.phase_segmentation is not None
     assert plank.exercise_definition.phase_segmentation.phase_sequence == [
@@ -902,7 +904,7 @@ def test_target_exercise_identity_yaml_keeps_only_identity_fields():
         "landmarks",
         "angle_definitions",
         "biomechanical_focus",
-        "compensation_candidates",
+        "compensation_patterns",
         "feature_domains",
         "quality_rules",
         "performance_protocol",
@@ -944,7 +946,7 @@ def test_canonical_squat_authoring_order_matches_draft_squat():
         EXAMPLE_AUTHORING_DEFINITIONS_DIR,
     ).exercise_definition
 
-    assert canonical.compensation_candidates == draft.compensation_candidates
+    assert canonical.compensation_patterns == draft.compensation_patterns
     assert canonical.feature_domains.control == draft.feature_domains.control
     assert canonical.joint_actions == draft.joint_actions
 

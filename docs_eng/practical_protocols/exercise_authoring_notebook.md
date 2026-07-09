@@ -70,7 +70,7 @@ The notebook supports three authoring modes:
 | Mode | Purpose | File policy | Metadata policy |
 |---|---|---|---|
 | `draft_bundle` | Local generated draft for preview and researcher review. | `data/processed/authoring_drafts/<exercise_id>/` | Keeps top-level `status: draft`, `generated_by`, and `requires_review`. |
-| `canonical_loader_view` | Loader-time view of the draft bundle as the intended canonical exercise, so the pipeline can be tested as if the exercise had no prior hand-authored definition. | Reuses the draft bundle; no duplicate candidate files are written. | Moves draft top-level metadata into runtime `authoring_provenance`. |
+| `canonical_loader_view` | Loader-time view of the draft bundle as the intended canonical exercise, so the pipeline can be tested as if the exercise had no prior hand-authored definition. | Reuses the draft bundle; no duplicate draft files are written. | Moves draft top-level metadata into runtime `authoring_provenance`. |
 | `canonical_install` | Future reviewed promotion into the runtime `data/definitions/` and `data/protocols/` directories. | Main runtime directories. | Requires explicit researcher approval and is not the default notebook action. |
 
 The current prototype implements `draft_bundle` and `canonical_loader_view`.
@@ -212,7 +212,7 @@ Phase templates may declare the coordinate family used for boundary detection.
 For example, a squat-like template may use recording-view raw `hip_center`
 `image_y` for descent/ascent detection while downstream feature and scoring
 stages still consume normalized coordinates. See
-`docs_eng/pipeline/07_segmentation.md` for the report contract.
+`docs_eng/pipeline/06_segmentation.md` for the report contract.
 
 The notebook should recommend and order phase templates from the earlier
 authoring axes rather than hard-filter them. The recommendation may use
@@ -284,7 +284,7 @@ view family is sufficient for exercise definition.
 
 `analysis_template` is an analysis-profile family, not an exercise-specific
 template. It determines the default landmark set, biomechanical focus,
-compensation candidates, feature domains, and quality-rule starting point for
+compensation patterns, feature domains, and quality-rule starting point for
 the generated analysis profile. The current keys may still describe broad
 families such as lower-body closed-chain, split-stance lower-body loading,
 closed-chain upper-body press, or anti-rotation control. They should not encode
@@ -368,7 +368,7 @@ review-labeled (`status: draft`, `requires_review`) and should not be treated as
 canonical until researcher review promotes it into the main `data/definitions`
 and `data/protocols` directories.
 
-A `canonical_loader_view` does not write a second candidate bundle. It reuses
+A `canonical_loader_view` does not write a second draft bundle. It reuses
 the same draft files and asks the loader to expose them as the intended
 canonical `exercise_id`. For example, a `draft_squat` bundle can be evaluated as
 runtime `squat` without copying four YAML files:
@@ -408,7 +408,7 @@ draft view-family/H camera recommendation
 Requires researcher review:
 
 ```text
-compensation candidates and implementation feasibility
+compensation patterns and implementation feasibility
 view-metric reliability
 quality thresholds and scoring eligibility
 clinical meaning text
@@ -422,7 +422,7 @@ Draft artifacts include:
 status: draft
 generated_by: exercise_authoring_notebook
 requires_review:
-  - compensation_candidates
+  - compensation_patterns
   - view_metric_reliability
   - quality_rules
   - clinical_meaning
@@ -438,7 +438,7 @@ authoring_provenance:
   source_authoring_exercise_id: draft_squat
   canonical_exercise_id: squat
   requires_review:
-    - compensation_candidates
+    - compensation_patterns
     - view_metric_reliability
 ```
 

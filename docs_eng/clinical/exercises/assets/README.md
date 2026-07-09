@@ -15,6 +15,5 @@ assets/
 
 Representative performance photos stay in `docs_eng/practical_protocols/assets/`.
 Use this folder only for detailed interpretation figures such as joint-angle
-diagrams, compensation examples, landmark-visibility comparisons, and camera-view
+diagrams, compensation examples, landmark-confidence comparisons, and camera-view
 comparisons.
-
