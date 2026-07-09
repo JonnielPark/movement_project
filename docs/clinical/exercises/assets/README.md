@@ -13,5 +13,4 @@ assets/
 ```
 
 대표 수행 사진은 `docs/practical_protocols/assets/`에 유지한다. 이 폴더에는 관절각 도식,
-보상 패턴 예시, landmark visibility 비교, camera-view 비교처럼 상세 해석을 돕는 그림만 둔다.
-
+보상 패턴 예시, landmark confidence 비교, camera-view 비교처럼 상세 해석을 돕는 그림만 둔다.

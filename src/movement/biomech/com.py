@@ -25,14 +25,14 @@ if TYPE_CHECKING:
     from movement.definitions.exercise_definition import ExerciseDefinition
 
 
-def compute_visibility_weights(
+def compute_confidence_weights(
     df: pd.DataFrame,
     primary_joints: list[str],
-    min_visibility_ratio: float = 0.5,
+    min_confidence_ratio: float = 0.5,
 ) -> np.ndarray:
-    """Per-frame visibility weights for monocular data quality adjustment.
+    """Per-frame confidence weights for monocular data quality adjustment.
 
-    Frames whose mean primary-joint visibility is below min_visibility_ratio
+    Frames whose mean primary-joint confidence is below min_confidence_ratio
     receive weight = 0 and are excluded from downstream metric computation.
     This reduces the contribution of depth-estimation noise inherent in
     monocular pose data.
@@ -41,28 +41,28 @@ def compute_visibility_weights(
     ----------
     df : pd.DataFrame
     primary_joints : list[str]
-        Landmark names whose visibility columns drive the weighting.
-    min_visibility_ratio : float
-        Frames with mean visibility below this threshold are excluded (weight = 0).
+        Landmark names whose confidence columns drive the weighting.
+    min_confidence_ratio : float
+        Frames with mean confidence below this threshold are excluded (weight = 0).
 
     Returns
     -------
     np.ndarray, shape (T,)
-        Per-frame weights in [0, 1]. Returns all-ones if visibility columns
+        Per-frame weights in [0, 1]. Returns all-ones if confidence columns
         are absent (no weighting applied).
     """
     T = len(df)
-    vis_cols = [
-        f"{lm}_visibility" for lm in primary_joints if f"{lm}_visibility" in df.columns
+    confidence_cols = [
+        f"{lm}_confidence" for lm in primary_joints if f"{lm}_confidence" in df.columns
     ]
-    if not vis_cols:
+    if not confidence_cols:
         return np.ones(T, dtype=float)
 
-    vis_matrix = df[vis_cols].values.astype(float)  # (T, n_joints)
-    mean_vis = np.nanmean(vis_matrix, axis=1)  # (T,)
+    confidence_matrix = df[confidence_cols].values.astype(float)  # (T, n_joints)
+    mean_confidence = np.nanmean(confidence_matrix, axis=1)  # (T,)
 
-    weights = mean_vis.copy()
-    weights[mean_vis < min_visibility_ratio] = 0.0
+    weights = mean_confidence.copy()
+    weights[mean_confidence < min_confidence_ratio] = 0.0
     return weights
 
 
@@ -142,9 +142,9 @@ def compute_com_metrics(
     Parameters
     ----------
     weights : np.ndarray | None
-        Per-frame visibility weights from compute_visibility_weights().
+        Per-frame confidence weights from compute_confidence_weights().
         Frames with weight = 0 are excluded from all metrics.
-        None = include all frames (no visibility filtering).
+        None = include all frames (no confidence filtering).
     """
     ex_id = exercise_definition.exercise_id
     com_xyz = estimate_com(df)  # (T, 3)
@@ -158,19 +158,19 @@ def compute_com_metrics(
         "biomechanical_focus.stability_requirement",
     ]
 
-    # Apply visibility mask
+    # Apply confidence mask
     if weights is not None:
         valid_mask = weights > 0
         n_excluded = int(np.sum(~valid_mask))
         n_used = int(np.sum(valid_mask))
-        vis_applied = True
+        confidence_applied = True
         if n_used == 0:
             return []
         com_valid = com_xyz[valid_mask]
     else:
         n_excluded = 0
         n_used = T
-        vis_applied = False
+        confidence_applied = False
         com_valid = com_xyz
 
     def _record(metric_id: str, value: float) -> BiomechRecord:
@@ -181,9 +181,9 @@ def compute_com_metrics(
             value=value,
             unit="torso_length_ratio",
             source_fields=source_fields,
-            visibility_weight_applied=vis_applied,
+            confidence_weight_applied=confidence_applied,
             n_frames_used=n_used,
-            n_frames_excluded_low_visibility=n_excluded,
+            n_frames_excluded_low_confidence=n_excluded,
         )
 
     records: list[BiomechRecord] = []
@@ -210,7 +210,7 @@ def compute_com_metrics(
             )
         )
 
-    # trajectory arc length (valid frames only — excludes low-visibility gaps)
+    # trajectory arc length (valid frames only; excludes low-confidence gaps)
     path = float(np.nansum(np.linalg.norm(np.diff(com_valid, axis=0), axis=1)))
     records.append(_record("biomech.com.path_length", round(path, 4)))
 

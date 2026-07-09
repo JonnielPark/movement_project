@@ -17,7 +17,7 @@ biomechanical_focus:
   - avoid_knee_valgus
   - avoid_excessive_lateral_shift
   - maintain_pelvis_level
-compensation_candidates:
+compensation_patterns:
 - knee_valgus
 - asymmetric_knee_flexion
 - asymmetric_hip_flexion

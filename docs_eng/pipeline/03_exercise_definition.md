@@ -22,11 +22,11 @@ Pose CSV + annotation + exercise YAML artifacts
 → ③ Exercise Definition           ← this step
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
-→ ⑥ Canonicalization              coordinate-candidate priors
-→ ⑦ Segmentation                  rep/phase settings
-→ ⑧ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
-→ ⑨ Biomech Proxy                 biomechanical_focus
-→ ⑩ Biomarker Derivation          compensation_candidates
+→ ⑤-1 Optional Canonicalization    coordinate-analysis priors
+→ ⑥ Segmentation                  rep/phase settings
+→ ⑦ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
+→ ⑧ Biomech Proxy                 biomechanical_focus
+→ ⑨ Biomarker Derivation          compensation_patterns
 ```
 
 Exercise-specific behavior should be represented as YAML data rather than Python
@@ -44,7 +44,7 @@ data/definitions/exercises/<exercise_id>.yaml
 
 data/definitions/analysis_profiles/<exercise_id>.yaml
     Analysis behavior: landmarks, angle definitions, segmentation settings,
-    feature domains, biomechanical focus, compensation candidates, quality rules.
+    feature domains, biomechanical focus, compensation patterns, quality rules.
 
 data/definitions/analysis_presets.yaml
     Reusable analysis blocks for segmentation, landmark/angle sets, and quality
@@ -73,7 +73,7 @@ presets:
   quality_rules: lower_body_standard
 
 biomechanical_focus: ...
-compensation_candidates: ...
+compensation_patterns: ...
 feature_domains: ...
 ```
 
@@ -173,7 +173,7 @@ landmarks: ...
 angle_definitions: ...
 joint_actions: ...
 biomechanical_focus: ...
-compensation_candidates: ...
+compensation_patterns: ...
 feature_domains: ...
 view_requirements: ...
 camera_protocol: ...
@@ -400,7 +400,7 @@ biomechanical_focus:
   main_load_regions: list[string]
   primary_constraints: list[string]
 
-compensation_candidates: list[string]
+compensation_patterns: list[string]
 
 feature_domains:
   spatial: list[string]
@@ -409,8 +409,8 @@ feature_domains:
   biomechanical_proxy: list[string]
 ```
 
-Only implemented and detectable compensation candidates should produce biomarkers.
-Declared-but-unimplemented candidates must be reported by availability/audit logic
+Only implemented and detectable compensation patterns should produce biomarkers.
+Declared-but-unimplemented patterns must be reported by availability/audit logic
 instead of silently ignored. Absolute force, torque, or clinical-diagnosis claims
 do not belong in these fields.
 
@@ -452,7 +452,7 @@ when the camera view affects interpretation.
 
 ```yaml
 quality_rules:
-  minimum_visible_landmark_ratio: float
+  minimum_confident_landmark_ratio: float
   minimum_critical_landmark_ratio: float
   max_missing_gap_frames: int
   max_interpolation_gap_frames: int
@@ -469,8 +469,8 @@ quality_rules:
       apply_to_phase_suffixes: [full_rep, descent, ascent]
 ```
 
-The visibility and gap thresholds are consumed by ④ Preprocessing and ⑧ Feature
-Extraction. `range_of_motion_targets` is consumed by ⑩ Biomarker Scoring. It defines
+The confidence and gap thresholds are consumed by ④ Preprocessing and ⑦ Feature
+Extraction. `range_of_motion_targets` is consumed by ⑨ Biomarker Scoring. It defines
 exercise-specific functional ROM bands: for example, squat knee ROM should be
 penalized primarily when it is insufficient, not simply because it is larger than
 the synthetic baseline mean. These targets are provisional until reviewed-good
@@ -506,14 +506,14 @@ and then sync `docs/`.
 
 ## 7. Provenance Convention
 
-Every biomarker produced by ⑧-⑧ must include `source_fields` pointing to the
+Every biomarker produced by ⑨ must include `source_fields` pointing to the
 definition fields that drove the computation.
 
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
 definition_version : 0.5.0
-source_fields      : [compensation_candidates.knee_valgus,
+source_fields      : [compensation_patterns.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
 rep_id             : 2

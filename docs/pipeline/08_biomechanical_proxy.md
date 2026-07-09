@@ -1,16 +1,16 @@
-# 09. 생체역학 프록시 (Biomechanical Proxy)
+# 08. 생체역학 프록시 (Biomechanical Proxy)
 
 **문서 버전:** 1.3.1
 **최종 갱신:** 2026-06-29
-**영문 동기화:** `docs_eng/pipeline/09_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/08_biomechanical_proxy.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑨는 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
+파이프라인 단계 ⑧은 정규화된 포즈 데이터에서 단순화된 생체역학 프록시 지표를 계산한다:
 무게중심(CoM) 궤적 proxy, 2D moment-arm proxy, 세트 내 load-shift tendency.
 단일 카메라 환경에서는 절대 힘, 토크, calibrated vertical displacement, 피험자 질량을
 추정할 수 없다. 출력은 상대적 부하 분포 경향만 설명한다.
 
 현재 MediaPipe 계열 단안 `z`는 calibrated depth 또는 gravity axis가 아니라 model-depth
-evidence이므로, ⑨ 출력은 기본적으로 low-confidence biomechanical proxy evidence로 방출한다.
+evidence이므로, ⑧ 출력은 기본적으로 low-confidence biomechanical proxy evidence로 방출한다.
 값은 보고하고 점검할 수 있지만, availability/provenance metadata에 근거한 후속 scoring 정책이
 명시적으로 weight를 올리기 전까지 강한 composite-score evidence가 되면 안 된다.
 
@@ -28,23 +28,23 @@ Pose CSV
 → ③ Exercise Definition
 → ④ Preprocessing
 → ⑤ Normalization
-→ ⑥ Canonicalization
-→ ⑦ Segmentation
-→ ⑧ Feature Extraction
-→ ⑨ Biomech Proxy              ← 본 단계
-→ ⑩ Biomarker Scoring
+→ optional ⑤-1 Canonicalization
+→ ⑥ Segmentation
+→ ⑦ Feature Extraction
+→ ⑧ Biomech Proxy              ← 본 단계
+→ ⑨ Biomarker Scoring
 ```
 
 필수 입력:
 
 ```text
 정규화 좌표                     ⑤의 <landmark>_norm_x/y/z
-가시성 칼럼 (선택)              <landmark>_visibility
+가시성 칼럼 (선택)              <landmark>_confidence
 반복 경계                       segment_type == rep, rep_id
 운동 정의 필드                  landmarks.primary_joints
                                 biomechanical_focus.main_load_regions
                                 biomechanical_focus.expected_com_motion
-                                quality_rules.minimum_visible_landmark_ratio
+                                quality_rules.minimum_confident_landmark_ratio
 ```
 
 포즈 데이터프레임은 수정하지 않는다. 본 단계는 `BiomechRecord` 행을 생성한다.
@@ -57,7 +57,7 @@ Pose CSV
 - 인구집단 수준의 분절 질량 및 CoM 비율
 - 분절 질량 가중 프록시로서의 전신 CoM
 - 투영 평면에서의 2D moment-arm proxy 거리
-- 단안 환경 강건성을 위한 visibility 기반 frame 제외
+- 단안 환경 강건성을 위한 confidence 기반 frame 제외
 - 관절 간 상대적 부하 분포 경향
 ```
 
@@ -88,17 +88,17 @@ SEGMENT_ENDPOINTS    각 분절을 정의하는 landmark pair
 모든 비율은 무차원이다. 현재 trunk proxy는 hip-to-shoulder line을 사용한다.
 이는 상대 proxy trend에는 충분하지만 절대 trunk mass location 추정에는 적합하지 않다.
 
-이 Winter 계열 모델은 [06_canonicalization.md](06_canonicalization.md)에 정의한 Size Korea 기반
-`anthropometric_skeleton_prior`와 분리한다. Winter 비율은 ⑨ 안에서 CoM과 segment-mass proxy
-계산에 사용한다. Size Korea prior는 ⑥ 안에서 단안 depth confidence와 candidate evidence를
+이 Winter 계열 모델은 [05_1_canonicalization.md](05_1_canonicalization.md)에 정의한 Size Korea 기반
+`anthropometric_skeleton_prior`와 분리한다. Winter 비율은 ⑧ 안에서 CoM과 segment-mass proxy
+계산에 사용한다. Size Korea prior는 ⑤-1 안에서 단안 depth confidence와 analysis evidence를
 위한 느슨한 segment-length plausibility envelope다. 두 prior를 하나의
 subject-specific skeleton model로 합치지 않는다.
 
 현재 정책:
 
 ```text
-Winter anthropometry         ⑨의 CoM / segment-mass proxy
-Size Korea aggregate prior   ⑥의 segment-length plausibility envelope
+Winter anthropometry         ⑧의 CoM / segment-mass proxy
+Size Korea aggregate prior   ⑤-1의 segment-length plausibility envelope
 row-level Size Korea prior   raw data가 있을 때만 future empirical upgrade
 foot segment conflict        Size Korea full-body auto source에서는 foot unavailable;
                              Winter foot mass ratio는 CoM proxy에 남을 수 있음
@@ -140,24 +140,24 @@ rep_id = None
 `rep_id`를 가진 유효 rep가 최소 3개 필요하며, 그보다 적으면 load-shift record를
 만들지 않는다. 이 지표는 상대 추세이며 피로 진단이 아니다.
 
-## 5. Visibility 처리 (Visibility Handling)
+## 5. confidence 처리 (confidence Handling)
 
-각 frame에서 primary joints의 visibility를 평균한다:
+각 frame에서 primary joints의 confidence를 평균한다:
 
 ```text
-mean_vis(t) < quality_rules.minimum_visible_landmark_ratio → frame 제외
+mean_vis(t) < quality_rules.minimum_confident_landmark_ratio → frame 제외
 otherwise                                                  → frame 포함
 ```
 
 Record metadata:
 
 ```text
-visibility_weight_applied
+confidence_weight_applied
 n_frames_used
-n_frames_excluded_low_visibility
+n_frames_excluded_low_confidence
 ```
 
-`extract_rep_biomech(..., use_visibility_weight=False)`는 ⑫ simulation의 ablation 실험을 위해
+`extract_rep_biomech(..., use_confidence_weight=False)`는 ⑪ simulation의 ablation 실험을 위해
 이 제외를 비활성화한다.
 
 ## 6. 출력 계약 (Output Contract)
@@ -172,9 +172,9 @@ class BiomechRecord:
     unit: str
     source_fields: list[str]
     note: str | None
-    visibility_weight_applied: bool
+    confidence_weight_applied: bool
     n_frames_used: int
-    n_frames_excluded_low_visibility: int
+    n_frames_excluded_low_confidence: int
     availability: str = "low_confidence"
     availability_reasons: list[str] = field(default_factory=list)
     depth_dependency: str = "high"
@@ -208,8 +208,8 @@ load-shift slopes            low_confidence; low-confidence moment-arm record에
 ```text
 data/processed/biomech/<recording_id>_biomech.csv
     BiomechRecord tabular output. 필수 column은 metric_id, exercise_id, rep_id,
-    value, unit, source_fields, note, visibility_weight_applied, n_frames_used,
-    n_frames_excluded_low_visibility, availability, availability_reasons,
+    value, unit, source_fields, note, confidence_weight_applied, n_frames_used,
+    n_frames_excluded_low_confidence, availability, availability_reasons,
     depth_dependency, model_depth_reliability, landmark_quality다.
 
 data/processed/biomech/<recording_id>_biomech_qc.json
@@ -228,7 +228,7 @@ from movement.biomech import extract_rep_biomech
 biomech_records = extract_rep_biomech(
     df,
     exercise_definition,
-    use_visibility_weight=True,
+    use_confidence_weight=True,
 )
 ```
 
@@ -237,7 +237,7 @@ biomech_records = extract_rep_biomech(
 ```text
 - rep annotation이 있으면 rep별 record 계산
 - annotation이 없으면 sequence-level record로 fallback
-- quality_rules에서 visibility threshold 참조
+- quality_rules에서 confidence threshold 참조
 - 3개 이상의 유효 rep에서 moment-arm metric이 있으면 load-shift record 추가
 ```
 
@@ -253,9 +253,9 @@ biomech.moment_arm.*    biomechanical_focus.main_load_regions
 biomech.load_shift.*    biomech.moment_arm.* records에서 파생
 ```
 
-⑩ Biomarker Scoring은 biomarker record로 변환할 때 이 field를 보존한다.
+⑨ Biomarker Scoring은 biomarker record로 변환할 때 이 field를 보존한다.
 Composite scoring은 후속 scoring 정책이 명시적으로 달리 정하지 않는 한
-`availability != assessed`를 withheld 또는 minimal-gravity evidence로 다뤄야 한다.
+`availability != assessed`를 withheld 또는 minimal-weight evidence로 다뤄야 한다.
 
 ## 9. 코드 매핑 (Code Mapping)
 
@@ -263,9 +263,10 @@ Composite scoring은 후속 scoring 정책이 명시적으로 달리 정하지 �
 src/movement/biomech/__init__.py         BiomechRecord, extract_rep_biomech
 src/movement/biomech/anthropometry.py    segment ratios and endpoints
 src/movement/biomech/com.py              estimate_com, compute_com_metrics,
-                                         compute_visibility_weights
+                                         compute_confidence_weights
 src/movement/biomech/moment_arm.py       compute_moment_arms
 src/movement/biomech/load_shift.py       compute_load_shift
 
 tests/test_biomech_load_shift.py
 ```
+

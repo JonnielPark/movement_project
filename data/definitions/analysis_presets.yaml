@@ -181,7 +181,7 @@ landmark_set:
 quality_rules:
   lower_body_standard:
     quality_rules:
-      minimum_visible_landmark_ratio: 0.8
+      minimum_confident_landmark_ratio: 0.8
       minimum_critical_landmark_ratio: 0.9
       max_missing_gap_frames: 10
       max_interpolation_gap_frames: 3
@@ -191,7 +191,7 @@ quality_rules:
 
   upper_body_occlusion_prone:
     quality_rules:
-      minimum_visible_landmark_ratio: 0.75
+      minimum_confident_landmark_ratio: 0.75
       minimum_critical_landmark_ratio: 0.9
       max_missing_gap_frames: 10
       max_interpolation_gap_frames: 3
@@ -201,7 +201,7 @@ quality_rules:
 
   plank_occlusion_prone:
     quality_rules:
-      minimum_visible_landmark_ratio: 0.75
+      minimum_confident_landmark_ratio: 0.75
       minimum_critical_landmark_ratio: 0.85
       max_missing_gap_frames: 10
       max_interpolation_gap_frames: 3

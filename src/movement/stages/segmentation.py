@@ -1,5 +1,5 @@
 """
-⑦ Segmentation (semi-automatic)
+⑥ Segmentation (semi-automatic)
 
 Confirms repetition boundaries with the exercise definition's `rep_segmentation`
 block, then splits each confirmed rep into kinematic phases (e.g., Descent /
@@ -12,7 +12,8 @@ Output : the same dataframe with the `phase` column populated for rows where
          `segment_type == 'rep'`. Rows outside reps are left as NA.
          Expert-provided phase values (non-NA on entry) are never overwritten.
 
-Pipeline position: after ⑥ Canonicalization, before ⑧ Feature Extraction.
+Pipeline position: after ⑤ Normalization and optional ⑤-1 Canonicalization,
+before ⑦ Feature Extraction.
 
 Phase labels are kinematic (trajectory-based), not kinetic (muscle-action-based).
 They describe the reference-landmark trajectory direction, not muscle activation
@@ -243,7 +244,7 @@ def _smooth_trace(
 
 def _detect_inflections(trace: np.ndarray, split_logic: str) -> np.ndarray:
     """
-    Return local-index positions of inflection candidates within the trace.
+    Return local-index positions of inflection points within the trace.
 
     split_logic options:
         local_minimum   : find_peaks on the negated trace
@@ -265,15 +266,15 @@ def _detect_inflections(trace: np.ndarray, split_logic: str) -> np.ndarray:
     return np.array([], dtype=int)
 
 
-def _filter_min_distance(candidates: np.ndarray, distance: int) -> np.ndarray:
-    """Greedily keep candidates at least `distance` frames apart."""
-    if len(candidates) == 0:
+def _filter_min_distance(points: np.ndarray, distance: int) -> np.ndarray:
+    """Greedily keep points at least `distance` frames apart."""
+    if len(points) == 0:
         return np.array([], dtype=int)
     distance = max(1, int(distance))
     kept: list[int] = []
-    for cand in sorted(int(c) for c in candidates):
-        if not kept or cand - kept[-1] >= distance:
-            kept.append(cand)
+    for point in sorted(int(value) for value in points):
+        if not kept or point - kept[-1] >= distance:
+            kept.append(point)
     return np.array(kept, dtype=int)
 
 
@@ -284,10 +285,10 @@ def _detect_rep_boundaries(
     prominence: float | None,
 ) -> np.ndarray:
     """
-    Return local-index positions of repetition-boundary candidates.
+    Return local-index positions of repetition-boundary proposals.
 
     Endpoint insertion is handled by segment_reps(); this helper returns only
-    interior candidates detected from the smoothed trajectory.
+    interior proposals detected from the smoothed trajectory.
     """
     if not _HAS_SCIPY:
         return np.array([], dtype=int)
@@ -304,8 +305,8 @@ def _detect_rep_boundaries(
         return peaks
     if boundary_logic == "zero_crossing":
         grad = np.gradient(trace)
-        candidates = np.where(np.diff(np.sign(grad)))[0]
-        return _filter_min_distance(candidates, min_distance_frames)
+        zero_crossings = np.where(np.diff(np.sign(grad)))[0]
+        return _filter_min_distance(zero_crossings, min_distance_frames)
 
     return np.array([], dtype=int)
 
@@ -316,7 +317,7 @@ def _make_failure_point(
     start_frame: int,
     end_frame: int,
     reason: str,
-    candidate_frame: int | None = None,
+    boundary_proposal_frame: int | None = None,
     pipeline_action: str = "wait_for_manual_override",
 ) -> dict[str, Any]:
     """Build a rep-boundary segmentation failure-point record."""
@@ -327,7 +328,9 @@ def _make_failure_point(
         "rep_id": None,
         "start_frame": int(start_frame),
         "end_frame": int(end_frame),
-        "candidate_frame": None if candidate_frame is None else int(candidate_frame),
+        "boundary_proposal_frame": (
+            None if boundary_proposal_frame is None else int(boundary_proposal_frame)
+        ),
         "reason": reason,
         "confidence": None,
         "pipeline_action": pipeline_action,
@@ -337,38 +340,38 @@ def _make_failure_point(
 
 
 def _apply_inflection_policy(
-    candidates: np.ndarray,
+    inflection_points: np.ndarray,
     trace: np.ndarray,
     split_logic: str,
     policy: str,
 ) -> tuple[list[int], bool]:
     """
-    Resolve multiple candidates to a single inflection frame.
+    Resolve multiple inflection points to a single inflection frame.
 
     Returns (chosen_frames, was_collapsed).
     Empty return means the rep should be rejected.
     """
-    if len(candidates) == 0:
+    if len(inflection_points) == 0:
         return [], False
-    if len(candidates) == 1:
-        return [int(candidates[0])], False
+    if len(inflection_points) == 1:
+        return [int(inflection_points[0])], False
 
     if policy == "global_extremum":
         if split_logic == "local_minimum":
-            idx = int(candidates[np.argmin(trace[candidates])])
+            idx = int(inflection_points[np.argmin(trace[inflection_points])])
         else:
-            idx = int(candidates[np.argmax(trace[candidates])])
+            idx = int(inflection_points[np.argmax(trace[inflection_points])])
         return [idx], True
     elif policy == "first":
-        return [int(candidates[0])], True
+        return [int(inflection_points[0])], True
     elif policy == "reject_rep":
         return [], True  # collapsed=True, but empty → reject
 
     # Unknown policy: default to global extremum
     if split_logic == "local_minimum":
-        idx = int(candidates[np.argmin(trace[candidates])])
+        idx = int(inflection_points[np.argmin(trace[inflection_points])])
     else:
-        idx = int(candidates[np.argmax(trace[candidates])])
+        idx = int(inflection_points[np.argmax(trace[inflection_points])])
     return [idx], True
 
 
@@ -643,7 +646,7 @@ def segment_reps(
             "rep_boundary_001",
             start_frame=frame_vals[0],
             end_frame=frame_vals[-1],
-            reason="missing_candidate",
+            reason="missing_boundary_proposal",
         )
         result.loc[analysis_indices, "rep_segmentation_status"] = "failed"
         result.loc[analysis_indices, "rep_segmentation_failure_id"] = failure[
@@ -651,7 +654,7 @@ def segment_reps(
         ]
         report.status = "failed"
         report.failure_points = [failure]
-        report.rejected_reason = "fewer than two boundary candidates"
+        report.rejected_reason = "fewer than two boundary proposals"
         return result, report
 
     intervals: list[tuple[int, int]] = []
@@ -670,7 +673,7 @@ def segment_reps(
                     start_frame=frame_vals[start_local],
                     end_frame=frame_vals[max(start_local, end_local)],
                     reason="rep_too_short",
-                    candidate_frame=frame_vals[next_boundary],
+                    boundary_proposal_frame=frame_vals[next_boundary],
                     pipeline_action="exclude_range",
                 )
             )
@@ -767,7 +770,7 @@ def segment_phases(
 
     if "segment_type" not in df.columns or "rep_id" not in df.columns:
         warnings.warn(
-            "[Step ⑦] Phase Segmentation: annotation columns (segment_type, rep_id) "
+            "[Step ⑥] Phase Segmentation: annotation columns (segment_type, rep_id) "
             "not found — skipped.",
             stacklevel=2,
         )
@@ -871,9 +874,9 @@ def segment_phases(
         # ── Simple two-phase case (1 inflection needed) ───────────────────────
         if n_inflections_needed == 1:
             logic = split_logics[0]
-            candidates = _detect_inflections(smoothed, logic)
+            inflection_points = _detect_inflections(smoothed, logic)
 
-            if len(candidates) == 0:
+            if len(inflection_points) == 0:
                 reports.append(
                     PhaseSegmentationReport(
                         rep_id=rid,
@@ -885,7 +888,7 @@ def segment_phases(
                 continue
 
             chosen, collapsed = _apply_inflection_policy(
-                candidates, smoothed, logic, ps.multi_inflection_policy
+                inflection_points, smoothed, logic, ps.multi_inflection_policy
             )
 
             if not chosen:
@@ -919,15 +922,15 @@ def segment_phases(
                 # Search only in the remaining trace portion (after the previous inflection)
                 search_start = inflection_locals[-1] + 1 if inflection_locals else 0
                 sub_trace = smoothed[search_start:]
-                sub_candidates = _detect_inflections(sub_trace, logic)
+                sub_points = _detect_inflections(sub_trace, logic)
 
-                if len(sub_candidates) == 0:
+                if len(sub_points) == 0:
                     inflection_locals = []
                     break
 
-                sub_candidates_global = sub_candidates + search_start
+                sub_points_global = sub_points + search_start
                 sub_chosen, sub_collapsed = _apply_inflection_policy(
-                    sub_candidates_global, smoothed, logic, ps.multi_inflection_policy
+                    sub_points_global, smoothed, logic, ps.multi_inflection_policy
                 )
                 if sub_collapsed:
                     collapsed = True

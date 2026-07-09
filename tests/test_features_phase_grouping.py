@@ -34,7 +34,7 @@ def _exercise_definition():
             model="mediapipe_pose",
             primary_joints=["left_knee"],
         ),
-        compensation_candidates=[],
+        compensation_patterns=[],
         camera_protocol=None,
         phase_segmentation=PhaseSegmentationSpec(
             reference_landmark="hip_center",
@@ -146,7 +146,7 @@ def test_pipeline_feature_report_includes_phase_summary_records(monkeypatch):
     assert summary["rep_id"] == 1
     assert summary["phase"] is None
     assert summary["unit"] == "dimensionless"
-    assert summary["source_fields"]
+    assert "source_fields" not in summary
 
     temporal_summary = next(
         record
@@ -158,7 +158,17 @@ def test_pipeline_feature_report_includes_phase_summary_records(monkeypatch):
     assert temporal_summary["rep_id"] == 1
     assert temporal_summary["phase"] is None
     assert temporal_summary["unit"] == "dimensionless"
-    assert temporal_summary["source_fields"]
+    assert "source_fields" not in temporal_summary
+
+    config.biomarker.emit_provenance = True
+    _, debug_report = run_pipeline(_featured_df(), config)
+    debug_summary = next(
+        record
+        for record in debug_report["features"]
+        if record["feature_id"]
+        == "spatial.phase_profile.range_of_motion_ratio.descent_ascent"
+    )
+    assert debug_summary["source_fields"]
 
 
 def test_temporal_phase_profile_uses_exercise_phase_sequence_labels():

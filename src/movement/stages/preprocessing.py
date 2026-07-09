@@ -10,7 +10,8 @@ Corrects data quality issues only. Does not alter movement quality patterns
 
 Pipeline position: after ③ exercise definition loading, before ⑤ normalization.
 
-Coordinate convention: columns named <landmark>_{x,y,z}.  Input shape: (T, columns).
+Coordinate convention: columns named <landmark>_{x,y} or <landmark>_{x,y,z}.
+Input shape: (T, columns).
 """
 
 from __future__ import annotations
@@ -19,6 +20,15 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+
+from movement.pose_data_state import (
+    PREPROCESSED_POSE_DATA,
+    RAW_COORDINATE_FAMILY,
+    get_coordinate_axes,
+    get_coordinate_families,
+    get_pose_data_state,
+    set_pose_data_state,
+)
 
 if TYPE_CHECKING:
     from movement.definitions.exercise_definition import ExerciseDefinition
@@ -84,9 +94,29 @@ _FAR_SIDE_JITTER_DEFAULT_VELOCITY_MULTIPLIER = 3.0
 # ── Pure coordinate helpers ───────────────────────────────────────────────────
 
 
+def _coordinate_axes(df: pd.DataFrame, lm: str) -> tuple[str, ...]:
+    """Return available raw coordinate axes for one landmark."""
+
+    axes: list[str] = []
+    for axis in ("x", "y", "z"):
+        column = f"{lm}_{axis}"
+        if column not in df.columns:
+            continue
+        if axis == "z":
+            values = df[column].astype(float).to_numpy()
+            if not np.isfinite(values).any():
+                continue
+        axes.append(axis)
+    axes = tuple(axes)
+    if "x" not in axes or "y" not in axes:
+        raise KeyError(f"Missing required x/y coordinate columns for {lm}.")
+    return axes
+
+
 def _xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
-    """Return (T, 3) float array of xyz coordinates for a landmark."""
-    return df[[f"{lm}_x", f"{lm}_y", f"{lm}_z"]].values.astype(float)
+    """Return (T, A) float array of available x/y(/z) coordinates."""
+    axes = _coordinate_axes(df, lm)
+    return df[[f"{lm}_{axis}" for axis in axes]].values.astype(float)
 
 
 def _segment_length(df: pd.DataFrame, lm1: str, lm2: str) -> np.ndarray:
@@ -100,8 +130,8 @@ def _joint_angle_deg(df: pd.DataFrame, prox: str, vert: str, dist: str) -> np.nd
 
     Degenerate frames (zero-length bone) return NaN so no bound is violated.
     """
-    v_prox = _xyz(df, prox) - _xyz(df, vert)  # (T, 3)
-    v_dist = _xyz(df, dist) - _xyz(df, vert)  # (T, 3)
+    v_prox = _xyz(df, prox) - _xyz(df, vert)  # (T, 2 or 3)
+    v_dist = _xyz(df, dist) - _xyz(df, vert)  # (T, 2 or 3)
     norm_p = np.linalg.norm(v_prox, axis=1)  # (T,)
     norm_d = np.linalg.norm(v_dist, axis=1)
     denom = norm_p * norm_d
@@ -139,18 +169,18 @@ def _estimate_fps(df: pd.DataFrame) -> float:
 # ── Detection steps (all modify mask in-place) ────────────────────────────────
 
 
-def _run_visibility_gating(
+def _run_confidence_gating(
     df: pd.DataFrame,
     present: list[str],
     threshold: float,
     mask: np.ndarray,  # (T, len(present)), True = reliable; modified in-place
 ) -> dict[str, int]:
-    """Flag landmarks below visibility threshold. Returns per-landmark low-vis frame counts."""
+    """Flag landmarks below confidence threshold. Returns per-landmark counts."""
     counts: dict[str, int] = {}
     for i, lm in enumerate(present):
-        vis_col = f"{lm}_visibility"
-        if vis_col in df.columns:
-            below = df[vis_col].values < threshold
+        conf_col = f"{lm}_confidence"
+        if conf_col in df.columns:
+            below = df[conf_col].values < threshold
             mask[:, i] &= ~below
             counts[lm] = int(np.sum(below))
         else:
@@ -218,7 +248,7 @@ def _run_velocity_outlier(
     vel_threshold = threshold_torso_per_sec * torso_scale / max(fps, 1.0)
     total = 0
     for i, lm in enumerate(present):
-        xyz = _xyz(df, lm)  # (T, 3)
+        xyz = _xyz(df, lm)  # (T, 2 or 3)
         disp = np.linalg.norm(np.diff(xyz, axis=0), axis=1)  # (T-1,)
         velocity = np.concatenate([[0.0], disp])  # frame 0 has no prior
         outlier = velocity > vel_threshold
@@ -260,7 +290,7 @@ def _run_swap_detection(
     # Temporal consistency: vectorised vote per frame (D3 §Detection Heuristics)
     swap_votes = np.zeros(T, dtype=int)
     for lm_l, lm_r in active_pairs:
-        xl = _xyz(df, lm_l)  # (T, 3)
+        xl = _xyz(df, lm_l)  # (T, 2 or 3)
         xr = _xyz(df, lm_r)
         d_LL = np.linalg.norm(xl[1:] - xl[:-1], axis=1)  # (T-1,)
         d_LR = np.linalg.norm(xl[1:] - xr[:-1], axis=1)
@@ -282,11 +312,11 @@ def _run_swap_detection(
                     tmp = df.loc[idx_labels, col_l].values.copy()
                     df.loc[idx_labels, col_l] = df.loc[idx_labels, col_r].values
                     df.loc[idx_labels, col_r] = tmp
-            vis_l, vis_r = f"{lm_l}_visibility", f"{lm_r}_visibility"
-            if vis_l in df.columns and vis_r in df.columns:
-                tmp = df.loc[idx_labels, vis_l].values.copy()
-                df.loc[idx_labels, vis_l] = df.loc[idx_labels, vis_r].values
-                df.loc[idx_labels, vis_r] = tmp
+            conf_l, conf_r = f"{lm_l}_confidence", f"{lm_r}_confidence"
+            if conf_l in df.columns and conf_r in df.columns:
+                tmp = df.loc[idx_labels, conf_l].values.copy()
+                df.loc[idx_labels, conf_l] = df.loc[idx_labels, conf_r].values
+                df.loc[idx_labels, conf_r] = tmp
         swap_corrected[swap_frame_indices] = True
         for t in swap_frame_indices:
             notes[t] = (
@@ -486,7 +516,7 @@ def _build_landmark_quality_summary(
     usable_mask: np.ndarray,
     recovered_mask: np.ndarray,
     post_velocity_failed_mask: np.ndarray,
-    visibility_counts: dict[str, int],
+    confidence_counts: dict[str, int],
 ) -> list[dict[str, Any]]:
     """Summarize landmark-level preprocessing provenance for QC review."""
     summary: list[dict[str, Any]] = []
@@ -498,7 +528,7 @@ def _build_landmark_quality_summary(
         summary.append(
             {
                 "landmark": landmark,
-                "low_visibility_frames": int(visibility_counts.get(landmark, 0)),
+                "low_confidence_frames": int(confidence_counts.get(landmark, 0)),
                 "observed_unreliable_frames": observed_unreliable,
                 "unusable_frames": unusable,
                 "recovered_by_interpolation": recovered,
@@ -555,19 +585,19 @@ def _supports_camera_side_inference(zones: list[str]) -> bool:
     return bool(zone_set & _SIDE_OR_OBLIQUE_ZONES)
 
 
-def _landmark_visibility(
+def _landmark_confidence(
     df: pd.DataFrame,
     landmark: str,
     threshold: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    vis_col = f"{landmark}_visibility"
-    if vis_col not in df.columns:
-        visibility = np.ones(len(df), dtype=float)
+    conf_col = f"{landmark}_confidence"
+    if conf_col not in df.columns:
+        confidence = np.ones(len(df), dtype=float)
     else:
-        visibility = df[vis_col].astype(float).to_numpy()
-        visibility = np.where(np.isfinite(visibility), visibility, 0.0)
-    low_visibility = visibility < threshold
-    return visibility, low_visibility
+        confidence = df[conf_col].astype(float).to_numpy()
+        confidence = np.where(np.isfinite(confidence), confidence, 0.0)
+    low_confidence = confidence < threshold
+    return confidence, low_confidence
 
 
 def _landmark_jitter_score(
@@ -578,7 +608,7 @@ def _landmark_jitter_score(
     fps: float,
     velocity_threshold: float,
     acceleration_threshold: float,
-    visibility_threshold: float,
+    confidence_threshold: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     coords = _xyz(df, landmark)
     scale = max(float(torso_scale), 1e-9)
@@ -595,7 +625,7 @@ def _landmark_jitter_score(
     else:
         accel = np.zeros(len(df), dtype=float)
 
-    _, low_visibility = _landmark_visibility(df, landmark, visibility_threshold)
+    _, low_confidence = _landmark_confidence(df, landmark, confidence_threshold)
 
     score = np.maximum.reduce(
         [
@@ -603,7 +633,7 @@ def _landmark_jitter_score(
             accel / max(acceleration_threshold, 1e-9),
         ]
     )
-    return score, low_visibility
+    return score, low_confidence
 
 
 def _assign_pair_camera_side(
@@ -665,14 +695,13 @@ def _interpolate_or_smooth_unstable_frames(
             left_row = df.index[start - 1]
             right_row = df.index[end + 1]
             can_interpolate = True
-            for ax in ("x", "y", "z"):
+            axes = _coordinate_axes(df, landmark)
+            for ax in axes:
                 col = f"{landmark}_{ax}"
-                can_interpolate &= col in df.columns
-                if can_interpolate:
-                    can_interpolate &= np.isfinite(float(df.at[left_row, col]))
-                    can_interpolate &= np.isfinite(float(df.at[right_row, col]))
+                can_interpolate &= np.isfinite(float(df.at[left_row, col]))
+                can_interpolate &= np.isfinite(float(df.at[right_row, col]))
             if can_interpolate:
-                for ax in ("x", "y", "z"):
+                for ax in axes:
                     col = f"{landmark}_{ax}"
                     v0 = float(df.at[left_row, col])
                     v1 = float(df.at[right_row, col])
@@ -853,34 +882,34 @@ def _run_far_side_stabilization(
 
     for landmark in present:
         side = landmark_side[landmark]
-        observed_score, observed_low_visibility = _landmark_jitter_score(
+        observed_score, observed_low_confidence = _landmark_jitter_score(
             observed_df,
             landmark,
             torso_scale=torso_scale,
             fps=fps,
             velocity_threshold=velocity_threshold,
             acceleration_threshold=acceleration_threshold,
-            visibility_threshold=float(far_cfg.visibility_threshold),
+            confidence_threshold=float(far_cfg.confidence_threshold),
         )
-        score, low_visibility = _landmark_jitter_score(
+        score, low_confidence = _landmark_jitter_score(
             df,
             landmark,
             torso_scale=torso_scale,
             fps=fps,
             velocity_threshold=velocity_threshold,
             acceleration_threshold=acceleration_threshold,
-            visibility_threshold=float(far_cfg.visibility_threshold),
+            confidence_threshold=float(far_cfg.confidence_threshold),
         )
         lm_mask = mask[:, present_index[landmark]]
         observed_lm_mask = observed_mask[:, present_index[landmark]]
         observed_low_confidence_far = (side == "far_side") & (
-            observed_low_visibility | ~observed_lm_mask | swap_corrected
+            observed_low_confidence | ~observed_lm_mask | swap_corrected
         )
         observed_high_jitter_far = (
             (side == "far_side") & (observed_score >= 1.0) & observed_low_confidence_far
         )
         post_low_confidence_far = (side == "far_side") & (
-            low_visibility | ~lm_mask | swap_corrected
+            low_confidence | ~lm_mask | swap_corrected
         )
         post_high_jitter_far = (
             (side == "far_side") & (score >= 1.0) & post_low_confidence_far
@@ -1021,6 +1050,9 @@ def preprocess_pose_dataframe(
     pre_report : dict[str, Any]
     """
     pre_df = df.copy()
+    input_pose_data_state = get_pose_data_state(df)
+    input_coordinate_families = get_coordinate_families(df)
+    input_coordinate_axes = get_coordinate_axes(df)
     T = len(pre_df)
 
     # Landmarks that have coordinate columns in the dataframe
@@ -1051,9 +1083,9 @@ def preprocess_pose_dataframe(
     # ── Reliability mask: True = reliable ────────────────────────────────────
     mask = np.ones((T, len(present)), dtype=bool)
 
-    # Step 1: Visibility gating
-    vis_counts = _run_visibility_gating(
-        pre_df, present, config.reliability.visibility_threshold, mask
+    # Step 1: Confidence gating
+    confidence_counts = _run_confidence_gating(
+        pre_df, present, config.reliability.confidence_threshold, mask
     )
 
     # Step 2: Segment length consistency
@@ -1126,10 +1158,10 @@ def preprocess_pose_dataframe(
         usable_mask=mask,
         recovered_mask=recovered_mask,
         post_velocity_failed_mask=post_velocity_failed_mask,
-        visibility_counts=vis_counts,
+        confidence_counts=confidence_counts,
     )
     rule_contribution_summary = {
-        "low_visibility_landmark_frames": int(sum(vis_counts.values())),
+        "low_confidence_landmark_frames": int(sum(confidence_counts.values())),
         "segment_length_violation_events": int(n_segment_violations),
         "velocity_outlier_landmark_frames": int(n_velocity_outliers),
         "joint_angle_violation_events": int(n_angle_violations),
@@ -1204,6 +1236,12 @@ def preprocess_pose_dataframe(
     pre_df = pd.concat(
         [pre_df, pd.DataFrame(status_columns, index=pre_df.index)], axis=1
     )
+    set_pose_data_state(
+        pre_df,
+        PREPROCESSED_POSE_DATA,
+        input_coordinate_families or [RAW_COORDINATE_FAMILY],
+        input_coordinate_axes,
+    )
 
     # ── Report ────────────────────────────────────────────────────────────────
     exercise_id = (
@@ -1220,6 +1258,12 @@ def preprocess_pose_dataframe(
 
     pre_report: dict[str, Any] = {
         "method": "reliability_mask_v1",
+        "input_pose_data_state": input_pose_data_state,
+        "output_pose_data_state": PREPROCESSED_POSE_DATA,
+        "input_coordinate_families": input_coordinate_families,
+        "output_coordinate_families": get_coordinate_families(pre_df),
+        "input_coordinate_axes": input_coordinate_axes,
+        "output_coordinate_axes": get_coordinate_axes(pre_df),
         "exercise_id": exercise_id,
         "movement_template_id": movement_template_id,
         "execution_pattern": execution_pattern,
@@ -1232,9 +1276,9 @@ def preprocess_pose_dataframe(
             if f"{lm}_{ax}" in pre_df.columns
         ),
         "reliability_summary": {
-            "visibility_threshold": config.reliability.visibility_threshold,
-            "num_low_visibility_frames_per_landmark": vis_counts,
-            "num_low_visibility_total": sum(vis_counts.values()),
+            "confidence_threshold": config.reliability.confidence_threshold,
+            "num_low_confidence_frames_per_landmark": confidence_counts,
+            "num_low_confidence_total": sum(confidence_counts.values()),
             "num_segment_length_violations": n_segment_violations,
             "num_joint_angle_violations": n_angle_violations,
             "num_velocity_outliers": n_velocity_outliers,

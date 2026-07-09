@@ -16,12 +16,19 @@ import pandas as pd
 
 from movement.core.config import (
     LANDMARKS,
+    make_confidence_columns,
     make_coordinate_columns,
     make_required_columns,
-    make_visibility_columns,
 )
 from movement.core.io import load_pose_csv
 from movement.definitions.exercise_definition import load_exercise_definition
+from movement.pose_data_state import (
+    DEFAULT_COORDINATE_AXES,
+    RAW_COORDINATE_FAMILY,
+    RAW_POSE_DATA,
+    get_coordinate_axes,
+    set_pose_data_state,
+)
 from movement.pipeline import (
     AnnotationConfig,
     BiomechConfig,
@@ -40,7 +47,7 @@ from movement.stages.annotation import apply_annotation, load_annotation_csv
 from movement.stages.canonicalization import CanonicalizationConfig
 from movement.stages.normalization import normalize_pose_by_hip_torso
 from movement.stages.preprocessing import preprocess_pose_dataframe
-from movement.stages.validation import run_basic_validation
+from movement.stages.validation import harmonize_pose_schema, run_basic_validation
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_STAGE_CHECK_POSE_CSV = Path(
@@ -137,7 +144,7 @@ def _first_non_null_string(df: pd.DataFrame, column: str) -> str | None:
     return next((value for value in values if value.strip()), None)
 
 
-def candidate_definition_dirs(
+def definition_search_dirs(
     exercise_id: str | None,
     *,
     project_root: str | Path | None = None,
@@ -175,7 +182,7 @@ def resolve_target_definitions_dir(
 ) -> Path:
     """Resolve the definition directory for an exercise-id under notebook defaults."""
 
-    candidates = candidate_definition_dirs(
+    search_dirs = definition_search_dirs(
         exercise_id,
         project_root=project_root,
         definitions_dir=definitions_dir,
@@ -183,10 +190,10 @@ def resolve_target_definitions_dir(
         authoring_example_root=authoring_example_root,
     )
     if exercise_id:
-        for candidate in candidates:
-            if (candidate / f"{exercise_id}.yaml").exists():
-                return candidate
-    return candidates[0]
+        for directory in search_dirs:
+            if (directory / f"{exercise_id}.yaml").exists():
+                return directory
+    return search_dirs[0]
 
 
 def build_stage_check_pipeline_config(
@@ -302,6 +309,25 @@ def prepare_previous_stage_inputs(
         raw_df = load_pose_csv(resolved_pose_csv)
     else:
         raw_df = pose_df.copy()
+    coordinate_axes_mode = (
+        normalization_config.coordinate_axes
+        if normalization_config is not None
+        else "auto"
+    )
+    raw_df, schema_harmonization_report = harmonize_pose_schema(
+        raw_df,
+        active_landmarks,
+        coordinate_axes_mode,
+    )
+    raw_coordinate_axes = schema_harmonization_report["validation_axes"]
+    raw_axes_by_family = get_coordinate_axes(raw_df)
+    raw_axes_by_family[RAW_COORDINATE_FAMILY] = ["x", "y", "z"]
+    set_pose_data_state(
+        raw_df,
+        RAW_POSE_DATA,
+        [RAW_COORDINATE_FAMILY],
+        raw_axes_by_family,
+    )
 
     context = PreviousStageInputs(
         project_root=root,
@@ -316,10 +342,20 @@ def prepare_previous_stage_inputs(
     if target_order >= _STAGE_ORDER["validation"]:
         context.validation_report = run_basic_validation(
             df=context.raw_df,
-            required_columns=make_required_columns(active_landmarks),
-            coordinate_columns=make_coordinate_columns(active_landmarks),
-            visibility_columns=make_visibility_columns(active_landmarks),
+            required_columns=make_required_columns(
+                active_landmarks,
+                axes=DEFAULT_COORDINATE_AXES,
+            ),
+            coordinate_columns=make_coordinate_columns(
+                active_landmarks,
+                axes=raw_coordinate_axes,
+            ),
+            confidence_columns=make_confidence_columns(active_landmarks),
         )
+        context.validation_report["coordinate_axes"] = get_coordinate_axes(
+            context.raw_df
+        )
+        context.validation_report["schema_harmonization"] = schema_harmonization_report
 
     if target_order >= _STAGE_ORDER["annotation"]:
         if resolved_annotation_csv is None:
@@ -383,6 +419,7 @@ def prepare_previous_stage_inputs(
             landmarks=active_landmarks,
             keep_reference_columns=config.keep_reference_columns,
             model_depth_scale=config.model_depth_scale,
+            coordinate_axes=config.coordinate_axes,
         )
         context.normalized_df = normalized_df
         context.normalization_report = normalization_report

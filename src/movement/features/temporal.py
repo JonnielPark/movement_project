@@ -1,5 +1,5 @@
 """
-⑧ Temporal Features
+⑦ Temporal Features
 
 Computes rep tempo (duration in seconds) and inter-rep variability (CV).
 

@@ -4,6 +4,13 @@ from typing import Union
 import pandas as pd
 import yaml
 
+from movement.pose_data_state import (
+    RAW_COORDINATE_FAMILY,
+    RAW_POSE_DATA,
+    get_coordinate_axes,
+    set_pose_data_state,
+)
+
 
 def load_pose_csv(path: Union[str, Path]) -> pd.DataFrame:
     """
@@ -32,6 +39,13 @@ def load_pose_csv(path: Union[str, Path]) -> pd.DataFrame:
     if "timestamp" not in df.columns:
         raise ValueError("CSV must contain a 'timestamp' column.")
 
+    raw_axes = get_coordinate_axes(df).get(RAW_COORDINATE_FAMILY, ["x", "y", "z"])
+    set_pose_data_state(
+        df,
+        RAW_POSE_DATA,
+        [RAW_COORDINATE_FAMILY],
+        {RAW_COORDINATE_FAMILY: raw_axes},
+    )
     return df
 
 

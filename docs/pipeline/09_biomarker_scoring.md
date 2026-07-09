@@ -1,12 +1,13 @@
-# 10. 바이오마커 점수화 (Biomarker Scoring)
+# 09. 바이오마커 점수화 (Biomarker Scoring)
 
-**문서 버전:** 1.6.2
-**최종 갱신:** 2026-07-07
-**영문 동기화:** `docs_eng/pipeline/10_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
+**문서 버전:** 1.6.3
+**최종 갱신:** 2026-07-09
+**영문 동기화:** `docs_eng/pipeline/09_biomarker_scoring.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑩은 ⑧ `FeatureRecord`와 ⑨ `BiomechRecord`를 해석 가능한 biomarker record로
+파이프라인 단계 ⑨은 ⑦ `FeatureRecord`와 ⑧ `BiomechRecord`를 해석 가능한 biomarker record로
 감싸고, baseline이 있을 때 반복별 movement-quality score를 산출한다. 관측 신뢰도, feature
-availability, coordinate-correction magnitude는 별도 confidence/provenance signal로 유지한다.
+availability, coordinate-correction magnitude는 별도 confidence와 availability signal로 유지한다.
+세부 trace provenance는 필수 scoring 입력이 아니라 stage report 또는 선택적 audit export에 둔다.
 
 점수는 공학적 요약이며 clinical threshold 또는 diagnostic output이 아니다.
 
@@ -15,9 +16,9 @@ availability, coordinate-correction magnitude는 별도 confidence/provenance si
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑧ Feature Extraction   FeatureRecord list
-⑨ Biomech Proxy        BiomechRecord list
-→ ⑩ Biomarker Scoring  ← 본 단계
+⑦ Feature Extraction   FeatureRecord list
+⑧ Biomech Proxy        BiomechRecord list
+→ ⑨ Biomarker Scoring  ← 본 단계
 ```
 
 필수 입력:
@@ -43,9 +44,10 @@ Baseline matching은 metric id 기준으로 수행한다. 따라서 per-rep metr
 
 ```text
 BiomarkerRecord
-    value, unit, rep_id, source_fields, availability, view/depth reliability,
-    focus tier, 공통 record context metadata, landmark reference, note
-    metadata를 가진 개별 metric pass-through record.
+    value, unit, rep_id, availability, view/depth reliability, focus tier,
+    공통 record context metadata, landmark reference, note metadata를 가진
+    개별 metric pass-through record. Debug/report export가 필요하면 선택적
+    audit reference를 붙일 수 있다.
 
 BiomarkerScoreRecord
     domain score, final score, floor flag, deduction audit, withheld-feature audit,
@@ -56,32 +58,34 @@ BiomarkerScoreItem
     별도 점수 알고리즘이 아니라 reporting view다.
 ```
 
-`BiomarkerRecord.source_fields`는 필수다. Provenance 없는 record는 산출하지 않는다.
+Scoring eligibility는 `availability`, `depth_dependency`, `focus_tier`,
+`feature_family`, `evidence_axes`, `coordinate_reference`, score policy 같은
+명시적 운영 필드로 결정한다. `source_fields`는 scoring 필수 입력이 아니다.
 
 단계별 점검용 저장 산출물은 pass-through biomarker record와 composite score record를 분리한다.
 
 ```text
 data/processed/biomarker/<recording_id>_biomarkers.csv
-    BiomarkerRecord 1개당 1행. availability, source_fields, view/depth
-    reliability, focus tier, record context metadata, landmark reference,
-    unit metadata를 보존한다.
+    BiomarkerRecord 1개당 1행. availability, view/depth reliability,
+    focus tier, record context metadata, landmark reference, unit metadata를
+    보존한다. Debug/report export에서는 선택적 audit reference를 포함할 수 있다.
 
 data/processed/biomarker/<recording_id>_biomarker_scores.csv
     baseline이 있을 때 BiomarkerScoreRecord 1개당 1행. CSV 호환성을 위해
     domain_scores, floor_applied, deductions, withheld_features, domain_weights,
-    domain-feature-family weights, low-confidence/depth/focus/feature gravity policy,
+    domain-feature-family weights, low-confidence/depth/focus/feature scoring weight policy,
     score_bounds는 JSON 문자열로 직렬화한다.
 
 data/processed/biomarker/<recording_id>_biomarker_score_items.csv
     Scored feature item당 한 row. 각 score record의 deduction audit을 rep_id, domain,
-    feature_id, item_score, deduction, value, baseline, confidence gravity,
-    depth/focus gravity, feature-family weight, record context field로 펼친다.
+    feature_id, item_score, deduction, value, baseline, scoring weight,
+    depth/focus weight, feature-family weight, record context field로 펼친다.
     item_score는 score_max - effective deduction을 configured score bounds로 clipping해
     계산하므로 독립적인 임상 등급이 아니라 해당 feature의 effective contribution audit으로 읽는다.
 
 data/processed/biomarker/<recording_id>_biomarker_qc.json
     row count, score availability, final-score range, withheld-feature count,
-    output file provenance를 담은 compact QC 파일.
+    output artifact metadata를 담은 compact QC 파일.
 ```
 
 선택된 운동의 baseline이 없으면 biomarker CSV와 QC JSON은 저장하고, score CSV와 score-item
@@ -202,8 +206,8 @@ other       → pass-through only
 
 ## 4. Feature Eligibility
 
-⑧은 scoring에 충분히 신뢰할 수 없는 numeric feature도 방출할 수 있다. ⑩은 `availability`를
-composite-score gate로 사용하고, evidence gravity로 점수 반영 강도를 조절한다.
+⑦은 scoring에 충분히 신뢰할 수 없는 numeric feature도 방출할 수 있다. ⑨은 `availability`를
+composite-score gate로 사용하고, scoring weight로 점수 반영 강도를 조절한다.
 
 ```text
 assessed
@@ -211,7 +215,7 @@ assessed
 
 low_confidence
     scoring 설정에서 해당 domain의 low-confidence score weight가 0보다 클 때만
-    작은 gravity로 반영한다. 기본값은 spatial/temporal/control low-confidence
+    작은 weight로 반영한다. 기본값은 spatial/temporal/control low-confidence
     record는 제외하고, biomech low-confidence record만 낮은 영향으로 반영한다.
 
 not_assessed
@@ -224,19 +228,19 @@ availability 누락
 ### 현재 점수화 항목 catalog
 
 현재 score는 항목화된 scoring prototype이지 최종 normative movement-quality 판정이 아니다.
-Score gravity가 낮거나 0인 항목도 biomarker audit에는 남긴다.
+Effective scoring weight가 낮거나 0인 항목도 biomarker audit에는 남긴다.
 
 ```text
 spatial.range_of_motion.xy.*
-    상태: primary scoring candidate.
+    상태: primary score-eligible feature.
     의미: recording-view 관절 range of motion.
     현재 주의: 가능한 경우 운동정의의 acceptable band를 사용한다. 통제된 깊은 squat를
     synthetic 평균보다 크다는 이유만으로 나쁘게 해석하지 않는다.
 
 spatial.range_of_motion.xyz.*
     상태: depth-mixed comparative evidence.
-    의미: 같은 joint-angle family에 model/candidate depth를 포함한 값.
-    현재 주의: corrected-3D 또는 multi-view validation이 뒷받침되기 전까지 낮은 gravity를 둔다.
+    의미: 같은 joint-angle family에 model/analysis depth를 포함한 값.
+    현재 주의: corrected-3D 또는 multi-view validation이 뒷받침되기 전까지 낮은 weight를 둔다.
 
 spatial.movement_path.arc_length_xy.*
     상태: score-tunable recording-view path evidence.
@@ -245,43 +249,43 @@ spatial.movement_path.arc_length_xy.*
     motion은 실제 foot travel보다 pose noise일 수 있기 때문이다.
 
 spatial.support_consistency.*
-    상태: support-context scoring candidate with one-sided scoring.
+    상태: support-context score-eligible feature with one-sided scoring.
     의미: fixed support anchor의 recording-view 일관성.
     현재 주의: CoP/CoM stability 주장이 아니며, biomechanical center proxy는 ⑨에서 다룬다.
 
 spatial.role_alignment.*
-    상태: secondary/context scoring candidate.
+    상태: secondary/context score-eligible feature.
     의미: 운동에 필요한 landmark의 bilateral 또는 role-based agreement.
     현재 주의: view-sensitive symmetry는 camera compatibility와 landmark quality를 함께 봐야 한다.
 
 temporal.tempo.* / temporal.variability.* / temporal.phase_profile.*
-    상태: 넓은 tolerance band를 가진 scoring candidate.
+    상태: 넓은 tolerance band를 가진 score-eligible feature.
     의미: rep duration, rhythm/repeatability, 운동정의 기반 phase timing balance.
     현재 주의: 본 연구는 absolute speed를 primary quality target으로 보지 않는다. 좁은 synthetic
     duration과 일치하는 것보다 안정적인 rhythm이 더 중요하다.
 
 control.compensation.knee_valgus.xy.* / control.compensation.knee_varus.xy.*
-    상태: attenuated control scoring candidate.
+    상태: attenuated control score-eligible feature.
     의미: recording-view hip-knee-ankle tracking proxy.
-    현재 주의: lower-body stance task에서 의미가 있지만 view와 visibility에 민감하다.
+    현재 주의: lower-body stance task에서 의미가 있지만 view와 confidence에 민감하다.
     Low-confidence control record는 기본적으로 withheld한다.
 
 control.compensation.excessive_trunk_flexion.xy
-    상태: provisional control scoring candidate.
+    상태: provisional control score-eligible feature.
     의미: image vertical 기준 recording-view trunk-line angle.
     현재 주의: 정상적인 trunk strategy는 운동 맥락에 따라 다르다. Hinge, squat, plank,
     push-up은 하나의 좁은 trunk-flexion baseline을 공유하면 안 된다.
-    기본 gravity: trunk-orientation tolerance band가 provisional인 동안 0.5.
+    기본 weight: trunk-orientation tolerance band가 provisional인 동안 0.5.
 
 control.compensation.excessive_trunk_flexion.xyz
-    상태: low-gravity comparative evidence.
-    의미: model/candidate depth가 섞인 trunk-line angle.
+    상태: low-weight comparative evidence.
+    의미: model/analysis depth가 섞인 trunk-line angle.
     현재 주의: monocular depth-mixed evidence이므로 corrected-3D validation 전까지 visible but weak로 둔다.
 
 control.compensation.heel_lift.xy.*
     상태: recording-view support-contact proxy.
     의미: rep support baseline 위 apparent heel elevation.
-    현재 주의: landmark visibility가 좋아야 하며, 현재 prototype에서는 depth-based heel lift를 승격하지 않는다.
+    현재 주의: landmark confidence가 좋아야 하며, 현재 prototype에서는 depth-based heel lift를 승격하지 않는다.
 
 control.compensation.pelvis_rotation.xyz
     상태: low-confidence/report-heavy evidence.
@@ -289,14 +293,14 @@ control.compensation.pelvis_rotation.xyz
     현재 주의: monocular pose에서는 depth-sensitive하다.
 
 biomech.*
-    상태: low-confidence gravity를 가진 biomechanical proxy evidence.
+    상태: low-confidence weight를 가진 biomechanical proxy evidence.
     의미: 상대적 CoM/moment-arm/load-shift tendency이며 absolute force/torque가 아니다.
     현재 주의: 해석과 향후 비교에는 유용하지만 clinical 또는 kinetic ground-truth measurement는 아니다.
 ```
 
 현재 p01 squat run에서 control subscore가 낮게 나오는 것은 주로 control-family baseline과
 tolerance rule이 여러 recording으로 검토되어야 함을 의미한다. 따라서 score audit은 항목별로
-읽어야 한다. Control candidate와 evidence path는 사용할 수 있지만, 최종 score calibration은
+읽어야 한다. Control analysis evidence와 evidence path는 사용할 수 있지만, 최종 score calibration은
 후속 작업으로 남긴다.
 
 ### 운동 전반에 적용되는 control scoring 문법
@@ -314,15 +318,15 @@ control family
     phase_control | diagnostic
 
 evidence path
-    recording-view candidate evidence는 xy, depth-sensitive comparative evidence는 xyz/z,
-    control 질문이 phase timing에 관한 경우 timing, ⑨ biomechanical proxy에서 온 경우 proxy.
+    recording-view analysis evidence는 xy, depth-sensitive comparative evidence는 xyz/z,
+    control 질문이 phase timing에 관한 경우 timing, ⑧ biomechanical proxy에서 온 경우 proxy.
 
 confidence gate
-    landmark visibility/coverage, view compatibility, support-context compatibility,
+    landmark confidence/coverage, view compatibility, support-context compatibility,
     depth dependency, correction/canonicalization provenance.
 
 scoring status
-    scoring_candidate | attenuated_candidate | low_gravity_compare |
+    score_eligible_feature | attenuated_review | low_weight_compare |
     report_only | not_applicable
 ```
 
@@ -344,7 +348,7 @@ knee_tracking
         hip, knee, ankle landmark quality, camera-view compatibility, unilateral 또는
         alternating task의 laterality/role context.
     Scoring status:
-        attenuated candidate. Low-confidence row는 기본적으로 withheld한다.
+        attenuated analysis evidence. Low-confidence row는 기본적으로 withheld한다.
 
 trunk_orientation_control
     Feature ids:
@@ -355,12 +359,12 @@ trunk_orientation_control
         예상되는 strategy일 수 있으며, plank 또는 push-up에서는 다른 control 문제다.
         운동정의가 acceptable direction 또는 target band를 제공해야 강한 점수화가 가능하다.
     Evidence path:
-        xy는 recording-view public candidate이고, xyz는 depth-mixed comparative evidence다.
+        xy는 recording-view public score-eligible feature이고, xyz는 depth-mixed comparative evidence다.
     Confidence gate:
         shoulder/hip landmark quality, view family, 해당 posture에서 image-vertical trunk angle이
         의미 있는지 여부.
     Scoring status:
-        xy는 provisional candidate, xyz는 low-gravity comparison.
+        xy는 provisional analysis evidence, xyz는 low-weight comparison.
 
 support_contact_control
     Feature ids:
@@ -374,9 +378,9 @@ support_contact_control
         기본은 recording-view support-axis evidence다. Depth 기반 contact inference는 검증 전까지
         low-confidence/report-only로 둔다.
     Confidence gate:
-        support landmark visibility, 선언된 support anchor, 운동정의의 support surface assumption.
+        support landmark confidence, 선언된 support anchor, 운동정의의 support surface assumption.
     Scoring status:
-        support context와 visibility가 충분할 때만 candidate.
+        support context와 confidence가 충분할 때만 analysis evidence.
 
 pelvis_control
     Feature ids:
@@ -388,13 +392,13 @@ pelvis_control
         anti-rotation task에서 의미가 있을 수 있다. Hip-centered self-measurement는 독립적인
         support-relative reference로 재정의되기 전까지 diagnostic/not_assessed다.
     Evidence path:
-        support-relative xy를 scoring 후보로 우선한다. z/xyz 기반 pelvis rotation은
+        support-relative xy를 점수화 가능 feature로 우선한다. z/xyz 기반 pelvis rotation은
         depth-sensitive comparative evidence다.
     Confidence gate:
         support anchor availability, hip landmark quality, laterality/role context,
         rotation에 대한 depth reliability.
     Scoring status:
-        support-relative xy는 candidate가 될 수 있고, depth-heavy rotation은 low-gravity 또는
+        support-relative xy는 score-eligible feature가 될 수 있고, depth-heavy rotation은 low-weight 또는
         report-only로 둔다.
 
 phase_control
@@ -413,7 +417,7 @@ phase_control
 
 이 문법은 control을 squat 전용 rule로 하드코딩하지 않고 확장 가능하게 유지한다. 새 운동은 관련
 context를 선언하고, 같은 availability, depth-dependency, focus-tier, feature-family, feature-id
-gravity gate를 통해 점수 기여도를 결정한다.
+weight gate를 통해 점수 기여도를 결정한다.
 
 `view_reliability`는 별도 score multiplier가 아니다. 이는 이미 `availability`에 반영되어야 하며,
 camera artifact에서 나온 가짜 정밀도를 피하기 위함이다.
@@ -433,14 +437,14 @@ control.compensation.lateral_pelvic_shift.xy
 
 Closed-chain squat-style pelvis control은 운동정의의 support center에 대한 hip-center drift처럼
 support-relative recording-view evidence로 대체하고, 이후 일반 availability, depth-dependency,
-focus-tier, feature-family gravity를 통해 점수 반영 강도를 조절한다.
+focus-tier, feature-family weight를 통해 점수 반영 강도를 조절한다.
 
 Closed-chain heel-lift scoring도 현재 pipeline에서는 recording-view support-contact proxy다.
 `control.compensation.heel_lift.xy.<side>`는 recording-view vertical evidence에서 계산될 때만 점수화할 수
 있다. Model-depth `z`를 이용한 heel-lift diagnostic은 향후 corrected-3D validation이 승격하기
 전까지 low-confidence 또는 report-only로 남아야 한다.
 
-⑧과 ⑨에서 온 공통 record context metadata는 보존하지만, 그 자체가 추가 score gravity를 만들지는
+⑧과 ⑨에서 온 공통 record context metadata는 보존하지만, 그 자체가 추가 scoring weight를 만들지는
 않는다. 특히 `landmark_ids`, `support_role`, `coordinate_reference`, `evaluation_domain`,
 `evidence_axes`, `feature_family`는 어떤 landmark를 어떤 좌표/evidence 경로로 측정했는지
 설명한다. Body region, side, default joint action 같은 안정적인 해부학 label은 report에서
@@ -448,42 +452,43 @@ Closed-chain heel-lift scoring도 현재 pipeline에서는 recording-view suppor
 않는다. 실제 점수 반영 강도는 계속 availability, depth dependency, focus tier,
 feature-family budget, feature-specific override에서 결정한다.
 
-`low_confidence_score_weights`는 scoring 단계의 gravity이지 normalization 또는 canonicalization
+`low_confidence_score_weights`는 scoring 단계의 weight이지 normalization 또는 canonicalization
 산출물이 아니다. Depth-sensitive biomech proxy evidence를 composite score에서 완전히 숨기지
 않되, monocular depth가 full-strength evidence처럼 작동하지 않도록 제한한다. Effective score
 weight가 0인 record는 `withheld_features`에 기록하고, 0보다 큰 low-confidence record는
-`deductions`에 availability와 confidence weight를 함께 기록한다.
+`deductions`에 availability와 effective scoring weight를 함께 기록한다.
 
-`depth_dependency_score_weights`는 두 번째 scoring-stage gravity다. Feature를 제거하거나
+`depth_dependency_score_weights`는 두 번째 scoring-stage weight다. Feature를 제거하거나
 biomarker value를 바꾸지 않는다. Baseline과 매칭된 deduction이 composite score에 얼마나 강하게
 들어가는지만 조절한다.
 
 ```text
-none       recording-view 또는 timing evidence; 기본 full gravity
-low        낮은 depth sensitivity; 현재 기본 full gravity
+none       recording-view 또는 timing evidence; 기본 full weight
+low        낮은 depth sensitivity; 현재 기본 full weight
 moderate   recording-view/depth evidence가 섞인 항목; 기본 attenuated
-high       monocular-depth 또는 corrected-3D-hypothesis evidence; 작은 gravity
+high       monocular-depth 또는 corrected-3D-hypothesis evidence; 작은 weight
 unknown    evidence path가 분류되기 전까지 보고하되 약하게 반영
 ```
 
-Effective deduction gravity:
+Effective deduction weight:
 
 ```text
-g_effective =
-    availability_gravity
-  * depth_dependency_gravity
-  * focus_gravity
-  * feature_gravity
+w_effective =
+    quality_gravity
+  * availability_weight
+  * depth_dependency_weight
+  * focus_weight
+  * feature_weight
 ```
 
 이 구조는 recording-view evidence와 depth-sensitive evidence를 같은 audit trail에 유지하면서도,
 각 evidence family가 final score에 미치는 영향을 조정할 수 있게 한다. 향후 scoring 연구에서
 기본값은 바뀔 수 있지만, 모든 변경은 score record에 남아야 한다.
 
-### Movement-path evidence variant gravity
+### Movement-path evidence variant weight
 
-Movement-path scoring은 `xy`와 `xyz` 중 하나를 전역으로 선택하지 않는다. ⑧ Feature Extraction은
-coordinate-derived movement-path target에 대해 두 variant를 모두 방출하고, ⑩ Scoring은 feature id,
+Movement-path scoring은 `xy`와 `xyz` 중 하나를 전역으로 선택하지 않는다. ⑦ Feature Extraction은
+coordinate-derived movement-path target에 대해 두 variant를 모두 방출하고, ⑨ Scoring은 feature id,
 focus tier, depth dependency, view compatibility에 따라 각 variant의 기여도를 조정한다.
 
 ```text
@@ -493,36 +498,36 @@ xy
 
 xyz
     Depth-sensitive evidence다. Review와 corrected-3D comparison을 위해 visible하게 남기되,
-    monocular MediaPipe depth에서는 해당 feature가 검증되기 전까지 낮은 gravity를 부여한다.
+    monocular MediaPipe depth에서는 해당 feature가 검증되기 전까지 낮은 weight를 부여한다.
 
 z
     Single-axis diagnostic/provenance다. 기본적으로 scoring하지 않는다.
 ```
 
 따라서 calibration 목표는 프로젝트 전체에 하나의 `xy:xyz` 비율을 정하는 것이 아니다. 여러 recording,
-camera view, exercise를 보면서 feature별 gravity 정책을 정하는 것이다. 예를 들어 squat knee
+camera view, exercise를 보면서 feature별 scoring-weight 정책을 정하는 것이다. 예를 들어 squat knee
 movement path는 `xy` 중심으로 유지할 수 있고, 고정 ankle support movement path는 `support_consistency`를
-우선 사용하며, 향후 corrected-3D hip/trunk feature는 correction burden과 residual evidence가
-허용될 때만 `xyz` gravity를 올릴 수 있다.
+우선 사용하며, 향후 corrected-3D hip/trunk feature는 `quality_gravity`와 report-local correction
+diagnostics가 허용될 때만 `xyz` weight를 올릴 수 있다.
 
-### Range-of-motion evidence variant gravity
+### Range-of-motion evidence variant weight
 
-Range of motion도 같은 explicit-evidence 정책을 따른다. ⑧은 같은 `angle_definitions` triplet에서
-`spatial.range_of_motion.xy.<joint_angle>`와 `spatial.range_of_motion.xyz.<joint_angle>`를 모두 방출한다. ⑩은 camera
-view가 호환될 때 `xy` variant를 우선 recording-view scoring 후보로 보고, `xyz` variant는 낮은
-기본 gravity를 가진 depth-sensitive comparative evidence로 다룬다.
+Range of motion도 같은 explicit-evidence 정책을 따른다. ⑦은 같은 `angle_definitions` triplet에서
+`spatial.range_of_motion.xy.<joint_angle>`와 `spatial.range_of_motion.xyz.<joint_angle>`를 모두 방출한다. ⑨은 camera
+view가 호환될 때 `xy` variant를 우선 recording-view 점수화 가능 feature로 보고, `xyz` variant는 낮은
+기본 weight를 가진 depth-sensitive comparative evidence로 다룬다.
 
 이는 2D projected angle이 항상 옳다는 뜻이 아니다. Monocular 연구 환경에서 x/y evidence는
 recording view 안에서 더 안정적인 반면, xyz evidence는 review와 향후 corrected-3D comparison에
-필요하다. Score는 단일 implicit range-of-motion 값 안에 선택을 숨기지 않고, 두 variant와 각 gravity를
+필요하다. Score는 단일 implicit range-of-motion 값 안에 선택을 숨기지 않고, 두 variant와 각 weight를
 드러내야 한다.
 
 ### 운동정의 focus 정책
 
 운동정의는 scoring intent 문서이기도 하다. 따라서 authoring에서 선택한 primary/secondary
-joint action은 점수 반영 강도에 영향을 주어야 한다. 다만 운동정의를 hard whitelist로 만들지는
-않는다. ⑧은 각 feature 또는 proxy record에 `focus_tier`를 붙이고, ⑩은
-`scoring_focus_weights`의 값을 deduction gravity에 곱한다.
+joint action은 scoring weight에 영향을 주어야 한다. 다만 운동정의를 hard whitelist로 만들지는
+않는다. ⑦과 ⑧의 record는 `focus_tier`를 보존하고, ⑨은
+`scoring_focus_weights`의 값을 deduction weight에 곱한다.
 
 ```text
 primary
@@ -531,7 +536,7 @@ primary
 
 secondary
     secondary joint action 또는 secondary movement plane에 의해 뒷받침되는
-    보조 task signal. 기본적으로 낮은 gravity로 score-visible하게 둔다.
+    보조 task signal. 기본적으로 낮은 weight로 score-visible하게 둔다.
 
 context_constraint
     closed-chain support consistency, base-of-support consistency, role alignment처럼
@@ -539,16 +544,16 @@ context_constraint
     운동 맥락 signal.
 
 compensation
-    보상 움직임 또는 안전성 관련 후보 pattern. 점수에 반영될 수 있지만
+    보상 움직임 또는 안전성 관련 review pattern. 점수에 반영될 수 있지만
     primary/secondary task signal보다 과도하게 지배하지 않도록 한다.
 
 diagnostic
     axis diagnostic, support-consistency axis path diagnostic, retired/deferred feature
-    후보처럼 report-only 또는 직접 해석력이 약한 evidence.
+    analysis evidence처럼 report-only 또는 직접 해석력이 약한 evidence.
 ```
 
 기본 focus weight는 primary feature를 full strength로 유지하고, secondary/context signal은
-낮게 반영하며, diagnostic은 composite scoring에서 제외한다. Focus weight는 여러 gravity 중
+낮게 반영하며, diagnostic은 composite scoring에서 제외한다. Focus weight는 여러 weight 중
 하나일 뿐이다. Primary feature라도 low-confidence, high depth dependency, baseline 부재,
 feature-id override가 있으면 점수 반영은 작아질 수 있다. 반대로 support-consistency와 compensation
 evidence는 운동정의가 요구하는 경우 score-visible하게 유지될 수 있다.
@@ -593,13 +598,13 @@ stability row만 좁은 support-consistency family budget을 받을 수 있다.
 
 Support-consistency scoring은 기본적으로 `upper_bound_only` direction을 사용한다. Provisional
 baseline보다 support drift가 작은 것은 fault가 아니며, baseline보다 큰 drift만 deduction을 만들 수
-있다. Corrected coordinate를 사용할 때는 correction burden/residual과 함께 해석해야 하며, 숨은
-fixed-support correction을 단순히 좋은 점수로 보상하지 않아야 한다.
+있다. Corrected coordinate를 사용할 때는 `quality_gravity`와 report-local correction diagnostics를
+함께 해석해야 하며, 숨은 fixed-support correction을 단순히 좋은 점수로 보상하지 않아야 한다.
 
 ### Range-of-motion target-band 정책
 
 Range-of-motion scoring이 항상 "synthetic baseline 평균에 가까울수록 좋다"는 뜻이어서는 안 된다.
-운동정의가 `spatial.range_of_motion.xy.*` target을 제공하면 ⑩은 generic absolute z-score penalty 대신 기능적
+운동정의가 `spatial.range_of_motion.xy.*` target을 제공하면 ⑨은 generic absolute z-score penalty 대신 기능적
 acceptable-band penalty를 사용한다.
 
 ```yaml
@@ -635,7 +640,7 @@ provisional baseline 평균과 다르다는 이유만으로 나쁘게 해석되�
 주로 rhythm과 repeatability를 보존해야 한다. 반복이 provisional synthetic baseline보다 느리거나
 빠르더라도, 운동정의가 제공한 timing band 안에 있으면 허용 가능한 수행으로 본다.
 
-운동정의가 `temporal.tempo.rep_duration*` target을 제공하면 ⑩은 generic baseline z-score를
+운동정의가 `temporal.tempo.rep_duration*` target을 제공하면 ⑨은 generic baseline z-score를
 바로 적용하기 전에 acceptable-duration band를 먼저 사용한다.
 
 ```yaml
@@ -714,16 +719,16 @@ scoring을 visible하게 유지하면서도, 특정 descent/ascent timing ratio 
 최적이라는 좁은 주장을 피할 수 있다.
 
 `feature_score_weight_overrides`는 정확한 feature id 또는 `prefix.*` feature family에 적용하는
-선택적 세 번째 gravity layer다. 현재 monocular pipeline에서 numeric value는 review에 유용하지만
+선택적 세 번째 weight layer다. 현재 monocular pipeline에서 numeric value는 review에 유용하지만
 movement-quality penalty로 직접 강하게 쓰기 약한 evidence variant에 사용한다. Feature extraction은
 recording-view path evidence인 `spatial.movement_path.arc_length_xy.<landmark>`와 recording-view/depth가
 섞인 evidence인 `spatial.movement_path.arc_length_xyz.<landmark>`를 명시적으로 방출한다. Range of motion도
 recording-view included-angle range of motion인 `spatial.range_of_motion.xy.<joint_angle>`와
 recording-view/depth가 섞인 range of motion인 `spatial.range_of_motion.xyz.<joint_angle>`를 명시적으로 방출하고,
-scoring이 gravity 결정을 소유한다.
+scoring이 weight 결정을 소유한다.
 
 고정 bilateral-foot squat에서 support-consistency axis `xyz` movement-path evidence는 visible/baseline-matchable
-evidence로 유지하지만, 기본 feature gravity를 `0.0`으로 두어 composite scoring에서는 withheld한다.
+evidence로 유지하지만, 기본 feature weight를 `0.0`으로 두어 composite scoring에서는 withheld한다.
 향후 `maintain_foot_contact` 점수 기여는 별도의 recording-view support-consistency feature family가
 담당해야 한다.
 
@@ -732,7 +737,7 @@ composite scoring에서 withheld한다. Knee motion은 squat 중 실제로 움�
 review에서 `xyz` path가 monocular MediaPipe depth의 z축에 강하게 지배될 수 있음이 확인됐다.
 따라서 `spatial.movement_path.arc_length_xy.*_knee*`를 active movement-path scoring evidence로 사용하고,
 `spatial.movement_path.arc_length_xyz.*_knee*`는 같은 움직임을 depth-dominated evidence로 중복 감점하지
-않도록 feature gravity `0.0`으로 visible provenance에 남긴다.
+않도록 feature weight `0.0`으로 visible provenance에 남긴다.
 
 Lower-body movement path의 `turnaround_hold` 구간에서는 baseline보다 작은 path length를 실패로 보지
 않는다. 하단 전환부가 조용한 것은 움직임 실패가 아니라 bottom-position control이 안정적이라는
@@ -743,19 +748,19 @@ path length는 감점하지 않는다.
 Recording-view movement-path feature도 camera-view dependent하다. `z` 또는 `xyz` path length보다
 monocular depth noise에는 덜 노출되지만, view invariant한 feature는 아니다. 향후 multi-camera-zone
 baseline에서는 이러한 feature를 호환 가능한 camera-zone family 안에서만 비교하거나, active recording
-view가 baseline view와 맞지 않으면 scoring gravity를 낮춰야 한다.
+view가 baseline view와 맞지 않으면 scoring weight를 낮춰야 한다.
 
 Frontal knee-tracking compensation(`control.compensation.knee_valgus.xy.*`,
 `control.compensation.knee_varus.xy.*`)도 기본 개발 정책에서는 attenuate한다. Knee tracking은 squat에서
-생체역학적으로 의미 있는 신호이므로 scoring 후보로 유지하지만, 현재 monocular proxy는 view-sensitive하고
+생체역학적으로 의미 있는 신호이므로 점수화 가능 feature로 유지하지만, 현재 monocular proxy는 view-sensitive하고
 provisional baseline에서는 작은 hip-knee-ankle line deviation도 매우 큰 z-score를 만들 수 있다.
-Camera-view gating과 multi-recording baseline이 생기기 전까지 기본 feature gravity는 `0.25`로 둔다.
+Camera-view gating과 multi-recording baseline이 생기기 전까지 기본 feature weight는 `0.25`로 둔다.
 반복적으로 나타나는 frontal knee deviation은 보이게 하되, 이 항목 하나가 control domain을 지배하지
 않도록 하기 위한 설정이다. `control.compensation.excessive_trunk_flexion.xyz` 같은 depth-mixed
 control variant는 corrected-3D 또는 multi-view validation이 더 강한 사용을 뒷받침하기 전까지
-visible but low-gravity evidence로 둔다.
+visible but low-weight evidence로 둔다.
 Recording-view trunk orientation(`control.compensation.excessive_trunk_flexion.xy`)은 임시 feature
-gravity `0.5`를 사용한다. 현재 synthetic baseline은 squat, hinge, plank, push-up 계열 전반의
+weight `0.5`를 사용한다. 현재 synthetic baseline은 squat, hinge, plank, push-up 계열 전반의
 최종 trunk-control rule로 쓰기에는 너무 좁기 때문이다. 이 설정은 trunk compensation을 visible하게
 유지하되, provisional baseline이 control subscore 전체를 지배하지 않게 한다.
 
@@ -763,7 +768,7 @@ Single-axis movement-path diagnostic은 특정 future validation study가 없는
 `spatial.movement_path.axis_path_z.<landmark>`는 기본적으로 scoring하지 않으며, 검증된 depth-sensitive
 score path가 승격하기 전까지 depth-noise/corrected-3D-hypothesis provenance로 둔다. `xy`와 `xyz`
 record가 score-tunable movement-path variant이며, 기여도는 availability, focus tier, depth-dependency
-gravity, feature-specific gravity가 함께 결정한다.
+weight, feature-specific weight가 함께 결정한다.
 
 큰 canonicalization correction magnitude도 movement-quality score를 직접 낮추지 않는다. 검증된
 별도 점수 정책이 생기기 전까지는 data-confidence/provenance에 둔다.
@@ -777,7 +782,7 @@ gravity, feature-specific gravity가 함께 결정한다.
 ```text
 σ_eff  = max(σ_baseline, STD_FLOOR_RATIO * |μ_baseline|, STD_ABS_FLOOR)
 Z      = (value - μ_baseline) / σ_eff
-w_i    = feature_family_weight / family 안의 scoring candidate feature 수
+w_i    = feature_family_weight / family 안의 score-eligible feature feature 수
 g_a    = assessed는 1.0, low_confidence는 domain별 low-confidence score weight
 g_d    = depth_dependency_score_weights[record.depth_dependency]
 g_f    = feature_score_weight_overrides.get(feature_id, 1.0)
@@ -875,9 +880,9 @@ Baseline statistics는 그것을 생성한 exercise definition 및 feature schem
 운동이 승격되거나 feature set이 바뀌면 기존 baseline entry는 재생성하거나 명시적으로 version
 guard를 두기 전까지 invalid다.
 
-Baseline generation은 별도 번호가 붙은 pipeline stage가 아니라 ⑩ scoring의 하위 정책이다.
+Baseline generation은 별도 번호가 붙은 pipeline stage가 아니라 ⑨ scoring의 하위 정책이다.
 Baseline 생성과 baseline 채택은 별도 동작이다. `biomarker.baseline_generation.enabled`와
-`generate_when_missing`이 true이면 ⑩은 선택한 운동의 active baseline entry가 없을 때
+`generate_when_missing`이 true이면 ⑨은 선택한 운동의 active baseline entry가 없을 때
 provisional baseline을 생성할 수 있다. 이는 scoring path를 smoke-test하기 위한 것이며,
 생성된 baseline을 active research baseline으로 조용히 승격해서는 안 된다. 생성된 baseline은
 active baseline으로 사용하기 전에 QC/provenance metadata로 검토해야 한다.
@@ -948,7 +953,7 @@ custom expected values    pilot experiment, 지도/자문 검토, 연구 설계�
                          운동별 값 또는 tolerance band
 ```
 
-운동 YAML과 default scoring config는 feature selection, eligibility, 기본 gravity를 제공할 수
+운동 YAML과 default scoring config는 feature selection, eligibility, 기본 weight를 제공할 수
 있다. 하지만 normative mean/std를 스스로 발견하지는 못한다. 사용자가 운동별 또는 개인 맞춤
 scoring을 원한다면, 점수를 smoke-test 이상으로 해석하기 전에 reference recording,
 reviewed-good example, 또는 custom tolerance 값을 직접 수집하고 문서화해야 한다.
@@ -1032,7 +1037,7 @@ Baseline generation은 hidden exercise-specific branch가 아니라 exercise def
 recording manifest를 기준으로 동작해야 한다.
 
 현재 구현에서는 이 절차를 `scripts/generate_baseline.py`로 명시적으로 실행하거나,
-`biomarker.baseline_generation.enabled`가 true일 때 ⑩ 내부에서 자동 실행할 수 있다. 자동 생성은
+`biomarker.baseline_generation.enabled`가 true일 때 ⑨ 내부에서 자동 실행할 수 있다. 자동 생성은
 현재 `source_mode = current_run`을 지원한다. 이 모드는 scoring path를 열기 위한 provisional
 bootstrap이지 reviewed reference baseline이 아니다. Reviewed baseline은 여전히 사용자가 제공한
 reference recording 또는 manifest가 필요하다.
@@ -1044,16 +1049,16 @@ reference recording 또는 manifest가 필요하다.
 2. Baseline source recording/rep manifest를 읽는다.
 3. Evaluation과 같은 ①-⑨ pipeline을 실행한다.
 4. FeatureRecord와 BiomechRecord row를 수집한다.
-5. Effective scoring gravity가 0이 아닌 record만 포함한다. 즉 `availability == assessed`
-   record도 depth-dependency gravity 정책을 통과하며, low_confidence record는 low-confidence와
-   depth-dependency gravity가 모두 0보다 클 때만 포함한다.
+5. Effective scoring weight가 0이 아닌 record만 포함한다. 즉 `availability == assessed`
+   record도 depth-dependency weight 정책을 통과하며, low_confidence record는 low-confidence와
+   depth-dependency weight가 모두 0보다 클 때만 포함한다.
 6. 모든 low_confidence/not_assessed row는 baseline QC로 보존한다. Provisional statistics에
    포함된 low-confidence row도 해당 상태를 숨기지 않고 계속 표시해야 한다.
 7. Scoring σ floor를 적용해 metric별 mean/std를 계산한다.
 8. Generated baseline bundle(`baseline.yaml`, `metrics.json`, `qc.json`)을 저장한다.
 9. 명시적 승격 또는 개발용 호환 단계가 있을 때만 generated metrics를 backward-compatible active
    `baseline_zscore.json`에 mirror한다.
-10. Held-out example에서 ⑩을 다시 실행해 score scale과 deduction을 점검한다.
+10. Held-out example에서 ⑨을 다시 실행해 score scale과 deduction을 점검한다.
 ```
 
 `source_mode = current_run`은 현재 pipeline에서 이미 계산된 FeatureRecord와 BiomechRecord row를
@@ -1093,7 +1098,7 @@ reference recording 또는 manifest가 필요하다.
 ```
 
 `withheld_features`는 계산됐지만 score에는 들어가지 않은 metric의 이유를 설명한다.
-`reasons` field는 feature availability reason을 보존하며, feature family가 명시적 score gravity로
+`reasons` field는 feature availability reason을 보존하며, feature family가 명시적 score-policy weight로
 withheld된 경우 `feature_score_weight_zero` 같은 scoring policy reason을 추가할 수 있다.
 
 ```python
@@ -1143,12 +1148,15 @@ rep_id별로 독립 산출하고, 필요하면 sequence-level score로 fallback�
 
 ---
 
-## 11. Provenance And Clinical Boundary
+## 11. Audit Metadata And Clinical Boundary
 
 ```text
-BiomarkerRecord.source_fields       FeatureRecord/BiomechRecord에서 상속
-BiomarkerScoreRecord.source_fields  feature_domains, biomechanical_focus,
-                                    quality_rules, baseline file, score config
+Stage reports / audit metadata      source/config reference, 적용 rule,
+                                    warning, algorithm 선택
+Optional source_fields              debug/report trace reference만 담당
+Scoring operational fields          availability, depth_dependency, focus_tier,
+                                    feature_family, evidence_axes,
+                                    coordinate_reference
 ```
 
 Composite score는 functional movement assessment 구조를 참고할 수 있지만 FMS/OAB 점수와 직접
@@ -1170,7 +1178,7 @@ data/definitions/interpretation_rules/    per-exercise interpretation rules
 scripts/generate_baseline.py              baseline generator
 data/reference/baseline_zscore.json       현재 metric-statistics 저장소
 tests/test_biomarker_scoring_weights.py   weights and bounds
-tests/test_biomarker_scoring_availability.py availability gravity and withheld audit
+tests/test_biomarker_scoring_availability.py availability weight and withheld audit
 tests/test_interpretation.py              rule engine behavior
 ```
 
@@ -1185,3 +1193,4 @@ tests/test_interpretation.py              rule engine behavior
 - Sensitivity analysis 이후 exercise-specific domain-weight profile 추가.
 - Synthetic fallback을 보존하면서 real cohort baseline 지원.
 - Set-level trend record로 within-set fatigue 또는 consistency 분석.
+

@@ -7,14 +7,16 @@ Documented analysis stages:
     ③ exercise_definition    biomechanical property object loading
     ④ preprocessing          monocular data quality correction
     ⑤ normalization          body-relative coordinate normalization
-    ⑥ canonicalization       optional analysis-space candidate evidence
-    ⑦ segmentation           semi-automatic rep splitting + intra-rep phase splitting
-    ⑧ features               side-role context + spatial / temporal / control features
-    ⑨ biomech                biomechanical proxy modeling (CoM, moment arm)
-    ⑩ biomarker              interpretable digital biomarkers with provenance
+       ⑤-1 canonicalization   optional analysis-space evidence
+    ⑥ segmentation           semi-automatic rep splitting + intra-rep phase splitting
+    ⑦ features               side-role context + spatial / temporal / control features
+    ⑧ biomech                biomechanical proxy modeling (CoM, moment arm)
+    ⑨ biomarker              interpretable digital biomarkers with provenance
 
-The current runner supports implemented stages ①–⑩; canonicalization remains
-disabled unless explicitly enabled.
+The current runner supports implemented stages ①–⑨; optional ⑤-1
+canonicalization remains disabled unless explicitly enabled under
+normalization.canonicalization. The legacy root-level canonicalization config
+key is still accepted as a backward-compatible alias.
 """
 
 from __future__ import annotations
@@ -24,23 +26,34 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
 from movement.core.config import (
     LANDMARKS,
+    make_confidence_columns,
     make_coordinate_columns,
     make_required_columns,
-    make_visibility_columns,
+)
+from movement.pose_data_state import (
+    DEFAULT_COORDINATE_AXES,
+    RAW_COORDINATE_FAMILY,
+    RAW_POSE_DATA,
+    get_coordinate_axes,
+    get_coordinate_families,
+    get_pose_data_state,
+    set_pose_data_state,
 )
 from movement.stages.normalization import normalize_pose_by_hip_torso
-from movement.stages.validation import run_basic_validation
+from movement.stages.validation import harmonize_pose_schema, run_basic_validation
 from movement.stages.canonicalization import (
     CanonicalizationConfig,
     CanonicalizationDataConfidenceConfig,
     Corrected3DHypothesisConfig,
     MovementPlaneAlignmentConfig,
     ProtocolHeightLateralWidthAlignmentConfig,
+    XYDepthLiftConfig,
     apply_canonicalization,
 )
 from movement.stages.floor_reference import FloorReferenceConfig
@@ -71,6 +84,75 @@ def _unique_non_null_strings(df: pd.DataFrame, column: str) -> list[str]:
         for value in df[column].dropna().unique().tolist()
         if str(value).strip()
     ]
+
+
+def _available_raw_coordinate_axes(
+    df: pd.DataFrame,
+    landmarks: list[str],
+) -> list[str]:
+    return [
+        axis
+        for axis in DEFAULT_COORDINATE_AXES
+        if all(f"{landmark}_{axis}" in df.columns for landmark in landmarks)
+    ]
+
+
+def _resolve_pipeline_coordinate_axes(
+    df: pd.DataFrame,
+    landmarks: list[str],
+    coordinate_axes: str,
+) -> list[str]:
+    mode = str(coordinate_axes or "auto").lower()
+    if mode not in {"auto", "xy", "xyz"}:
+        raise ValueError("normalization.coordinate_axes must be one of: auto, xy, xyz.")
+
+    if mode == "xy":
+        axes = ["x", "y"]
+    elif mode == "xyz":
+        axes = ["x", "y", "z"]
+    else:
+        axes = _available_raw_coordinate_axes(df, landmarks)
+        if all(axis in axes for axis in ("x", "y", "z")):
+            axes = ["x", "y", "z"]
+        elif all(axis in axes for axis in ("x", "y")):
+            axes = ["x", "y"]
+        else:
+            axes = []
+
+    missing = [
+        f"{landmark}_{axis}"
+        for landmark in landmarks
+        for axis in axes
+        if f"{landmark}_{axis}" not in df.columns
+    ]
+    if not axes or missing:
+        raise ValueError(
+            "Cannot resolve required raw coordinate axes for validation. "
+            f"coordinate_axes={mode!r}, missing={missing[:10]}"
+        )
+    return axes
+
+
+def _depth_axis_available_for_xyz_stages(df: pd.DataFrame) -> bool:
+    columns = [str(column) for column in df.columns]
+    norm_z_columns = [column for column in columns if column.endswith("_norm_z")]
+    if any(column.endswith("_norm_x") for column in columns):
+        if not norm_z_columns:
+            return False
+        values = df[norm_z_columns].astype(float).to_numpy()
+        return bool(np.isfinite(values).any())
+    raw_z_columns = [
+        column
+        for column in columns
+        if column.endswith("_z")
+        and "_norm_" not in column
+        and "_canon_" not in column
+        and "_corrected_3d_hypothesis_" not in column
+    ]
+    if not raw_z_columns:
+        return False
+    values = df[raw_z_columns].astype(float).to_numpy()
+    return bool(np.isfinite(values).any())
 
 
 def _evaluate_camera_protocol(
@@ -138,12 +220,12 @@ def _evaluate_camera_protocol(
 class ValidationConfig:
     enabled: bool = True
     missing_value_threshold: float = 0.05
-    visibility_threshold: float = 0.5
+    confidence_threshold: float = 0.5
 
 
 @dataclass
 class ReliabilityConfig:
-    visibility_threshold: float = 0.5
+    confidence_threshold: float = 0.5
     segment_length_tolerance: float = 0.25
     joint_angle_check: bool = True
     velocity_threshold_torso_per_sec: float = 5.0
@@ -176,7 +258,7 @@ class SmoothingConfig:
 class FarSideStabilizationConfig:
     enabled: bool = False
     camera_side_inference: bool = True
-    visibility_threshold: float = 0.6
+    confidence_threshold: float = 0.6
     jitter_threshold_torso_per_sec: float | None = None
     acceleration_threshold_torso_per_sec2: float | None = None
     max_gap_frames: int = 3
@@ -206,6 +288,7 @@ class NormalizationConfig:
     method: str = "hip_torso"
     keep_reference_columns: bool = True
     model_depth_scale: float = 1.0
+    coordinate_axes: str = "auto"
 
 
 @dataclass
@@ -216,7 +299,7 @@ class FloorRelativeCorrectionConfig:
     vertical_axis: str = "y"
     support_landmarks: list[str] = field(default_factory=list)
     diagnostic_landmarks: list[str] = field(default_factory=list)
-    visibility_threshold: float = 0.7
+    confidence_threshold: float = 0.7
     stability_window_frames: int = 5
     max_anchor_residual_torso: float = 0.08
     correction_transform: str = "rigid_rotation"
@@ -324,7 +407,7 @@ class BaselineGenerationConfig:
 @dataclass
 class BiomarkerConfig:
     enabled: bool = False
-    emit_provenance: bool = True
+    emit_provenance: bool = False
     unit: str = "torso_length_ratio"
     domain_weights: dict[str, float] | None = None
     domain_feature_family_weights: dict[str, dict[str, float]] | None = None
@@ -396,6 +479,19 @@ class PipelineConfig:
 # ── Config loader ─────────────────────────────────────────────────────────────
 
 
+def _float_with_alias(
+    values: dict[str, Any],
+    canonical_key: str,
+    legacy_key: str,
+    default: float,
+) -> float:
+    """Read a canonical float config key with a loader-only legacy alias."""
+
+    if canonical_key in values:
+        return float(values.get(canonical_key, default))
+    return float(values.get(legacy_key, default))
+
+
 def _protocol_height_lateral_width_alignment_config(
     raw: dict[str, Any],
 ) -> ProtocolHeightLateralWidthAlignmentConfig:
@@ -415,7 +511,12 @@ def _protocol_height_lateral_width_alignment_config(
         "max_scale_change": float(raw.get("max_scale_change", 0.20)),
         "max_correction_torso": float(raw.get("max_correction_torso", 0.15)),
         "min_depth_offset_torso": float(raw.get("min_depth_offset_torso", 0.05)),
-        "visibility_threshold": float(raw.get("visibility_threshold", 0.6)),
+        "confidence_threshold": _float_with_alias(
+            raw,
+            "confidence_threshold",
+            "visibility_threshold",
+            0.6,
+        ),
         "apply_to_landmarks": list(raw.get("apply_to_landmarks", []) or []),
         "preserve_anchor_landmarks": bool(raw.get("preserve_anchor_landmarks", True)),
     }
@@ -443,7 +544,9 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     sm = pre.get("smoothing", {})
     fss = pre.get("far_side_stabilization", {})
     nor = raw.get("normalization", {})
-    can = raw.get("canonicalization", nor.get("canonicalization", {})) or {}
+    # Preferred: normalization.canonicalization.  Root-level canonicalization is
+    # retained only as a backward-compatible alias for older config files.
+    can = nor.get("canonicalization", raw.get("canonicalization", {})) or {}
     corrected_3d = (
         can.get(
             "corrected_3d_hypothesis",
@@ -455,7 +558,8 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     can_support = can.get("support_plane_alignment", {})
     can_movement = can.get("movement_plane_alignment", {})
     can_protocol_height = can.get("protocol_height_lateral_width_alignment", {}) or {}
-    # floor_relative_correction is a legacy alias for the ⑥ support-plane prior.
+    can_xy_depth = can.get("xy_depth_lift", {}) or {}
+    # floor_relative_correction is a legacy alias for the ⑤-1 support-plane prior.
     frc = can.get(
         "floor_relative_correction",
         nor.get("floor_relative_correction", raw.get("floor_relative_correction", {})),
@@ -481,7 +585,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         validation=ValidationConfig(
             enabled=val.get("enabled", True),
             missing_value_threshold=val.get("missing_value_threshold", 0.05),
-            visibility_threshold=val.get("visibility_threshold", 0.5),
+            confidence_threshold=_float_with_alias(
+                val,
+                "confidence_threshold",
+                "visibility_threshold",
+                0.5,
+            ),
         ),
         annotation=AnnotationConfig(
             enabled=ann.get("enabled", False),
@@ -495,7 +604,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         preprocessing=PreprocessingConfig(
             enabled=pre.get("enabled", False),
             reliability=ReliabilityConfig(
-                visibility_threshold=float(rel.get("visibility_threshold", 0.5)),
+                confidence_threshold=_float_with_alias(
+                    rel,
+                    "confidence_threshold",
+                    "visibility_threshold",
+                    0.5,
+                ),
                 segment_length_tolerance=float(
                     rel.get("segment_length_tolerance", 0.25)
                 ),
@@ -526,7 +640,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             far_side_stabilization=FarSideStabilizationConfig(
                 enabled=bool(fss.get("enabled", False)),
                 camera_side_inference=bool(fss.get("camera_side_inference", True)),
-                visibility_threshold=float(fss.get("visibility_threshold", 0.6)),
+                confidence_threshold=_float_with_alias(
+                    fss,
+                    "confidence_threshold",
+                    "visibility_threshold",
+                    0.6,
+                ),
                 jitter_threshold_torso_per_sec=(
                     None
                     if fss.get("jitter_threshold_torso_per_sec") is None
@@ -553,6 +672,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             method=nor.get("method", "hip_torso"),
             keep_reference_columns=nor.get("keep_reference_columns", True),
             model_depth_scale=float(nor.get("model_depth_scale", 1.0)),
+            coordinate_axes=nor.get("coordinate_axes", "auto"),
         ),
         canonicalization=CanonicalizationConfig(
             enabled=bool(can.get("enabled", False)),
@@ -584,8 +704,11 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 diagnostic_landmarks=list(
                     support_alias.get("diagnostic_landmarks", []) or []
                 ),
-                visibility_threshold=float(
-                    support_alias.get("visibility_threshold", 0.7)
+                confidence_threshold=_float_with_alias(
+                    support_alias,
+                    "confidence_threshold",
+                    "visibility_threshold",
+                    0.7,
                 ),
                 stability_window_frames=int(
                     support_alias.get("stability_window_frames", 5)
@@ -609,8 +732,11 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 enabled=bool(can_movement.get("enabled", False)),
                 method=can_movement.get("method", "principal_motion_plane"),
                 fit_landmarks=list(can_movement.get("fit_landmarks", []) or []),
-                minimum_visible_landmark_ratio=float(
-                    can_movement.get("minimum_visible_landmark_ratio", 0.7)
+                minimum_confident_landmark_ratio=_float_with_alias(
+                    can_movement,
+                    "minimum_confident_landmark_ratio",
+                    "minimum_visible_landmark_ratio",
+                    0.7,
                 ),
                 correction_strength=float(can_movement.get("correction_strength", 0.5)),
                 max_rotation_deg=float(can_movement.get("max_rotation_deg", 20.0)),
@@ -620,6 +746,30 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             ),
             protocol_height_lateral_width_alignment=(
                 _protocol_height_lateral_width_alignment_config(can_protocol_height)
+            ),
+            xy_depth_lift=XYDepthLiftConfig(
+                enabled=bool(can_xy_depth.get("enabled", False)),
+                method=can_xy_depth.get(
+                    "method",
+                    "recording_view_depth_hypothesis",
+                ),
+                segment_pairs=[
+                    (str(pair[0]), str(pair[1]))
+                    for pair in (can_xy_depth.get("segment_pairs", []) or [])
+                    if isinstance(pair, (list, tuple)) and len(pair) == 2
+                ]
+                or XYDepthLiftConfig().segment_pairs,
+                default_segment_length_torso=float(
+                    can_xy_depth.get("default_segment_length_torso", 1.0)
+                ),
+                max_depth_torso=float(can_xy_depth.get("max_depth_torso", 0.75)),
+                confidence_threshold=_float_with_alias(
+                    can_xy_depth,
+                    "confidence_threshold",
+                    "visibility_threshold",
+                    0.5,
+                ),
+                depth_sign=can_xy_depth.get("depth_sign", "positive"),
             ),
             corrected_3d_hypothesis=Corrected3DHypothesisConfig(
                 enabled=bool(corrected_3d.get("enabled", False)),
@@ -657,7 +807,12 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
             vertical_axis=frc.get("vertical_axis", "y"),
             support_landmarks=list(frc.get("support_landmarks", []) or []),
             diagnostic_landmarks=list(frc.get("diagnostic_landmarks", []) or []),
-            visibility_threshold=float(frc.get("visibility_threshold", 0.7)),
+            confidence_threshold=_float_with_alias(
+                frc,
+                "confidence_threshold",
+                "visibility_threshold",
+                0.7,
+            ),
             stability_window_frames=int(frc.get("stability_window_frames", 5)),
             max_anchor_residual_torso=float(frc.get("max_anchor_residual_torso", 0.08)),
             correction_transform=frc.get("correction_transform", "rigid_rotation"),
@@ -712,7 +867,7 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
         ),
         biomarker=BiomarkerConfig(
             enabled=bm.get("enabled", False),
-            emit_provenance=bool(bm.get("emit_provenance", True)),
+            emit_provenance=bool(bm.get("emit_provenance", False)),
             unit=bm.get("unit", "torso_length_ratio"),
             domain_weights=bm.get("domain_weights"),
             domain_feature_family_weights=bm.get("domain_feature_family_weights"),
@@ -768,7 +923,8 @@ def run_pipeline(
     Parameters
     ----------
     df : pd.DataFrame
-        Input pose dataframe. Shape: (T, J*4+2) — frame, timestamp, landmark xyz + visibility.
+        Input pose dataframe with frame, timestamp, landmark coordinates, and
+        canonical landmark confidence after schema harmonization.
     config : PipelineConfig
         Loaded via load_pipeline_config().
     landmarks : list[str], optional
@@ -788,6 +944,42 @@ def run_pipeline(
     if landmarks is None:
         landmarks = LANDMARKS
 
+    df = df.copy()
+    raw_coordinate_axes: list[str] | None = None
+    schema_harmonization_report: dict[str, Any] | None = None
+    if config.validation.enabled or config.normalization.enabled:
+        df, schema_harmonization_report = harmonize_pose_schema(
+            df,
+            landmarks,
+            config.normalization.coordinate_axes,
+        )
+        raw_coordinate_axes = schema_harmonization_report["validation_axes"]
+    raw_shape_axes = (
+        ["x", "y", "z"]
+        if schema_harmonization_report is not None
+        else get_coordinate_axes(df).get(
+            RAW_COORDINATE_FAMILY,
+            _available_raw_coordinate_axes(df, landmarks) or ["x", "y"],
+        )
+    )
+
+    if "pose_data_state" not in df.attrs:
+        set_pose_data_state(
+            df,
+            RAW_POSE_DATA,
+            [RAW_COORDINATE_FAMILY],
+            {RAW_COORDINATE_FAMILY: raw_shape_axes},
+        )
+    elif raw_coordinate_axes is not None:
+        coordinate_axes = get_coordinate_axes(df)
+        coordinate_axes[RAW_COORDINATE_FAMILY] = raw_shape_axes
+        set_pose_data_state(
+            df,
+            get_pose_data_state(df),
+            get_coordinate_families(df),
+            coordinate_axes,
+        )
+
     report: dict[str, Any] = {}
     exercise_def = None
 
@@ -795,10 +987,23 @@ def run_pipeline(
     if config.validation.enabled:
         validation_report = run_basic_validation(
             df=df,
-            required_columns=make_required_columns(landmarks),
-            coordinate_columns=make_coordinate_columns(landmarks),
-            visibility_columns=make_visibility_columns(landmarks),
+            required_columns=make_required_columns(
+                landmarks,
+                axes=DEFAULT_COORDINATE_AXES,
+            ),
+            coordinate_columns=make_coordinate_columns(
+                landmarks,
+                axes=raw_coordinate_axes or DEFAULT_COORDINATE_AXES,
+            ),
+            confidence_columns=make_confidence_columns(landmarks),
+            confidence_threshold=config.validation.confidence_threshold,
         )
+        validation_report["input_pose_data_state"] = get_pose_data_state(df)
+        validation_report["output_pose_data_state"] = get_pose_data_state(df)
+        validation_report["coordinate_families"] = get_coordinate_families(df)
+        validation_report["coordinate_axes"] = get_coordinate_axes(df)
+        if schema_harmonization_report is not None:
+            validation_report["schema_harmonization"] = schema_harmonization_report
         report["validation"] = validation_report
         if not validation_report["passed"]:
             print("[Step ①] Validation: one or more checks failed.")
@@ -850,7 +1055,7 @@ def run_pipeline(
                 "movement_template_id"
             ),
             "primary_plane": exercise_def.classification.get("primary_plane"),
-            "compensation_candidates": exercise_def.compensation_candidates,
+            "compensation_patterns": exercise_def.compensation_patterns,
             "camera_protocol": (
                 exercise_def.camera_protocol.as_dict()
                 if exercise_def.camera_protocol is not None
@@ -882,10 +1087,11 @@ def run_pipeline(
             landmarks=landmarks,
             keep_reference_columns=config.normalization.keep_reference_columns,
             model_depth_scale=config.normalization.model_depth_scale,
+            coordinate_axes=config.normalization.coordinate_axes,
         )
         report["normalization"] = norm_report
 
-    # ── ⑥ Canonicalization ──────────────────────────────────────────────────
+    # ── ⑤-1 Optional Canonicalization Filters ────────────────────────────────
     if config.canonicalization.enabled:
         canonicalization_config = config.canonicalization
         protocol_height_config = (
@@ -922,13 +1128,13 @@ def run_pipeline(
             and canonicalization_config.downstream_coordinate_mode == "canon"
         ):
             warnings.warn(
-                "[Step ⑥] downstream_coordinate_mode='canon' is recorded but "
+                "[Step ⑤-1] downstream_coordinate_mode='canon' is recorded but "
                 "downstream stages still read their documented normalized "
                 "coordinate inputs in this implementation pass.",
                 stacklevel=2,
             )
 
-    # ── ⑥ Legacy Canonicalization Alias: Floor-Relative Correction ───────────
+    # ── ⑤-1 Legacy Canonicalization Alias: Floor-Relative Correction ─────────
     if not config.canonicalization.enabled and config.floor_relative_correction.enabled:
         from movement.stages.floor_reference import (
             FloorReferenceConfig,
@@ -944,8 +1150,8 @@ def run_pipeline(
             diagnostic_landmarks=(
                 config.floor_relative_correction.diagnostic_landmarks
             ),
-            visibility_threshold=(
-                config.floor_relative_correction.visibility_threshold
+            confidence_threshold=(
+                config.floor_relative_correction.confidence_threshold
             ),
             stability_window_frames=(
                 config.floor_relative_correction.stability_window_frames
@@ -975,10 +1181,10 @@ def run_pipeline(
         and corrected_policy.emit_sensitivity_report
     ):
         from movement.stages.corrected_3d_hypothesis import (
-            build_corrected_3d_hypothesis_candidates,
+            build_corrected_3d_hypothesis_evidence,
         )
 
-        corrected_review = build_corrected_3d_hypothesis_candidates(
+        corrected_review = build_corrected_3d_hypothesis_evidence(
             df,
             landmarks=landmarks,
             exercise_support_context={
@@ -997,10 +1203,10 @@ def run_pipeline(
             "corrected_3d_hypothesis", {}
         )["review_status"] = review_dict["readiness_provenance"]["status"]
 
-    # ── ⑦ Segmentation: Rep Boundaries ───────────────────────────────────────
+    # ── ⑥ Segmentation: Rep Boundaries ───────────────────────────────────────
     if config.rep_segmentation.enabled:
         if exercise_def is None:
-            print("[Step ⑦] Rep Segmentation: exercise_def not available — skipped.")
+            print("[Step ⑥] Rep Segmentation: exercise_def not available — skipped.")
         else:
             from movement.stages.segmentation import segment_reps
 
@@ -1012,17 +1218,17 @@ def run_pipeline(
             report["rep_segmentation"] = rep_report.as_dict()
             if rep_report.status == "skipped":
                 print(
-                    f"[Step ⑦] Rep Segmentation: exercise "
+                    f"[Step ⑥] Rep Segmentation: exercise "
                     f"'{exercise_def.exercise_id}' has no rep_segmentation block — skipped."
                 )
 
-    # ── ⑦ Segmentation: Intra-Rep Phases ─────────────────────────────────────
+    # ── ⑥ Segmentation: Intra-Rep Phases ─────────────────────────────────────
     if config.phase_segmentation.enabled:
         if exercise_def is None:
-            print("[Step ⑦] Phase Segmentation: exercise_def not available — skipped.")
+            print("[Step ⑥] Phase Segmentation: exercise_def not available — skipped.")
         elif getattr(exercise_def, "phase_segmentation", None) is None:
             print(
-                f"[Step ⑦] Phase Segmentation: exercise '{exercise_def.exercise_id}' "
+                f"[Step ⑥] Phase Segmentation: exercise '{exercise_def.exercise_id}' "
                 "has no phase_segmentation block — skipped."
             )
         else:
@@ -1030,7 +1236,7 @@ def run_pipeline(
                 "segment_type" in df.columns and (df["segment_type"] == "rep").any()
             )
             if not _has_reps:
-                print("[Step ⑦] Phase Segmentation: no rep frames found — skipped.")
+                print("[Step ⑥] Phase Segmentation: no rep frames found — skipped.")
             else:
                 from movement.stages.segmentation import segment_phases
 
@@ -1041,9 +1247,9 @@ def run_pipeline(
                 )
                 report["phase_segmentation"] = [r.as_dict() for r in phase_reports]
     else:
-        pass  # ⑦ disabled — phase column stays NA (set by ② Annotation)
+        pass  # ⑥ disabled — phase column stays NA (set by ② Annotation)
 
-    # ── ⑧ Feature Extraction ─────────────────────────────────────────────────
+    # ── ⑦ Feature Extraction ─────────────────────────────────────────────────
     feat_records: list[Any] = []
     if config.features.enabled:
         from movement.features import (
@@ -1058,7 +1264,7 @@ def run_pipeline(
         )
 
         if exercise_def is None:
-            print("[Step ⑧] Feature Extraction: exercise_def not available — skipped.")
+            print("[Step ⑦] Feature Extraction: exercise_def not available — skipped.")
         else:
             if config.features.role_context.enabled:
                 thresholds = SideRoleContextThresholds(
@@ -1090,7 +1296,11 @@ def run_pipeline(
                     "phase": r.phase,
                     "value": r.value,
                     "unit": r.unit,
-                    "source_fields": r.source_fields,
+                    **(
+                        {"source_fields": r.source_fields}
+                        if config.biomarker.emit_provenance
+                        else {}
+                    ),
                     "note": r.note,
                     "view_reliability": r.view_reliability,
                     "availability": r.availability,
@@ -1111,16 +1321,22 @@ def run_pipeline(
                 for r in feat_records
             ]
 
-    # ── ⑨ Biomechanical Proxy Modeling ───────────────────────────────────────
+    # ── ⑧ Biomechanical Proxy Modeling ───────────────────────────────────────
     biomech_records: list[Any] = []
     if config.biomech.enabled:
         if exercise_def is None:
-            print("[Step ⑨] Biomech Proxy: exercise_def not available — skipped.")
+            print("[Step ⑧] Biomech Proxy: exercise_def not available — skipped.")
+        elif not _depth_axis_available_for_xyz_stages(df):
+            report["biomech"] = {
+                "status": "skipped",
+                "reason": "missing_normalized_z",
+                "coordinate_axes": get_coordinate_axes(df),
+            }
         else:
             from movement.biomech import extract_rep_biomech
 
             biomech_records = extract_rep_biomech(
-                df, exercise_def, use_visibility_weight=True
+                df, exercise_def, use_confidence_weight=True
             )
             report["biomech"] = [
                 {
@@ -1128,11 +1344,15 @@ def run_pipeline(
                     "rep_id": r.rep_id,
                     "value": r.value,
                     "unit": r.unit,
-                    "source_fields": r.source_fields,
+                    **(
+                        {"source_fields": r.source_fields}
+                        if config.biomarker.emit_provenance
+                        else {}
+                    ),
                     "note": r.note,
-                    "visibility_weight_applied": r.visibility_weight_applied,
+                    "confidence_weight_applied": r.confidence_weight_applied,
                     "n_frames_used": r.n_frames_used,
-                    "n_frames_excluded_low_visibility": r.n_frames_excluded_low_visibility,
+                    "n_frames_excluded_low_confidence": r.n_frames_excluded_low_confidence,
                     "availability": r.availability,
                     "availability_reasons": r.availability_reasons,
                     "depth_dependency": r.depth_dependency,
@@ -1149,11 +1369,11 @@ def run_pipeline(
                 for r in biomech_records
             ]
 
-    # ── ⑩ Biomarker Derivation ────────────────────────────────────────────────
+    # ── ⑨ Biomarker Derivation ────────────────────────────────────────────────
     if config.biomarker.enabled:
         if exercise_def is None:
             print(
-                "[Step ⑩] Biomarker Derivation: exercise_def not available — skipped."
+                "[Step ⑨] Biomarker Derivation: exercise_def not available — skipped."
             )
         else:
             from movement.biomarker.scoring import (
@@ -1185,7 +1405,7 @@ def run_pipeline(
                     }
                 elif baseline_generation.source_mode != "current_run":
                     warnings.warn(
-                        "[Step ⑩] Baseline auto-generation skipped: only "
+                        "[Step ⑨] Baseline auto-generation skipped: only "
                         "source_mode='current_run' is implemented for automatic "
                         "scoring-stage bootstrap.",
                         UserWarning,
@@ -1198,7 +1418,7 @@ def run_pipeline(
                     }
                 elif not feat_records and not biomech_records:
                     warnings.warn(
-                        "[Step ⑩] Baseline auto-generation skipped: no "
+                        "[Step ⑨] Baseline auto-generation skipped: no "
                         "FeatureRecord or BiomechRecord rows are available.",
                         UserWarning,
                         stacklevel=2,

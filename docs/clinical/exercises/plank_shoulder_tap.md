@@ -52,15 +52,15 @@ side order               active side per tap
 기대 수행은 취득 reference이다: high plank, 통제된 trunk/pelvis rotation, side order 유지,
 최소 support repositioning.
 
-## 4. 후보 패턴 (Candidate Patterns)
+## 4. 보상 패턴 (Compensation Patterns)
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| pelvic rotation | hip-depth asymmetry 기반 anti-rotation control proxy | front-oblique에서 높음-중간 | 구현 후보 |
-| lateral pelvic shift | support arm 쪽 weight shift | 높음-중간; hip-center/view 의존 | 구현 후보 |
-| hip drop / height drift | trunk/core stability 또는 posture deterioration proxy | 중간 | pending candidate |
-| shoulder collapse/asymmetry | support-arm stability proxy | 중간; shoulder visibility 의존 | pending candidate |
-| side order error | protocol-adherence 및 attribution issue | active-hand detection이 있으면 높음 | candidate/protocol warning |
+| pelvic rotation | hip-depth asymmetry 기반 anti-rotation control proxy | front-oblique에서 높음-중간 | 구현 패턴 |
+| lateral pelvic shift | support arm 쪽 weight shift | 높음-중간; hip-center/view 의존 | 구현 패턴 |
+| hip drop / height drift | trunk/core stability 또는 posture deterioration proxy | 중간 | pending pattern |
+| shoulder collapse/asymmetry | support-arm stability proxy | 중간; shoulder confidence 의존 | pending pattern |
+| side order error | protocol-adherence 및 attribution issue | active-hand detection이 있으면 높음 | protocol warning |
 | missed shoulder tap | true contact uncertainty | 낮음-중간 | control/limitation factor |
 | base-of-support shift | support reference 변화 | 낮음-중간 | control/limitation factor |
 

@@ -89,6 +89,7 @@ def test_low_confidence_feature_is_passed_through_but_not_scored(tmp_path: Path)
             "domain": "spatial",
             "feature_id": "spatial.role_alignment.left_right.range_of_motion_xy.knee",
             "value": 1.0,
+            "quality_gravity": 1.0,
             "availability": "low_confidence",
             "view_reliability": "low",
             "camera_zone": "Z3",
@@ -101,7 +102,7 @@ def test_low_confidence_feature_is_passed_through_but_not_scored(tmp_path: Path)
     ]
 
 
-def test_low_confidence_biomech_is_scored_with_low_gravity(tmp_path: Path):
+def test_low_confidence_biomech_is_scored_with_low_weight(tmp_path: Path):
     baseline_path = tmp_path / "baseline.json"
     _write_baseline(baseline_path)
     exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
@@ -153,12 +154,12 @@ def test_low_confidence_biomech_is_scored_with_low_gravity(tmp_path: Path):
     assert biomech_deduction["availability_weight"] == 0.1
     assert biomech_deduction["depth_dependency"] == "high"
     assert biomech_deduction["depth_dependency_weight"] == 0.1
-    assert biomech_deduction["confidence_weight"] == 0.01
+    assert biomech_deduction["scoring_weight"] == 0.01
     assert biomech_deduction["deduction"] == 0.1
     assert score.withheld_features == []
 
 
-def test_low_confidence_biomech_can_be_withheld_by_zero_gravity(tmp_path: Path):
+def test_low_confidence_biomech_can_be_withheld_by_zero_weight(tmp_path: Path):
     baseline_path = tmp_path / "baseline.json"
     _write_baseline(baseline_path)
     exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
@@ -203,6 +204,7 @@ def test_low_confidence_biomech_can_be_withheld_by_zero_gravity(tmp_path: Path):
             "domain": "biomech",
             "feature_id": "biomech.com.range_x",
             "value": 1.0,
+            "quality_gravity": 1.0,
             "availability": "low_confidence",
             "view_reliability": None,
             "camera_zone": None,

@@ -1,11 +1,12 @@
 # 04. 전처리 (Preprocessing)
 
-**문서 버전:** 1.2.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.2.1
+**최종 갱신:** 2026-07-08
 **영문 동기화:** `docs_eng/pipeline/04_preprocessing.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ④는 정규화 전에 단안 pose data의 data-quality 문제를 보정하거나 표시한다.
 입력 객체를 직접 수정하지 않고 보정된 DataFrame 사본을 반환한다.
+이 출력은 용어집 기준 **전처리 포즈 데이터 (Preprocessed pose data)** 로 부른다.
 
 이 단계는 관측 신뢰도만 다룬다. Depth, knee valgus, trunk lean, compensatory asymmetry 같은
 movement-quality pattern을 바꾸면 안 된다.
@@ -15,7 +16,7 @@ movement-quality pattern을 바꾸면 안 된다.
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-③ Exercise Definition → ④ Preprocessing ← 본 단계 → ⑤ Normalization → ⑥ Canonicalization
+③ Exercise Definition → ④ Preprocessing ← 본 단계 → ⑤ Normalization → optional ⑤-1 Canonicalization
 ```
 
 ③ 이후에 실행되므로 laterality, landmarks, camera protocol, quality rules를 사용할 수 있다.
@@ -24,6 +25,13 @@ movement-quality pattern을 바꾸면 안 된다.
 ---
 
 ## 2. 입력과 출력 (Inputs And Outputs)
+
+출력 데이터 이름:
+
+```text
+전처리 포즈 데이터 (Preprocessed pose data)
+    raw coordinate column을 보존하고 preprocessing provenance를 추가한 pose table
+```
 
 필수 입력 칼럼:
 
@@ -34,7 +42,7 @@ movement-quality pattern을 바꾸면 안 된다.
 선택 입력:
 
 ```text
-<landmark>_visibility
+<landmark>_confidence
 exercise_id, execution_pattern
 camera_zone, camera_height_level
 ```
@@ -73,8 +81,8 @@ preprocessing_confidence     frame-level confidence note
 Landmark는 다음 이유로 unreliable로 표시될 수 있다.
 
 ```text
-visibility gating
-    visibility가 threshold보다 낮음.
+Confidence gating
+    confidence가 threshold보다 낮음.
 
 segment-length consistency
     segment length가 sequence median에서 tolerance 이상 벗어남.
@@ -82,7 +90,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     해부학적으로 불가능한 configuration만 표시한다.
-    운동별 ROM 평가는 ⑧ Feature Extraction의 책임이다.
+    운동별 ROM 평가는 ⑦ Feature Extraction의 책임이다.
 
 velocity outliers
     body-scale-normalized frame-to-frame jump가 threshold를 초과.
@@ -106,8 +114,8 @@ unilateral_*         enabled
 generic fallback     skip
 ```
 
-High-confidence swap candidate는 해당 frame의 paired landmark label을 교환한다. Coordinate value는
-바꾸지 않는다. Low-confidence case는 표시만 하고 ⑧ Feature Extraction role-context 처리 또는 manual review로 남긴다.
+High-confidence swap analysis evidence는 해당 frame의 paired landmark label을 교환한다. Coordinate value는
+바꾸지 않는다. Low-confidence case는 표시만 하고 ⑦ Feature Extraction role-context 처리 또는 manual review로 남긴다.
 
 ### Short-Gap Interpolation
 
@@ -144,13 +152,13 @@ Smoothing은 기본 비활성화이며 작은 window를 사용해야 한다. 이
 
 ## 5. Far-Side Stabilization
 
-선택 far-side stabilization은 측면 또는 측면에 가까운 view에서 카메라에서 먼 쪽의 visibility가
+선택 far-side stabilization은 측면 또는 측면에 가까운 view에서 카메라에서 먼 쪽의 confidence가
 낮거나 jitter/swap risk가 높은 경우를 다룬다. 이는 canonicalization이 아니며 skeleton을
 대칭으로 맞추지 않는다.
 
 Monocular pose 좌표는 원래 noise가 크기 때문에 far-side jitter detection은 의도적으로 보수적으로
 둔다. 작은 coordinate wobble은 jitter로 보지 않는다. Jitter gate는 큰 motion spike와 낮은
-visibility 또는 기존 reliability-mask 실패 같은 low-confidence context가 함께 있을 때만
+confidence 또는 기존 reliability-mask 실패 같은 low-confidence context가 함께 있을 때만
 동작해야 한다.
 
 Report는 원본 관측과 preprocessing 이후 상태를 분리한다.
@@ -176,7 +184,7 @@ near/far/unknown side context 추론
 far-side low-confidence landmark에만 선택 smoothing/interpolation 적용
 짧은 low-confidence gap 보간
 해결되지 않은 long gap을 low confidence로 report
-⑧와 ⑨을 위한 feature-availability hook 방출
+⑦와 ⑧을 위한 feature-availability hook 방출
 ```
 
 금지:
@@ -207,6 +215,10 @@ view_reliability
 ```python
 {
     "method": str,
+    "input_pose_data_state": "raw_pose_data" | str,
+    "output_pose_data_state": "preprocessed_pose_data",
+    "input_coordinate_families": list[str],
+    "output_coordinate_families": list[str],
     "exercise_id": str | None,
     "movement_template_id": str | None,
     "execution_pattern": str | None,
@@ -242,7 +254,7 @@ Stage-check notebook은 이 report에서 compact QC ratio와 readiness label을 
 대체하지 않는다.
 
 Stage-check notebook은 이런 QC ratio 옆에 활성 preprocessing configuration도 표시할 수 있다.
-예: visibility threshold, segment-length tolerance, joint angle check, velocity threshold,
+예: confidence threshold, segment-length tolerance, joint angle check, velocity threshold,
 interpolation gap, post-interpolation velocity check, smoothing 설정, far-side jitter gate.
 이 configuration summary는 재현성을 위한 provenance이지 scoring input이 아니다.
 
@@ -251,7 +263,7 @@ Stage-check notebook은 앞 단계 노트북에서 쓰던 기존 양식을 따�
 사용한다. Synthetic diagnostic은 뒤쪽의 별도 번호 check로 둘 수 있지만, target recording의
 movement quality가 아니라 diagnostic evidence임을 명확히 표시해야 한다.
 
-Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑧ Feature Extraction과 ⑩ Biomarker
+Frame은 조용히 삭제하지 않는다. Feature-level exclusion은 이후 ⑦ Feature Extraction과 ⑨ Biomarker
 Scoring에서 결정한다.
 
 ---

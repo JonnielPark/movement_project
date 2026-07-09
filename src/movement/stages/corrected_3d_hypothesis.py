@@ -1,7 +1,8 @@
-"""Corrected-3D-hypothesis candidate-evidence helpers.
+"""Corrected-3D-hypothesis analysis-evidence helpers.
 
 Corrected coordinates are low-confidence structural hypotheses. This module
-emits availability, burden, residual, and norm-vs-candidate sensitivity evidence.
+emits availability, quality gravity, and norm-vs-analysis sensitivity evidence.
+Raw burden and residual values are retained as review diagnostics.
 It does not create a good-movement template, calibrated 3D reconstruction, or
 final-score contribution.
 """
@@ -21,20 +22,20 @@ _VALID_AXES = {"x", "y", "z"}
 
 @dataclass(frozen=True)
 class SupportWidthStabilityConfig:
-    """Configuration for support-width candidate-evidence sensitivity audit.
+    """Configuration for support-width analysis-evidence sensitivity audit.
 
     The metric checks whether a closed-chain support pair stays stable across
     frames. The result is data-confidence evidence, not a movement-quality score
     contribution.
     """
 
-    feature_id: str = "candidate.support_width_stability"
+    feature_id: str = "analysis.support_width_stability"
     evaluation_domain: str = "corrected_3d_hypothesis"
     norm_family: str = "norm"
-    candidate_family: str = "corrected_3d_hypothesis"
+    coordinate_family: str = "corrected_3d_hypothesis"
     support_pair: tuple[str, str] = ("left_ankle", "right_ankle")
     norm_axes: tuple[str, ...] = ("x", "y")
-    candidate_axes: tuple[str, ...] = ("x", "y", "z")
+    coordinate_axes: tuple[str, ...] = ("x", "y", "z")
     low_percentile: float = 5.0
     high_percentile: float = 95.0
     high_burden_threshold: float = 0.80
@@ -43,9 +44,9 @@ class SupportWidthStabilityConfig:
 
 @dataclass
 class Corrected3DHypothesisResult:
-    """Container for corrected-3D-hypothesis candidate review artifacts."""
+    """Container for corrected-3D-hypothesis review artifacts."""
 
-    corrected_candidate_df: pd.DataFrame
+    analysis_coordinate_df: pd.DataFrame
     burden_ledger: pd.DataFrame
     residual_report: dict[str, Any]
     norm_vs_corrected_sensitivity_report: pd.DataFrame
@@ -54,7 +55,7 @@ class Corrected3DHypothesisResult:
     def as_dict(self) -> dict[str, Any]:
         """Return serializable review artifacts for pipeline reports."""
         return {
-            "num_candidate_rows": int(len(self.corrected_candidate_df)),
+            "num_analysis_rows": int(len(self.analysis_coordinate_df)),
             "num_burden_rows": int(len(self.burden_ledger)),
             "residual_report": dict(self.residual_report),
             "norm_vs_corrected_sensitivity_report": (
@@ -127,16 +128,16 @@ def _robust_range(
 def _burden_from_ledger(
     burden_ledger: pd.DataFrame | None,
     *,
-    candidate_family: str,
+    coordinate_family: str,
 ) -> tuple[float, list[str]]:
     if burden_ledger is None or burden_ledger.empty:
         return float("nan"), ["missing_burden_ledger"]
 
     ledger = burden_ledger
-    if "candidate_family" in ledger.columns:
-        ledger = ledger[ledger["candidate_family"] == candidate_family]
+    if "coordinate_family" in ledger.columns:
+        ledger = ledger[ledger["coordinate_family"] == coordinate_family]
     if ledger.empty:
-        return float("nan"), ["missing_candidate_family_burden"]
+        return float("nan"), ["missing_coordinate_family_burden"]
 
     if "cap_fraction" in ledger.columns:
         values = ledger["cap_fraction"].to_numpy(dtype=float)
@@ -174,35 +175,51 @@ def _availability_from_burden(
     return "assessed", "very_low", reasons
 
 
+def _quality_gravity_from_availability_confidence(
+    availability: str,
+    confidence: str,
+) -> float:
+    """Return a quality-trust summary, not a score-contribution decision."""
+    if availability == "not_assessed":
+        return 0.0
+    return {
+        "high": 1.0,
+        "moderate": 0.5,
+        "low": 0.1,
+        "very_low": 0.05,
+        "not_available": 0.0,
+    }.get(str(confidence), 0.0)
+
+
 def build_support_width_stability_sensitivity_report(
     norm_pose_df: pd.DataFrame,
     *,
     config: SupportWidthStabilityConfig | None = None,
     burden_ledger: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Build the first report-only norm-vs-candidate sensitivity row.
+    """Build the first report-only norm-vs-analysis sensitivity row.
 
     The support-width value is a robust range of the left/right support distance
     in torso-length ratio units. The norm side uses recording-plane x/y axes;
-    the candidate side may include depth, but remains candidate evidence.
+    the corrected side may include depth, but remains review evidence.
     """
 
     config = config or SupportWidthStabilityConfig()
     _validate_axes(config.norm_axes, "norm_axes")
-    _validate_axes(config.candidate_axes, "candidate_axes")
+    _validate_axes(config.coordinate_axes, "coordinate_axes")
 
     reasons: list[str] = []
     norm_columns = _coordinate_columns(
         config.support_pair, config.norm_family, config.norm_axes
     )
-    candidate_columns = _coordinate_columns(
-        config.support_pair, config.candidate_family, config.candidate_axes
+    corrected_columns = _coordinate_columns(
+        config.support_pair, config.coordinate_family, config.coordinate_axes
     )
     missing_norm = _missing_columns(norm_pose_df, norm_columns)
-    missing_candidate = _missing_columns(norm_pose_df, candidate_columns)
+    missing_corrected = _missing_columns(norm_pose_df, corrected_columns)
 
     norm_value = float("nan")
-    candidate_value = float("nan")
+    corrected_value = float("nan")
     if missing_norm:
         reasons.append("missing_norm_columns")
     else:
@@ -217,15 +234,15 @@ def build_support_width_stability_sensitivity_report(
             high_percentile=config.high_percentile,
         )
 
-    if missing_candidate:
-        reasons.append("missing_candidate_columns")
+    if missing_corrected:
+        reasons.append("missing_corrected_columns")
     else:
-        candidate_value = _robust_range(
+        corrected_value = _robust_range(
             _support_width(
                 norm_pose_df,
                 support_pair=config.support_pair,
-                family=config.candidate_family,
-                axes=config.candidate_axes,
+                family=config.coordinate_family,
+                axes=config.coordinate_axes,
             ),
             low_percentile=config.low_percentile,
             high_percentile=config.high_percentile,
@@ -233,29 +250,33 @@ def build_support_width_stability_sensitivity_report(
 
     if not np.isfinite(norm_value):
         reasons.append("nonfinite_norm_value")
-    if not np.isfinite(candidate_value):
-        reasons.append("nonfinite_candidate_value")
+    if not np.isfinite(corrected_value):
+        reasons.append("nonfinite_corrected_value")
 
     burden, burden_reasons = _burden_from_ledger(
-        burden_ledger, candidate_family=config.candidate_family
+        burden_ledger, coordinate_family=config.coordinate_family
     )
     if burden_reasons:
         reasons.extend(burden_reasons)
 
-    if missing_norm or missing_candidate or not np.isfinite(norm_value):
+    if missing_norm or missing_corrected or not np.isfinite(norm_value):
         availability = "not_assessed"
         confidence = "very_low"
-    elif not np.isfinite(candidate_value):
+    elif not np.isfinite(corrected_value):
         availability = "not_assessed"
         confidence = "very_low"
     else:
         availability, confidence, reasons = _availability_from_burden(
             burden, reasons, config
         )
+    quality_gravity = _quality_gravity_from_availability_confidence(
+        availability,
+        confidence,
+    )
 
     delta = (
-        float(candidate_value - norm_value)
-        if np.isfinite(candidate_value) and np.isfinite(norm_value)
+        float(corrected_value - norm_value)
+        if np.isfinite(corrected_value) and np.isfinite(norm_value)
         else float("nan")
     )
     delta_abs = float(abs(delta)) if np.isfinite(delta) else float("nan")
@@ -263,25 +284,28 @@ def build_support_width_stability_sensitivity_report(
     row = {
         "feature_id": config.feature_id,
         "evaluation_domain": config.evaluation_domain,
-        "source_evidence": ("norm support-pair width versus existing candidate family"),
-        "candidate_family": config.candidate_family,
+        "source_evidence": (
+            "norm support-pair width versus corrected coordinate family"
+        ),
+        "coordinate_family": config.coordinate_family,
         "support_pair": "|".join(config.support_pair),
         "norm_axes": "|".join(config.norm_axes),
-        "candidate_axes": "|".join(config.candidate_axes),
+        "coordinate_axes": "|".join(config.coordinate_axes),
         "norm_value": norm_value,
-        "corrected_candidate_value": candidate_value,
+        "corrected_value": corrected_value,
         "delta": delta,
         "delta_abs": delta_abs,
         "correction_burden": burden,
         "residual": delta_abs,
         "availability": availability,
         "confidence": confidence,
+        "quality_gravity": quality_gravity,
         "availability_reasons": "|".join(dict.fromkeys(reasons)),
     }
     return pd.DataFrame([row])
 
 
-def build_corrected_3d_hypothesis_candidates(
+def build_corrected_3d_hypothesis_evidence(
     norm_pose_df: pd.DataFrame,
     *,
     landmarks: list[str] | None = None,
@@ -291,7 +315,7 @@ def build_corrected_3d_hypothesis_candidates(
     burden_ledger: pd.DataFrame | None = None,
     residual_report: dict[str, Any] | None = None,
 ) -> Corrected3DHypothesisResult:
-    """Build corrected-3D-hypothesis candidate-evidence artifacts.
+    """Build corrected-3D-hypothesis analysis-evidence artifacts.
 
     This first extraction does not alter coordinates. It verifies that the
     required evidence surface can be generated before any solver is considered
@@ -299,7 +323,7 @@ def build_corrected_3d_hypothesis_candidates(
     """
 
     solver_config = dict(solver_config or {})
-    candidate_family = str(
+    coordinate_family = str(
         solver_config.get("output_family", "corrected_3d_hypothesis")
     )
     support_pair = tuple(
@@ -309,7 +333,7 @@ def build_corrected_3d_hypothesis_candidates(
         raise ValueError("support_pair must contain exactly two landmarks.")
 
     sensitivity_config = SupportWidthStabilityConfig(
-        candidate_family=candidate_family,
+        coordinate_family=coordinate_family,
         support_pair=(str(support_pair[0]), str(support_pair[1])),
     )
     sensitivity = build_support_width_stability_sensitivity_report(
@@ -318,7 +342,7 @@ def build_corrected_3d_hypothesis_candidates(
         burden_ledger=burden_ledger,
     )
     readiness = {
-        "status": "candidate_evidence",
+        "status": "analysis_evidence",
         "used_for_features_or_scores": False,
         "downstream_coordinate_mode": "norm",
         "landmarks": list(landmarks or []),
@@ -327,7 +351,7 @@ def build_corrected_3d_hypothesis_candidates(
         "has_exercise_support_context": exercise_support_context is not None,
     }
     return Corrected3DHypothesisResult(
-        corrected_candidate_df=norm_pose_df.copy(),
+        analysis_coordinate_df=norm_pose_df.copy(),
         burden_ledger=(
             burden_ledger.copy() if burden_ledger is not None else pd.DataFrame()
         ),
@@ -350,7 +374,7 @@ def _review_blocks_from_report(report: dict[str, Any]) -> list[dict[str, Any]]:
 def collect_corrected_3d_sensitivity_rows(
     reports: Iterable[dict[str, Any]],
 ) -> pd.DataFrame:
-    """Collect corrected-3D candidate-evidence rows from multiple reports."""
+    """Collect corrected-3D analysis-evidence rows from multiple reports."""
 
     rows: list[dict[str, Any]] = []
     for index, report in enumerate(reports):
@@ -385,9 +409,10 @@ def summarize_corrected_3d_sensitivity_reports(
                 "n_low_confidence",
                 "n_not_assessed",
                 "median_norm_value",
-                "median_corrected_candidate_value",
+                "median_corrected_value",
                 "median_delta_abs",
                 "max_correction_burden",
+                "median_quality_gravity",
             ]
         )
 
@@ -408,9 +433,9 @@ def summarize_corrected_3d_sensitivity_reports(
                 "median_norm_value": float(
                     pd.to_numeric(group.get("norm_value"), errors="coerce").median()
                 ),
-                "median_corrected_candidate_value": float(
+                "median_corrected_value": float(
                     pd.to_numeric(
-                        group.get("corrected_candidate_value"), errors="coerce"
+                        group.get("corrected_value"), errors="coerce"
                     ).median()
                 ),
                 "median_delta_abs": float(
@@ -418,6 +443,11 @@ def summarize_corrected_3d_sensitivity_reports(
                 ),
                 "max_correction_burden": float(
                     pd.to_numeric(group.get("correction_burden"), errors="coerce").max()
+                ),
+                "median_quality_gravity": float(
+                    pd.to_numeric(
+                        group.get("quality_gravity"), errors="coerce"
+                    ).median()
                 ),
             }
         )
@@ -427,7 +457,7 @@ def summarize_corrected_3d_sensitivity_reports(
 __all__ = [
     "Corrected3DHypothesisResult",
     "SupportWidthStabilityConfig",
-    "build_corrected_3d_hypothesis_candidates",
+    "build_corrected_3d_hypothesis_evidence",
     "build_support_width_stability_sensitivity_report",
     "collect_corrected_3d_sensitivity_rows",
     "summarize_corrected_3d_sensitivity_reports",

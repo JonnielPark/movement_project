@@ -72,7 +72,7 @@ def validate_landmark_columns(
     df,
     landmarks: list[str],
     coord_mode: str = "raw",
-    require_visibility: bool = False,
+    require_confidence: bool = False,
 ) -> list[str]:
     """
     Check whether required landmark coordinate columns exist.
@@ -85,8 +85,8 @@ def validate_landmark_columns(
         Landmark names.
     coord_mode : str
         "raw", "norm", "floor", or "canon".
-    require_visibility : bool
-        If True, also check <landmark>_visibility columns.
+    require_confidence : bool
+        If True, also check <landmark>_confidence columns.
 
     Returns
     -------
@@ -98,8 +98,8 @@ def validate_landmark_columns(
     for lm in landmarks:
         required_cols.extend(get_coord_columns(lm, coord_mode=coord_mode))
 
-        if require_visibility:
-            required_cols.append(f"{lm}_visibility")
+        if require_confidence:
+            required_cols.append(f"{lm}_confidence")
 
     missing_cols = [col for col in required_cols if col not in df.columns]
 
@@ -300,7 +300,7 @@ def compute_plot_ranges(
         df=df,
         landmarks=landmarks,
         coord_mode=coord_mode,
-        require_visibility=False,
+        require_confidence=False,
     )
 
     if missing_cols:

@@ -1,10 +1,10 @@
-# 11. Visualization
+# 10. Visualization
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/11_visualization.md` is the same-version Korean source.
+**Document Version:** 1.1.2
+**Last Updated:** 2026-07-07
+**Korean Sync:** `docs/pipeline/10_visualization.md` is the same-version Korean source.
 
-Pipeline step ⑪ is called outside the ①-⑩ runner. It renders pose data,
+Pipeline step ⑩ is called outside the ①-⑨ runner. It renders pose data,
 intermediate reports, features, biomech proxies, and biomarker outputs for
 diagnostic review and dissertation figures.
 
@@ -16,7 +16,7 @@ Visualization functions return figure objects and must not mutate input data.
 
 ```text
 Diagnostic review
-    Inspect raw data, preprocessing, normalization/canonicalization candidates,
+    Inspect raw data, preprocessing, normalization/canonicalization analysis evidence,
     segmentation boundaries, and feature availability.
 
 Result reporting
@@ -35,12 +35,12 @@ metrics.
 ```text
 ④ Preprocessing       reliability overlay and before/after quality views
 ⑤ Normalization       raw/norm comparison
-⑥ Canonicalization    norm/canon/candidate comparison
-⑦ Segmentation        rep/phase boundaries and failure points
-⑧ Feature Extraction  side-role context, joint angles, ROM, feature availability
-⑨ Biomech Proxy       CoM and moment-arm/load-shift proxies
-⑩ Biomarker Scoring   domain scores, deductions, withheld features
-⑫ Simulation          robustness sensitivity curves
+⑤-1 Canonicalization   norm/canon/analysis-evidence comparison
+⑥ Segmentation        rep/phase boundaries and failure points
+⑦ Feature Extraction  side-role context, joint angles, ROM, feature availability
+⑧ Biomech Proxy       CoM and moment-arm/load-shift proxies
+⑨ Biomarker Scoring   domain scores, deductions, withheld features
+⑪ Simulation          robustness sensitivity curves
 ```
 
 ---
@@ -67,7 +67,7 @@ captions, legends, or side summaries.
 
 ```text
 create_pose_animation
-    Plotly 3D pose animation for raw, norm, or available candidate coordinate
+    Plotly 3D pose animation for raw, norm, or available analysis-space coordinate
     modes.
 
 create_pose_comparison_animation
@@ -75,8 +75,22 @@ create_pose_comparison_animation
     visual QC.
 ```
 
-The optional `floor`/candidate coordinate modes are review tools and do not imply
+The optional `floor`/analysis-space coordinate modes are review tools and do not imply
 downstream promotion.
+
+For presentation review, `notebook/20_stage_checks/30_visualization_test.ipynb`
+builds a Plotly Play/Pause animation from the first detected rep start through
+the 10th detected rep end in recording-view orientation, prioritizing normalized
+(`norm`) coordinates. This keeps the intervening transition frames in the
+presentation playback so the duration stays closer to the recorded movement
+time. The notebook also exports an HTML playback file under
+`data/processed/visualization/` so the interactive view can be opened separately
+or screen-recorded for slides.
+
+Because browser-based Plotly 3D animation is render-bound, the notebook may
+decimate rendered frames for presentation playback while preserving the first
+frame, last frame, and total timestamp duration. This reduces browser overhead
+without changing the source pose data used for the selected 10-rep interval.
 
 ---
 
@@ -126,9 +140,11 @@ src/movement/core/utils.py               frame extraction, plot ranges,
 notebook/00_setup/02_raw_visualization_test.ipynb          raw pose animation
 notebook/20_stage_checks/23_preprocessing_test.ipynb             reliability review
 notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
-notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon candidate review
+notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon analysis-evidence review
 notebook/20_stage_checks/27_feature_extraction_test.ipynb
                                                              feature + side-role context review
+notebook/20_stage_checks/30_visualization_test.ipynb             norm recording-view 10-rep
+                                                             presentation playback
 ```
 
 ---

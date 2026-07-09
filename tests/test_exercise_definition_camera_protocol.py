@@ -35,7 +35,7 @@ def _write_modified_squat(tmp_path: Path, **camera_updates: object) -> None:
             "landmarks": analysis["landmarks"],
             "angle_definitions": analysis["angle_definitions"],
             "biomechanical_focus": analysis["biomechanical_focus"],
-            "compensation_candidates": analysis["compensation_candidates"],
+            "compensation_patterns": analysis["compensation_patterns"],
             "feature_domains": analysis["feature_domains"],
             "quality_rules": analysis["quality_rules"],
             "performance_protocol": performance["performance_protocol"],

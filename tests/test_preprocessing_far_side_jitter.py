@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from movement.exercise_definition import load_exercise_definition
+from movement.pose_data_state import PREPROCESSED_POSE_DATA
 from movement.pipeline import (
     FarSideStabilizationConfig,
     InterpolationConfig,
@@ -39,19 +40,19 @@ def _side_view_squat_df() -> pd.DataFrame:
         data[f"{landmark}_x"] = np.full(len(frames), x, dtype=float)
         data[f"{landmark}_y"] = np.full(len(frames), y, dtype=float)
         data[f"{landmark}_z"] = np.full(len(frames), z, dtype=float)
-        data[f"{landmark}_visibility"] = np.ones(len(frames), dtype=float)
+        data[f"{landmark}_confidence"] = np.ones(len(frames), dtype=float)
 
     # Camera-far right knee has a short, obvious monocular jitter event.
     data["right_knee_x"][3] = 1.6
-    data["right_knee_visibility"][3] = 0.2
+    data["right_knee_confidence"][3] = 0.2
     return pd.DataFrame(data)
 
 
-def _stable_visibility_gap_df() -> pd.DataFrame:
+def _stable_confidence_gap_df() -> pd.DataFrame:
     df = _side_view_squat_df()
     df["right_knee_x"] = 0.2
-    df["right_knee_visibility"] = 1.0
-    df.loc[3, "right_knee_visibility"] = 0.2
+    df["right_knee_confidence"] = 1.0
+    df.loc[3, "right_knee_confidence"] = 0.2
     return df
 
 
@@ -83,10 +84,10 @@ def test_pipeline_config_loads_far_side_stabilization_defaults():
 
 
 def test_short_gap_interpolation_separates_observed_reliability_from_usability():
-    df = _stable_visibility_gap_df()
+    df = _stable_confidence_gap_df()
     squat = load_exercise_definition("squat", DEFINITIONS_DIR)
     config = PreprocessingConfig(
-        reliability=ReliabilityConfig(visibility_threshold=0.5),
+        reliability=ReliabilityConfig(confidence_threshold=0.5),
         interpolation=InterpolationConfig(enabled=True, max_gap_frames=1),
     )
 
@@ -107,6 +108,8 @@ def test_short_gap_interpolation_separates_observed_reliability_from_usability()
     )
 
     assert pre_df.loc[3, "right_knee_observed_reliable"] == np.False_
+    assert report["output_pose_data_state"] == PREPROCESSED_POSE_DATA
+    assert pre_df.attrs["pose_data_state"] == PREPROCESSED_POSE_DATA
     assert pre_df.loc[3, "right_knee_usable"] == np.True_
     assert pre_df.loc[3, "right_knee_preprocessing_source"] == (
         "short_gap_interpolated"
@@ -122,7 +125,7 @@ def test_short_gap_interpolation_separates_observed_reliability_from_usability()
         for row in report["landmark_quality_summary"]
         if row["landmark"] == "right_knee"
     )
-    assert right_knee_qc["low_visibility_frames"] == 1
+    assert right_knee_qc["low_confidence_frames"] == 1
     assert right_knee_qc["observed_unreliable_frames"] >= 1
     assert right_knee_qc["unusable_frames"] == 0
     assert right_knee_qc["recovered_by_interpolation"] >= 1
@@ -148,13 +151,13 @@ def test_post_interpolation_velocity_check_rejects_implausible_recovered_frame()
             "right_knee_x": [0.0, 0.0, 0.0, 100.0, 100.0],
             "right_knee_y": [0.0] * len(frames),
             "right_knee_z": [0.0] * len(frames),
-            "right_knee_visibility": [1.0, 1.0, 1.0, 0.2, 1.0],
+            "right_knee_confidence": [1.0, 1.0, 1.0, 0.2, 1.0],
         }
     )
     squat = load_exercise_definition("squat", DEFINITIONS_DIR)
     config = PreprocessingConfig(
         reliability=ReliabilityConfig(
-            visibility_threshold=0.5,
+            confidence_threshold=0.5,
             velocity_threshold_torso_per_sec=5.0,
         ),
         interpolation=InterpolationConfig(
@@ -268,10 +271,10 @@ def test_far_side_jitter_metadata_and_symmetry_availability_gate():
     assert "spatial.role_alignment.*" in availability["low_confidence_feature_families"]
 
 
-def test_far_side_jitter_gate_ignores_small_high_visibility_wobble():
+def test_far_side_jitter_gate_ignores_small_high_confidence_wobble():
     df = _side_view_squat_df()
     df["right_knee_x"] = 0.2
-    df["right_knee_visibility"] = 1.0
+    df["right_knee_confidence"] = 1.0
     df.loc[3, "right_knee_x"] = 0.25
     squat = load_exercise_definition("squat", DEFINITIONS_DIR)
     config = PreprocessingConfig(

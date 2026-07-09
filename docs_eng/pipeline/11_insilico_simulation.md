@@ -2,9 +2,9 @@
 
 **Document Version:** 1.1.0
 **Last Updated:** 2026-05-21
-**Korean Sync:** `docs/pipeline/12_insilico_simulation.md` is the same-version Korean source.
+**Korean Sync:** `docs/pipeline/11_insilico_simulation.md` is the same-version Korean source.
 
-Pipeline step ⑫ is an external robustness harness. It injects controlled
+Pipeline step ⑪ is an external robustness harness. It injects controlled
 distortions into synthetic or reference pose data, reruns the analysis pipeline,
 and summarizes how metrics respond.
 
@@ -15,7 +15,7 @@ This is engineering verification, not clinical validation or diagnostic accuracy
 ## 1. Pipeline Position
 
 ```text
-Base pose sample → distortion copy → ①-⑩ pipeline replay → robustness summary
+Base pose sample → distortion copy → ①-⑨ pipeline replay → robustness summary
 ```
 
 Simulation is not invoked by `run_pipeline()`.
@@ -38,7 +38,7 @@ Allowed:
 distortion injection on a copy of the DataFrame
 log of applied condition and level
 metric responsiveness / monotonicity / specificity checks
-long-format outputs for ⑪ visualization
+long-format outputs for ⑩ visualization
 ```
 
 Not allowed:
@@ -58,7 +58,7 @@ suppressing pipeline warnings or failure modes
 
 ```text
 add_gaussian_noise       coordinate jitter
-add_occlusion            NaN coordinates and optional zero visibility
+add_occlusion            NaN coordinates and optional zero confidence
 add_velocity_spike       abrupt coordinate jumps
 restrict_rom             bounded joint-angle restriction
 generate_squat_csv       synthetic squat sample generator
@@ -72,7 +72,7 @@ Each distortion returns `(modified_df, log_dict)` and leaves the input unchanged
 
 ```text
 Gaussian noise           coordinate-noise robustness
-Occlusion                missing/low-visibility robustness
+Occlusion                missing/low-confidence robustness
 Velocity spike           preprocessing outlier behavior
 ROM restriction          responsiveness to limited movement
 Viewpoint variation      planned; camera-zone/view sensitivity
@@ -112,7 +112,7 @@ scripts/run_robustness_experiment.py
     load config and base samples
     build condition grid
     apply each distortion
-    run ①-⑩ pipeline
+    run ①-⑨ pipeline
     collect FeatureRecord, BiomechRecord, BiomarkerScoreRecord summaries
     write long-format CSV and markdown summary
 ```
@@ -147,3 +147,4 @@ tests/test_simulation.py               planned behavior tests
 - Per-exercise grid pruning.
 - Failure-mode catalog in markdown summary.
 - Bootstrap confidence bands across random seeds.
+

@@ -28,7 +28,7 @@ Phase-level variant는 `spatial.range_of_motion`, `spatial.movement_path`, `temp
 `control.stability`에서 방출될 수 있다. Compensation feature는 full rep trajectory 위에서
 동작하므로 rep-level이다.
 
-`spatial.role_alignment.*`는 [08_feature_extraction.md](../pipeline/08_feature_extraction.md)의
+`spatial.role_alignment.*`는 [07_feature_extraction.md](../pipeline/07_feature_extraction.md)의
 feature-availability gate를 통과한 뒤에만 해석한다. 측면 단안 rendering은 직접 정면 관찰 근거가
 아니다. 지지되지 않는 symmetry feature는 `low_confidence` 또는 `not_assessed`로 보고해야 한다.
 
@@ -59,38 +59,38 @@ dimensionless           ratio
 | Squat | `control.compensation.knee_valgus.xy.left/right` | recording-view knee deviation proxy; view support와 foot/hip/ankle landmark reliability 필요. |
 | Squat | `control.compensation.knee_varus.xy.left/right` | recording-view lateral knee deviation proxy; stance width와 view에 민감. |
 | Squat | `control.compensation.excessive_trunk_flexion.xy` | recording-view trunk-lean proxy; 상대 load strategy 해석이며 spine diagnosis가 아님. |
-| Squat | `control.compensation.excessive_trunk_flexion.xyz` | depth-mixed trunk-lean proxy; low-gravity comparative evidence. |
+| Squat | `control.compensation.excessive_trunk_flexion.xyz` | depth-mixed trunk-lean proxy; low-weight comparative evidence. |
 | Squat | `control.compensation.lateral_pelvic_shift.xy` | pelvis displacement 기반 weight-shift proxy; hip-centered normalization이 측정하려는 움직임을 지우면 diagnostic으로 둔다. |
-| Squat | `control.compensation.heel_lift.xy.left/right` | recording-view heel-elevation proxy; contact와 landmark visibility가 confidence를 제한할 수 있음. |
+| Squat | `control.compensation.heel_lift.xy.left/right` | recording-view heel-elevation proxy; contact와 landmark confidence가 confidence를 제한할 수 있음. |
 | Squat | `control.compensation.pelvis_rotation.xyz` | hip-depth asymmetry proxy; 단안 depth에 민감. |
 | Lunge | `control.compensation.knee_valgus.xy.left/right` | forward-leg 또는 side-specific knee deviation; active/forward-leg context 보존 필요. |
 | Lunge | `control.compensation.excessive_trunk_flexion.xy` | split stance에서의 forward trunk-lean proxy. |
-| Lunge | `control.compensation.lateral_pelvic_shift.xy` | pelvic-control proxy; view와 hip visibility 의존. |
+| Lunge | `control.compensation.lateral_pelvic_shift.xy` | pelvic-control proxy; view와 hip confidence 의존. |
 | Lunge | `control.compensation.heel_lift.xy.left/right` | forward/trailing-leg role과 함께 해석 필요. |
 | Plank shoulder tap | `control.compensation.pelvis_rotation.xyz` | hip-depth asymmetry 기반 anti-rotation proxy. |
 | Plank shoulder tap | `control.compensation.lateral_pelvic_shift.xy` | one-hand support 중 lateral weight-shift proxy. |
 
-Pike push-up compensation candidate는 현재 YAML 후보일 뿐이다. `COMPENSATION_RULES`에 대응 규칙이
+Pike push-up compensation pattern은 현재 YAML analysis evidence일 뿐이다. `COMPENSATION_RULES`에 대응 규칙이
 추가되기 전에는 구현 feature로 나열하지 않는다.
 
-## 4. Pending Candidate 처리 (Pending Candidate Handling)
+## 4. Pending Pattern 처리 (Pending Pattern Handling)
 
-Exercise YAML에는 구현되지 않은 candidate가 있을 수 있다. Runtime behavior:
+Exercise YAML에는 구현되지 않은 pattern이 있을 수 있다. Runtime behavior:
 
 ```text
 matching rule in COMPENSATION_RULES        feature 방출 가능
 no matching rule                           UserWarning; 이 mapping에서는 생략
 ```
 
-Pending candidate는 연구 메모이며 숨은 score component가 아니다.
+Pending pattern은 연구 메모이며 숨은 score component가 아니다.
 
 ## 5. 코드와 데이터 매핑 (Code And Data Mapping)
 
 ```text
 src/movement/features/
 data/definitions/clinical/feature_meanings.yaml
-docs_eng/pipeline/08_feature_extraction.md
-docs_eng/pipeline/10_biomarker_scoring.md
+docs_eng/pipeline/07_feature_extraction.md
+docs_eng/pipeline/09_biomarker_scoring.md
 ```
 
 Feature family, unit, interpretation boundary가 바뀌면 `docs_eng/`를 먼저 수정하고,

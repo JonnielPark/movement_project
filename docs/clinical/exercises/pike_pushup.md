@@ -22,7 +22,7 @@
 head descent, inverted-V 유지, hip-height change, 어려운 bodyweight task에서의 support consistency를
 관찰하는 데 사용한다.
 
-self-occlusion과 partial completion이 흔하므로 visibility limit와 performance failure-point
+self-occlusion과 partial completion이 흔하므로 confidence limit와 performance failure-point
 기록을 테스트하는 데도 유용하다.
 
 ## 2. 실행 컨텍스트 (Execution Context)
@@ -52,20 +52,20 @@ upper-limb symmetry       left/right shoulder and elbow features
 기대 수행은 취득 reference이다: hip은 inverted V로 높게 유지하고, head는 손 사이로 내려가며,
 support point는 크게 이동하지 않는다.
 
-## 4. 후보 패턴 (Candidate Patterns)
+## 4. 보상 패턴 (Compensation Patterns)
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| insufficient head descent | partial depth proxy | 높음-중간; nose가 불안정하면 head proxy 필요 | pending candidate |
-| head forward shift | load-avoidance trajectory proxy | 중간; side view가 유리 | pending candidate |
-| elbow flare | altered support strategy | 중간; view/elbow visibility 의존 | pending candidate |
-| shoulder asymmetry | unequal upper-limb support proxy | 중간; self-occlusion 민감 | pending candidate |
-| hip drop | regular push-up에 가까워지는 task change | side view에서 높음 | pending candidate |
-| hip pike variation | hip-height strategy 변화 | 중간 | pending candidate |
+| insufficient head descent | partial depth proxy | 높음-중간; nose가 불안정하면 head proxy 필요 | pending pattern |
+| head forward shift | load-avoidance trajectory proxy | 중간; side view가 유리 | pending pattern |
+| elbow flare | altered support strategy | 중간; view/elbow confidence 의존 | pending pattern |
+| shoulder asymmetry | unequal upper-limb support proxy | 중간; self-occlusion 민감 | pending pattern |
+| hip drop | regular push-up에 가까워지는 task change | side view에서 높음 | pending pattern |
+| hip pike variation | hip-height strategy 변화 | 중간 | pending pattern |
 | hand/foot repositioning | support-reference change | 낮음-중간 | control/limitation factor |
-| tempo instability | task difficulty에 따른 timing drift | stable segmentation이 있으면 높음 | candidate |
+| tempo instability | task difficulty에 따른 timing drift | stable segmentation이 있으면 높음 | review pattern |
 
-현재 `COMPENSATION_RULES`에 구현된 pike push-up compensation feature는 없다. 후보는 규칙과
+현재 `COMPENSATION_RULES`에 구현된 pike push-up compensation feature는 없다. analysis evidence는 규칙과
 테스트가 생기기 전까지 연구 메모로 남긴다.
 
 ## 5. View 및 품질 제한 (View And Quality Limits)
@@ -83,7 +83,7 @@ Far-side elbow 또는 wrist occlusion이 흔하다. 먼쪽 landmark가 불안정
 
 ## 6. 개발 경계 (Development Boundary)
 
-초기 고가치 규칙 후보:
+초기 고가치 규칙 패턴:
 
 ```text
 insufficient_head_descent

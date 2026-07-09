@@ -104,22 +104,23 @@ def make_coordinate_columns(
     return ["{}_{}".format(landmark, axis) for landmark in landmarks for axis in axes]
 
 
-def make_visibility_columns(
+def make_confidence_columns(
     landmarks=None,
 ):
     """
-    Create visibility column names from landmark names.
+    Create canonical landmark-confidence column names.
     Example:
-        nose_visibility
+        nose_confidence
     """
     if landmarks is None:
         landmarks = LANDMARKS
 
-    return ["{}_visibility".format(landmark) for landmark in landmarks]
+    return ["{}_confidence".format(landmark) for landmark in landmarks]
 
 
 def make_required_columns(
     landmarks=None,
+    axes=("x", "y", "z"),
 ):
     """
     Create required columns for pose dataframe.
@@ -127,4 +128,4 @@ def make_required_columns(
     if landmarks is None:
         landmarks = LANDMARKS
 
-    return ["frame", "timestamp"] + make_coordinate_columns(landmarks)
+    return ["frame", "timestamp"] + make_coordinate_columns(landmarks, axes=axes)

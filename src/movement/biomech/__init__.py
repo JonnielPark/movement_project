@@ -1,5 +1,5 @@
 """
-⑨ Biomechanical Proxy Modeling
+⑧ Biomechanical Proxy Modeling
 
 Applies simplified biomechanical rules to produce relative proxy metrics
 from normalized pose data.
@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from movement.record_metadata import (
-    COMMON_RECORD_METADATA_FIELDS,
     EVALUATION_DOMAINS,
     EVIDENCE_AXES,
     apply_common_record_metadata,
@@ -47,13 +46,13 @@ class BiomechRecord:
     rep_id                           : rep number (None = sequence-level)
     value                            : metric value
     unit                             : must be torso_length_ratio or degree
-    source_fields                    : exercise definition fields used (provenance)
+    source_fields                    : optional audit references for reports/debug
     note                             : optional biomechanical interpretation note
-    visibility_weight_applied        : True if low-visibility frames were excluded
+    confidence_weight_applied        : True if low-confidence frames were excluded
     n_frames_used                    : number of frames included in the computation
-    n_frames_excluded_low_visibility : frames excluded due to low visibility
+    n_frames_excluded_low_confidence : frames excluded due to low confidence
     availability                     : scoring availability gate
-    availability_reasons             : machine-readable availability provenance
+    availability_reasons             : machine-readable availability reasons
     depth_dependency                 : dependency on monocular model-depth evidence
     model_depth_reliability          : reliability of pose-estimator depth evidence
     landmark_quality                 : landmark quality summary when available
@@ -64,6 +63,7 @@ class BiomechRecord:
     evaluation_domain                : scoring/evaluation evidence domain
     evidence_axes                    : coordinate axes used by the calculation
     feature_family                   : broad feature family used by scoring/audits
+    quality_gravity                  : quality-trust multiplier for promoted evidence
     """
 
     metric_id: str
@@ -73,9 +73,9 @@ class BiomechRecord:
     unit: str
     source_fields: list[str] = field(default_factory=list)
     note: str | None = None
-    visibility_weight_applied: bool = False
+    confidence_weight_applied: bool = False
     n_frames_used: int = 0
-    n_frames_excluded_low_visibility: int = 0
+    n_frames_excluded_low_confidence: int = 0
     availability: str = "low_confidence"
     availability_reasons: list[str] = field(default_factory=list)
     depth_dependency: str = "high"
@@ -88,6 +88,7 @@ class BiomechRecord:
     evaluation_domain: str = "unknown"
     evidence_axes: str | None = None
     feature_family: str | None = None
+    quality_gravity: float = 1.0
 
     def __post_init__(self) -> None:
         if self.unit not in (
@@ -100,11 +101,6 @@ class BiomechRecord:
                 f"BiomechRecord '{self.metric_id}': absolute units (N, kg, m) are not allowed. "
                 f"unit='{self.unit}'. Use torso_length_ratio, torso_length_ratio_per_rep, or degree."
             )
-        if not self.source_fields:
-            raise ValueError(
-                f"BiomechRecord '{self.metric_id}': source_fields is empty. "
-                "Provenance fields from the exercise definition must be specified."
-            )
         valid_availability = {"assessed", "low_confidence", "not_assessed"}
         if self.availability not in valid_availability:
             raise ValueError(
@@ -116,6 +112,11 @@ class BiomechRecord:
             raise ValueError(
                 f"BiomechRecord '{self.metric_id}': invalid depth_dependency "
                 f"{self.depth_dependency!r}."
+            )
+        if self.quality_gravity < 0.0 or self.quality_gravity > 1.0:
+            raise ValueError(
+                f"BiomechRecord '{self.metric_id}': quality_gravity must be "
+                f"between 0 and 1; got {self.quality_gravity}."
             )
         valid_model_depth_reliability = {"high", "moderate", "low", "unknown"}
         if self.model_depth_reliability not in valid_model_depth_reliability:
@@ -156,15 +157,15 @@ def extract_rep_biomech(
     df: "pd.DataFrame",
     exercise_definition: "ExerciseDefinition",
     *,
-    use_visibility_weight: bool = True,
+    use_confidence_weight: bool = True,
 ) -> "list[BiomechRecord]":
     """Compute CoM and moment-arm metrics per rep_id.
 
     Rep boundaries are read from annotation columns (segment_type, rep_id).
     When annotation columns are absent, metrics are computed at sequence level.
 
-    When use_visibility_weight=True, frames whose mean primary-joint visibility
-    falls below quality_rules.minimum_visible_landmark_ratio are excluded from
+    When use_confidence_weight=True, frames whose mean primary-joint confidence
+    falls below quality_rules.minimum_confident_landmark_ratio are excluded from
     all computations. This reduces the influence of depth-estimation noise from
     monocular vision on the proxy metrics.
 
@@ -173,15 +174,15 @@ def extract_rep_biomech(
     df : pd.DataFrame
         Normalized pose dataframe. Must contain <landmark>_norm_x/y/z columns.
     exercise_definition : ExerciseDefinition
-    use_visibility_weight : bool
-        True (default) — exclude low-visibility frames.
+    use_confidence_weight : bool
+        True (default) — exclude low-confidence frames.
         False — include all frames (useful for A/B comparison).
 
     Returns
     -------
     list[BiomechRecord]
     """
-    from movement.biomech.com import compute_com_metrics, compute_visibility_weights
+    from movement.biomech.com import compute_com_metrics, compute_confidence_weights
     from movement.biomech.moment_arm import compute_moment_arms
 
     records: list[BiomechRecord] = []
@@ -193,14 +194,18 @@ def extract_rep_biomech(
         rep_ids = sorted(df.loc[rep_mask, "rep_id"].dropna().unique())
 
     primary_joints: list[str] = exercise_definition.landmarks.primary_joints or []
-    min_vis_ratio: float = (
-        exercise_definition.quality_rules.minimum_visible_landmark_ratio
+    min_confidence_ratio: float = (
+        exercise_definition.quality_rules.minimum_confident_landmark_ratio
     )
 
     def _weights_for(df_slice: "pd.DataFrame"):
-        if not use_visibility_weight or not primary_joints:
+        if not use_confidence_weight or not primary_joints:
             return None
-        return compute_visibility_weights(df_slice, primary_joints, min_vis_ratio)
+        return compute_confidence_weights(
+            df_slice,
+            primary_joints,
+            min_confidence_ratio,
+        )
 
     moment_arm_records: list[BiomechRecord] = []
 
@@ -238,11 +243,10 @@ BIOMECH_REQUIRED_COLUMNS = [
     "rep_id",
     "value",
     "unit",
-    "source_fields",
     "note",
-    "visibility_weight_applied",
+    "confidence_weight_applied",
     "n_frames_used",
-    "n_frames_excluded_low_visibility",
+    "n_frames_excluded_low_confidence",
     "availability",
     "availability_reasons",
     "depth_dependency",
@@ -297,17 +301,13 @@ def _assert_biomech_output_round_trip(
     for column in required_columns:
         if column not in reloaded.columns:
             raise AssertionError(f"Saved biomech CSV missing column: {column}")
-    if "source_fields" in reloaded.columns:
-        source_lengths = reloaded["source_fields"].astype(str).str.len()
-        if not source_lengths.gt(0).all():
-            raise AssertionError("Saved biomech CSV contains empty source_fields.")
     return reloaded
 
 
-def _missing_biomech_source_fields(biomech_df: "pd.DataFrame") -> int:
+def _biomech_audit_reference_rows(biomech_df: "pd.DataFrame") -> int | None:
     if "source_fields" not in biomech_df.columns:
-        return len(biomech_df)
-    return int(biomech_df["source_fields"].fillna("").astype(str).str.len().eq(0).sum())
+        return None
+    return int(biomech_df["source_fields"].fillna("").astype(str).str.len().gt(0).sum())
 
 
 def save_biomech_outputs(
@@ -318,8 +318,9 @@ def save_biomech_outputs(
     output_dir: str | Path,
     project_root: str | Path | None = None,
     required_columns: list[str] | None = None,
+    include_audit_references: bool = False,
 ) -> "pd.DataFrame":
-    """Save ⑨ Biomechanical Proxy table/QC and verify CSV round-trip."""
+    """Save ⑧ Biomechanical Proxy table/QC and verify CSV round-trip."""
 
     import pandas as pd
 
@@ -331,6 +332,8 @@ def save_biomech_outputs(
     qc_path = output_path / f"{recording_id}_biomech_qc.json"
 
     csv_df = biomech_df.copy()
+    if not include_audit_references and "source_fields" in csv_df.columns:
+        csv_df = csv_df.drop(columns=["source_fields"])
     for column in required:
         if column not in csv_df.columns:
             csv_df[column] = ""
@@ -352,8 +355,10 @@ def save_biomech_outputs(
         "metric_family_counts": biomech_df["metric_family"]
         .value_counts(dropna=False)
         .to_dict(),
-        "missing_source_fields": _missing_biomech_source_fields(biomech_df),
     }
+    audit_rows = _biomech_audit_reference_rows(biomech_df)
+    if audit_rows is not None:
+        qc_payload["audit_reference_rows"] = audit_rows
     qc_path.write_text(
         json.dumps(qc_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",

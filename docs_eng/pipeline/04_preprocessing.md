@@ -1,12 +1,13 @@
 # 04. Preprocessing
 
-**Document Version:** 1.2.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.2.1
+**Last Updated:** 2026-07-08
 **Korean Sync:** `docs/pipeline/04_preprocessing.md` is the same-version Korean source.
 
 Pipeline step ④ corrects or marks data-quality issues in monocular pose data
 before normalization. It returns a corrected copy of the DataFrame and does not
 modify the input object.
+This output is called **preprocessed pose data** in the terminology contract.
 
 This step handles observation reliability only. It must not alter movement-quality
 patterns such as depth, knee valgus, trunk lean, or compensatory asymmetry.
@@ -16,7 +17,7 @@ patterns such as depth, knee valgus, trunk lean, or compensatory asymmetry.
 ## 1. Pipeline Position
 
 ```text
-③ Exercise Definition → ④ Preprocessing ← this step → ⑤ Normalization → ⑥ Canonicalization
+③ Exercise Definition → ④ Preprocessing ← this step → ⑤ Normalization → optional ⑤-1 Canonicalization
 ```
 
 Runs after ③ so laterality, landmarks, camera protocol, and quality rules are
@@ -27,6 +28,13 @@ the torso-length scale.
 
 ## 2. Inputs And Outputs
 
+Output data name:
+
+```text
+Preprocessed pose data
+    pose table that preserves raw coordinate columns and adds preprocessing provenance
+```
+
 Required input columns:
 
 ```text
@@ -36,7 +44,7 @@ Required input columns:
 Optional inputs:
 
 ```text
-<landmark>_visibility
+<landmark>_confidence
 exercise_id, execution_pattern
 camera_zone, camera_height_level
 ```
@@ -75,8 +83,8 @@ preprocessing_confidence     frame-level confidence note
 Landmarks may be marked unreliable by:
 
 ```text
-visibility gating
-    visibility below threshold.
+Confidence gating
+    confidence below threshold.
 
 segment-length consistency
     segment length deviates from sequence median beyond tolerance.
@@ -85,7 +93,7 @@ segment-length consistency
 
 conservative joint-angle bounds
     flags anatomically impossible configurations only.
-    Exercise-specific ROM assessment belongs to ⑧ Feature Extraction.
+    Exercise-specific ROM assessment belongs to ⑦ Feature Extraction.
 
 velocity outliers
     body-scale-normalized frame-to-frame jumps above threshold.
@@ -110,9 +118,9 @@ unilateral_*         enabled
 generic fallback     skip
 ```
 
-High-confidence swap candidates exchange paired landmark labels for the affected
+High-confidence swap-suspect frames exchange paired landmark labels for the affected
 frame. Coordinate values are not modified. Low-confidence cases are flagged only
-and left for ⑧ Feature Extraction role-context handling or manual review.
+and left for ⑦ Feature Extraction role-context handling or manual review.
 
 ### Short-Gap Interpolation
 
@@ -151,14 +159,14 @@ minor observation jitter, not for reshaping true movement patterns.
 ## 5. Far-Side Stabilization
 
 Optional far-side stabilization addresses side-view or near-side-view recordings
-where the side farther from the camera has lower visibility, higher jitter, or
+where the side farther from the camera has lower confidence, higher jitter, or
 higher swap risk. It is not canonicalization and does not make the skeleton
 symmetric.
 
 Because monocular pose coordinates are noisy, far-side jitter detection is
 intentionally conservative. Minor coordinate wobble is not treated as jitter.
 The jitter gate should require a large motion spike plus low-confidence context
-such as low visibility or an existing reliability-mask failure.
+such as low confidence or an existing reliability-mask failure.
 
 The report separates the original observation from the post-preprocessing state:
 
@@ -183,7 +191,7 @@ infer near/far/unknown side context
 apply optional smoothing/interpolation only to far-side low-confidence landmarks
 interpolate short low-confidence gaps
 report unresolved long gaps as low confidence
-emit feature-availability hooks for ⑧ and ⑨
+emit feature-availability hooks for ⑦ and ⑧
 ```
 
 Not allowed:
@@ -215,6 +223,10 @@ DataFrame and a report.
 ```python
 {
     "method": str,
+    "input_pose_data_state": "raw_pose_data" | str,
+    "output_pose_data_state": "preprocessed_pose_data",
+    "input_coordinate_families": list[str],
+    "output_coordinate_families": list[str],
     "exercise_id": str | None,
     "movement_template_id": str | None,
     "execution_pattern": str | None,
@@ -253,7 +265,7 @@ they are not biomarker scores and do not replace feature-level availability
 decisions.
 
 Stage-check notebooks may also display the active preprocessing configuration
-next to those QC ratios: visibility threshold, segment-length tolerance, joint
+next to those QC ratios: confidence threshold, segment-length tolerance, joint
 angle check, velocity threshold, interpolation gap, post-interpolation velocity
 check, smoothing setting, and far-side jitter gate. This configuration summary
 is provenance for reproducibility, not a scoring input.
@@ -265,7 +277,7 @@ be kept as a separate numbered check near the end, clearly marked as diagnostic
 evidence rather than target-recording movement quality.
 
 Frames are never silently deleted. Exact feature-level exclusion is decided later
-by ⑧ Feature Extraction and ⑩ Biomarker Scoring.
+by ⑦ Feature Extraction and ⑨ Biomarker Scoring.
 
 ---
 

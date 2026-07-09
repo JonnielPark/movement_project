@@ -1,10 +1,10 @@
-# 07. 세그멘테이션 (Segmentation)
+# 06. 세그멘테이션 (Segmentation)
 
 **문서 버전:** 1.3.4
 **최종 갱신:** 2026-07-04
-**영문 동기화:** `docs_eng/pipeline/07_segmentation.md`는 동일 버전의 영문 번역본이다.
+**영문 동기화:** `docs_eng/pipeline/06_segmentation.md`는 동일 버전의 영문 번역본이다.
 
-파이프라인 단계 ⑦은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
+파이프라인 단계 ⑥은 반복 경계와 반복 내부 phase label을 확정한다. Rep와 phase를 모두 다루므로
 단계명은 `Segmentation`이다. 기존 `phase_segmentation` YAML/code key는 phase splitting 전용으로
 유지하고, `rep_segmentation`이 반복 경계를 담당한다.
 
@@ -15,7 +15,7 @@
 ## 1. 파이프라인 위치 (Pipeline Position)
 
 ```text
-⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation ← 본 단계 → ⑧ Feature Extraction
+⑤ Normalization → optional ⑤-1 Canonicalization → ⑥ Segmentation ← 본 단계 → ⑦ Feature Extraction
 ```
 
 입력:
@@ -39,7 +39,7 @@ phase_segmentation_source      annotation | semi_auto | manual_override | fallba
 phase_segmentation_failure_id
 ```
 
-② Annotation에서 온 manual label은 후보 또는 확정 label로 취급하며 조용히 덮어쓰지 않는다.
+② Annotation에서 온 manual label은 제안 또는 확정 label로 취급하며 조용히 덮어쓰지 않는다.
 
 Stage-check notebook 26은 공통 stage-check pattern을 따른다:
 
@@ -62,7 +62,7 @@ handoff evidence로 보존되는지와 현재 exercise definition이 usable phas
 만들 수 있는지만 확인한다.
 
 Canonicalization은 전체 파이프라인의 선행 단계로 유지되지만, 현재 segmentation boundary detection은
-canonical candidate coordinate를 필요로 하지 않는다. Normalized/preprocessed dataframe과
+canonical analysis-space coordinate를 필요로 하지 않는다. Normalized/preprocessed dataframe과
 exercise-defined reference signal을 입력으로 사용한다.
 
 ---
@@ -78,7 +78,7 @@ phase_segmentation
 ```
 
 두 block은 exercise-defined reference landmark, coordinate family, axis, expected phase order,
-minimum-length 설정을 사용한다. Visibility, ROM, boundary candidate 수, boundary order,
+minimum-length 설정을 사용한다. confidence, ROM, boundary proposal 수, boundary order,
 manual-label consistency가 불명확하면 automatic segmentation은 거부한다.
 
 `reference_coordinate_family`는 boundary detection에 쓰는 신호와 feature/scoring 계산에 쓰는
@@ -167,14 +167,14 @@ success
     accepted interval이 minimum_reps와 minimum_rep_length_frames를 만족한다.
 
 failed
-    필요한 landmark/axis가 없거나, candidate boundary가 없거나, interval이 너무 짧거나,
-    candidate order가 잘못됐거나, accepted interval이 minimum_reps보다 적다.
+    필요한 landmark/axis가 없거나, proposal boundary가 없거나, interval이 너무 짧거나,
+    proposal order가 잘못됐거나, accepted interval이 minimum_reps보다 적다.
 
 skipped
     필요한 segmentation config가 없거나 stage가 비활성화됐다.
 
 manual_override
-    연구자 확인 label이 failure를 해결하거나 automatic candidate를 대체한다.
+    연구자 확인 label이 failure를 해결하거나 automatic analysis evidence를 대체한다.
 ```
 
 Failure level:
@@ -201,9 +201,9 @@ failure_id
 failure_level          rep_boundary | phase_boundary | optional_phase
 set_id, rep_id
 start_frame, end_frame
-candidate_frame
-reason                 low_visibility | insufficient_rom | missing_candidate |
-                       multiple_candidates | order_mismatch | manual_required
+boundary_proposal_frame
+reason                 low_confidence | insufficient_rom | missing_boundary_proposal |
+                       multiple_planned patterns | order_mismatch | manual_required
 confidence
 pipeline_action        exclude_range | rep_level_only | coarse_phase_continue |
                        wait_for_manual_override
@@ -239,7 +239,7 @@ rep_segmentation_source / phase_segmentation_source = manual_override
 
 ```text
 source annotation    <recording_id>_annotation.csv
-candidate output     <recording_id>_phase_split.csv
+analysis-space output     <recording_id>_phase_split.csv
 confirmed output     <recording_id>_phase_annotation.csv
 reference signal     raw image/recording coordinates의 hip_center_y
 ```
@@ -261,12 +261,12 @@ pipeline default가 아니라 annotation-adjacent QC workflow로 유지한다.
 ## 7. 후속 단계 규칙 (Downstream Rules)
 
 ```text
-⑧ Feature Extraction   확정된 rep_id를 사용하고 side-role context를 해석하며,
+⑦ Feature Extraction   확정된 rep_id를 사용하고 side-role context를 해석하며,
                        confirmed rep에는 rep-level feature를, successful/manual phase에는
                        phase-level feature를 방출.
-⑨ Biomech Proxy        unresolved rep-boundary failure는 제외.
-⑩ Biomarker Scoring    failure/exclusion provenance를 보존.
-⑪ Visualization        failure point와 manual boundary를 표시.
+⑧ Biomech Proxy        unresolved rep-boundary failure는 제외.
+⑨ Biomarker Scoring    failure/exclusion provenance를 보존.
+⑩ Visualization        failure point와 manual boundary를 표시.
 ```
 
 ---
@@ -284,3 +284,4 @@ tests/test_features_phase_grouping.py
 tests/test_recording_phase_split.py
     recording-plane artifact generation and promotion validation.
 ```
+

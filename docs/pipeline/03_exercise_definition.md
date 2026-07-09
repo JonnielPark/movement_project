@@ -21,11 +21,11 @@ Pose CSV + annotation + exercise YAML artifacts
 → ③ Exercise Definition           ← 본 단계
 → ④ Preprocessing                 laterality, landmarks, quality_rules
 → ⑤ Normalization
-→ ⑥ Canonicalization              coordinate-candidate priors
-→ ⑦ Segmentation                  rep/phase settings
-→ ⑧ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
-→ ⑨ Biomech Proxy                 biomechanical_focus
-→ ⑩ Biomarker Derivation          compensation_candidates
+→ ⑤-1 Optional Canonicalization    coordinate-analysis priors
+→ ⑥ Segmentation                  rep/phase settings
+→ ⑦ Feature Extraction            feature_domains, joint_actions, laterality, side_sequence
+→ ⑧ Biomech Proxy                 biomechanical_focus
+→ ⑨ Biomarker Derivation          compensation_patterns
 ```
 
 운동별 동작은 가능한 한 Python 분기가 아니라 YAML 데이터로 표현한다.
@@ -42,7 +42,7 @@ data/definitions/exercises/<exercise_id>.yaml
 
 data/definitions/analysis_profiles/<exercise_id>.yaml
     분석 동작: landmarks, angle definitions, segmentation settings,
-    feature domains, biomechanical focus, compensation candidates, quality rules.
+    feature domains, biomechanical focus, compensation patterns, quality rules.
 
 data/definitions/analysis_presets.yaml
     segmentation, landmark/angle set, quality rule을 재사용하기 위한 분석 block.
@@ -70,7 +70,7 @@ presets:
   quality_rules: lower_body_standard
 
 biomechanical_focus: ...
-compensation_candidates: ...
+compensation_patterns: ...
 feature_domains: ...
 ```
 
@@ -162,7 +162,7 @@ landmarks: ...
 angle_definitions: ...
 joint_actions: ...
 biomechanical_focus: ...
-compensation_candidates: ...
+compensation_patterns: ...
 feature_domains: ...
 view_requirements: ...
 camera_protocol: ...
@@ -375,7 +375,7 @@ biomechanical_focus:
   main_load_regions: list[string]
   primary_constraints: list[string]
 
-compensation_candidates: list[string]
+compensation_patterns: list[string]
 
 feature_domains:
   spatial: list[string]
@@ -384,8 +384,8 @@ feature_domains:
   biomechanical_proxy: list[string]
 ```
 
-구현되어 있고 관찰 가능한 compensation candidate만 biomarker를 산출한다. 선언됐지만 아직 구현되지
-않은 candidate는 조용히 무시하지 말고 availability/audit logic으로 보고한다. 절대 force, torque,
+구현되어 있고 관찰 가능한 compensation pattern만 biomarker를 산출한다. 선언됐지만 아직 구현되지
+않은 analysis evidence는 조용히 무시하지 말고 availability/audit logic으로 보고한다. 절대 force, torque,
 clinical-diagnosis claim은 이 필드에 넣지 않는다.
 
 ### camera_protocol and view_metric_reliability
@@ -425,7 +425,7 @@ left/right보다 `forward_leg`, `trailing_leg`, `active_side`, `support_side` �
 
 ```yaml
 quality_rules:
-  minimum_visible_landmark_ratio: float
+  minimum_confident_landmark_ratio: float
   minimum_critical_landmark_ratio: float
   max_missing_gap_frames: int
   max_interpolation_gap_frames: int
@@ -442,8 +442,8 @@ quality_rules:
       apply_to_phase_suffixes: [full_rep, descent, ascent]
 ```
 
-Visibility와 gap threshold는 ④ Preprocessing과 ⑧ Feature Extraction에서 소비한다.
-`range_of_motion_targets`는 ⑩ Biomarker Scoring에서 소비한다. 운동별 기능적 ROM band를 정의하는 필드이며,
+confidence와 gap threshold는 ④ Preprocessing과 ⑦ Feature Extraction에서 소비한다.
+`range_of_motion_targets`는 ⑨ Biomarker Scoring에서 소비한다. 운동별 기능적 ROM band를 정의하는 필드이며,
 예를 들어 squat knee ROM은 synthetic baseline 평균보다 크다고 감점하기보다 ROM이 부족할 때
 주로 감점해야 한다. 이 target은 reviewed-good example이나 문헌 기반 값이 충분해지기 전까지
 provisional이며, global rule이 아니라 운동별 rule로 유지한다.
@@ -474,14 +474,14 @@ provisional이며, global rule이 아니라 운동별 rule로 유지한다.
 
 ## 7. Provenance 규약 (Provenance Convention)
 
-⑧-⑧에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
+⑨에서 산출되는 모든 biomarker는 계산을 유발한 definition field를 가리키는 `source_fields`를
 포함해야 한다.
 
 ```text
 biomarker_id       : knee_valgus_index
 exercise_id        : squat
 definition_version : 0.5.0
-source_fields      : [compensation_candidates.knee_valgus,
+source_fields      : [compensation_patterns.knee_valgus,
                       classification.primary_plane,
                       landmarks.primary_joints]
 rep_id             : 2

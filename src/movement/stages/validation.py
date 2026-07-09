@@ -2,7 +2,8 @@
 ① Validation
 
 Checks structural integrity of pose landmark data and returns a diagnostic report.
-Does not modify the input dataframe.
+Schema harmonization helpers may return a dataframe copy with missing z columns
+added as NaN placeholders; integrity checks themselves do not invent evidence.
 
 Note: "validation" here means data integrity checking only.
       This is distinct from robustness evaluation (synthetic data simulation tests).
@@ -12,7 +13,118 @@ Pipeline position: first step; guarantees input quality for all downstream steps
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
+
+
+def harmonize_pose_schema(
+    df: pd.DataFrame,
+    landmarks: list[str],
+    coordinate_axes: str = "auto",
+) -> tuple[pd.DataFrame, dict]:
+    """Return an xyz-shaped pose dataframe and schema harmonization report.
+
+    YOLO-style 2D pose backends usually provide x/y without z. This helper adds
+    missing raw z columns as NaN placeholders so downstream stages can share an
+    xyz schema while still treating z as non-evaluable evidence.
+    """
+
+    mode = str(coordinate_axes or "auto").lower()
+    if mode not in {"auto", "xy", "xyz"}:
+        raise ValueError("coordinate_axes must be one of: auto, xy, xyz.")
+
+    missing_xy = [
+        f"{landmark}_{axis}"
+        for landmark in landmarks
+        for axis in ("x", "y")
+        if f"{landmark}_{axis}" not in df.columns
+    ]
+    if missing_xy:
+        raise ValueError(
+            "Cannot harmonize pose schema without required x/y columns: "
+            f"{missing_xy[:10]}"
+        )
+
+    result = df.copy()
+    mapped_backend_alias_columns: list[dict[str, str]] = []
+    dropped_backend_alias_columns: list[str] = []
+    for landmark in landmarks:
+        confidence_col = f"{landmark}_confidence"
+        backend_confidence_alias_col = f"{landmark}_visibility"
+        if (
+            confidence_col not in result.columns
+            and backend_confidence_alias_col in result.columns
+        ):
+            result[confidence_col] = result[backend_confidence_alias_col]
+            mapped_backend_alias_columns.append(
+                {
+                    "backend_alias": backend_confidence_alias_col,
+                    "canonical_column": confidence_col,
+                }
+            )
+        if backend_confidence_alias_col in result.columns:
+            result = result.drop(columns=[backend_confidence_alias_col])
+            dropped_backend_alias_columns.append(backend_confidence_alias_col)
+
+    z_columns = [f"{landmark}_z" for landmark in landmarks]
+    existing_z = [column for column in z_columns if column in result.columns]
+    missing_z = [column for column in z_columns if column not in result.columns]
+    added_z_columns: list[str] = []
+    for column in missing_z:
+        result[column] = np.nan
+        added_z_columns.append(column)
+
+    z_values = result[z_columns].astype(float).to_numpy()
+    finite_z = bool(np.isfinite(z_values).any())
+    observed_axes = ["x", "y"] + (["z"] if existing_z and finite_z else [])
+    coordinate_shape = ["x", "y", "z"]
+
+    if not existing_z or not finite_z:
+        z_source = "absent"
+    elif len(existing_z) == len(z_columns):
+        z_source = "model_depth"
+    else:
+        z_source = "partial_model_depth"
+
+    z_evaluable = mode != "xy" and z_source == "model_depth"
+    if mode == "xyz" and not z_evaluable:
+        raise ValueError(
+            "coordinate_axes='xyz' requires finite backend-provided z for all "
+            "configured landmarks."
+        )
+
+    validation_axes = (
+        ["x", "y", "z"]
+        if mode == "xyz" or (mode == "auto" and z_evaluable)
+        else ["x", "y"]
+    )
+
+    result.attrs["coordinate_shape"] = {"raw": coordinate_shape}
+    result.attrs["observed_coordinate_axes"] = {"raw": observed_axes}
+    result.attrs["z_source"] = {"raw": z_source}
+    result.attrs["z_evaluable"] = {"raw": z_evaluable}
+    result.attrs["z_fill_policy"] = {
+        "raw": "provided_by_backend" if z_source == "model_depth" else "nan_placeholder"
+    }
+
+    report = {
+        "status": "applied" if added_z_columns else "unchanged",
+        "coordinate_shape": coordinate_shape,
+        "observed_axes": observed_axes,
+        "validation_axes": validation_axes,
+        "added_z_columns": added_z_columns,
+        "num_added_z_columns": len(added_z_columns),
+        "z_source": z_source,
+        "z_fill_policy": result.attrs["z_fill_policy"]["raw"],
+        "z_evaluable": z_evaluable,
+        "coordinate_axes_config": mode,
+        "confidence_schema": {
+            "canonical_suffix": "confidence",
+            "mapped_backend_alias_columns": mapped_backend_alias_columns,
+            "dropped_backend_alias_columns": dropped_backend_alias_columns,
+        },
+    }
+    return result, report
 
 
 def validate_required_columns(
@@ -129,39 +241,39 @@ def validate_missing_values(
     }
 
 
-def validate_visibility(
+def validate_confidence(
     df: pd.DataFrame,
-    visibility_columns: list[str],
+    confidence_columns: list[str],
     threshold: float = 0.5,
 ) -> dict:
     """
-    Check landmark visibility quality.
+    Check landmark confidence quality.
     """
-    existing_cols = [col for col in visibility_columns if col in df.columns]
-    missing_cols = [col for col in visibility_columns if col not in df.columns]
+    existing_cols = [col for col in confidence_columns if col in df.columns]
+    missing_cols = [col for col in confidence_columns if col not in df.columns]
 
     if len(existing_cols) == 0:
         return {
             "passed": False,
             "severity": "warning",
             "policy": "warning_provenance_only",
-            "error": "No visibility columns found.",
-            "missing_visibility_columns": missing_cols,
+            "error": "No confidence columns found.",
+            "missing_confidence_columns": missing_cols,
         }
 
-    visibility = df[existing_cols].astype(float)
-    low_visibility_ratio = (visibility < threshold).mean()
+    confidence = df[existing_cols].astype(float)
+    low_confidence_ratio = (confidence < threshold).mean()
 
-    passed = bool((low_visibility_ratio < 0.2).all())
+    passed = bool((low_confidence_ratio < 0.2).all())
 
     return {
         "passed": passed,
         "severity": "ok" if passed else "warning",
         "policy": "warning_provenance_only",
         "threshold": threshold,
-        "num_visibility_columns": len(existing_cols),
-        "missing_visibility_columns": missing_cols,
-        "low_visibility_ratio_by_column": low_visibility_ratio.to_dict(),
+        "num_confidence_columns": len(existing_cols),
+        "missing_confidence_columns": missing_cols,
+        "low_confidence_ratio_by_column": low_confidence_ratio.to_dict(),
     }
 
 
@@ -169,7 +281,8 @@ def run_basic_validation(
     df: pd.DataFrame,
     required_columns: list[str],
     coordinate_columns: list[str],
-    visibility_columns: list[str] | None = None,
+    confidence_columns: list[str] | None = None,
+    confidence_threshold: float = 0.5,
 ) -> dict:
     """
     Run basic validation checks for pose dataframe.
@@ -190,10 +303,11 @@ def run_basic_validation(
         columns=coordinate_columns,
     )
 
-    if visibility_columns is not None:
-        report["visibility"] = validate_visibility(
+    if confidence_columns is not None:
+        report["confidence"] = validate_confidence(
             df=df,
-            visibility_columns=visibility_columns,
+            confidence_columns=confidence_columns,
+            threshold=confidence_threshold,
         )
 
     structural_checks = (
@@ -208,16 +322,16 @@ def run_basic_validation(
     report["passed"] = report["structural_passed"]
     report["warnings"] = []
 
-    visibility_report = report.get("visibility")
-    if isinstance(visibility_report, dict) and not visibility_report.get(
+    confidence_report = report.get("confidence")
+    if isinstance(confidence_report, dict) and not confidence_report.get(
         "passed", True
     ):
         report["warnings"].append(
             {
-                "check": "visibility",
-                "severity": visibility_report.get("severity", "warning"),
-                "policy": visibility_report.get("policy", "warning_provenance_only"),
-                "message": "Low or unavailable visibility is handled by downstream reliability gates.",
+                "check": "confidence",
+                "severity": confidence_report.get("severity", "warning"),
+                "policy": confidence_report.get("policy", "warning_provenance_only"),
+                "message": "Low or unavailable landmark confidence is handled by downstream reliability gates.",
             }
         )
 

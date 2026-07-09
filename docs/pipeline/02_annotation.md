@@ -8,7 +8,7 @@
 수동 라벨, 촬영 provenance, 수행 provenance를 보존한다.
 rep/phase 경계를 추정하거나 프레임을 삭제하거나 좌표를 수정하지 않는다.
 rep/phase 경계 추정과 segmentation failure 처리는
-[07_segmentation.md](07_segmentation.md)에서 담당한다.
+[06_segmentation.md](06_segmentation.md)에서 담당한다.
 
 ---
 
@@ -63,7 +63,7 @@ protocol_cycle_id   Int64     원자 반복을 묶는 사용자 안내 기준 cy
 ```text
 exercise_id                   → ③ exercise definition 로딩
 execution_pattern / starting_side
-                               → ④ L/R 점검 및 ⑧ Feature Extraction role context
+                               → ④ L/R 점검 및 ⑦ Feature Extraction role context
 phase                          → 본 단계에서 보존, ⑦에서 수용/거부
 filming provenance             → warning/report 컨텍스트만 제공
 performance provenance         → warning/report 컨텍스트만 제공

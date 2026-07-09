@@ -1,22 +1,24 @@
-# 08. Feature Extraction
+# 07. Feature Extraction
 
-**Document Version:** 1.4.0
-**Last Updated:** 2026-07-04
-**Korean Sync:** `docs/pipeline/08_feature_extraction.md` is the same-version Korean source.
+**Document Version:** 1.4.1
+**Last Updated:** 2026-07-09
+**Korean Sync:** `docs/pipeline/07_feature_extraction.md` is the same-version Korean source.
 
-Pipeline step ⑧ computes movement-quality features from normalized pose data. It
+Pipeline step ⑦ computes movement-quality features from normalized pose data. It
 does not modify pose coordinates. Every output is a `FeatureRecord` with numeric
-value, unit, `source_fields`, and availability/reliability metadata for ⑩
-Biomarker Derivation.
+value, unit, and explicit operational metadata for ⑨ Biomarker Derivation:
+availability, reliability, evidence axes, coordinate reference, feature family,
+and focus tier. `source_fields` are optional audit references for debug/report
+exports and are not required for scoring.
 
 ---
 
 ## 1. Pipeline Position
 
 ```text
-⑤ Normalization → ⑥ Canonicalization → ⑦ Segmentation
-→ ⑧ Feature Extraction     ← this step
-→ ⑨ Biomech Proxy → ⑩ Biomarker Derivation
+⑤ Normalization → optional ⑤-1 Canonicalization → ⑥ Segmentation
+→ ⑦ Feature Extraction     ← this step
+→ ⑧ Biomech Proxy → ⑨ Biomarker Derivation
 ```
 
 Required inputs:
@@ -24,12 +26,12 @@ Required inputs:
 ```text
 <landmark>_norm_x/y/z       normalized coordinates
 rep_id                      confirmed repetition labels
-phase                       optional phase labels from ⑦
+phase                       optional phase labels from ⑥
 exercise_definition         feature_domains, angle_definitions,
-                            compensation_candidates, support context,
+                            compensation_patterns, support context,
                             view_metric_reliability
-recording provenance        camera_zone, camera_height_level when available
-preprocessing context       visibility, swap risk, far-side jitter, availability hooks
+recording metadata          camera_zone, camera_height_level when available
+preprocessing context       confidence, swap risk, far-side jitter, availability hooks
 role context settings       laterality, execution pattern, side sequence
 ```
 
@@ -42,10 +44,10 @@ Allowed:
 ```text
 Per-joint included angles from YAML angle_definitions
 Per-rep and per-phase aggregation
-Compensation candidates dispatched from a registry
+Compensation patterns dispatched from a registry
 Feature availability/reliability metadata
 Closed-chain support-consistency axis path diagnostics
-Provenance through source_fields
+Optional audit references through source_fields or stage reports
 Units limited to degree, second, dimensionless, dimensionless_cv, torso_length_ratio
 ```
 
@@ -53,7 +55,7 @@ Not allowed:
 
 ```text
 Branching on exercise_id in feature code
-FeatureRecord without source_fields
+Scoring logic that depends on source_fields strings
 Absolute force/torque/length output
 Turning camera-view limitations directly into movement-quality penalties
 Treating closed-chain support-consistency axis 3D path length as direct foot/hand motion
@@ -69,7 +71,7 @@ Feature Extraction owns side-role context resolution. This is not a score by
 itself and no longer exists as a standalone pipeline stage. It only tells feature
 families how to interpret side roles, confidence, and provenance.
 
-The first context substep of ⑧ is:
+The first context substep of ⑦ is:
 
 ```text
 resolve_feature_context(df, exercise_definition, role_context_report=None)
@@ -109,7 +111,7 @@ phases, create scores, or branch on `exercise_id`.
 Integration policy:
 
 ```text
-⑧ owns feature-facing interpretation
+⑦ owns feature-facing interpretation
     Resolve side-role context inside Feature Extraction, attach role_context only
     where a feature family declares it useful, and keep confidence/provenance
     separate from numeric feature values.
@@ -151,17 +153,17 @@ temporal.*
     Rep duration, phase duration, tempo variability, rhythm/smoothness proxies.
 
 control.*
-    Hip-center stability and compensation candidates such as knee_valgus,
+    Hip-center stability and compensation patterns such as knee_valgus,
     knee_varus, lateral_pelvic_shift, excessive_trunk_flexion, heel_lift,
     pelvis_rotation.
 ```
 
-`feature_domains.biomechanical_proxy` is routed to ⑨ Biomech Proxy, not consumed
-as a missing ⑧ extractor.
+`feature_domains.biomechanical_proxy` is routed to ⑧ Biomech Proxy, not consumed
+as a missing ⑦ extractor.
 
-Depth-sensitive features are not discarded at extraction time. ⑧ should emit
-them with `depth_dependency`, `availability`, and reliability metadata, then ⑩
-decides their score gravity. This keeps the evidence visible while allowing
+Depth-sensitive features are not discarded at extraction time. ⑦ should emit
+them with `depth_dependency`, `availability`, and reliability metadata, then ⑨
+decides their scoring weight. This keeps the evidence visible while allowing
 recording-view-heavy scoring policies.
 
 Feature identifiers describe the measured metric, not the specific repetition.
@@ -179,7 +181,7 @@ look like a different metric from rep 1 and can produce false 100-point temporal
 scores when the baseline only contains earlier repetition ids.
 
 Phase-level temporal ids use the exercise-defined phase labels emitted by
-⑦ Segmentation. The current phase-level duration rows keep the common
+⑥ Segmentation. The current phase-level duration rows keep the common
 phase-suffix mechanism, for example `temporal.tempo.rep_duration.descent`, while
 `phase` remains record metadata. Rep-level phase-profile summaries must derive
 their label pair from `exercise_definition.phase_segmentation.phase_sequence`
@@ -269,8 +271,8 @@ alternating / unilateral sequence
 
 Common record context metadata should be attached once in ⑧ and carried
 downstream instead of being re-inferred repeatedly from `feature_id` strings.
-These fields do not change feature values or score gravity by themselves; they
-make coordinate, evidence, and scoring context explicit for ⑩ and notebooks.
+These fields do not change feature values or scoring weight by themselves; they
+make coordinate, evidence, and scoring context explicit for ⑨ and notebooks.
 
 Stable anatomical facts belong in the joint/landmark metadata registry, not in
 each feature row. A feature row should point to the involved landmarks through
@@ -310,7 +312,7 @@ Inside a profile, action names are local and should not repeat the profile name;
 when surfaced as a global id, the profile namespace is added.
 The profile registry is not a general anatomy catalogue. It should keep only
 currently emitted feature templates and explicitly planned interpretation
-candidates. For example, the knee profile keeps `flexion_extension` and
+planned patterns. For example, the knee profile keeps `flexion_extension` and
 `varus_valgus_proxy` because knee range of motion, knee movement path, knee role
 balance, and
 `knee_valgus`/`knee_varus` compensation records are implemented or planned for
@@ -334,7 +336,7 @@ shoulder             keep shoulder flexion/extension and scapular stability
                      proxy; do not add general shoulder rotation unless a
                      feature and reliability policy are defined.
 elbow                keep elbow flexion/extension and planned elbow-tracking
-                     candidates; omit pronation/supination.
+                     planned patterns; omit pronation/supination.
 wrist                keep endpoint/support movement path and wrist flexion
                      extension only; omit radial/ulnar deviation.
 support_base         keep derived support-consistency control only.
@@ -400,7 +402,7 @@ anatomical interpretation still comes from the landmark/profile registries.
 `z`/`xyz` is not automatically a corrected-3D-hypothesis record. It should
 normally carry `evidence_axes = z` or `xyz`, elevated `depth_dependency`, and
 `evaluation_domain = dual_domain_compare` only when the feature is intended to
-be compared with corrected-candidate evidence later. Pure timing records use
+be compared with corrected-analysis evidence later. Pure timing records use
 `timing_only`.
 
 Range of motion emits explicit evidence variants, matching the movement-path evidence policy:
@@ -408,15 +410,15 @@ Range of motion emits explicit evidence variants, matching the movement-path evi
 ```text
 spatial.range_of_motion.xy.<joint_angle>
     Recording-view included-angle range of motion computed from normalized camera-plane x/y.
-    Use this as the preferred scoring candidate when the movement-quality
+    Use this as the preferred score-eligible feature when the movement-quality
     question can be answered from the recording view and the camera protocol is
     compatible.
 
 spatial.range_of_motion.xyz.<joint_angle>
-    Mixed-axis included-angle range of motion using normalized x/y and model/candidate z.
+    Mixed-axis included-angle range of motion using normalized x/y and model/analysis z.
     This remains depth-sensitive comparative evidence. It is useful for review
     and future corrected-3D-hypothesis comparison, but should receive lower
-    score gravity than the matching `spatial.range_of_motion.xy.*` record until
+    scoring weight than the matching `spatial.range_of_motion.xy.*` record until
     validation promotes it.
 ```
 
@@ -446,13 +448,13 @@ mixed-axis movement-path name. The scorer decides how much each variant contribu
 ```text
 spatial.movement_path.arc_length_xy.<landmark>
     Recording-view support-consistency axis path evidence. Under fixed closed-chain
-    support it is usually diagnostic or low-gravity evidence, not direct proof
+    support it is usually diagnostic or low-weight evidence, not direct proof
     that the foot/hand moved.
 
 spatial.movement_path.arc_length_xyz.<landmark>
     Mixed recording-view/depth support-consistency axis path evidence. Under monocular
     pose it is depth-sensitive provenance and should be withheld or assigned low
-    score gravity unless validation promotes it.
+    scoring weight unless validation promotes it.
 
 spatial.support_consistency.axis_path_x.<landmark>
 spatial.support_consistency.axis_path_y.<landmark>
@@ -471,7 +473,7 @@ translate fixed-support exercise constraints such as `maintain_foot_contact`
 into recording-view x/y consistency features. These features do not use monocular
 depth by default and may be scored with a dedicated `support_consistency` family
 budget once a baseline is regenerated. They should not be interpreted as
-CoP/CoM-like biomechanical stability proxies; those belong to ⑨ Biomechanical
+CoP/CoM-like biomechanical stability proxies; those belong to ⑧ Biomechanical
 Proxy.
 
 ```text
@@ -537,20 +539,20 @@ the runtime record receives `support_role = support_consistency`.
 Moving primary landmarks follow the same explicit evidence-variant policy.
 Every coordinate-derived movement-path target should be able to emit at least an
 `xy` and an `xyz` variant. This keeps recording-view evidence and
-depth-sensitive evidence in the same audit trail while leaving score gravity to
+depth-sensitive evidence in the same audit trail while leaving scoring weight to
 Stage 10.
 
 ```text
 spatial.movement_path.arc_length_xy.<landmark>
     Recording-view movement path in the normalized camera plane. This is the
-    preferred scoring candidate when the movement-quality question can be
+    preferred score-eligible feature when the movement-quality question can be
     answered from x/y evidence and the recording view is compatible with the
     baseline.
 
 spatial.movement_path.arc_length_xyz.<landmark>
-    Mixed-axis movement path using normalized x/y and model/candidate z. This
-    is depth-sensitive evidence. It remains useful for review and candidate-3D
-    comparison, but its score gravity should normally be lower than the `xy`
+    Mixed-axis movement path using normalized x/y and model/analysis z. This
+    is depth-sensitive evidence. It remains useful for review and analysis-3D
+    comparison, but its scoring weight should normally be lower than the `xy`
     variant under the current monocular pipeline.
 
 spatial.movement_path.axis_path_x.<landmark>
@@ -571,7 +573,7 @@ diagnosis/reporting
 composite scoring
     Prefer `xy` movement path when the exercise definition and camera view support
     a recording-view interpretation. Keep `xyz` available with depth-sensitive
-    gravity or corrected-3D-hypothesis provenance. Do not score `xy`, `z`, and
+    weight or corrected-3D-hypothesis provenance. Do not score `xy`, `z`, and
     `xyz` at full strength at the same time, because that double-counts the
     same path through overlapping evidence.
 ```
@@ -616,7 +618,7 @@ control.compensation.pelvis_line_tilt
 control.compensation.pelvis_rotation.xyz
     Transverse-plane pelvis rotation proxy. Because monocular depth and
     near/far-side ordering can dominate this signal, it should remain
-    low-gravity or report-only unless a view/candidate-evidence policy promotes
+    low-weight or report-only unless a view/analysis-evidence policy promotes
     it.
 ```
 
@@ -645,11 +647,11 @@ Under the current monocular pipeline it should use the recording-view vertical
 axis, not model-depth `z`, because MediaPipe monocular depth is not reliable
 enough to decide whether the heel left the support surface. A future
 depth-sensitive heel-lift diagnostic must use an explicit feature id and reduced
-gravity instead of silently reusing the support-contact score.
+weight instead of silently reusing the support-contact score.
 
 Coordinate-derived control records also carry explicit evidence variants. The
-recording-view candidate uses an `xy` feature-id token; any depth-mixed candidate
-uses an `xyz` token and must be scored with reduced gravity or withheld when
+recording-view analysis evidence uses an `xy` feature-id token; any depth-mixed evidence variant
+uses an `xyz` token and must be scored with reduced weight or withheld when
 monocular model-depth reliability is low. Do not emit a variantless control
 feature id for coordinate-derived compensation, because it hides whether the
 value came from recording-view evidence or model-depth evidence.
@@ -660,20 +662,20 @@ Current control variant contract:
 control.compensation.knee_valgus.xy.<side>
 control.compensation.knee_varus.xy.<side>
     Recording-view hip-knee-ankle deviation proxy. This is the current scoring
-    candidate for squat/lunge knee tracking. A `knee_valgus.xyz` or
+    analysis evidence for squat/lunge knee tracking. A `knee_valgus.xyz` or
     `knee_varus.xyz` variant is not emitted until a corrected/body-frontal
     plane can define medial/lateral direction without relying on raw monocular
     depth.
 
 control.compensation.excessive_trunk_flexion.xy
     Recording-view shoulder-center to hip-center trunk-line angle from the
-    image vertical. This is the preferred public scoring candidate when the
+    image vertical. This is the preferred public score-eligible feature when the
     camera view supports sagittal interpretation.
 
 control.compensation.excessive_trunk_flexion.xyz
     Depth-mixed trunk-line angle using the same recording-view vertical axis
     but a 3D vector norm. It is comparative evidence only and should carry
-    reduced gravity under the current monocular pipeline.
+    reduced weight under the current monocular pipeline.
 
 control.compensation.heel_lift.xy.<side>
     Recording-view heel elevation above the support baseline. Evidence axes may
@@ -681,7 +683,7 @@ control.compensation.heel_lift.xy.<side>
 
 control.compensation.pelvis_rotation.xyz
     Depth-sensitive left-right hip model-depth asymmetry. It remains
-    low-confidence/report-only unless view/candidate evidence supports a
+    low-confidence/report-only unless view/analysis evidence supports a
     transverse-plane interpretation.
 ```
 
@@ -691,7 +693,7 @@ control.compensation.pelvis_rotation.xyz
 
 Feature extraction may compute a numeric value even when the camera view or pose
 model does not support scoring that value. Therefore `FeatureRecord.availability`
-is the scoring gate for ⑩.
+is the scoring gate for ⑨.
 
 ```text
 assessed
@@ -709,7 +711,7 @@ The resolver combines:
 
 ```text
 view_reliability             exercise_definition.view_metric_reliability
-landmark_quality             visibility / coverage / preprocessing context
+landmark_quality             confidence / coverage / preprocessing context
 depth_dependency             none | low | moderate | high | unknown
 model_depth_reliability      high | moderate | low | unknown
 swap or far-side risk         from ④ Preprocessing and ⑧ side-role context
@@ -745,14 +747,14 @@ Rules:
 ```text
 Rep-level record      phase = None
 Phase-level record    phase = "Descent" etc.; feature_id gets a lower-snake-case suffix
-source_fields         include phase_segmentation provenance
+source_fields         optional phase_segmentation audit references
 control.compensation  rep-level only unless a separate phase-specific rule is defined
 ```
 
 `summarize_phase_to_rep()` may add derived rep-level summaries, such as
 descent/ascent range-of-motion ratios for phase sequences that explicitly use
 those labels. It is additive and must not mutate input records.
-The ⑧ pipeline report includes these derived summary records beside the direct
+The ⑦ pipeline report includes these derived summary records beside the direct
 feature records so saved outputs and downstream checks use the same feature set.
 
 ---
@@ -767,7 +769,7 @@ class FeatureRecord:
     rep_id: int | None
     value: float
     unit: str
-    source_fields: list[str]
+    source_fields: list[str] = field(default_factory=list)
     note: str | None = None
     phase: str | None = None
     view_reliability: str = "unknown"
@@ -788,7 +790,8 @@ class FeatureRecord:
 ```
 
 `features_to_dataframe()` flattens record lists for tabular output while
-preserving phase, availability, camera-zone, and provenance fields.
+preserving phase, availability, camera-zone, and operational metadata. Audit
+references may be included when debug/report export requires them.
 
 Saved stage-check outputs should keep the feature table and diagnostic context
 separate:
@@ -796,11 +799,13 @@ separate:
 ```text
 data/processed/features/<recording_id>_features.csv
     Tabular `features_to_dataframe()` output. Required columns include
-    feature_id, exercise_id, rep_id, phase, value, unit, source_fields,
-    availability, availability_reasons, view_reliability, depth_dependency,
+    feature_id, exercise_id, rep_id, phase, value, unit, availability,
+    availability_reasons, view_reliability, depth_dependency,
     model_depth_reliability, landmark_quality, focus_tier, landmark_ids,
     support_role, coordinate_reference, evaluation_domain, evidence_axes,
-    feature_family, camera_zone, and role_context.
+    feature_family, camera_zone, and role_context. `source_fields` may be
+    included as optional audit references, but it is not a required payload
+    column.
 
 data/processed/features/<recording_id>_feature_context.json
     Feature-context and role-context report for ⑧. This file records why
@@ -809,28 +814,29 @@ data/processed/features/<recording_id>_feature_context.json
 
 data/processed/features/<recording_id>_feature_qc.json
     Compact counts for follow-along checks, such as row counts, availability
-    counts, feature-family counts, phase counts, and missing source_fields.
+    counts, feature-family counts, phase counts, and optional audit-reference
+    coverage when debug exports include it.
 ```
 
-CSV round-trips must preserve the row count and required columns. Structured
-fields such as `source_fields`, `availability_reasons`, `landmark_ids`, and
-`role_context` may be serialized for the CSV file, but the in-memory records
-remain the canonical object contract for later code paths.
+CSV round-trips must preserve the row count and required operational columns.
+Structured fields such as `availability_reasons`, `landmark_ids`, `role_context`,
+and optional `source_fields` may be serialized for the CSV file, but the
+in-memory records remain the canonical object contract for later code paths.
 
 ---
 
 ## 8. Audits
 
-⑧ may emit diagnostic audits beside the feature records.
+⑦ may emit diagnostic audits beside the feature records.
 
 ```text
 Feature registry coverage
-    Reports which YAML feature_domain entries and compensation candidates are
+    Reports which YAML feature_domain entries and compensation patterns are
     implemented, routed to another step, unsupported, or declared but deferred.
 
 Analysis-disrupting pattern detectability
     Classifies performance_protocol.analysis_disrupting_patterns as
-    pose_detectable_scoring_candidate, acquisition_control_factor,
+    pose_detectable_score_feature, acquisition_control_factor,
     interpretation_limitation_factor, or unknown.
 ```
 
@@ -857,17 +863,17 @@ feat_df = features_to_dataframe(records)
 
 ## 10. Relationship To Other Steps
 
-- ⑦ Segmentation provides `rep_id` and optional `phase`; missing phase labels
+- ⑥ Segmentation provides `rep_id` and optional `phase`; missing phase labels
   produce rep-level features only.
 - Side-role context is resolved inside ⑧, then attached only to role-aware
   feature records. The public stage-check path reviews this context in
   `27_feature_extraction_test.ipynb`.
-- ⑨ Biomech Proxy consumes the same normalized coordinates but emits
+- ⑧ Biomech Proxy consumes the same normalized coordinates but emits
   `BiomechRecord`, not `FeatureRecord`.
-- ⑩ Biomarker Derivation wraps all features as pass-through biomarkers and uses
+- ⑨ Biomarker Derivation wraps all features as pass-through biomarkers and uses
   only `availability == assessed` features for composite scoring.
-- ⑫ Simulation may later use pose-detectable audit entries as perturbation
-  candidates.
+- ⑪ Simulation may later use pose-detectable audit entries as perturbation
+  planned patterns.
 
 ---
 
@@ -902,7 +908,8 @@ tests/test_feature_context_resolution.py feature-context resolution/application
 
 - Review alternating/unilateral samples before expanding side-role context from
   bilateral provenance to active/support-side feature families.
-- More compensation rules after source fields, visibility policy, and tests exist.
+- More compensation rules after source fields, confidence policy, and tests exist.
 - Per-feature landmark coverage instead of coarse preprocessing summaries.
 - Role-aware feature families for lunge and plank shoulder tap.
 - Reporting views that show computed-but-withheld features beside scored features.
+

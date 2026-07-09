@@ -1,13 +1,15 @@
-# 10. Biomarker Scoring
+# 09. Biomarker Scoring
 
-**Document Version:** 1.6.2
-**Last Updated:** 2026-07-07
-**Korean Sync:** `docs/pipeline/10_biomarker_scoring.md` is the same-version Korean source.
+**Document Version:** 1.6.3
+**Last Updated:** 2026-07-09
+**Korean Sync:** `docs/pipeline/09_biomarker_scoring.md` is the same-version Korean source.
 
-Pipeline step ⑩ wraps ⑧ `FeatureRecord` and ⑨ `BiomechRecord` outputs into
+Pipeline step ⑨ wraps ⑦ `FeatureRecord` and ⑧ `BiomechRecord` outputs into
 interpretable biomarker records and, when a baseline exists, derives a per-rep
 movement-quality score. Observation reliability, feature availability, and
-coordinate-correction magnitude remain separate confidence/provenance signals.
+coordinate-correction magnitude remain separate confidence and availability
+signals. Detailed trace provenance is stored in stage reports or optional audit
+exports, not as a required scoring input.
 
 Scores are engineering summaries, not clinical thresholds or diagnostic outputs.
 
@@ -16,9 +18,9 @@ Scores are engineering summaries, not clinical thresholds or diagnostic outputs.
 ## 1. Pipeline Position
 
 ```text
-⑧ Feature Extraction   FeatureRecord list
-⑨ Biomech Proxy        BiomechRecord list
-→ ⑩ Biomarker Scoring  ← this step
+⑦ Feature Extraction   FeatureRecord list
+⑧ Biomech Proxy        BiomechRecord list
+→ ⑨ Biomarker Scoring  ← this step
 ```
 
 Required inputs:
@@ -44,9 +46,10 @@ Two record types are emitted.
 
 ```text
 BiomarkerRecord
-    Pass-through individual metric with value, unit, rep_id, source_fields,
-    availability, view/depth reliability, focus tier, common record context
-    metadata, landmark references, and note metadata.
+    Pass-through individual metric with value, unit, rep_id, availability,
+    view/depth reliability, focus tier, common record context metadata,
+    landmark references, and note metadata. Optional audit references may be
+    attached for debug/report exports.
 
 BiomarkerScoreRecord
     Per-rep composite score with domain scores, final score, floor flags,
@@ -57,35 +60,37 @@ BiomarkerScoreItem
     This is a reporting view, not a separate scoring algorithm.
 ```
 
-`BiomarkerRecord.source_fields` is required. Records without provenance should not
-be produced.
+Scoring eligibility must be decided from explicit operational fields:
+`availability`, `depth_dependency`, `focus_tier`, `feature_family`,
+`evidence_axes`, `coordinate_reference`, and configured score policies.
+`source_fields` must not be required for scoring.
 
 Saved follow-along outputs keep pass-through biomarker records separate from
 composite score records.
 
 ```text
 data/processed/biomarker/<recording_id>_biomarkers.csv
-    One row per BiomarkerRecord. Keeps availability, source_fields,
-    view/depth reliability, focus tier, record context metadata, landmark
-    references, and unit metadata.
+    One row per BiomarkerRecord. Keeps availability, view/depth reliability,
+    focus tier, record context metadata, landmark references, and unit metadata.
+    Optional audit references may be included in debug/report exports.
 
 data/processed/biomarker/<recording_id>_biomarker_scores.csv
     One row per BiomarkerScoreRecord when baseline data exists. JSON-serializes
     domain_scores, floor_applied, deductions, withheld_features, domain_weights,
-    domain-feature-family weights, low-confidence/depth/focus/feature gravity
+    domain-feature-family weights, low-confidence/depth/focus/feature scoring weights
     policies, and score_bounds for CSV compatibility.
 
 data/processed/biomarker/<recording_id>_biomarker_score_items.csv
     One row per scored feature item. Expands each score record's deduction audit
     into rep_id, domain, feature_id, item_score, deduction, value, baseline,
-    confidence gravity, depth/focus gravity, feature-family weight, and record
+    scoring weight, depth/focus weights, feature-family weight, and record
     context fields. item_score is computed as score_max - effective deduction,
     clipped to the configured score bounds, so it should be read as the feature's
     effective contribution audit rather than an independent clinical grade.
 
 data/processed/biomarker/<recording_id>_biomarker_qc.json
     Compact row counts, score availability, final-score range, withheld-feature
-    count, and output file provenance.
+    count, and output artifact metadata.
 ```
 
 If no baseline exists for the selected exercise, the biomarker CSV and QC JSON
@@ -208,9 +213,9 @@ other       → pass-through only
 
 ## 4. Feature Eligibility
 
-⑧ may emit numeric features that are not reliable enough for scoring. ⑩ uses
-`availability` as the composite-score gate and evidence gravity as the scoring
-strength.
+⑦ may emit numeric features that are not reliable enough for scoring. ⑨ uses
+`availability` as the composite-score gate and scoring weights as the score
+contribution strength.
 
 ```text
 assessed
@@ -220,7 +225,7 @@ low_confidence
     Eligible only when the scoring configuration gives the record's domain a
     non-zero low-confidence score weight. The default keeps spatial/temporal/
     control low-confidence records withheld, while biomech low-confidence
-    records may contribute with small gravity.
+    records may contribute with small weight.
 
 not_assessed
     Excluded from composite score. Report as provenance/unavailable.
@@ -233,19 +238,19 @@ missing availability
 
 The current score is an itemized scoring prototype, not a finalized normative
 movement-quality judgment. Each item remains in the biomarker audit even when
-its score gravity is low or zero.
+its effective scoring weight is low or zero.
 
 ```text
 spatial.range_of_motion.xy.*
-    Status: primary scoring candidate.
+    Status: primary score-eligible feature.
     Meaning: recording-view joint range of motion.
     Current caution: uses exercise-defined acceptable bands where available;
     do not interpret larger-but-controlled squat depth as automatically worse.
 
 spatial.range_of_motion.xyz.*
     Status: depth-mixed comparative evidence.
-    Meaning: same joint-angle family with model/candidate depth included.
-    Current caution: low gravity by default until corrected-3D or multi-view
+    Meaning: same joint-angle family with model/analysis depth included.
+    Current caution: low weight by default until corrected-3D or multi-view
     validation supports stronger use.
 
 spatial.movement_path.arc_length_xy.*
@@ -256,19 +261,19 @@ spatial.movement_path.arc_length_xy.*
     travel.
 
 spatial.support_consistency.*
-    Status: support-context scoring candidate with one-sided scoring.
+    Status: support-context score-eligible feature with one-sided scoring.
     Meaning: recording-view consistency of fixed support anchors.
     Current caution: this is not a CoP/CoM stability claim; biomechanical
     center proxies stay in ⑨.
 
 spatial.role_alignment.*
-    Status: secondary/context scoring candidate.
+    Status: secondary/context score-eligible feature.
     Meaning: bilateral or role-based agreement of exercise-relevant landmarks.
     Current caution: view-sensitive symmetry should be interpreted with camera
     compatibility and landmark quality.
 
 temporal.tempo.* / temporal.variability.* / temporal.phase_profile.*
-    Status: scoring candidate with broad tolerance bands.
+    Status: score-eligible feature with broad tolerance bands.
     Meaning: rep duration, rhythm/repeatability, and exercise-defined phase
     timing balance.
     Current caution: the research does not treat absolute speed as a primary
@@ -276,29 +281,29 @@ temporal.tempo.* / temporal.variability.* / temporal.phase_profile.*
     synthetic duration.
 
 control.compensation.knee_valgus.xy.* / control.compensation.knee_varus.xy.*
-    Status: attenuated control scoring candidate.
+    Status: attenuated control score-eligible feature.
     Meaning: recording-view hip-knee-ankle tracking proxy.
     Current caution: meaningful for lower-body stance tasks, but view- and
-    visibility-sensitive; low-confidence control records are withheld by default.
+    confidence-sensitive; low-confidence control records are withheld by default.
 
 control.compensation.excessive_trunk_flexion.xy
-    Status: provisional control scoring candidate.
+    Status: provisional control score-eligible feature.
     Meaning: recording-view trunk-line angle from image vertical.
     Current caution: normal trunk strategy depends on exercise context. A hinge,
     squat, plank, or push-up should not share one narrow trunk-flexion baseline.
-    Default gravity: 0.5 while the trunk-orientation tolerance band remains
+    Default weight: 0.5 while the trunk-orientation tolerance band remains
     provisional.
 
 control.compensation.excessive_trunk_flexion.xyz
-    Status: low-gravity comparative evidence.
-    Meaning: trunk-line angle with model/candidate depth included.
+    Status: low-weight comparative evidence.
+    Meaning: trunk-line angle with model/analysis depth included.
     Current caution: depth-mixed monocular evidence; keep visible but weak until
     corrected-3D validation improves.
 
 control.compensation.heel_lift.xy.*
     Status: recording-view support-contact proxy.
     Meaning: apparent heel elevation above the rep support baseline.
-    Current caution: requires strong landmark visibility; depth-based heel lift
+    Current caution: requires strong landmark confidence; depth-based heel lift
     is not promoted in the current prototype.
 
 control.compensation.pelvis_rotation.xyz
@@ -307,7 +312,7 @@ control.compensation.pelvis_rotation.xyz
     Current caution: highly depth-sensitive under monocular pose.
 
 biomech.*
-    Status: biomechanical proxy evidence with low-confidence gravity.
+    Status: biomechanical proxy evidence with low-confidence weight.
     Meaning: relative CoM/moment-arm/load-shift tendencies, not absolute force or
     torque.
     Current caution: useful for interpretation and future comparison, but not a
@@ -316,7 +321,7 @@ biomech.*
 
 For the current p01 squat run, a low control subscore mainly indicates that
 control-family baselines and tolerance rules still need multi-recording review.
-The score audit should therefore be read item-by-item: control candidates and
+The score audit should therefore be read item-by-item: control features and
 their evidence paths are available, while final score calibration remains future
 work.
 
@@ -336,16 +341,16 @@ control family
     phase_control | diagnostic
 
 evidence path
-    xy for recording-view candidate evidence, xyz/z for depth-sensitive
+    xy for recording-view analysis evidence, xyz/z for depth-sensitive
     comparative evidence, timing when the control question is phase-timing
-    based, proxy when it comes from ⑨ biomechanical proxy records.
+    based, proxy when it comes from ⑧ biomechanical proxy records.
 
 confidence gate
-    landmark visibility/coverage, view compatibility, support-context
+    landmark confidence/coverage, view compatibility, support-context
     compatibility, depth dependency, and correction/canonicalization provenance.
 
 scoring status
-    scoring_candidate | attenuated_candidate | low_gravity_compare |
+    score_eligible_feature | attenuated_review | low_weight_compare |
     report_only | not_applicable
 ```
 
@@ -369,7 +374,7 @@ knee_tracking
         hip, knee, and ankle landmark quality; camera-view compatibility;
         laterality/role context for unilateral or alternating tasks.
     Scoring status:
-        attenuated candidate. Low-confidence rows are withheld by default.
+        attenuated analysis evidence. Low-confidence rows are withheld by default.
 
 trunk_orientation_control
     Feature ids:
@@ -381,13 +386,13 @@ trunk_orientation_control
         patterns. The exercise definition must provide the acceptable direction
         or target band before strong scoring use.
     Evidence path:
-        xy is the recording-view public candidate; xyz is depth-mixed
+        xy is the recording-view score-eligible feature; xyz is depth-mixed
         comparative evidence.
     Confidence gate:
         shoulder/hip landmark quality, view family, and whether the exercise
         posture makes image-vertical trunk angle meaningful.
     Scoring status:
-        provisional candidate for xy, low-gravity comparison for xyz.
+        provisional analysis evidence for xy, low-weight comparison for xyz.
 
 support_contact_control
     Feature ids:
@@ -402,10 +407,10 @@ support_contact_control
         recording-view support-axis evidence by default. Depth-based contact
         inference remains low-confidence/report-only until validated.
     Confidence gate:
-        support landmark visibility, declared support anchors, and support
+        support landmark confidence, declared support anchors, and support
         surface assumptions from the exercise definition.
     Scoring status:
-        candidate only when support context and visibility are sufficient.
+        analysis evidence only when support context and confidence are sufficient.
 
 pelvis_control
     Feature ids:
@@ -424,8 +429,8 @@ pelvis_control
         support anchor availability, hip landmark quality, laterality/role
         context, and depth reliability for rotation.
     Scoring status:
-        support-relative xy can become a candidate; depth-heavy rotation remains
-        low-gravity or report-only.
+        support-relative xy can become score-eligible; depth-heavy rotation remains
+        low-weight or report-only.
 
 phase_control
     Feature ids:
@@ -446,7 +451,7 @@ phase_control
 This grammar keeps control extensible without hard-coding squat-specific rules.
 New exercises should add control scoring by declaring the relevant context and
 letting the same availability, depth-dependency, focus-tier, feature-family, and
-feature-id gravity gates decide score contribution.
+feature-id weight gates decide score contribution.
 
 `view_reliability` is not a separate score multiplier. It should already be
 reflected in `availability`, which avoids false precision from camera artifacts.
@@ -470,7 +475,7 @@ control.compensation.lateral_pelvic_shift.xy
 Closed-chain squat-style pelvis control should instead use support-relative
 recording-view evidence, such as hip-center drift relative to the exercise
 support center, and then rely on ordinary availability, depth-dependency,
-focus-tier, and feature-family gravity.
+focus-tier, and feature-family weight.
 
 Closed-chain heel-lift scoring is also a recording-view support-contact proxy in
 the current pipeline. `control.compensation.heel_lift.xy.<side>` may be scored only
@@ -479,7 +484,7 @@ heel-lift diagnostic must remain low-confidence or report-only unless a later
 corrected-3D validation promotes it.
 
 Common record context metadata from ⑧ and ⑨ is preserved but does not create
-additional score gravity by itself. In particular, `landmark_ids`,
+additional scoring weight by itself. In particular, `landmark_ids`,
 `support_role`, `coordinate_reference`, `evaluation_domain`, `evidence_axes`,
 and `feature_family` explain which landmarks were measured and which
 coordinate/evidence path supported the value. Stable anatomical labels such as
@@ -489,33 +494,34 @@ duplicated in every score record. The active score strength still comes from
 availability, depth dependency, focus tier, feature-family budget, and
 feature-specific overrides.
 
-`low_confidence_score_weights` is a scoring-stage gravity, not a normalization
+`low_confidence_score_weights` is a scoring-stage weight, not a normalization
 or canonicalization output. It allows depth-sensitive biomech proxy evidence to
 remain visible in the composite while preventing monocular depth from acting as
 full-strength evidence. Records with effective score weight 0 are reported in
 `withheld_features`; records with non-zero low-confidence weight appear in
-`deductions` with their availability and confidence weight.
+`deductions` with their availability and effective scoring weight.
 
-`depth_dependency_score_weights` is a second scoring-stage gravity. It does not
+`depth_dependency_score_weights` is a second scoring-stage weight. It does not
 remove a feature and does not change its biomarker value. It only controls how
 strongly a baseline-matched deduction contributes to the composite score.
 
 ```text
-none       recording-view or timing evidence; full default gravity
-low        weak depth sensitivity; full default gravity for now
+none       recording-view or timing evidence; full default weight
+low        weak depth sensitivity; full default weight for now
 moderate   mixed recording-view/depth evidence; attenuated by default
-high       monocular-depth or corrected-3D-hypothesis evidence; small gravity
+high       monocular-depth or corrected-3D-hypothesis evidence; small weight
 unknown    reported but attenuated until the evidence path is classified
 ```
 
-The effective deduction gravity is:
+The effective deduction weight is:
 
 ```text
-g_effective =
-    availability_gravity
-  * depth_dependency_gravity
-  * focus_gravity
-  * feature_gravity
+w_effective =
+    quality_gravity
+  * availability_weight
+  * depth_dependency_weight
+  * focus_weight
+  * feature_weight
 ```
 
 This keeps recording-view and depth-sensitive evidence in the same audit trail
@@ -523,7 +529,7 @@ while allowing the scorer to tune how much each evidence family affects the
 final score. A future scoring study may change these defaults, but any change
 must remain visible in the score record.
 
-### Movement-path evidence variant gravity
+### Movement-Path Evidence Variant Weight
 
 Movement-path scoring must not make a single global choice between `xy` and `xyz`.
 Stage 8 should emit both variants for coordinate-derived movement-path targets, and
@@ -537,7 +543,7 @@ xy
 
 xyz
     Depth-sensitive evidence. Keep it visible for review and corrected-3D
-    comparison, but assign lower gravity under monocular MediaPipe depth unless
+    comparison, but assign lower weight under monocular MediaPipe depth unless
     later validation promotes the specific feature.
 
 z
@@ -545,34 +551,34 @@ z
 ```
 
 The calibration target is therefore not a project-wide `xy:xyz` ratio. It is a
-feature-specific gravity policy learned from multiple recordings, camera views,
+feature-specific scoring-weight policy learned from multiple recordings, camera views,
 and exercises. For example, squat knee movement path may remain `xy`-dominant,
 fixed ankle support movement path may be withheld in favor of `support_consistency`,
-and future corrected-3D hip/trunk features may raise their `xyz` gravity only
-when correction burden and residual evidence are acceptable.
+and future corrected-3D hip/trunk features may raise their `xyz` weight only
+when `quality_gravity` and report-local correction diagnostics are acceptable.
 
-### Range-of-motion evidence variant gravity
+### Range-Of-Motion Evidence Variant Weight
 
-Range of motion follows the same explicit-evidence policy. ⑧ emits both
+Range of motion follows the same explicit-evidence policy. ⑦ emits both
 `spatial.range_of_motion.xy.<joint_angle>` and `spatial.range_of_motion.xyz.<joint_angle>` from the same
-`angle_definitions` triplet. ⑩ should treat the `xy` variant as the preferred
-recording-view scoring candidate when the camera view is compatible, and treat
+`angle_definitions` triplet. ⑨ should treat the `xy` variant as the preferred
+recording-view score-eligible feature when the camera view is compatible, and treat
 the `xyz` variant as depth-sensitive comparative evidence with reduced default
-gravity.
+weight.
 
 This is not a claim that 2D projected angles are universally correct. It is a
 monocular research compromise: x/y evidence is more stable in the recording view,
 while xyz evidence remains useful for review and future corrected-3D comparison.
-The score must expose both variants and their gravity rather than hiding the
+The score must expose both variants and their weights rather than hiding the
 choice inside a single implicit range-of-motion value.
 
 ### Exercise-definition focus policy
 
 The exercise definition is also a scoring-intent document. The authoring choices
-for primary and secondary joint actions should therefore influence score gravity,
-without turning the exercise definition into a hard whitelist. ⑧ assigns each
-feature or proxy record a `focus_tier`, and ⑩ multiplies the corresponding
-`scoring_focus_weights` value into the deduction gravity.
+for primary and secondary joint actions should therefore influence scoring weight,
+without turning the exercise definition into a hard whitelist. Records from ⑦
+and ⑧ carry a `focus_tier`, and ⑨ multiplies the corresponding
+`scoring_focus_weights` value into the deduction weight.
 
 ```text
 primary
@@ -581,7 +587,7 @@ primary
 
 secondary
     Supportive task signal backed by secondary joint actions or secondary
-    movement planes. It remains score-visible with lower default gravity.
+    movement planes. It remains score-visible with lower default weight.
 
 context_constraint
     Exercise-context signal such as closed-chain support consistency, base-of-
@@ -589,12 +595,12 @@ context_constraint
     is not simply a primary joint action.
 
 compensation
-    Candidate compensation or safety-related pattern. It can affect scoring,
+    Compensation or safety-related pattern. It can affect scoring,
     but should not dominate over the intended primary/secondary task signals.
 
 diagnostic
     Report-only or weakly interpretable evidence such as axis diagnostics,
-    support-consistency axis path diagnostics, or retired/deferred feature candidates.
+    support-consistency axis path diagnostics, or retired/deferred feature ideas.
 ```
 
 Default focus weights keep primary features at full strength, attenuate
@@ -653,13 +659,14 @@ budget.
 Support-consistency scoring uses `upper_bound_only` direction by default. A smaller
 support drift than the provisional baseline is not a fault; only larger-than
 baseline drift should create a deduction. When corrected coordinates are used,
-support-consistency scores must be interpreted with correction burden/residual so
-that the score does not merely reward a hidden fixed-support correction.
+support-consistency scores must be interpreted with `quality_gravity` and
+report-local correction diagnostics so that the score does not merely reward a
+hidden fixed-support correction.
 
 ### Range-of-motion target-band policy
 
 Range-of-motion scoring should not always mean "closer to the synthetic baseline mean is
-better." For exercise-defined `spatial.range_of_motion.xy.*` targets, ⑩ uses a functional
+better." For exercise-defined `spatial.range_of_motion.xy.*` targets, ⑨ uses a functional
 acceptable-band penalty instead of the generic absolute z-score penalty.
 
 ```yaml
@@ -699,7 +706,7 @@ target. Temporal scoring should mainly preserve rhythm and repeatability: a repe
 be slower or faster than the provisional synthetic baseline and still be acceptable if it
 stays inside an exercise-defined timing band.
 
-For exercise-defined `temporal.tempo.rep_duration*` targets, ⑩ therefore uses an
+For exercise-defined `temporal.tempo.rep_duration*` targets, ⑨ therefore uses an
 acceptable-duration band before falling back to generic baseline z-score behavior.
 
 ```yaml
@@ -747,7 +754,7 @@ records are present, the same sequence-level variability record may be included
 in each rep's temporal audit so that rhythm consistency contributes to the
 composite score without pretending that each rep has a separate CV.
 
-For feature ids matched by `quality_rules.temporal_variability_bands`, ⑩ uses a
+For feature ids matched by `quality_rules.temporal_variability_bands`, ⑨ uses a
 maximum-variability ceiling:
 
 ```yaml
@@ -762,7 +769,7 @@ quality_rules:
 Values at or below `maximum_cv` create no rhythm deduction. Values above the
 ceiling are penalized by the excess divided by `soft_tolerance_cv`.
 
-For feature ids matched by `quality_rules.temporal_phase_profile_bands`, ⑩ uses
+For feature ids matched by `quality_rules.temporal_phase_profile_bands`, ⑨ uses
 an acceptable phase-ratio band:
 
 ```yaml
@@ -781,7 +788,7 @@ penalized only by the distance from the nearest bound divided by
 rhythm review while avoiding a narrow claim that one exact descent/ascent timing
 ratio is biomechanically optimal.
 
-`feature_score_weight_overrides` is an optional third gravity layer for exact
+`feature_score_weight_overrides` is an optional third weight layer for exact
 feature ids or `prefix.*` feature families. It is intended for evidence variants
 whose numeric value is useful for review but is known to be a weak direct
 movement-quality penalty under the current monocular pipeline. Feature
@@ -791,10 +798,10 @@ extraction should emit explicit movement-path and range-of-motion evidence varia
 evidence; `spatial.range_of_motion.xy.<joint_angle>` for recording-view included-angle
 range of motion and `spatial.range_of_motion.xyz.<joint_angle>` for mixed recording-view/depth
 range of motion. Scoring
-owns the gravity decision.
+owns the weight decision.
 
 For fixed bilateral-foot squat, support-consistency axis `xyz` movement-path evidence remains
-visible and baseline-matchable, but its feature gravity is `0.0` by default so
+visible and baseline-matchable, but its feature weight is `0.0` by default so
 it is withheld from composite scoring. A separate recording-view support-consistency
 feature family should carry any future `maintain_foot_contact` scoring
 contribution.
@@ -805,7 +812,7 @@ a legitimate moving-joint signal during squat, but p01 review showed that the
 `xyz` path can be strongly z-dominated under monocular MediaPipe depth.
 Therefore `spatial.movement_path.arc_length_xy.*_knee*` becomes the active movement-path
 scoring evidence, while `spatial.movement_path.arc_length_xyz.*_knee*` remains visible
-with feature gravity `0.0` to avoid double-counting the same movement with
+with feature weight `0.0` to avoid double-counting the same movement with
 depth-dominated evidence.
 
 For lower-body movement path during `turnaround_hold`, lower-than-baseline path
@@ -817,23 +824,23 @@ movement path: excessive path is penalized, while smaller path length is not.
 Recording-view movement-path features remain camera-view dependent. They are less
 exposed to monocular depth noise than `z` or `xyz` path length, but they are not
 view invariant. A future multi-camera-zone baseline should compare these
-features only within compatible camera-zone families, or reduce scoring gravity
+features only within compatible camera-zone families, or reduce scoring weight
 when the active recording view is not compatible with the baseline view.
 
 Frontal knee-tracking compensation (`control.compensation.knee_valgus.xy.*` and
 `control.compensation.knee_varus.xy.*`) is also attenuated in the default
-development policy. The feature remains a scoring candidate because knee
+development policy. The feature remains a score-eligible feature because knee
 tracking is biomechanically meaningful in squat, but the current monocular
 proxy is view-sensitive and the provisional baseline can make small
 hip-knee-ankle line deviations produce very large z-scores. Until camera-view
-gating and multi-recording baselines are available, the default feature gravity
+gating and multi-recording baselines are available, the default feature weight
 is `0.25`: enough to keep repeated frontal knee deviation visible, but not
 enough to dominate the control domain by itself. Depth-mixed control variants
 such as `control.compensation.excessive_trunk_flexion.xyz` remain visible but
-low-gravity until corrected-3D or multi-view validation supports stronger use.
+low-weight until corrected-3D or multi-view validation supports stronger use.
 Recording-view trunk orientation
 (`control.compensation.excessive_trunk_flexion.xy`) uses a temporary feature
-gravity of `0.5`, because the current synthetic baseline is too narrow to act as
+weight of `0.5`, because the current synthetic baseline is too narrow to act as
 a final trunk-control rule across squat, hinge, plank, and push-up style
 contexts. This keeps trunk compensation visible while preventing the provisional
 baseline from dominating the entire control subscore.
@@ -843,8 +850,8 @@ specific future validation study. `spatial.movement_path.axis_path_z.<landmark>`
 scored by default; it is depth-noise/corrected-3D-hypothesis provenance unless a
 validated depth-sensitive score path promotes it. `xy` and `xyz` records are the
 score-tunable movement-path variants; their contribution is controlled by
-availability, focus tier, depth-dependency gravity, and feature-specific
-gravity.
+availability, focus tier, depth-dependency weight, and feature-specific
+weight.
 
 Large canonicalization correction magnitude also does not directly reduce the
 movement-quality score. It belongs in data-confidence/provenance unless a later
@@ -859,7 +866,7 @@ For each assessed feature in a domain:
 ```text
 σ_eff  = max(σ_baseline, STD_FLOOR_RATIO * |μ_baseline|, STD_ABS_FLOOR)
 Z      = (value - μ_baseline) / σ_eff
-w_i    = feature_family_weight / number_of_scoring_candidate_features_in_family
+w_i    = feature_family_weight / number_of_score_eligible_feature_features_in_family
 g_a    = 1.0 for assessed, domain low-confidence score weight for low_confidence
 g_d    = depth_dependency_score_weights[record.depth_dependency]
 g_f    = feature_score_weight_overrides.get(feature_id, 1.0)
@@ -965,9 +972,9 @@ that generated them. If an authored exercise is promoted or the feature set
 changes, the previous baseline entry is invalid until regenerated or explicitly
 version-guarded.
 
-Baseline generation is a ⑩ scoring sub-policy, not a separate numbered pipeline
+Baseline generation is a ⑨ scoring sub-policy, not a separate numbered pipeline
 stage. Baseline generation and baseline adoption are separate actions. When
-`biomarker.baseline_generation.enabled` and `generate_when_missing` are true, ⑩
+`biomarker.baseline_generation.enabled` and `generate_when_missing` are true, ⑨
 may generate a provisional baseline if the selected exercise has no active
 baseline entry. This opens the scoring path for smoke testing, but it must not
 silently promote the generated baseline into the active research baseline.
@@ -1045,7 +1052,7 @@ custom expected values    exercise-specific values or tolerance bands chosen
 ```
 
 The exercise YAML and default scoring config can seed feature selection,
-eligibility, and default gravity. They cannot discover normative mean/std values
+eligibility, and default weight. They cannot discover normative mean/std values
 by themselves. If a user wants exercise-specific or participant-specific scoring,
 the required reference recordings, reviewed-good examples, or custom tolerance
 values must be collected and documented by the user before the resulting scores
@@ -1132,7 +1139,7 @@ Baseline generation should be driven by the exercise definition and a reviewed
 recording manifest, not by hidden exercise-specific branches.
 
 For the current implementation, this procedure can be executed explicitly through
-`scripts/generate_baseline.py` or automatically inside ⑩ when
+`scripts/generate_baseline.py` or automatically inside ⑨ when
 `biomarker.baseline_generation.enabled` is true. Automatic generation currently
 supports `source_mode = current_run`; this is a provisional bootstrap for opening
 the scoring path, not a reviewed reference baseline. Reviewed baselines still
@@ -1145,10 +1152,10 @@ Required procedure:
 2. Read a manifest of baseline-source recordings/reps.
 3. Run the same ①-⑨ pipeline used for evaluation.
 4. Collect FeatureRecord and BiomechRecord rows.
-5. Include records only when their effective scoring gravity is non-zero.
+5. Include records only when their effective scoring weight is non-zero.
    This means `availability == assessed` records still pass through the
-   depth-dependency gravity policy, and low-confidence records are included only
-   when both low-confidence and depth-dependency gravity are non-zero.
+   depth-dependency weight policy, and low-confidence records are included only
+   when both low-confidence and depth-dependency weights are non-zero.
 6. Preserve all low_confidence/not_assessed rows as baseline QC; low-confidence
    rows included in provisional statistics must still be labeled as such.
 7. Compute per-metric mean/std with the scoring σ floor.
@@ -1156,7 +1163,7 @@ Required procedure:
 9. Optionally mirror the generated metrics into the backward-compatible active
    `baseline_zscore.json` only after explicit promotion or a development-only
    compatibility step.
-10. Re-run ⑩ on held-out examples to inspect score scale and deductions.
+10. Re-run ⑨ on held-out examples to inspect score scale and deductions.
 ```
 
 `source_mode = current_run` uses the current pipeline's already-computed
@@ -1200,7 +1207,7 @@ For notebook and UI review, the same entries are also expanded into
 `withheld_features` explains why computed metrics did not affect the score. The
 `reasons` field preserves feature availability reasons and may add scoring
 policy reasons such as `feature_score_weight_zero` when a feature family is
-withheld by explicit score gravity.
+withheld by explicit score-policy weight.
 
 ```python
 {
@@ -1249,12 +1256,15 @@ Scores each rep_id independently; falls back to sequence-level when needed.
 
 ---
 
-## 11. Provenance And Clinical Boundary
+## 11. Audit Metadata And Clinical Boundary
 
 ```text
-BiomarkerRecord.source_fields       inherited from FeatureRecord/BiomechRecord
-BiomarkerScoreRecord.source_fields  feature_domains, biomechanical_focus,
-                                    quality_rules, baseline file, score config
+Stage reports / audit metadata      source/config references, applied rules,
+                                    warnings, algorithm choices
+Optional source_fields              debug/report trace references only
+Scoring operational fields          availability, depth_dependency, focus_tier,
+                                    feature_family, evidence_axes,
+                                    coordinate_reference
 ```
 
 The composite score may mirror the structure of functional movement assessments,
@@ -1276,7 +1286,7 @@ data/definitions/interpretation_rules/    per-exercise interpretation rules
 scripts/generate_baseline.py              baseline generator
 data/reference/baseline_zscore.json       current metric-statistics store
 tests/test_biomarker_scoring_weights.py   weights and bounds
-tests/test_biomarker_scoring_availability.py availability gravity and withheld audit
+tests/test_biomarker_scoring_availability.py availability weight and withheld audit
 tests/test_interpretation.py              rule engine behavior
 ```
 
@@ -1291,3 +1301,4 @@ tests/test_interpretation.py              rule engine behavior
 - Exercise-specific domain-weight profiles after sensitivity analysis.
 - Real cohort baseline support while preserving the synthetic fallback.
 - Set-level trend records for within-set fatigue or consistency analysis.
+

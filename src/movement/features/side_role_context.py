@@ -11,7 +11,7 @@ Activation by laterality:
     alternating          → per-rep side-role context
     unilateral_*         → declared side is the expected active side
 
-Pipeline position: inside ⑧ Feature Extraction after ⑦ segmentation.
+Pipeline position: inside ⑦ Feature Extraction after ⑥ segmentation.
 Coordinate convention: (T, J, 3) = (frame, joint_index, xyz).
 Column convention: <landmark>_norm_x/y/z (normalized coordinates).
 """
@@ -135,16 +135,27 @@ class SideRoleContextReport:
 
 
 def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
-    """(T, 3) normalized coordinates; falls back to raw if norm columns absent."""
+    """Normalized xyz when present, otherwise recording-plane xy."""
     ncols = [f"{lm}_norm_x", f"{lm}_norm_y", f"{lm}_norm_z"]
-    rcols = [f"{lm}_x", f"{lm}_y", f"{lm}_z"]
     if all(c in df.columns for c in ncols):
+        z_values = df[ncols[2]].astype(float).to_numpy()
+        if not np.isfinite(z_values).any():
+            return df[ncols[:2]].values.astype(float)
         return df[ncols].values.astype(float)
-    return df[rcols].values.astype(float)
+    nxy_cols = [f"{lm}_norm_x", f"{lm}_norm_y"]
+    if all(c in df.columns for c in nxy_cols):
+        return df[nxy_cols].values.astype(float)
+    rcols = [f"{lm}_x", f"{lm}_y", f"{lm}_z"]
+    if all(c in df.columns for c in rcols):
+        z_values = df[rcols[2]].astype(float).to_numpy()
+        if not np.isfinite(z_values).any():
+            return df[rcols[:2]].values.astype(float)
+        return df[rcols].values.astype(float)
+    return df[[f"{lm}_x", f"{lm}_y"]].values.astype(float)
 
 
 def _motion_energy(coords: np.ndarray) -> float:
-    """Sum of frame-to-frame Euclidean displacements along a (T, 3) trajectory."""
+    """Sum of frame-to-frame Euclidean displacements along a pose trajectory."""
     if len(coords) < 2:
         return 0.0
     diffs = np.linalg.norm(np.diff(coords, axis=0), axis=1)
@@ -311,7 +322,7 @@ def _detect_active(
         if not all(
             f"{lm}_{ax}" in df_rep.columns or f"{lm}_norm_{ax}" in df_rep.columns
             for lm in (lm_l, lm_r)
-            for ax in ("x", "y", "z")
+            for ax in ("x", "y")
         ):
             continue
         e_l = _motion_energy(_norm_xyz(df_rep, lm_l))
@@ -433,7 +444,9 @@ def resolve_side_role_context(
 
     if laterality not in _APPLICABLE_LATERALITIES:
         report.skipped = True
-        report.skip_reason = f"laterality = '{laterality}'; side-role context not applicable"
+        report.skip_reason = (
+            f"laterality = '{laterality}'; side-role context not applicable"
+        )
         for col in _SIDE_ROLE_CONTEXT_COLS:
             df[col] = None
         return df, report
@@ -559,7 +572,9 @@ def resolve_side_role_context(
     return df, report
 
 
-def attribute_motion(*args: Any, **kwargs: Any) -> tuple[pd.DataFrame, SideRoleContextReport]:
+def attribute_motion(
+    *args: Any, **kwargs: Any
+) -> tuple[pd.DataFrame, SideRoleContextReport]:
     """Legacy wrapper that adds old attribution_* column aliases."""
     df, report = resolve_side_role_context(*args, **kwargs)
     for canonical, legacy in _LEGACY_ATTRIBUTION_COLUMN_ALIASES.items():

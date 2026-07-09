@@ -22,10 +22,8 @@ def _minimal_pose_df():
     )
 
 
-def _availability_by_candidate(report):
-    return {
-        item["candidate"]: item for item in report.compensation_candidate_availability
-    }
+def _availability_by_pattern(report):
+    return {item["pattern"]: item for item in report.compensation_pattern_availability}
 
 
 def test_feature_registry_audit_reports_connected_and_unsupported_yaml_entries():
@@ -60,7 +58,7 @@ def test_feature_registry_audit_routes_biomechanical_proxy_entries_to_step_09():
     assert {
         "domain": "biomechanical_proxy",
         "entry": "support_moment_proxy",
-        "target_step": "09_biomechanical_proxy",
+        "target_step": "08_biomechanical_proxy",
     } in report.external_step_feature_domain_entries
     assert not any(
         item["domain"] == "biomechanical_proxy"
@@ -68,32 +66,32 @@ def test_feature_registry_audit_routes_biomechanical_proxy_entries_to_step_09():
     )
 
 
-def test_feature_registry_audit_reports_compensation_candidate_coverage():
+def test_feature_registry_audit_reports_compensation_pattern_coverage():
     exercise = load_exercise_definition("pike_pushup", _DEFINITIONS_DIR)
 
     report = audit_feature_registry(exercise)
 
-    assert "tempo_instability" not in report.implemented_compensation_candidates
+    assert "tempo_instability" not in report.implemented_compensation_patterns
     assert {
-        "candidate": "tempo_instability",
+        "pattern": "tempo_instability",
         "reason": "declared_unimplemented",
-    } in report.unimplemented_compensation_candidates
+    } in report.unimplemented_compensation_patterns
     assert {
-        "candidate": "elbow_flare",
+        "pattern": "elbow_flare",
         "reason": "no_rule_registered",
-    } in report.unimplemented_compensation_candidates
+    } in report.unimplemented_compensation_patterns
 
 
-def test_squat_compensation_candidate_availability_matrix():
+def test_squat_compensation_pattern_availability_matrix():
     exercise = load_exercise_definition("squat", _DEFINITIONS_DIR)
 
     report = audit_feature_registry(exercise)
-    availability = _availability_by_candidate(report)
+    availability = _availability_by_pattern(report)
 
     assert availability["knee_valgus"]["availability_status"] == "implemented_rule"
     assert availability["knee_valgus"]["emits_feature"] is True
     assert availability["knee_valgus"]["source_fields"] == [
-        "compensation_candidates.knee_valgus",
+        "compensation_patterns.knee_valgus",
         "feature_domains.control.compensation",
     ]
     assert availability["asymmetric_depth"]["availability_status"] == (
@@ -104,11 +102,11 @@ def test_squat_compensation_candidate_availability_matrix():
     )
 
 
-def test_pike_pushup_deferred_compensation_candidates_remain_reported():
+def test_pike_pushup_deferred_compensation_patterns_remain_reported():
     exercise = load_exercise_definition("pike_pushup", _DEFINITIONS_DIR)
 
     report = audit_feature_registry(exercise)
-    availability = _availability_by_candidate(report)
+    availability = _availability_by_pattern(report)
 
     assert availability["elbow_flare"]["availability_status"] == (
         "deferred_feature_design"
@@ -120,7 +118,7 @@ def test_pike_pushup_deferred_compensation_candidates_remain_reported():
     assert availability["tempo_instability"]["availability_status"] == (
         "declared_unimplemented"
     )
-    assert set(availability) == set(exercise.compensation_candidates)
+    assert set(availability) == set(exercise.compensation_patterns)
 
 
 def test_pipeline_reports_feature_registry_coverage_when_features_run():
@@ -141,19 +139,19 @@ def test_pipeline_reports_feature_registry_coverage_when_features_run():
 
     coverage = report["feature_registry_coverage"]
     assert coverage["exercise_id"] == "squat"
-    assert "knee_valgus" in coverage["implemented_compensation_candidates"]
+    assert "knee_valgus" in coverage["implemented_compensation_patterns"]
     assert {
-        "candidate": "asymmetric_depth",
+        "pattern": "asymmetric_depth",
         "reason": "declared_unimplemented",
-    } in coverage["unimplemented_compensation_candidates"]
+    } in coverage["unimplemented_compensation_patterns"]
     assert {
-        "candidate": "asymmetric_depth",
+        "pattern": "asymmetric_depth",
         "availability_status": "declared_unimplemented",
         "emits_feature": False,
         "report_reason": "declared_unimplemented",
         "source_fields": [
-            "compensation_candidates.asymmetric_depth",
+            "compensation_patterns.asymmetric_depth",
             "feature_domains.control.compensation",
         ],
-        "next_action": "implement_rule_or_keep_as_explicit_unimplemented_candidate",
-    } in coverage["compensation_candidate_availability"]
+        "next_action": "implement_rule_or_keep_as_explicit_unimplemented_pattern",
+    } in coverage["compensation_pattern_availability"]

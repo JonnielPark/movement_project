@@ -254,7 +254,7 @@ def generate_baseline(
     biomech_records = extract_rep_biomech(
         df,
         exercise_def,
-        use_visibility_weight=True,
+        use_confidence_weight=True,
     )
     print(f"  {len(biomech_records)} BiomechRecord(s)")
 

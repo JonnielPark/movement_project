@@ -87,7 +87,7 @@ def test_z8_squat_withholds_high_depth_dependency_symmetry_for_mediapipe():
             rep_id=1,
             value=0.04,
             unit="torso_length_ratio",
-            source_fields=["compensation_candidates.knee_valgus"],
+            source_fields=["compensation_patterns.knee_valgus"],
         ),
     ]
 
@@ -131,7 +131,7 @@ def test_control_self_reference_features_are_diagnostic_not_assessed():
             rep_id=1,
             value=0.0,
             unit="torso_length_ratio",
-            source_fields=["compensation_candidates.lateral_pelvic_shift"],
+            source_fields=["compensation_patterns.lateral_pelvic_shift"],
         ),
     ]
 
@@ -278,7 +278,7 @@ def test_lunge_side_view_preserves_role_sagittal_metric_and_flags_frontal_metric
             rep_id=1,
             value=0.08,
             unit="torso_length_ratio",
-            source_fields=["compensation_candidates.knee_valgus"],
+            source_fields=["compensation_patterns.knee_valgus"],
         ),
     ]
 

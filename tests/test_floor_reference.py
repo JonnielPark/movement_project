@@ -30,7 +30,7 @@ def _sample_floor_df() -> pd.DataFrame:
             row[f"{landmark}_norm_x"] = x
             row[f"{landmark}_norm_y"] = y
             row[f"{landmark}_norm_z"] = z
-            row[f"{landmark}_visibility"] = 0.99
+            row[f"{landmark}_confidence"] = 0.99
         rows.append(row)
     return pd.DataFrame(rows)
 

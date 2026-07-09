@@ -1,5 +1,5 @@
 """
-⑩ Biomarker Scoring — Movement Quality Composite Score
+⑨ Biomarker Scoring — Movement Quality Composite Score
 
 Z-score deduction model anchored to a synthetic-normal baseline stored in
 data/reference/baseline_zscore.json. Scores are relative to the baseline
@@ -22,10 +22,10 @@ Dynamic floor (per domain):
 
 Score formula (per domain d):
     Score_d =
-        max(floor_dynamic, score_max − Σ_i (score_span / 100) · w_i · g_i · |Z_i|)
+        max(floor_dynamic, score_max − Σ_i (score_span / 100) · w_i · s_i · |Z_i|)
 
     where w_i = 1 / n_features_in_domain (equal within-domain weight),
-    g_i = 1.0 for assessed evidence and a configured low-confidence gravity,
+    s_i = the effective scoring weight from availability/depth/focus/feature gates,
     Z_i = (value_i − μ_i) / σ_i against the synthetic-normal baseline.
 
 Composite:
@@ -193,7 +193,7 @@ def normalize_score_bounds(
 def normalize_low_confidence_score_weights(
     low_confidence_score_weights: Mapping[str, float] | None = None,
 ) -> dict[str, float]:
-    """Return per-domain scoring gravity for low-confidence records."""
+    """Return per-domain scoring weight for low-confidence records."""
     weights = dict(DEFAULT_LOW_CONFIDENCE_SCORE_WEIGHTS)
 
     if low_confidence_score_weights:
@@ -220,7 +220,7 @@ def normalize_low_confidence_score_weights(
 def normalize_depth_dependency_score_weights(
     depth_dependency_score_weights: Mapping[str, float] | None = None,
 ) -> dict[str, float]:
-    """Return scoring gravity by evidence depth-dependency class."""
+    """Return scoring weight by evidence depth-dependency class."""
     weights = dict(DEFAULT_DEPTH_DEPENDENCY_SCORE_WEIGHTS)
 
     if depth_dependency_score_weights:
@@ -248,7 +248,7 @@ def normalize_depth_dependency_score_weights(
 def normalize_scoring_focus_weights(
     scoring_focus_weights: Mapping[str, float] | None = None,
 ) -> dict[str, float]:
-    """Return scoring gravity by exercise-definition focus tier."""
+    """Return scoring weight by exercise-definition focus tier."""
     weights = dict(DEFAULT_SCORING_FOCUS_WEIGHTS)
 
     if scoring_focus_weights:
@@ -275,7 +275,7 @@ def normalize_scoring_focus_weights(
 def normalize_feature_score_weight_overrides(
     feature_score_weight_overrides: Mapping[str, float] | None = None,
 ) -> dict[str, float]:
-    """Return validated feature-id scoring gravity overrides."""
+    """Return validated feature-id scoring weight overrides."""
     weights: dict[str, float] = {}
 
     if feature_score_weight_overrides:
@@ -383,14 +383,14 @@ class BiomarkerScoreRecord:
     withheld_features  : computed feature records excluded from composite scoring
                          because availability is low_confidence or not_assessed
     final_score        : weighted composite on the configured score scale
-    source_fields      : exercise definition fields that drove the score
+    source_fields      : optional audit references for reports/debug exports
     domain_weights     : normalized domain weights used for final_score
     domain_feature_family_weights : normalized family budgets used inside each
         configured domain
-    low_confidence_score_weights : per-domain gravity for low-confidence records
-    depth_dependency_score_weights : gravity by record.depth_dependency class
-    scoring_focus_weights : gravity by record.focus_tier class
-    feature_score_weight_overrides : gravity overrides by exact feature id or
+    low_confidence_score_weights : per-domain weight for low-confidence records
+    depth_dependency_score_weights : weight by record.depth_dependency class
+    scoring_focus_weights : weight by record.focus_tier class
+    feature_score_weight_overrides : weight overrides by exact feature id or
         `prefix.*` feature family
     feature_score_direction_overrides : one-sided scoring direction overrides
         by exact feature id or `prefix.*` feature family
@@ -489,13 +489,13 @@ def _record_feature_family(record: Any) -> str:
 
 def _record_common_metadata(record: Any) -> dict[str, Any]:
     metadata: dict[str, Any] = {}
-    for field in COMMON_RECORD_METADATA_FIELDS:
-        if not hasattr(record, field):
+    for metadata_field in COMMON_RECORD_METADATA_FIELDS:
+        if not hasattr(record, metadata_field):
             continue
-        value = getattr(record, field, None)
+        value = getattr(record, metadata_field, None)
         if value is None or value == "" or value == "unknown" or value == []:
             continue
-        metadata[field] = value
+        metadata[metadata_field] = value
     return metadata
 
 
@@ -508,7 +508,7 @@ def _is_scoring_eligible(record: Any) -> bool:
     return _record_availability(record) == "assessed"
 
 
-def _record_availability_gravity(
+def _record_availability_weight(
     record: Any,
     domain: str,
     low_confidence_score_weights: Mapping[str, float],
@@ -528,7 +528,7 @@ def _record_depth_dependency(record: Any) -> str:
     return str(depth_dependency)
 
 
-def _record_depth_dependency_gravity(
+def _record_depth_dependency_weight(
     record: Any,
     depth_dependency_score_weights: Mapping[str, float],
 ) -> float:
@@ -549,7 +549,7 @@ def _record_focus_tier(record: Any) -> str:
     return focus if focus in SCORING_FOCUS_TIERS else "primary"
 
 
-def _record_focus_gravity(
+def _record_focus_weight(
     record: Any,
     scoring_focus_weights: Mapping[str, float],
 ) -> float:
@@ -557,7 +557,7 @@ def _record_focus_gravity(
     return float(scoring_focus_weights.get(focus_tier, 1.0))
 
 
-def _record_feature_score_gravity(
+def _record_feature_score_weight(
     record: Any,
     feature_score_weight_overrides: Mapping[str, float],
 ) -> float:
@@ -571,6 +571,14 @@ def _record_feature_score_gravity(
         if record_id == prefix or record_id.startswith(prefix + "."):
             return float(weight)
     return 1.0
+
+
+def _record_quality_gravity(record: Any) -> float:
+    quality_gravity = getattr(record, "quality_gravity", 1.0)
+    if quality_gravity in {None, ""}:
+        return 1.0
+    value = float(quality_gravity)
+    return min(max(value, 0.0), 1.0)
 
 
 def _record_feature_score_direction(
@@ -608,7 +616,7 @@ def _record_feature_family_weight(
     return float(domain_weights.get(feature_family, domain_weights.get("other", 0.0)))
 
 
-def _record_scoring_gravity(
+def _record_scoring_weight(
     record: Any,
     domain: str,
     low_confidence_score_weights: Mapping[str, float],
@@ -617,28 +625,32 @@ def _record_scoring_gravity(
     feature_score_weight_overrides: Mapping[str, float],
 ) -> float:
     return (
-        _record_availability_gravity(record, domain, low_confidence_score_weights)
-        * _record_depth_dependency_gravity(record, depth_dependency_score_weights)
-        * _record_focus_gravity(record, scoring_focus_weights)
-        * _record_feature_score_gravity(record, feature_score_weight_overrides)
+        _record_quality_gravity(record)
+        * _record_availability_weight(record, domain, low_confidence_score_weights)
+        * _record_depth_dependency_weight(record, depth_dependency_score_weights)
+        * _record_focus_weight(record, scoring_focus_weights)
+        * _record_feature_score_weight(record, feature_score_weight_overrides)
     )
 
 
 def _withheld_score_reasons(
-    availability_gravity: float,
-    depth_gravity: float,
-    focus_gravity: float,
-    feature_gravity: float,
+    quality_gravity: float,
+    availability_weight: float,
+    depth_weight: float,
+    focus_weight: float,
+    feature_weight: float,
     family_weight: float | None = None,
 ) -> list[str]:
     reasons: list[str] = []
-    if availability_gravity <= 0.0:
+    if quality_gravity <= 0.0:
+        reasons.append("quality_gravity_zero")
+    if availability_weight <= 0.0:
         reasons.append("availability_score_weight_zero")
-    if depth_gravity <= 0.0:
+    if depth_weight <= 0.0:
         reasons.append("depth_dependency_score_weight_zero")
-    if focus_gravity <= 0.0:
+    if focus_weight <= 0.0:
         reasons.append("scoring_focus_weight_zero")
-    if feature_gravity <= 0.0:
+    if feature_weight <= 0.0:
         reasons.append("feature_score_weight_zero")
     if family_weight is not None and family_weight <= 0.0:
         reasons.append("feature_family_weight_zero")
@@ -658,6 +670,7 @@ def _withheld_feature_entry(
         "domain": domain,
         "feature_id": _record_id(record),
         "value": round(float(record.value), 4),
+        "quality_gravity": round(float(_record_quality_gravity(record)), 4),
         "availability": _record_availability(record),
         "view_reliability": getattr(record, "view_reliability", None),
         "camera_zone": getattr(record, "camera_zone", None),
@@ -855,7 +868,7 @@ def build_baseline_from_records(
             domain, _record_feature_family(r), family_weights
         )
         if (
-            _record_scoring_gravity(
+            _record_scoring_weight(
                 r, domain, score_weights, depth_weights, focus_weights, feature_weights
             )
             * (1.0 if family_weight is None else family_weight)
@@ -871,7 +884,7 @@ def build_baseline_from_records(
             domain, _record_feature_family(r), family_weights
         )
         if (
-            _record_scoring_gravity(
+            _record_scoring_weight(
                 r, domain, score_weights, depth_weights, focus_weights, feature_weights
             )
             * (1.0 if family_weight is None else family_weight)
@@ -953,7 +966,7 @@ def build_baseline_qc(
                 domain, _record_feature_family(record), family_weights
             )
         ]
-        if _record_scoring_gravity(
+        if _record_scoring_weight(
             record,
             domain,
             score_weights,
@@ -974,7 +987,7 @@ def build_baseline_qc(
                 domain, _record_feature_family(record), family_weights
             )
         ]
-        if _record_scoring_gravity(
+        if _record_scoring_weight(
             record,
             domain,
             score_weights,
@@ -1097,7 +1110,7 @@ def generate_baseline_from_records(
     feature_score_weight_overrides: Mapping[str, float] | None = None,
     feature_score_direction_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Generate a reviewable ⑩ baseline bundle from already-computed records.
+    """Generate a reviewable ⑨ baseline bundle from already-computed records.
 
     This is the scoring-stage bootstrap path used when a baseline is missing.
     It fills default provenance/policy metadata, but metric mean/std values still
@@ -1498,7 +1511,7 @@ def _temporal_phase_profile_band_z(value: float, rule: Mapping[str, Any]) -> flo
 
 
 def _derive_domain_score(
-    records: list[tuple[Any, float, float, float, float, str, float | None]],
+    records: list[tuple[Any, float, float, float, float, float, str, float | None]],
     baseline: dict[str, dict[str, float]],
     floor_dynamic: float,
     score_bounds: dict[str, float],
@@ -1522,30 +1535,39 @@ def _derive_domain_score(
     valid = [
         (
             record,
-            availability_gravity,
-            depth_gravity,
-            focus_gravity,
-            feature_gravity,
+            quality_gravity,
+            availability_weight,
+            depth_weight,
+            focus_weight,
+            feature_weight,
             feature_family,
             family_weight,
         )
         for (
             record,
-            availability_gravity,
-            depth_gravity,
-            focus_gravity,
-            feature_gravity,
+            quality_gravity,
+            availability_weight,
+            depth_weight,
+            focus_weight,
+            feature_weight,
             feature_family,
             family_weight,
         ) in records
-        if availability_gravity * depth_gravity * focus_gravity * feature_gravity > 0.0
+        if (
+            quality_gravity
+            * availability_weight
+            * depth_weight
+            * focus_weight
+            * feature_weight
+            > 0.0
+        )
         and _record_id(record) in baseline
     ]
     if not valid:
         return score_bounds["max"], False, []
 
     family_counts: Counter[str] = Counter()
-    for _, _, _, _, _, feature_family, family_weight in valid:
+    for _, _, _, _, _, _, feature_family, family_weight in valid:
         if family_weight is not None:
             family_counts[feature_family] += 1
 
@@ -1558,10 +1580,11 @@ def _derive_domain_score(
 
     for (
         r,
-        availability_gravity,
-        depth_gravity,
-        focus_gravity,
-        feature_gravity,
+        quality_gravity,
+        availability_weight,
+        depth_weight,
+        focus_weight,
+        feature_weight,
         feature_family,
         family_weight,
     ) in valid:
@@ -1616,29 +1639,36 @@ def _derive_domain_score(
             r, feature_score_direction_overrides or {}
         )
         z = _apply_score_direction(z_raw, score_direction)
-        gravity = availability_gravity * depth_gravity * focus_gravity * feature_gravity
+        scoring_weight = (
+            quality_gravity
+            * availability_weight
+            * depth_weight
+            * focus_weight
+            * feature_weight
+        )
         if family_weight is None:
             w_i = fallback_w_i
         else:
             w_i = family_weight / family_counts[feature_family]
-        d = deduction_scale * w_i * abs(z) * gravity
+        d = deduction_scale * w_i * abs(z) * scoring_weight
         total_deduction += d
         deduction_entry = {
             "feature_id": rid,
             "value": round(value, 4),
             "scoring_mode": scoring_mode,
+            "quality_gravity": round(float(quality_gravity), 4),
             "availability": _record_availability(r),
-            "availability_weight": round(float(availability_gravity), 4),
+            "availability_weight": round(float(availability_weight), 4),
             "depth_dependency": _record_depth_dependency(r),
-            "depth_dependency_weight": round(float(depth_gravity), 4),
+            "depth_dependency_weight": round(float(depth_weight), 4),
             "focus_tier": _record_focus_tier(r),
-            "focus_weight": round(float(focus_gravity), 4),
-            "feature_weight": round(float(feature_gravity), 4),
+            "focus_weight": round(float(focus_weight), 4),
+            "feature_weight": round(float(feature_weight), 4),
             "feature_family": feature_family,
             "feature_family_weight": (
                 None if family_weight is None else round(float(family_weight), 4)
             ),
-            "confidence_weight": round(float(gravity), 4),
+            "scoring_weight": round(float(scoring_weight), 4),
             "baseline_mean": round(mu, 4),
             "baseline_std": round(sigma, 4),
             "score_direction": score_direction,
@@ -1733,21 +1763,22 @@ def _score_one_rep(
 ) -> BiomarkerScoreRecord:
     """Compute BiomarkerScoreRecord for one rep (or the full sequence)."""
     domain_records: dict[
-        str, list[tuple[Any, float, float, float, float, str, float | None]]
+        str, list[tuple[Any, float, float, float, float, float, str, float | None]]
     ] = {d: [] for d in _SCORE_DOMAIN_ORDER}
     withheld_features: list[dict[str, Any]] = []
 
     for r in feat_rep:
         d = _classify_domain(_record_id(r))
         if d in domain_records:
-            availability_gravity = _record_availability_gravity(
+            quality_gravity = _record_quality_gravity(r)
+            availability_weight = _record_availability_weight(
                 r, d, low_confidence_score_weights
             )
-            depth_gravity = _record_depth_dependency_gravity(
+            depth_weight = _record_depth_dependency_weight(
                 r, depth_dependency_score_weights
             )
-            focus_gravity = _record_focus_gravity(r, scoring_focus_weights)
-            feature_gravity = _record_feature_score_gravity(
+            focus_weight = _record_focus_weight(r, scoring_focus_weights)
+            feature_weight = _record_feature_score_weight(
                 r, feature_score_weight_overrides
             )
             feature_family = _record_feature_family(r)
@@ -1755,20 +1786,22 @@ def _score_one_rep(
                 d, feature_family, domain_feature_family_weights
             )
             if (
-                availability_gravity
-                * depth_gravity
-                * focus_gravity
-                * feature_gravity
+                quality_gravity
+                * availability_weight
+                * depth_weight
+                * focus_weight
+                * feature_weight
                 * (1.0 if family_weight is None else family_weight)
                 > 0.0
             ):
                 domain_records[d].append(
                     (
                         r,
-                        availability_gravity,
-                        depth_gravity,
-                        focus_gravity,
-                        feature_gravity,
+                        quality_gravity,
+                        availability_weight,
+                        depth_weight,
+                        focus_weight,
+                        feature_weight,
                         feature_family,
                         family_weight,
                     )
@@ -1779,10 +1812,11 @@ def _score_one_rep(
                         r,
                         d,
                         _withheld_score_reasons(
-                            availability_gravity,
-                            depth_gravity,
-                            focus_gravity,
-                            feature_gravity,
+                            quality_gravity,
+                            availability_weight,
+                            depth_weight,
+                            focus_weight,
+                            feature_weight,
                             family_weight,
                         ),
                     )
@@ -1790,14 +1824,15 @@ def _score_one_rep(
     for r in biomech_rep:
         d = _classify_domain(_record_id(r))
         if d in domain_records:
-            availability_gravity = _record_availability_gravity(
+            quality_gravity = _record_quality_gravity(r)
+            availability_weight = _record_availability_weight(
                 r, d, low_confidence_score_weights
             )
-            depth_gravity = _record_depth_dependency_gravity(
+            depth_weight = _record_depth_dependency_weight(
                 r, depth_dependency_score_weights
             )
-            focus_gravity = _record_focus_gravity(r, scoring_focus_weights)
-            feature_gravity = _record_feature_score_gravity(
+            focus_weight = _record_focus_weight(r, scoring_focus_weights)
+            feature_weight = _record_feature_score_weight(
                 r, feature_score_weight_overrides
             )
             feature_family = _record_feature_family(r)
@@ -1805,20 +1840,22 @@ def _score_one_rep(
                 d, feature_family, domain_feature_family_weights
             )
             if (
-                availability_gravity
-                * depth_gravity
-                * focus_gravity
-                * feature_gravity
+                quality_gravity
+                * availability_weight
+                * depth_weight
+                * focus_weight
+                * feature_weight
                 * (1.0 if family_weight is None else family_weight)
                 > 0.0
             ):
                 domain_records[d].append(
                     (
                         r,
-                        availability_gravity,
-                        depth_gravity,
-                        focus_gravity,
-                        feature_gravity,
+                        quality_gravity,
+                        availability_weight,
+                        depth_weight,
+                        focus_weight,
+                        feature_weight,
                         feature_family,
                         family_weight,
                     )
@@ -1829,10 +1866,11 @@ def _score_one_rep(
                         r,
                         d,
                         _withheld_score_reasons(
-                            availability_gravity,
-                            depth_gravity,
-                            focus_gravity,
-                            feature_gravity,
+                            quality_gravity,
+                            availability_weight,
+                            depth_weight,
+                            focus_weight,
+                            feature_weight,
                             family_weight,
                         ),
                     )
@@ -1918,14 +1956,14 @@ def derive_biomarkers(
     feature_score_direction_overrides: Mapping[str, str] | None = None,
     score_bounds: Mapping[str, float] | None = None,
 ) -> tuple[list[Any], list[BiomarkerScoreRecord]]:
-    """Main entry point for ⑩ Biomarker Derivation.
+    """Main entry point for ⑨ Biomarker Derivation.
 
     Converts FeatureRecord and BiomechRecord into:
     1. BiomarkerRecord list — individual metrics with provenance (pass-through).
     2. BiomarkerScoreRecord list — per-rep composite movement quality scores.
 
     Scoring (step 2) requires baseline metrics for the target exercise. They may
-    come from `baseline_metrics` supplied by the ⑩ baseline-generation policy or
+    come from `baseline_metrics` supplied by the ⑨ baseline-generation policy or
     from the baseline JSON file. If neither is available, step 2 is skipped with
     a UserWarning. Generate or extend the baseline with scripts/generate_baseline.py.
 
@@ -1944,15 +1982,15 @@ def derive_biomarkers(
     domain_feature_family_weights : optional relative feature-family budgets
                          within each configured score domain. Missing domains
                          fall back to equal within-domain weights.
-    low_confidence_score_weights : optional per-domain gravity for low-confidence
-                         records. Defaults to low biomech gravity and zero for
+    low_confidence_score_weights : optional per-domain weight for low-confidence
+                         records. Defaults to low biomech weight and zero for
                          other low-confidence domains.
-    depth_dependency_score_weights : optional gravity by depth-dependency class.
+    depth_dependency_score_weights : optional weight by depth-dependency class.
                          Defaults to recording-view-heavy scoring.
-    scoring_focus_weights : optional gravity by exercise-definition focus tier.
+    scoring_focus_weights : optional weight by exercise-definition focus tier.
                          Defaults to primary strongest, diagnostics withheld.
     feature_score_weight_overrides : optional exact feature-id or `prefix.*`
-                         gravity overrides. Defaults to no feature-specific
+                         weight overrides. Defaults to no feature-specific
                          override.
     feature_score_direction_overrides : optional exact feature-id or `prefix.*`
                          scoring direction overrides. Defaults to two-sided

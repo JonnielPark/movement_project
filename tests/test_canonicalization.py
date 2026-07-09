@@ -8,11 +8,16 @@ from movement.canonicalization import (
     CanonicalizationConfig,
     MovementPlaneAlignmentConfig,
     ProtocolHeightLateralWidthAlignmentConfig,
+    XYDepthLiftConfig,
     apply_canonicalization,
 )
 from movement.config import CONNECTIONS
 from movement.core.utils import get_coord_columns
 from movement.floor_reference import FloorReferenceConfig
+from movement.pose_data_state import (
+    CANONICALIZED_POSE_DATA,
+    NORMALIZED_POSE_DATA,
+)
 from movement.pipeline import (
     ExerciseDefinitionConfig,
     NormalizationConfig,
@@ -61,9 +66,12 @@ def _sample_norm_df() -> pd.DataFrame:
             row[f"{landmark}_norm_x"] = x
             row[f"{landmark}_norm_y"] = y
             row[f"{landmark}_norm_z"] = z
-            row[f"{landmark}_visibility"] = 0.99
+            row[f"{landmark}_confidence"] = 0.99
         rows.append(row)
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    df.attrs["pose_data_state"] = NORMALIZED_POSE_DATA
+    df.attrs["coordinate_families"] = ["raw", "norm"]
+    return df
 
 
 def _sample_movement_plane_df() -> pd.DataFrame:
@@ -83,7 +91,7 @@ def _sample_movement_plane_df() -> pd.DataFrame:
             row[f"{landmark}_norm_x"] = base_x + 0.20 * lower_limb_motion
             row[f"{landmark}_norm_y"] = base_y - 0.10 * abs(step)
             row[f"{landmark}_norm_z"] = base_z + 0.40 * lower_limb_motion
-            row[f"{landmark}_visibility"] = 0.99
+            row[f"{landmark}_confidence"] = 0.99
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -106,9 +114,58 @@ def _sample_protocol_height_df() -> pd.DataFrame:
             row[f"{landmark}_norm_x"] = x
             row[f"{landmark}_norm_y"] = y
             row[f"{landmark}_norm_z"] = z
-            row[f"{landmark}_visibility"] = 0.99
+            row[f"{landmark}_confidence"] = 0.99
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def _sample_norm_xy_df() -> pd.DataFrame:
+    df = pd.DataFrame(
+        {
+            "frame": [0, 1],
+            "timestamp": [0.0, 1.0 / 30.0],
+            "left_hip_norm_x": [0.0, 0.0],
+            "left_hip_norm_y": [0.0, 0.0],
+            "left_hip_norm_z": [np.nan, np.nan],
+            "left_knee_norm_x": [0.0, 0.0],
+            "left_knee_norm_y": [0.6, 0.6],
+            "left_knee_norm_z": [np.nan, np.nan],
+            "left_hip_confidence": [1.0, 1.0],
+            "left_knee_confidence": [1.0, 1.0],
+        }
+    )
+    df.attrs["pose_data_state"] = NORMALIZED_POSE_DATA
+    df.attrs["coordinate_families"] = ["norm"]
+    df.attrs["coordinate_axes"] = {"norm": ["x", "y", "z"]}
+    return df
+
+
+def _sample_raw_xy_df() -> pd.DataFrame:
+    df = pd.DataFrame(
+        {
+            "frame": [0, 1],
+            "timestamp": [0.0, 1.0 / 30.0],
+            "left_hip_x": [0.0, 0.0],
+            "left_hip_y": [0.0, 0.0],
+            "right_hip_x": [2.0, 2.0],
+            "right_hip_y": [0.0, 0.0],
+            "left_shoulder_x": [0.0, 0.0],
+            "left_shoulder_y": [1.0, 1.0],
+            "right_shoulder_x": [2.0, 2.0],
+            "right_shoulder_y": [1.0, 1.0],
+            "left_knee_x": [0.4, 0.4],
+            "left_knee_y": [0.3, 0.3],
+        }
+    )
+    for landmark in [
+        "left_hip",
+        "right_hip",
+        "left_shoulder",
+        "right_shoulder",
+        "left_knee",
+    ]:
+        df[f"{landmark}_confidence"] = 1.0
+    return df
 
 
 def test_disabled_canonicalization_preserves_dataframe_without_canon_columns():
@@ -121,14 +178,55 @@ def test_disabled_canonicalization_preserves_dataframe_without_canon_columns():
     )
 
     assert report["status"] == "disabled"
-    assert report["candidate_available"] is False
-    assert report["candidate_confidence"] == "not_available"
+    assert report["input_pose_data_state"] == NORMALIZED_POSE_DATA
+    assert report["output_pose_data_state"] == NORMALIZED_POSE_DATA
+    assert out.attrs["pose_data_state"] == NORMALIZED_POSE_DATA
+    assert report["evidence_available"] is False
+    assert report["evidence_confidence"] == "not_available"
+    assert report["quality_gravity"] == 0.0
     assert report["burden_level"] == "none"
     assert "score_gravity" not in report
     assert "score_contribution_enabled" not in report
     assert out is not df
     assert list(out.columns) == list(df.columns)
     assert "left_heel_canon_y" not in out.columns
+
+
+def test_xy_depth_lift_creates_canonical_z_evidence_from_norm_xy():
+    df = _sample_norm_xy_df()
+
+    out, report = apply_canonicalization(
+        df,
+        landmarks=["left_hip", "left_knee"],
+        config=CanonicalizationConfig(
+            enabled=True,
+            xy_depth_lift=XYDepthLiftConfig(
+                enabled=True,
+                segment_pairs=[("left_hip", "left_knee")],
+                default_segment_length_torso=1.0,
+                max_depth_torso=1.0,
+                confidence_threshold=0.0,
+            ),
+        ),
+    )
+
+    xy_report = report["prior_reports"]["xy_depth_lift"]
+    assert report["status"] == "applied"
+    assert report["evidence_available"] is True
+    assert report["applied_priors"] == ["xy_depth_lift"]
+    assert xy_report["status"] == "applied"
+    assert report["source_coordinate_axes"] == ["x", "y"]
+    assert report["output_coordinate_axes"]["canon"] == ["x", "y", "z"]
+    assert out.attrs["coordinate_axes"]["canon"] == ["x", "y", "z"]
+    assert "left_hip_canon_z" in out.columns
+    assert "left_knee_canon_z" in out.columns
+    assert np.allclose(out["left_hip_canon_z"], 0.0)
+    assert np.allclose(out["left_knee_canon_z"], 0.8)
+    assert out["canonical_depth_hypothesis_available"].all()
+    assert (out["canonical_depth_hypothesis_quality_gravity"] > 0.0).all()
+    assert "canonical_depth_hypothesis_burden" not in out.columns
+    assert "canonical_depth_hypothesis_residual" not in out.columns
+    assert xy_report["quality_diagnostics"]["max_correction_burden"] is not None
 
 
 def test_canonicalization_wraps_support_plane_alignment_as_canon_columns():
@@ -148,8 +246,13 @@ def test_canonicalization_wraps_support_plane_alignment_as_canon_columns():
     )
 
     assert report["status"] == "applied"
-    assert report["candidate_available"] is True
-    assert report["candidate_confidence"] in {"high", "moderate", "low"}
+    assert report["output_pose_data_state"] == CANONICALIZED_POSE_DATA
+    assert report["added_coordinate_family"] == "canon"
+    assert out.attrs["pose_data_state"] == CANONICALIZED_POSE_DATA
+    assert out.attrs["coordinate_families"] == ["raw", "norm", "canon"]
+    assert report["evidence_available"] is True
+    assert report["evidence_confidence"] in {"high", "moderate", "low"}
+    assert report["quality_gravity"] > 0.0
     assert report["burden_level"] in {"none", "low", "moderate", "high"}
     assert report["applied_priors"] == ["support_plane_alignment"]
     assert report["prior_reports"]["support_plane_alignment"]["status"] == "applied"
@@ -158,7 +261,9 @@ def test_canonicalization_wraps_support_plane_alignment_as_canon_columns():
     assert "left_heel_canon_y" in out.columns
     assert "left_heel_floor_y" not in out.columns
     assert "left_heel_canon_support_plane_height" in out.columns
-    assert out["canonicalization_candidate_available"].all()
+    assert out["canonicalization_evidence_available"].all()
+    assert "canonicalization_quality_gravity" in out.columns
+    assert "canonicalization_burden_level" not in out.columns
     assert "canonicalization_score_gravity" not in out.columns
     assert "canonicalization_score_contribution_enabled" not in out.columns
 
@@ -181,7 +286,7 @@ def test_canonicalization_keeps_canon_equal_to_norm_when_target_prior_matches():
     )
 
     assert report["status"] == "applied"
-    assert report["candidate_available"] is True
+    assert report["evidence_available"] is True
     for landmark in LANDMARKS:
         assert out[f"{landmark}_canon_y"].equals(out[f"{landmark}_norm_y"])
 
@@ -205,7 +310,7 @@ def test_movement_plane_alignment_rotates_primary_motion_toward_canon_plane():
 
     movement_report = report["prior_reports"]["movement_plane_alignment"]
     assert report["status"] == "applied"
-    assert report["candidate_available"] is True
+    assert report["evidence_available"] is True
     assert report["applied_priors"] == ["movement_plane_alignment"]
     assert movement_report["status"] == "applied"
     assert movement_report["num_motion_vectors"] > 0
@@ -271,7 +376,7 @@ def test_protocol_height_lateral_width_alignment_uses_h2_pelvis_anchor():
                     max_scale_change=0.20,
                     max_correction_torso=0.25,
                     min_depth_offset_torso=0.05,
-                    visibility_threshold=0.0,
+                    confidence_threshold=0.0,
                 )
             ),
         ),
@@ -279,8 +384,9 @@ def test_protocol_height_lateral_width_alignment_uses_h2_pelvis_anchor():
 
     protocol_report = report["prior_reports"]["protocol_height_lateral_width_alignment"]
     assert report["status"] == "applied"
-    assert report["candidate_available"] is True
-    assert report["candidate_confidence"] in {"high", "moderate", "low"}
+    assert report["evidence_available"] is True
+    assert report["evidence_confidence"] in {"high", "moderate", "low"}
+    assert report["quality_gravity"] > 0.0
     assert report["burden_level"] in {"none", "low", "moderate", "high"}
     assert report["applied_priors"] == ["protocol_height_lateral_width_alignment"]
     assert protocol_report["status"] == "applied"
@@ -310,7 +416,7 @@ def test_protocol_height_lateral_width_alignment_skips_when_height_mismatches():
                     enabled=True,
                     recommended_height_level="H3",
                     require_height_match=True,
-                    visibility_threshold=0.0,
+                    confidence_threshold=0.0,
                 )
             ),
         ),
@@ -318,8 +424,9 @@ def test_protocol_height_lateral_width_alignment_skips_when_height_mismatches():
 
     protocol_report = report["prior_reports"]["protocol_height_lateral_width_alignment"]
     assert report["status"] == "rejected"
-    assert report["candidate_available"] is False
-    assert report["candidate_confidence"] == "not_available"
+    assert report["evidence_available"] is False
+    assert report["evidence_confidence"] == "not_available"
+    assert report["quality_gravity"] == 0.0
     assert report["burden_level"] == "none"
     assert report["skipped_priors"] == {
         "protocol_height_lateral_width_alignment": "skipped"
@@ -349,7 +456,7 @@ def test_pipeline_uses_exercise_recommended_height_for_protocol_prior():
                     observed_height_level="H2",
                     correction_strength=0.5,
                     max_correction_torso=0.25,
-                    visibility_threshold=0.0,
+                    confidence_threshold=0.0,
                 )
             ),
         ),
@@ -364,7 +471,8 @@ def test_pipeline_uses_exercise_recommended_height_for_protocol_prior():
     protocol_report = report["canonicalization"]["prior_reports"][
         "protocol_height_lateral_width_alignment"
     ]
-    assert report["canonicalization"]["candidate_available"] is True
+    assert report["canonicalization"]["evidence_available"] is True
+    assert report["canonicalization"]["quality_gravity"] > 0.0
     assert "score_gravity" not in report["canonicalization"]
     assert "score_contribution_enabled" not in report["canonicalization"]
     assert protocol_report["status"] == "applied"
@@ -372,42 +480,96 @@ def test_pipeline_uses_exercise_recommended_height_for_protocol_prior():
     assert (out["left_wrist_canon_x"] > df["left_wrist_norm_x"]).all()
 
 
-def test_load_pipeline_config_reads_canonicalization_block():
+def test_pipeline_carries_xy_raw_data_to_xy_depth_lift_evidence():
+    df = _sample_raw_xy_df()
+    landmarks = [
+        "left_hip",
+        "right_hip",
+        "left_shoulder",
+        "right_shoulder",
+        "left_knee",
+    ]
+    config = PipelineConfig(
+        exercise_definition=ExerciseDefinitionConfig(enabled=False),
+        normalization=NormalizationConfig(
+            enabled=True,
+            coordinate_axes="xy",
+        ),
+        canonicalization=CanonicalizationConfig(
+            enabled=True,
+            xy_depth_lift=XYDepthLiftConfig(
+                enabled=True,
+                segment_pairs=[("left_hip", "left_knee")],
+                default_segment_length_torso=1.0,
+                max_depth_torso=1.0,
+                confidence_threshold=0.0,
+            ),
+        ),
+    )
+
+    out, report = run_pipeline(df, config, landmarks=landmarks)
+
+    assert report["validation"]["passed"] is True
+    assert report["validation"]["coordinate_axes"]["raw"] == ["x", "y", "z"]
+    assert report["validation"]["schema_harmonization"]["validation_axes"] == [
+        "x",
+        "y",
+    ]
+    assert report["normalization"]["normalized_axes"] == ["x", "y", "z"]
+    assert report["normalization"]["normalized_evidence_axes"] == ["x", "y"]
+    assert report["canonicalization"]["applied_priors"] == ["xy_depth_lift"]
+    assert report["canonicalization"]["output_coordinate_axes"]["canon"] == [
+        "x",
+        "y",
+        "z",
+    ]
+    assert out["left_knee_norm_z"].isna().all()
+    assert "left_knee_canon_z" in out.columns
+
+
+def test_load_pipeline_config_reads_nested_canonicalization_block():
     cfg_path = Path("tests/_tmp_canonicalization_pipeline.yaml")
     try:
         cfg_path.write_text(
             """
 normalization:
   enabled: true
-canonicalization:
-  enabled: true
-  output_prefix: canon
-  report_only: true
-  corrected_3d_hypothesis:
+  coordinate_axes: xy
+  canonicalization:
     enabled: true
-    output_family: review
-  support_plane_alignment:
-    enabled: true
-    correction_transform: rigid_rotation
-    support_landmarks: [left_heel, right_heel]
-  movement_plane_alignment:
-    enabled: true
-    fit_landmarks: [left_hip, left_knee, left_ankle]
-    correction_strength: 0.75
-    max_rotation_deg: 12.0
-  protocol_height_lateral_width_alignment:
-    enabled: true
-    observed_height_level: H2
-    recommended_height_level: H2
-    correction_strength: 0.4
-    height_anchor_map:
-      H2: [left_hip, right_hip]
+    output_prefix: canon
+    report_only: true
+    corrected_3d_hypothesis:
+      enabled: true
+      output_family: review
+    support_plane_alignment:
+      enabled: true
+      correction_transform: rigid_rotation
+      support_landmarks: [left_heel, right_heel]
+    movement_plane_alignment:
+      enabled: true
+      fit_landmarks: [left_hip, left_knee, left_ankle]
+      correction_strength: 0.75
+      max_rotation_deg: 12.0
+    protocol_height_lateral_width_alignment:
+      enabled: true
+      observed_height_level: H2
+      recommended_height_level: H2
+      correction_strength: 0.4
+      height_anchor_map:
+        H2: [left_hip, right_hip]
+    xy_depth_lift:
+      enabled: true
+      segment_pairs: [[left_hip, left_knee]]
+      default_segment_length_torso: 0.9
+      max_depth_torso: 0.8
 """,
             encoding="utf-8",
         )
 
         config = load_pipeline_config(cfg_path)
 
+        assert config.normalization.coordinate_axes == "xy"
         assert config.canonicalization.enabled is True
         assert config.canonicalization.output_prefix == "canon"
         assert config.canonicalization.corrected_3d_hypothesis.enabled is True
@@ -441,6 +603,67 @@ canonicalization:
             "left_hip",
             "right_hip",
         ]
+        assert config.canonicalization.xy_depth_lift.enabled is True
+        assert config.canonicalization.xy_depth_lift.segment_pairs == [
+            ("left_hip", "left_knee")
+        ]
+        assert config.canonicalization.xy_depth_lift.default_segment_length_torso == 0.9
+        assert config.canonicalization.xy_depth_lift.max_depth_torso == 0.8
+    finally:
+        cfg_path.unlink(missing_ok=True)
+
+
+def test_load_pipeline_config_keeps_root_canonicalization_alias():
+    cfg_path = Path("tests/_tmp_canonicalization_pipeline.yaml")
+    try:
+        cfg_path.write_text(
+            """
+normalization:
+  enabled: true
+canonicalization:
+  enabled: true
+  output_prefix: legacy_canon
+  support_plane_alignment:
+    enabled: true
+    support_landmarks: [left_heel, right_heel]
+""",
+            encoding="utf-8",
+        )
+
+        config = load_pipeline_config(cfg_path)
+
+        assert config.canonicalization.enabled is True
+        assert config.canonicalization.output_prefix == "legacy_canon"
+        assert config.canonicalization.support_plane_alignment.enabled is True
+        assert config.canonicalization.support_plane_alignment.support_landmarks == [
+            "left_heel",
+            "right_heel",
+        ]
+    finally:
+        cfg_path.unlink(missing_ok=True)
+
+
+def test_load_pipeline_config_prefers_nested_canonicalization_over_root_alias():
+    cfg_path = Path("tests/_tmp_canonicalization_pipeline.yaml")
+    try:
+        cfg_path.write_text(
+            """
+normalization:
+  enabled: true
+  canonicalization:
+    enabled: true
+    output_prefix: nested_canon
+canonicalization:
+  enabled: true
+  output_prefix: legacy_canon
+""",
+            encoding="utf-8",
+        )
+
+        config = load_pipeline_config(cfg_path)
+
+        assert config.canonicalization.enabled is True
+        assert config.canonicalization.output_prefix == "nested_canon"
     finally:
         cfg_path.unlink(missing_ok=True)
 

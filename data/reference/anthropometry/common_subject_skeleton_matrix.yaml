@@ -40,7 +40,7 @@ common_subject_skeleton_matrix:
       formula: m299
       component_items: ['m299:어깨가쪽사이너비']
       notes: Seated shoulder-outside breadth proxy; closer to transverse shoulder landmark distance than shoulder length. Compare m298 as sensitivity.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     hip_width:
       proxy_level: proxy
@@ -48,7 +48,7 @@ common_subject_skeleton_matrix:
       formula: m265
       component_items: ['m265:엉덩이너비']
       notes: Surface hip breadth proxy; can exceed pose-model internal hip-joint distance.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     torso_shoulder_hip_vertical:
       proxy_level: vertical_proxy
@@ -56,7 +56,7 @@ common_subject_skeleton_matrix:
       formula: m145 - m155
       component_items: ['m145:어깨가쪽높이', 'm155:엉덩이높이']
       notes: Standing vertical proxy; not 3D Euclidean shoulder-center to hip-center segment.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     trunk_vertical:
       proxy_level: proxy
@@ -72,7 +72,7 @@ common_subject_skeleton_matrix:
       formula: m189
       component_items: ['m189:위팔길이(어깨가쪽점)']
       notes: Preferred over m188 if MediaPipe shoulder uses lateral shoulder landmark convention.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     forearm:
       proxy_level: derived_proxy
@@ -80,7 +80,7 @@ common_subject_skeleton_matrix:
       formula: m191 - m189
       component_items: ['m191:팔길이(어깨가쪽점)', 'm189:위팔길이(어깨가쪽점)']
       notes: Row-level derivation is discussion-only; aggregate mean difference is used here.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     thigh:
       proxy_level: vertical_proxy
@@ -88,7 +88,7 @@ common_subject_skeleton_matrix:
       formula: m155 - m159
       component_items: ['m155:엉덩이높이', 'm159:무릎높이']
       notes: Primary auto-only proxy for MediaPipe hip-knee. Uses hip height to knee height; vertical-only, not Euclidean 3D segment.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     shank:
       proxy_level: vertical_proxy
@@ -96,7 +96,7 @@ common_subject_skeleton_matrix:
       formula: m159 - m161
       component_items: ['m159:무릎높이', 'm161:가쪽복사높이']
       notes: Vertical knee-to-lateral-malleolus proxy; not ankle joint center segment.
-      range_role: depth_correction_candidate
+      range_role: depth_correction_reference
       active_for_depth_correction: true
     sitting_height:
       proxy_level: proxy

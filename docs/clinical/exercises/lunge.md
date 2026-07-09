@@ -52,17 +52,17 @@ side order               active side per rep
 기대 수행은 취득 reference이다: 안정된 split stance, 일관된 step length, 통제된 trunk, side switch 중
 camera-facing direction 변화 없음.
 
-## 4. 후보 패턴 (Candidate Patterns)
+## 4. 보상 패턴 (Compensation Patterns)
 
 | Pattern | Interpretation direction | Detectability | Status |
 |---|---|---|---|
-| knee valgus | load acceptance 중 forward-knee medial deviation | 중간; side view에서 frontal 정보 제한 | view warning 포함 구현 후보 |
-| asymmetric knee/hip flexion | role-specific ROM difference | active-side metadata가 있으면 높음 | candidate / role-based feature |
-| insufficient rear hip extension | rear-limb extension constraint 또는 짧은 step strategy | 중간; side view 필요 | candidate |
-| excessive trunk flexion | forward trunk-lean strategy | side view에서 높음 | 구현 후보 |
-| lateral trunk lean | side-bending strategy | 중간; frontal/oblique가 유리 | candidate 또는 limitation |
-| pelvis drop/shift | pelvic-control proxy | 중간; view/visibility 의존 | candidate |
-| heel lift | forward/trailing role context가 필요한 ankle/contact proxy | 중간 | 구현 후보 |
+| knee valgus | load acceptance 중 forward-knee medial deviation | 중간; side view에서 frontal 정보 제한 | view warning 포함 구현 패턴 |
+| asymmetric knee/hip flexion | role-specific ROM difference | active-side metadata가 있으면 높음 | role-based feature |
+| insufficient rear hip extension | rear-limb extension constraint 또는 짧은 step strategy | 중간; side view 필요 | review pattern |
+| excessive trunk flexion | forward trunk-lean strategy | side view에서 높음 | 구현 패턴 |
+| lateral trunk lean | side-bending strategy | 중간; frontal/oblique가 유리 | review pattern 또는 limitation |
+| pelvis drop/shift | pelvic-control proxy | 중간; view/confidence 의존 | review pattern |
+| heel lift | forward/trailing role context가 필요한 ankle/contact proxy | 중간 | 구현 패턴 |
 | camera side change | side switch 중 몸이 돌아감 | metadata/video review가 있으면 높음 | control/limitation factor |
 
 ## 5. Role 및 View 제한 (Role And View Limits)
@@ -80,7 +80,7 @@ Side view는 anterior knee travel, sagittal ROM, rear-hip extension, trunk flexi
 step length를 지지한다. Frontal/oblique view는 step width, pelvis drop/shift,
 lateral trunk lean, frontal knee alignment를 지지한다. 이는 confidence state이지 직접 penalty가 아니다.
 
-한쪽 limb가 지속적으로 far-side이거나 visibility가 낮으면 side-to-side comparison을 unilateral
+한쪽 limb가 지속적으로 far-side이거나 confidence가 낮으면 side-to-side comparison을 unilateral
 movement deficit로 해석하지 말고 unavailable 또는 low-confidence로 처리한다.
 
 ## 6. 개발 경계 (Development Boundary)

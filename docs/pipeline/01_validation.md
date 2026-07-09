@@ -21,8 +21,8 @@ Pose CSV
 후속 단계는 여기서 확인한 integrity assumption에 의존한다.
 
 MediaPipe가 아닌 pose backend는 pipeline schema로 adapter 변환된 뒤 validation을 수행한다.
-Validation 통과는 필수 frame, timestamp, coordinate, optional visibility field가 구조적으로
-사용 가능하다는 뜻이다. MediaPipe와 다른 backend가 동일한 depth, visibility, 생체역학 evidence를
+Validation 통과는 필수 frame, timestamp, coordinate, optional confidence field가 구조적으로
+사용 가능하다는 뜻이다. MediaPipe와 다른 backend가 동일한 depth, confidence, 생체역학 evidence를
 제공한다는 의미는 아니다.
 
 ## 2. 점검 항목 (Checks)
@@ -35,7 +35,7 @@ Validation 통과는 필수 frame, timestamp, coordinate, optional visibility fi
 | Timestamp monotonicity | non-positive time differences |
 | Estimated FPS | median timestamp delta |
 | Missing value ratio | coordinate column별 결측률 |
-| Visibility quality | visibility column이 있을 때 low-visibility ratio |
+| Confidence quality | confidence column이 있을 때 low-confidence ratio |
 
 ## 3. 진입점 (Entry Point)
 
@@ -44,7 +44,7 @@ report = run_basic_validation(
     df=df,
     required_columns=make_required_columns(),
     coordinate_columns=make_coordinate_columns(),
-    visibility_columns=make_visibility_columns(),
+    confidence_columns=make_confidence_columns(),
 )
 ```
 
@@ -57,7 +57,7 @@ required_columns
 frame_continuity
 timestamp
 missing_values
-visibility     # visibility column이 제공된 경우만
+confidence     # confidence column이 제공된 경우만
 warnings
 ```
 
@@ -68,12 +68,12 @@ Validation은 문제를 보고할 뿐 수정하지 않는다.
 ```text
 short gaps          ④ interpolation에서 처리
 noisy trajectories  ④ smoothing에서 처리
-low visibility      reliability gate에서 처리
+low confidence      reliability gate에서 처리
 failed validation   자동 폐기 기준이 아니라 manual-review signal
 ```
 
-Visibility quality는 warning/provenance로만 다룬다. Low-visibility report는
-`visibility.passed = false`를 만들 수 있지만, 그 이유만으로 top-level `passed`가
+Confidence quality는 warning/provenance로만 다룬다. Low-confidence report는
+`confidence.passed = false`를 만들 수 있지만, 그 이유만으로 top-level `passed`가
 false가 되지는 않는다. 후속 reliability gate가 개별 frame, landmark, feature,
 proxy record의 사용 가능성을 결정한다.
 
@@ -84,7 +84,7 @@ proxy record의 사용 가능성을 결정한다.
 ```yaml
 validation:
   missing_value_threshold: 0.05
-  visibility_threshold: 0.5
+  confidence_threshold: 0.5
 ```
 
 ## 6. 코드 매핑 (Code Mapping)

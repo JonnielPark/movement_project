@@ -22,9 +22,9 @@ Downstream steps rely on integrity assumptions confirmed here.
 
 For non-MediaPipe pose backends, validation is performed after adapter
 conversion into the pipeline schema. A pass means the required frame,
-timestamp, coordinate, and optional visibility fields are structurally usable; it
+timestamp, coordinate, and optional confidence fields are structurally usable; it
 does not mean that MediaPipe and another backend provide equivalent depth,
-visibility, or biomechanical evidence.
+confidence, or biomechanical evidence.
 
 ## 2. Checks
 
@@ -36,7 +36,7 @@ visibility, or biomechanical evidence.
 | Timestamp monotonicity | non-positive time differences |
 | Estimated FPS | median timestamp delta |
 | Missing value ratio | per coordinate column |
-| Visibility quality | low-visibility ratio when visibility columns exist |
+| Confidence quality | low-confidence ratio when confidence columns exist |
 
 ## 3. Entry Point
 
@@ -45,7 +45,7 @@ report = run_basic_validation(
     df=df,
     required_columns=make_required_columns(),
     coordinate_columns=make_coordinate_columns(),
-    visibility_columns=make_visibility_columns(),
+    confidence_columns=make_confidence_columns(),
 )
 ```
 
@@ -58,7 +58,7 @@ required_columns
 frame_continuity
 timestamp
 missing_values
-visibility     # only when visibility columns are provided
+confidence     # only when confidence columns are provided
 warnings
 ```
 
@@ -69,12 +69,12 @@ Validation reports issues; it does not correct them.
 ```text
 short gaps          handled later by ④ interpolation
 noisy trajectories  handled later by ④ smoothing
-low visibility      handled later by reliability gates
+low confidence      handled later by reliability gates
 failed validation   manual-review signal, not automatic discard
 ```
 
-Visibility quality is warning/provenance only. A low-visibility report may set
-`visibility.passed = false`, but it does not make the top-level `passed` value
+Confidence quality is warning/provenance only. A low-confidence report may set
+`confidence.passed = false`, but it does not make the top-level `passed` value
 false by itself. Downstream reliability gates decide whether individual frames,
 landmarks, features, or proxy records are usable.
 
@@ -85,7 +85,7 @@ Configured in `configs/pipeline_default.yaml`:
 ```yaml
 validation:
   missing_value_threshold: 0.05
-  visibility_threshold: 0.5
+  confidence_threshold: 0.5
 ```
 
 ## 6. Code Mapping

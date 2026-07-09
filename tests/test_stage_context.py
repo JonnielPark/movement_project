@@ -1,5 +1,10 @@
 import pandas as pd
 
+from movement.pose_data_state import (
+    NORMALIZED_POSE_DATA,
+    PREPROCESSED_POSE_DATA,
+    RAW_POSE_DATA,
+)
 from movement.pipeline import NormalizationConfig, PreprocessingConfig
 from movement.stage_context import (
     DEFAULT_STAGE_CHECK_EXERCISE_ID,
@@ -29,8 +34,19 @@ def _minimal_pose_df() -> pd.DataFrame:
         data[f"{landmark}_x"] = [x] * len(frames)
         data[f"{landmark}_y"] = [y] * len(frames)
         data[f"{landmark}_z"] = [z] * len(frames)
-        data[f"{landmark}_visibility"] = [1.0] * len(frames)
+        data[f"{landmark}_confidence"] = [1.0] * len(frames)
     return pd.DataFrame(data)
+
+
+def _minimal_xy_pose_df() -> pd.DataFrame:
+    return _minimal_pose_df().drop(
+        columns=[
+            "left_hip_z",
+            "right_hip_z",
+            "left_shoulder_z",
+            "right_shoulder_z",
+        ]
+    )
 
 
 def test_prepare_previous_stage_inputs_stops_at_requested_stage():
@@ -42,6 +58,7 @@ def test_prepare_previous_stage_inputs_stops_at_requested_stage():
     )
 
     assert context.validation_report["passed"] is True
+    assert context.raw_df.attrs["pose_data_state"] == RAW_POSE_DATA
     assert context.annotation_report["annotation_provided"] is False
     assert context.annotated_df["segment_type"].eq("full_sequence").all()
     assert context.exercise_definition.exercise_id == "squat"
@@ -64,10 +81,45 @@ def test_prepare_previous_stage_inputs_preserves_preprocessing_for_normalization
     )
 
     assert context.preprocessing_report["exercise_id"] == "squat"
+    assert context.preprocessing_report["output_pose_data_state"] == (
+        PREPROCESSED_POSE_DATA
+    )
+    assert context.preprocessed_df.attrs["pose_data_state"] == PREPROCESSED_POSE_DATA
     assert "preprocessing_valid" in context.preprocessed_df.columns
     assert "preprocessing_valid" in context.normalized_df.columns
     assert "left_hip_norm_x" in context.normalized_df.columns
+    assert context.normalized_df.attrs["pose_data_state"] == NORMALIZED_POSE_DATA
     assert context.normalization_report["model_depth_scale"] == 0.5
+    assert context.normalization_report["output_pose_data_state"] == (
+        NORMALIZED_POSE_DATA
+    )
+
+
+def test_prepare_previous_stage_inputs_accepts_xy_only_for_normalization():
+    context = prepare_previous_stage_inputs(
+        prepare_until="normalization",
+        pose_df=_minimal_xy_pose_df(),
+        exercise_id="squat",
+        landmarks=LANDMARKS,
+        normalization_config=NormalizationConfig(
+            enabled=True,
+            keep_reference_columns=True,
+            coordinate_axes="xy",
+        ),
+    )
+
+    assert context.validation_report["passed"] is True
+    assert context.validation_report["coordinate_axes"]["raw"] == ["x", "y", "z"]
+    assert context.validation_report["schema_harmonization"]["validation_axes"] == [
+        "x",
+        "y",
+    ]
+    assert context.validation_report["schema_harmonization"]["z_evaluable"] is False
+    assert context.normalization_report["normalized_axes"] == ["x", "y", "z"]
+    assert context.normalization_report["normalized_evidence_axes"] == ["x", "y"]
+    assert context.normalized_df.attrs["coordinate_axes"]["norm"] == ["x", "y", "z"]
+    assert "left_hip_norm_x" in context.normalized_df.columns
+    assert context.normalized_df["left_hip_norm_z"].isna().all()
 
 
 def test_resolve_target_definitions_dir_falls_back_to_runtime_definitions():

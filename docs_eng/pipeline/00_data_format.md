@@ -16,7 +16,7 @@ The current pipeline expects a MediaPipe-style 33-landmark CSV:
 one row = one frame
 required scalar columns = frame, timestamp
 coordinate columns = <landmark>_x, <landmark>_y, <landmark>_z
-optional visibility columns = <landmark>_visibility
+optional confidence columns = <landmark>_confidence
 landmark names = src/movement/core/config.py
 ```
 
@@ -25,7 +25,7 @@ be converted into this schema before entering the current pipeline.
 
 Future pose engines such as YOLOv11 should enter through a pose-backend adapter,
 not through exercise-specific special cases. The adapter may map native keypoints
-to the pipeline landmark schema, translate native confidence into visibility or
+to the pipeline landmark schema, translate native confidence into confidence or
 confidence provenance, and record source metadata such as engine name, model
 version, coordinate convention, and depth availability. If the engine has no
 native depth output, the adapter must not synthesize depth as trusted evidence;
@@ -36,10 +36,10 @@ source.
 After MediaPipe-based analysis and scoring stabilize, the same exercise
 definition can be used to compare MediaPipe and YOLOv11 outputs as an
 engineering model-dependence study. The comparison should report how much the
-exercise-definition and canonicalization evidence changes candidate
-availability, confidence, burden, residual, and feature sensitivity for each
-backend. It must not be framed as clinical validation or as proof that one pose
-engine is biomechanically correct.
+exercise-definition and canonicalization evidence changes availability
+availability, confidence, `quality_gravity`, report-local burden/residual
+diagnostics, and feature sensitivity for each backend. It must not be framed as
+clinical validation or as proof that one pose engine is biomechanically correct.
 
 ## 2. Required Columns
 
@@ -58,17 +58,17 @@ Example:
 left_knee_x
 left_knee_y
 left_knee_z
-left_knee_visibility
+left_knee_confidence
 ```
 
-Visibility is recommended because monocular pose engines often return low-quality
+confidence is recommended because monocular pose engines often return low-quality
 landmarks rather than missing landmarks. ④ Preprocessing and later reliability
-gates use visibility metadata when available.
+gates use confidence metadata when available.
 
 ## 4. CSV Example
 
 ```text
-frame,timestamp,nose_x,nose_y,nose_z,nose_visibility,left_shoulder_x,...
+frame,timestamp,nose_x,nose_y,nose_z,nose_confidence,left_shoulder_x,...
 0,0.000,0.51,0.23,-0.12,0.98,0.42,...
 1,0.033,0.52,0.24,-0.13,0.97,0.43,...
 ```

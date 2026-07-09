@@ -824,7 +824,7 @@ def _camera_observation_purposes(
             "weight_shift_control",
             "lateral_sway",
         ]
-    return ["recording_view_review", "landmark_visibility_review"]
+    return ["recording_view_review", "landmark_confidence_review"]
 
 
 def _all_camera_position_ids(camera_zones: Mapping[str, Any]) -> tuple[str, ...]:
@@ -1104,7 +1104,7 @@ def _infer_from_authoring_context(
     They remain review-labeled so a researcher can reject them before promotion.
     """
     inferred_secondary_actions: list[str] = []
-    inferred_candidates: list[str] = []
+    inferred_patterns: list[str] = []
     inferred_feature_domains: dict[str, list[str]] = {}
     active_rules: list[str] = []
 
@@ -1121,7 +1121,7 @@ def _infer_from_authoring_context(
         if "transverse" in secondary_planes:
             active_rules.append(f"{rule_id}_transverse")
             inferred_secondary_actions.append("pelvis_rotation_proxy")
-            inferred_candidates.append("foot_external_rotation_proxy")
+            inferred_patterns.append("foot_external_rotation_proxy")
         if secondary_planes & {"frontal", "transverse"}:
             inferred_feature_domains["biomechanical_proxy"] = _append_unique(
                 inferred_feature_domains.get("biomechanical_proxy", []),
@@ -1131,8 +1131,8 @@ def _infer_from_authoring_context(
     review_flags: list[str] = []
     if inferred_secondary_actions:
         review_flags.append("context_inferred_joint_actions")
-    if inferred_candidates:
-        review_flags.append("context_inferred_compensation_candidates")
+    if inferred_patterns:
+        review_flags.append("context_inferred_compensation_patterns")
     if inferred_feature_domains:
         review_flags.append("context_inferred_feature_domains")
 
@@ -1142,7 +1142,7 @@ def _infer_from_authoring_context(
         "inferred_secondary_joint_actions": _append_unique(
             (), inferred_secondary_actions
         ),
-        "inferred_compensation_candidates": _append_unique((), inferred_candidates),
+        "inferred_compensation_patterns": _append_unique((), inferred_patterns),
         "inferred_feature_domains": inferred_feature_domains,
         "requires_review": review_flags,
     }
@@ -1240,9 +1240,9 @@ def generate_authoring_artifacts(
     if spec.author_notes:
         exercise_definition["author_notes"] = spec.author_notes
 
-    analysis_candidates = _append_unique(
-        analysis["compensation_candidates"],
-        context_inference["inferred_compensation_candidates"],
+    analysis_patterns = _append_unique(
+        analysis["compensation_patterns"],
+        context_inference["inferred_compensation_patterns"],
     )
     analysis_feature_domains = _merge_feature_domain_additions(
         analysis["feature_domains"],
@@ -1250,7 +1250,7 @@ def generate_authoring_artifacts(
     )
     analysis_requires_review = _append_unique(
         [
-            "compensation_candidates",
+            "compensation_patterns",
             "quality_rules",
             "feature_domains",
         ],
@@ -1266,7 +1266,7 @@ def generate_authoring_artifacts(
         "rep_segmentation": deepcopy(phase["rep_segmentation"]),
         "phase_segmentation": deepcopy(phase["phase_segmentation"]),
         "biomechanical_focus": deepcopy(analysis["biomechanical_focus"]),
-        "compensation_candidates": analysis_candidates,
+        "compensation_patterns": analysis_patterns,
         "feature_domains": analysis_feature_domains,
         "quality_rules": deepcopy(analysis["quality_rules"]),
     }

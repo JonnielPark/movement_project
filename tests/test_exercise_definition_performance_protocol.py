@@ -95,7 +95,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []
@@ -137,7 +137,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []
@@ -188,7 +188,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []
@@ -235,7 +235,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []
@@ -278,7 +278,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []
@@ -321,7 +321,7 @@ phase_model:
   type: cyclic
 landmarks:
   model: mediapipe_pose_33
-compensation_candidates: []
+compensation_patterns: []
 feature_domains:
   spatial: []
   temporal: []

@@ -1,5 +1,5 @@
 """
-⑧ Spatial Features
+⑦ Spatial Features
 
 Computes range of motion, role alignment, movement path, and support consistency features.
 
@@ -28,8 +28,15 @@ def _norm_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
     """(T, 3) normalized coordinates; falls back to raw if norm columns absent."""
     ncols = [f"{lm}_norm_x", f"{lm}_norm_y", f"{lm}_norm_z"]
     if all(c in df.columns for c in ncols):
+        z_values = df[ncols[2]].astype(float).to_numpy()
+        if not np.isfinite(z_values).any():
+            raise KeyError(f"{lm}_norm_z has no finite depth evidence.")
         return df[ncols].values.astype(float)
-    return df[[f"{lm}_x", f"{lm}_y", f"{lm}_z"]].values.astype(float)
+    rcols = [f"{lm}_x", f"{lm}_y", f"{lm}_z"]
+    z_values = df[rcols[2]].astype(float).to_numpy()
+    if not np.isfinite(z_values).any():
+        raise KeyError(f"{lm}_z has no finite depth evidence.")
+    return df[rcols].values.astype(float)
 
 
 def _norm_xy(df: pd.DataFrame, lm: str) -> np.ndarray:
@@ -38,6 +45,14 @@ def _norm_xy(df: pd.DataFrame, lm: str) -> np.ndarray:
     if all(c in df.columns for c in ncols):
         return df[ncols].values.astype(float)
     return df[[f"{lm}_x", f"{lm}_y"]].values.astype(float)
+
+
+def _norm_xy_or_xyz(df: pd.DataFrame, lm: str) -> np.ndarray:
+    """Return normalized xyz when present, otherwise recording-plane xy."""
+    try:
+        return _norm_xyz(df, lm)
+    except KeyError:
+        return _norm_xy(df, lm)
 
 
 _SUPPORT_REGION_ANCHORS: dict[str, tuple[str, ...]] = {
@@ -112,9 +127,10 @@ def _support_consistency_axis_records(
     axis_values = {
         "x": float(np.nansum(np.abs(diffs[:, 0]))),
         "y": float(np.nansum(np.abs(diffs[:, 1]))),
-        "z": float(np.nansum(np.abs(diffs[:, 2]))),
         "xy": float(np.nansum(np.linalg.norm(diffs[:, :2], axis=1))),
     }
+    if coords.shape[1] >= 3:
+        axis_values["z"] = float(np.nansum(np.abs(diffs[:, 2])))
     records: list[FeatureRecord] = []
     for axis, value in axis_values.items():
         records.append(
@@ -197,7 +213,7 @@ def compute_support_consistency(
 
     for anchor in support_landmarks:
         try:
-            coords = _norm_xyz(df, anchor)
+            coords = _norm_xy_or_xyz(df, anchor)
         except KeyError:
             continue
         coords_by_anchor[anchor] = coords
@@ -314,11 +330,12 @@ def _movement_path_axis_records(
     assessed_axes = assessed_axes or {"xy", "xyz"}
     axis_values = {
         "xy": float(np.nansum(np.linalg.norm(diffs[:, :2], axis=1))),
-        "xyz": float(np.nansum(np.linalg.norm(diffs, axis=1))),
         "x": float(np.nansum(np.abs(diffs[:, 0]))),
         "y": float(np.nansum(np.abs(diffs[:, 1]))),
-        "z": float(np.nansum(np.abs(diffs[:, 2]))),
     }
+    if coords.shape[1] >= 3:
+        axis_values["xyz"] = float(np.nansum(np.linalg.norm(diffs, axis=1)))
+        axis_values["z"] = float(np.nansum(np.abs(diffs[:, 2])))
     records: list[FeatureRecord] = []
     for axis, value in axis_values.items():
         if axis in {"x", "y", "z"} and not include_single_axis_diagnostics:
@@ -334,11 +351,11 @@ def _movement_path_axis_records(
         if variant_note is not None and axis in {"xy", "xyz"}:
             note = variant_note
         elif axis == "xy":
-            note = "Recording-view movement-path scoring candidate."
+            note = "Recording-view movement-path score-eligible feature."
         elif axis == "xyz":
             note = (
                 "Mixed-axis movement-path evidence. Score with depth-sensitive "
-                "gravity under monocular pose."
+                "weight under monocular pose."
             )
         else:
             note = (
@@ -580,7 +597,7 @@ def compute_movement_path(
 
     for jname in primary_joints:
         try:
-            coords = _norm_xyz(df, jname)
+            coords = _norm_xy_or_xyz(df, jname)
         except KeyError:
             continue
         is_support_landmark = jname in support_landmarks

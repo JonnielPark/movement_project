@@ -25,7 +25,7 @@ profiles:
         - spatial.movement_path.arc_length_xyz.{side}_shoulder
       role_alignment:
         - spatial.role_alignment.left_right.range_of_motion_xy.shoulder
-      planned_compensation_candidates:
+      planned_compensation_patterns:
         - shoulder_asymmetry
         - shoulder_collapse
         - shoulder_elevation_compensation
@@ -61,7 +61,7 @@ profiles:
         - spatial.movement_path.arc_length_xyz.{side}_elbow
       role_alignment:
         - spatial.role_alignment.left_right.range_of_motion_xy.elbow
-      planned_compensation_candidates:
+      planned_compensation_patterns:
         - elbow_flare
         - elbow_asymmetry
     reliability_priors:
@@ -91,7 +91,7 @@ profiles:
         - spatial.movement_path.arc_length_xyz.{side}_wrist
       support_consistency:
         - spatial.support_consistency.point_drift_xy.{side}_wrist
-      planned_compensation_candidates:
+      planned_compensation_patterns:
         - hand_foot_repositioning
         - missed_shoulder_tap
     reliability_priors:
@@ -230,7 +230,7 @@ profiles:
       compensation_links:
         - control.compensation.lateral_pelvic_shift.xy
         - control.compensation.pelvis_rotation.xyz
-      planned_compensation_candidates:
+      planned_compensation_patterns:
         - hip_drop
         - hip_pike
         - pelvis_rotation
@@ -264,7 +264,7 @@ profiles:
       compensation_links:
         - control.compensation.excessive_trunk_flexion.xy
         - control.compensation.excessive_trunk_flexion.xyz
-      planned_compensation_candidates:
+      planned_compensation_patterns:
         - trunk_rotation
         - lateral_trunk_lean
     reliability_priors:

@@ -219,7 +219,7 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
     "classification",
     "phase_model",
     "landmarks",
-    "compensation_candidates",
+    "compensation_patterns",
     "feature_domains",
     "quality_rules",
 )
@@ -357,7 +357,7 @@ class FeatureDomains:
 
 @dataclass
 class QualityRules:
-    minimum_visible_landmark_ratio: float = 0.8
+    minimum_confident_landmark_ratio: float = 0.8
     minimum_critical_landmark_ratio: float = 0.9
     max_missing_gap_frames: int = 10
     max_interpolation_gap_frames: int = 3
@@ -493,7 +493,7 @@ class ExerciseDefinition:
     joint_actions : dict[str, list[str]]
         Keys: "primary", "secondary".
     biomechanical_focus : BiomechanicalFocus
-    compensation_candidates : list[str]
+    compensation_patterns : list[str]
     feature_domains : FeatureDomains
     quality_rules : QualityRules
     rep_segmentation : RepSegmentationSpec | None
@@ -524,7 +524,7 @@ class ExerciseDefinition:
     angle_definitions: dict[str, Any]
     joint_actions: dict[str, list[str]]
     biomechanical_focus: BiomechanicalFocus
-    compensation_candidates: list[str]
+    compensation_patterns: list[str]
     feature_domains: FeatureDomains
     quality_rules: QualityRules
     rep_segmentation: RepSegmentationSpec | None = None
@@ -1024,7 +1024,7 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             main_load_regions=list(bio.get("main_load_regions") or []),
             primary_constraints=list(bio.get("primary_constraints") or []),
         ),
-        compensation_candidates=list(raw.get("compensation_candidates") or []),
+        compensation_patterns=list(raw.get("compensation_patterns") or []),
         feature_domains=FeatureDomains(
             spatial=list(fd.get("spatial") or []),
             temporal=list(fd.get("temporal") or []),
@@ -1032,8 +1032,11 @@ def _parse(raw: dict, is_generic_fallback: bool = False) -> ExerciseDefinition:
             biomechanical_proxy=list(fd.get("biomechanical_proxy") or []),
         ),
         quality_rules=QualityRules(
-            minimum_visible_landmark_ratio=float(
-                qr.get("minimum_visible_landmark_ratio", 0.8)
+            minimum_confident_landmark_ratio=float(
+                qr.get(
+                    "minimum_confident_landmark_ratio",
+                    qr.get("minimum_visible_landmark_ratio", 0.8),
+                )
             ),
             minimum_critical_landmark_ratio=float(
                 qr.get("minimum_critical_landmark_ratio", 0.9)
@@ -1178,8 +1181,8 @@ def _compose_split_raw(
     raw["biomechanical_focus"] = deepcopy(
         analysis_profile.get("biomechanical_focus") or {}
     )
-    raw["compensation_candidates"] = deepcopy(
-        analysis_profile.get("compensation_candidates") or []
+    raw["compensation_patterns"] = deepcopy(
+        analysis_profile.get("compensation_patterns") or []
     )
     raw["feature_domains"] = deepcopy(analysis_profile.get("feature_domains") or {})
     raw["quality_rules"] = deepcopy(analysis_profile.get("quality_rules") or {})

@@ -10,14 +10,14 @@ Pipeline steps:
     ③  exercise_definition    biomechanical property object loading
     ④  preprocessing          monocular data quality correction
     ⑤  normalization          body-relative coordinate normalization
-    ⑥  canonicalization       optional analysis-space candidate evidence
-    ⑦  segmentation           semi-automatic rep splitter + intra-rep phase splitter
-    ⑧  features               side-role context + spatial / temporal / control features
-                               (rep-level and phase-level when ⑦ has populated phase column)
-    ⑨  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
-    ⑩  biomarker              interpretable digital biomarkers with provenance
-    ⑪  visualization          per-step visualization and reporting
-    ⑫  simulation             robustness simulation (outside run_pipeline)
+    ⑤-1 canonicalization      optional analysis-space evidence
+    ⑥  segmentation           semi-automatic rep splitter + intra-rep phase splitter
+    ⑦  features               side-role context + spatial / temporal / control features
+                               (rep-level and phase-level when ⑥ has populated phase column)
+    ⑧  biomech                biomechanical proxy modeling (CoM, moment arm, anthropometry)
+    ⑨  biomarker              interpretable digital biomarkers with provenance
+    ⑩  visualization          per-step visualization and reporting
+    ⑪  simulation             robustness simulation (outside run_pipeline)
 
 Step activation: enabled flags in configs/pipeline_default.yaml.
 Terminology: docs/terminology.md.
@@ -100,6 +100,7 @@ from movement.floor_reference import (  # noqa: E402
 from movement.canonicalization import (  # noqa: E402
     CanonicalizationConfig,
     Corrected3DHypothesisConfig,
+    XYDepthLiftConfig,
     apply_canonicalization,
 )
 from movement.segmentation import segment_phases, segment_reps  # noqa: E402
@@ -169,35 +170,36 @@ __all__ = [
     "preprocess_pose_dataframe",
     # ⑤ normalization
     "normalize_pose_by_hip_torso",
-    # ⑥ canonicalization and floor-relative support prior
+    # ⑤-1 canonicalization and floor-relative support prior
     "CanonicalizationConfig",
     "Corrected3DHypothesisConfig",
+    "XYDepthLiftConfig",
     "apply_canonicalization",
     "FloorReferenceConfig",
     "FloorReferenceReport",
     "apply_floor_relative_correction",
-    # ⑦ segmentation
+    # ⑥ segmentation
     "segment_reps",
     "segment_phases",
-    # ⑧ feature side-role context
+    # ⑦ feature side-role context
     "resolve_side_role_context",
     "SideRoleContextThresholds",
     "SideRoleContextReport",
-    # ⑧ features (prefer direct import from submodules)
+    # ⑦ features (prefer direct import from submodules)
     "FeatureContext",
     "FeatureRecord",
     "apply_feature_context",
     "resolve_feature_context",
     "summarize_phase_to_rep",
-    # ⑨ biomech proxy (prefer direct import from submodules)
+    # ⑧ biomech proxy (prefer direct import from submodules)
     "BiomechRecord",
-    # ⑩ biomarker
+    # ⑨ biomarker
     "BiomarkerRecord",
     "from_feature_record",
     "from_biomech_record",
     "load_fms_mapping",
     "traffic_light_for_score",
-    # ⑪ visualization
+    # ⑩ visualization
     "create_pose_animation",
     "create_pose_comparison_animation",
     "plot_reliability_overlay",

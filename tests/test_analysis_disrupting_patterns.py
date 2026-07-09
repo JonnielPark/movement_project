@@ -42,14 +42,14 @@ def test_squat_analysis_disrupting_patterns_are_classified_by_detectability():
     by_pattern = _by_pattern(report)
 
     assert by_pattern["heel_lift"]["classification"] == (
-        "pose_detectable_scoring_candidate"
+        "pose_detectable_score_feature"
     )
-    assert by_pattern["heel_lift"]["linked_compensation_candidates"] == ["heel_lift"]
-    assert by_pattern["heel_lift"]["declared_linked_compensation_candidates"] == [
+    assert by_pattern["heel_lift"]["linked_compensation_patterns"] == ["heel_lift"]
+    assert by_pattern["heel_lift"]["declared_linked_compensation_patterns"] == [
         "heel_lift"
     ]
     assert by_pattern["arm_swing"]["classification"] == "acquisition_control_factor"
-    assert by_pattern["excessive_knee_deviation"]["linked_compensation_candidates"] == [
+    assert by_pattern["excessive_knee_deviation"]["linked_compensation_patterns"] == [
         "knee_valgus",
         "knee_varus",
     ]
