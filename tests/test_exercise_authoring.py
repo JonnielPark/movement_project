@@ -1,12 +1,22 @@
 import pytest
 import yaml
 
-from movement.exercise_definition import load_exercise_context, load_exercise_definition
+from movement.exercise_definition import (
+    load_exercise_context,
+    load_exercise_definition,
+    load_exercise_session_definition,
+)
 from movement.exercise_authoring import (
     ExerciseAuthoringSpec,
+    ExerciseSessionAuthoringSpec,
+    ExerciseSessionBlockAuthoringSpec,
     artifact_to_yaml,
     derive_movement_pattern_from_authoring_axes,
+    exercise_session_artifact_path,
     generate_authoring_artifacts,
+    generate_exercise_session_artifact,
+    list_exercise_definition_ids,
+    list_exercise_session_ids,
     load_authoring_registries,
     recommend_analysis_templates_for_authoring_axes,
     recommend_camera_positions_for_authoring_axes,
@@ -14,6 +24,7 @@ from movement.exercise_authoring import (
     recommend_phase_templates_for_authoring_axes,
     suggest_body_regions_from_joint_actions,
     write_authoring_draft_artifacts,
+    write_exercise_session_artifact,
 )
 
 
@@ -738,6 +749,106 @@ def test_write_authoring_drafts_uses_mirrored_paths_and_protects_overwrite(tmp_p
         write_authoring_draft_artifacts(artifacts, draft_root=tmp_path)
 
     write_authoring_draft_artifacts(artifacts, draft_root=tmp_path, overwrite=True)
+
+
+def test_exercise_session_authoring_generates_loader_ready_yaml(tmp_path):
+    spec = ExerciseSessionAuthoringSpec(
+        exercise_session_id="example_authoring_session",
+        description="Authoring UI example session.",
+        rest_between_blocks_s=120,
+        blocks=(
+            ExerciseSessionBlockAuthoringSpec(
+                block_id="squat_block",
+                exercise_id="squat",
+                repeat_count=1,
+            ),
+            ExerciseSessionBlockAuthoringSpec(
+                block_id="lunge_block",
+                exercise_id="lunge",
+                repeat_count=2,
+            ),
+        ),
+    )
+
+    artifact = generate_exercise_session_artifact(spec)
+
+    assert artifact == {
+        "exercise_session_id": "example_authoring_session",
+        "version": "0.1.0",
+        "description": "Authoring UI example session.",
+        "rest_policy": {
+            "rest_between_blocks_s": 120,
+            "per_block_override_allowed": False,
+        },
+        "blocks": [
+            {"block_id": "squat_block", "exercise_id": "squat", "repeat_count": 1},
+            {"block_id": "lunge_block", "exercise_id": "lunge", "repeat_count": 2},
+        ],
+    }
+
+    path = write_exercise_session_artifact(artifact, sessions_dir=tmp_path)
+    assert path == tmp_path / "example_authoring_session.yaml"
+
+    loaded = load_exercise_session_definition(
+        "example_authoring_session",
+        sessions_dir=tmp_path,
+    )
+    assert loaded.rest_policy.rest_between_blocks_s == 120
+    assert [block.exercise_id for block in loaded.blocks] == ["squat", "lunge"]
+    assert [block.repeat_count for block in loaded.blocks] == [1, 2]
+
+    with pytest.raises(FileExistsError):
+        write_exercise_session_artifact(artifact, sessions_dir=tmp_path)
+
+    write_exercise_session_artifact(artifact, sessions_dir=tmp_path, overwrite=True)
+
+
+def test_exercise_session_authoring_rejects_per_block_rest_override(tmp_path):
+    artifact = generate_exercise_session_artifact(
+        ExerciseSessionAuthoringSpec(
+            exercise_session_id="bad_session",
+            rest_between_blocks_s=120,
+            blocks=(
+                ExerciseSessionBlockAuthoringSpec(
+                    block_id="squat_block",
+                    exercise_id="squat",
+                    repeat_count=1,
+                ),
+            ),
+        )
+    )
+    artifact["blocks"][0]["rest_after_block_s"] = 30
+
+    with pytest.raises(ValueError, match="per-block rest overrides"):
+        write_exercise_session_artifact(artifact, sessions_dir=tmp_path)
+
+
+def test_exercise_authoring_lists_exercise_and_session_ids(tmp_path):
+    (tmp_path / "exercises").mkdir()
+    (tmp_path / "exercises" / "generic.yaml").write_text(
+        "exercise_id: generic\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "exercises" / "squat.yaml").write_text(
+        "exercise_id: squat\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "exercise_sessions").mkdir()
+    (tmp_path / "exercise_sessions" / "example.yaml").write_text(
+        "exercise_session_id: example\n",
+        encoding="utf-8",
+    )
+
+    assert list_exercise_definition_ids(tmp_path / "exercises") == ("squat",)
+    assert list_exercise_definition_ids(
+        tmp_path / "exercises",
+        include_generic=True,
+    ) == ("generic", "squat")
+    assert list_exercise_session_ids(tmp_path / "exercise_sessions") == ("example",)
+    assert exercise_session_artifact_path(
+        "new_session",
+        sessions_dir=tmp_path / "exercise_sessions",
+    ) == (tmp_path / "exercise_sessions" / "new_session.yaml")
 
 
 def test_authoring_draft_bundle_loads_as_canonical_view(tmp_path):

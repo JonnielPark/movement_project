@@ -28,6 +28,10 @@ _REGISTRY_FILES: dict[str, str] = {
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY_DIR = _PROJECT_ROOT / "data" / "registries"
 DEFAULT_DRAFT_ROOT = _PROJECT_ROOT / "data" / "processed" / "authoring_drafts"
+DEFAULT_EXERCISE_DEFINITIONS_DIR = _PROJECT_ROOT / "data" / "definitions" / "exercises"
+DEFAULT_EXERCISE_SESSIONS_DIR = (
+    _PROJECT_ROOT / "data" / "definitions" / "exercise_sessions"
+)
 _CAMERA_ZONE_PATH = _PROJECT_ROOT / "data" / "camera" / "camera_zones.yaml"
 
 _ARTIFACT_PATHS: dict[str, str] = {
@@ -175,6 +179,16 @@ _LEGACY_CAMERA_TEMPLATE_DEFAULTS: dict[str, tuple[str, str]] = {
     "side_floor_upper_body": ("side", "H1"),
     "front_oblique_floor_core": ("front_oblique", "H1"),
 }
+_SESSION_BLOCK_REST_OVERRIDE_KEYS: frozenset[str] = frozenset(
+    {
+        "rest_policy",
+        "rest_between_blocks_s",
+        "rest_before_block_s",
+        "rest_after_block_s",
+        "rest_before_s",
+        "rest_after_s",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -301,6 +315,80 @@ class ExerciseAuthoringSpec:
         }
 
 
+@dataclass(frozen=True)
+class ExerciseSessionBlockAuthoringSpec:
+    """UI-facing block entry for exercise-session YAML generation."""
+
+    block_id: str
+    exercise_id: str
+    repeat_count: int = 1
+
+    @classmethod
+    def from_mapping(
+        cls, raw: Mapping[str, Any]
+    ) -> "ExerciseSessionBlockAuthoringSpec":
+        return cls(
+            block_id=str(raw["block_id"]),
+            exercise_id=str(raw["exercise_id"]),
+            repeat_count=int(raw.get("repeat_count", 1)),
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "block_id": self.block_id,
+            "exercise_id": self.exercise_id,
+            "repeat_count": self.repeat_count,
+        }
+
+
+@dataclass(frozen=True)
+class ExerciseSessionAuthoringSpec:
+    """
+    UI-facing draft for composing existing exercise definitions into a session.
+
+    This spec intentionally supports only one uniform rest value between blocks.
+    Per-block rest overrides are not part of the current authoring surface.
+    """
+
+    exercise_session_id: str
+    blocks: tuple[ExerciseSessionBlockAuthoringSpec, ...]
+    rest_between_blocks_s: int | None = None
+    version: str = "0.1.0"
+    description: str = ""
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any]) -> "ExerciseSessionAuthoringSpec":
+        rest_policy = raw.get("rest_policy") or {}
+        rest_between_blocks_s = raw.get(
+            "rest_between_blocks_s",
+            rest_policy.get("rest_between_blocks_s"),
+        )
+        blocks = tuple(
+            ExerciseSessionBlockAuthoringSpec.from_mapping(block)
+            for block in raw.get("blocks", ())
+        )
+        return cls(
+            exercise_session_id=str(raw["exercise_session_id"]),
+            version=str(raw.get("version", "0.1.0")),
+            description=str(raw.get("description", "")),
+            rest_between_blocks_s=(
+                None
+                if rest_between_blocks_s in (None, "")
+                else int(rest_between_blocks_s)
+            ),
+            blocks=blocks,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "exercise_session_id": self.exercise_session_id,
+            "version": self.version,
+            "description": self.description,
+            "rest_between_blocks_s": self.rest_between_blocks_s,
+            "blocks": [block.as_dict() for block in self.blocks],
+        }
+
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
@@ -313,6 +401,59 @@ def _dump_yaml(data: Mapping[str, Any]) -> str:
         sort_keys=False,
         default_flow_style=False,
     )
+
+
+def _require_non_empty_text(value: Any, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return value.strip()
+
+
+def _require_positive_int(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a positive integer")
+    parsed = int(value)
+    if parsed < 1:
+        raise ValueError(f"{field_name} must be a positive integer")
+    return parsed
+
+
+def _require_non_negative_int_or_none(value: Any, field_name: str) -> int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a non-negative integer or null")
+    parsed = int(value)
+    if parsed < 0:
+        raise ValueError(f"{field_name} must be a non-negative integer or null")
+    return parsed
+
+
+def list_exercise_definition_ids(
+    definitions_dir: Path | str = DEFAULT_EXERCISE_DEFINITIONS_DIR,
+    *,
+    include_generic: bool = False,
+) -> tuple[str, ...]:
+    """List available exercise IDs for session-authoring dropdowns."""
+    definitions_dir = Path(definitions_dir)
+    if not definitions_dir.exists():
+        return ()
+    exercise_ids = []
+    for path in sorted(definitions_dir.glob("*.yaml")):
+        if not include_generic and path.stem == "generic":
+            continue
+        exercise_ids.append(path.stem)
+    return tuple(exercise_ids)
+
+
+def list_exercise_session_ids(
+    sessions_dir: Path | str = DEFAULT_EXERCISE_SESSIONS_DIR,
+) -> tuple[str, ...]:
+    """List existing exercise-session definition IDs."""
+    sessions_dir = Path(sessions_dir)
+    if not sessions_dir.exists():
+        return ()
+    return tuple(path.stem for path in sorted(sessions_dir.glob("*.yaml")))
 
 
 def load_authoring_registries(
@@ -1311,6 +1452,119 @@ def artifact_to_yaml(artifact: Mapping[str, Any]) -> str:
     return _dump_yaml(artifact)
 
 
+def validate_exercise_session_authoring_spec(
+    spec: ExerciseSessionAuthoringSpec,
+) -> None:
+    """Validate a session-authoring spec before YAML generation."""
+    _require_non_empty_text(spec.exercise_session_id, "exercise_session_id")
+    _require_non_empty_text(spec.version, "version")
+    _require_non_negative_int_or_none(
+        spec.rest_between_blocks_s,
+        "rest_between_blocks_s",
+    )
+    if not spec.blocks:
+        raise ValueError("Exercise session authoring requires at least one block")
+
+    seen_block_ids: set[str] = set()
+    for index, block in enumerate(spec.blocks):
+        block_id = _require_non_empty_text(block.block_id, f"blocks[{index}].block_id")
+        if block_id in seen_block_ids:
+            raise ValueError(f"blocks[{index}].block_id '{block_id}' is duplicated")
+        seen_block_ids.add(block_id)
+        _require_non_empty_text(block.exercise_id, f"blocks[{index}].exercise_id")
+        _require_positive_int(block.repeat_count, f"blocks[{index}].repeat_count")
+
+
+def generate_exercise_session_artifact(
+    spec: ExerciseSessionAuthoringSpec,
+) -> dict[str, Any]:
+    """
+    Generate an ExerciseSessionDefinition YAML artifact from UI selections.
+
+    The generated artifact intentionally exposes only one uniform rest policy
+    between blocks. Per-block rest override support must be added deliberately in
+    both docs and loader code before it appears here.
+    """
+    validate_exercise_session_authoring_spec(spec)
+
+    artifact: dict[str, Any] = {
+        "exercise_session_id": spec.exercise_session_id,
+        "version": spec.version,
+    }
+    if spec.description:
+        artifact["description"] = spec.description
+    artifact["rest_policy"] = {
+        "rest_between_blocks_s": spec.rest_between_blocks_s,
+        "per_block_override_allowed": False,
+    }
+    artifact["blocks"] = [block.as_dict() for block in spec.blocks]
+    return artifact
+
+
+def exercise_session_artifact_path(
+    exercise_session_id: str,
+    sessions_dir: Path | str = DEFAULT_EXERCISE_SESSIONS_DIR,
+) -> Path:
+    """Return the canonical exercise-session YAML path."""
+    exercise_session_id = _require_non_empty_text(
+        exercise_session_id,
+        "exercise_session_id",
+    )
+    return Path(sessions_dir) / f"{exercise_session_id}.yaml"
+
+
+def _validate_exercise_session_artifact(artifact: Mapping[str, Any]) -> str:
+    spec = ExerciseSessionAuthoringSpec.from_mapping(artifact)
+    validate_exercise_session_authoring_spec(spec)
+    rest_policy = artifact.get("rest_policy") or {}
+    if not isinstance(rest_policy, Mapping):
+        raise ValueError("rest_policy must be a mapping")
+    if rest_policy.get("per_block_override_allowed", False) is not False:
+        raise ValueError("rest_policy.per_block_override_allowed must remain false")
+    for index, block in enumerate(artifact.get("blocks") or ()):
+        if not isinstance(block, Mapping):
+            raise ValueError(f"blocks[{index}] must be a mapping")
+        rest_keys = sorted(_SESSION_BLOCK_REST_OVERRIDE_KEYS.intersection(block))
+        if rest_keys:
+            raise ValueError(
+                f"blocks[{index}] contains per-block rest override key(s) "
+                f"{rest_keys}; per-block rest overrides are not supported"
+            )
+    return spec.exercise_session_id
+
+
+def write_exercise_session_artifact(
+    artifact: Mapping[str, Any],
+    sessions_dir: Path | str = DEFAULT_EXERCISE_SESSIONS_DIR,
+    *,
+    overwrite: bool = False,
+) -> Path:
+    """
+    Write one exercise-session artifact with overwrite protection.
+
+    The written file is reloaded through the runtime session loader so notebook
+    exports fail early if the artifact is not executable by the project loader.
+    """
+    exercise_session_id = _validate_exercise_session_artifact(artifact)
+    path = exercise_session_artifact_path(
+        exercise_session_id,
+        sessions_dir=sessions_dir,
+    )
+    if path.exists() and not overwrite:
+        raise FileExistsError(
+            "Exercise session artifact already exists; pass overwrite=True to "
+            f"replace: {path}"
+        )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(artifact_to_yaml(artifact), encoding="utf-8")
+
+    from movement.exercise_definition import load_exercise_session_definition
+
+    load_exercise_session_definition(exercise_session_id, sessions_dir=path.parent)
+    return path
+
+
 def draft_artifact_paths(
     exercise_id: str,
     draft_root: Path | str = DEFAULT_DRAFT_ROOT,
@@ -1365,12 +1619,20 @@ def write_authoring_draft_artifacts(
 
 __all__ = [
     "DEFAULT_DRAFT_ROOT",
+    "DEFAULT_EXERCISE_DEFINITIONS_DIR",
+    "DEFAULT_EXERCISE_SESSIONS_DIR",
     "DEFAULT_REGISTRY_DIR",
     "ExerciseAuthoringSpec",
+    "ExerciseSessionAuthoringSpec",
+    "ExerciseSessionBlockAuthoringSpec",
     "artifact_to_yaml",
     "derive_movement_pattern_from_authoring_axes",
     "draft_artifact_paths",
+    "exercise_session_artifact_path",
     "generate_authoring_artifacts",
+    "generate_exercise_session_artifact",
+    "list_exercise_definition_ids",
+    "list_exercise_session_ids",
     "load_authoring_registries",
     "recommend_analysis_templates_for_authoring_axes",
     "recommend_camera_positions_for_authoring_axes",
@@ -1378,5 +1640,7 @@ __all__ = [
     "recommend_phase_templates_for_authoring_axes",
     "suggest_body_regions_from_joint_actions",
     "validate_authoring_spec",
+    "validate_exercise_session_authoring_spec",
     "write_authoring_draft_artifacts",
+    "write_exercise_session_artifact",
 ]

@@ -1,7 +1,7 @@
 # 운동 작성 노트북 (Exercise Authoring Notebook)
 
-**문서 버전:** 0.2.25
-**최종 갱신:** 2026-06-20
+**문서 버전:** 0.2.26
+**최종 갱신:** 2026-07-14
 **영문 동기화:** [docs_eng/practical_protocols/exercise_authoring_notebook.md](../../docs_eng/practical_protocols/exercise_authoring_notebook.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 새 운동 추가를 위한 임시 notebook-first workflow를 정의한다.
@@ -45,6 +45,7 @@ Notebook atomic selections
 → draft YAML preview
 → draft bundle export
 → canonical loader-view preview
+→ 선택 exercise-session YAML preview/write
 → researcher review
 → canonical YAML install
 ```
@@ -71,6 +72,19 @@ Notebook은 세 가지 authoring mode를 구분한다:
 
 현재 prototype은 `draft_bundle`과 `canonical_loader_view`를 구현한다.
 `canonical_install`은 equivalence check와 review gate가 안정화될 때까지 수동 승격 단계로 둔다.
+
+Notebook은 하나 이상의 exercise definition이 준비된 뒤 `ExerciseSessionDefinition` artifact도
+관리해야 한다. Session authoring은 새로운 exercise definition 단계가 아니다. 기존 `exercise_id`
+block을 조합하고, block별 양의 정수 `repeat_count`를 지정하며, 하나의 공통
+`rest_between_blocks_s` 값을 다음 경로에 저장한다:
+
+```text
+data/definitions/exercise_sessions/<exercise_session_id>.yaml
+```
+
+UI는 아직 block별 개별 휴식 override를 노출하지 않는다. 생성된 session YAML은
+`rest_policy.per_block_override_allowed: false`를 설정해야 하며, preview/write cell은
+`load_exercise_session_definition()`으로 결과를 검증해야 한다.
 
 ## 3. Authoring Spec
 
@@ -423,6 +437,7 @@ Required cell flow:
 8. review checklist
 9. draft bundle write
 10. canonical loader-view preview
+11. 선택 exercise-session preview/write 및 loader validation
 ```
 
 Notebook cell은 YAML assembly를 다시 구현하지 말고
@@ -445,6 +460,14 @@ src/movement/definitions/exercise_authoring.py
     artifact_to_yaml()
     draft_artifact_paths()
     write_authoring_draft_artifacts()
+    ExerciseSessionAuthoringSpec
+    ExerciseSessionBlockAuthoringSpec
+    list_exercise_definition_ids()
+    list_exercise_session_ids()
+    validate_exercise_session_authoring_spec()
+    generate_exercise_session_artifact()
+    exercise_session_artifact_path()
+    write_exercise_session_artifact()
 
 data/registries/
     exercise_authoring_schema.yaml

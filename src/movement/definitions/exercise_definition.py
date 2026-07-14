@@ -12,6 +12,7 @@ Public API
 load_exercise_context(exercise_id, definitions_dir)    -> ExerciseContext
 load_exercise_definition(exercise_id, definitions_dir) -> ExerciseDefinition
 load_all_exercise_definitions(definitions_dir)         -> dict[str, ExerciseDefinition]
+load_exercise_session_definition(exercise_session_id)  -> ExerciseSessionDefinition
 """
 
 from __future__ import annotations
@@ -242,6 +243,9 @@ _DEFAULT_ANALYSIS_PROFILES_DIR = (
 _DEFAULT_ANALYSIS_PRESETS_PATH = (
     _PROJECT_ROOT / "data" / "definitions" / "analysis_presets.yaml"
 )
+_DEFAULT_EXERCISE_SESSIONS_DIR = (
+    _PROJECT_ROOT / "data" / "definitions" / "exercise_sessions"
+)
 _DEFAULT_PERFORMANCE_PROTOCOLS_DIR = (
     _PROJECT_ROOT / "data" / "protocols" / "performance"
 )
@@ -428,6 +432,50 @@ class PerformanceProtocolSpec:
     participant_cues: list[str] = field(default_factory=list)
     analysis_disrupting_patterns: list[str] = field(default_factory=list)
     allowed_side_sequence_modes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ExerciseSessionBlockSpec:
+    """One analyzable exercise block inside a composed exercise session."""
+
+    block_id: str
+    exercise_id: str
+    repeat_count: int = 1
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ExerciseSessionRestPolicy:
+    """
+    Uniform rest policy between exercise-session blocks.
+
+    The rest is scheduling metadata for composed sessions and is separate from
+    per-exercise `performance_protocol.prescription.rest_between_sets_s`.
+    """
+
+    rest_between_blocks_s: int | None = None
+    per_block_override_allowed: bool = False
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ExerciseSessionDefinition:
+    """
+    Ordered composition of one or more existing exercise definitions.
+
+    The object keeps the framework exercise-agnostic: each block references an
+    existing `exercise_id`, while session-level rest is one shared value.
+    """
+
+    exercise_session_id: str
+    version: str
+    blocks: list[ExerciseSessionBlockSpec]
+    rest_policy: ExerciseSessionRestPolicy = field(
+        default_factory=ExerciseSessionRestPolicy
+    )
+    description: str = ""
+    raw: dict[str, Any] = field(default_factory=dict)
+    source_path: Path | None = None
 
 
 @dataclass
@@ -1070,6 +1118,144 @@ def _load_raw(yaml_path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
+_PER_BLOCK_REST_OVERRIDE_KEYS = frozenset(
+    {
+        "rest_policy",
+        "rest_between_blocks_s",
+        "rest_before_block_s",
+        "rest_after_block_s",
+        "rest_before_s",
+        "rest_after_s",
+    }
+)
+
+
+def _nonempty_string(value: Any, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return value.strip()
+
+
+def _positive_int(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a positive integer")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} must be a positive integer") from exc
+    if parsed < 1:
+        raise ValueError(f"{field_name} must be a positive integer")
+    return parsed
+
+
+def _non_negative_int_or_none(value: Any, field_name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a non-negative integer or null")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"{field_name} must be a non-negative integer or null"
+        ) from exc
+    if parsed < 0:
+        raise ValueError(f"{field_name} must be a non-negative integer or null")
+    return parsed
+
+
+def _parse_exercise_session_definition(
+    raw: dict,
+    *,
+    requested_id: str | None = None,
+    source_path: Path | None = None,
+) -> ExerciseSessionDefinition:
+    if not isinstance(raw, dict):
+        raise ValueError("Exercise session definition must be a mapping")
+
+    exercise_session_id = _nonempty_string(
+        raw.get("exercise_session_id"), "exercise_session_id"
+    )
+    if requested_id is not None and exercise_session_id != requested_id:
+        raise ValueError(
+            "exercise_session_id in YAML must match the requested "
+            f"exercise_session_id '{requested_id}'"
+        )
+
+    version = _nonempty_string(raw.get("version", "0.0.0"), "version")
+    rest_policy_raw = raw.get("rest_policy") or {}
+    if not isinstance(rest_policy_raw, dict):
+        raise ValueError("rest_policy must be a mapping")
+
+    per_block_override_allowed = rest_policy_raw.get(
+        "per_block_override_allowed", False
+    )
+    if not isinstance(per_block_override_allowed, bool):
+        raise ValueError("rest_policy.per_block_override_allowed must be boolean")
+    if per_block_override_allowed:
+        raise ValueError(
+            "rest_policy.per_block_override_allowed must remain false; "
+            "per-block rest overrides are not supported"
+        )
+
+    rest_policy = ExerciseSessionRestPolicy(
+        rest_between_blocks_s=_non_negative_int_or_none(
+            rest_policy_raw.get("rest_between_blocks_s"),
+            "rest_policy.rest_between_blocks_s",
+        ),
+        per_block_override_allowed=per_block_override_allowed,
+        raw=deepcopy(rest_policy_raw),
+    )
+
+    blocks_raw = raw.get("blocks")
+    if not isinstance(blocks_raw, list) or not blocks_raw:
+        raise ValueError("blocks must be a non-empty list")
+
+    seen_block_ids: set[str] = set()
+    blocks: list[ExerciseSessionBlockSpec] = []
+    for index, block_raw in enumerate(blocks_raw):
+        if not isinstance(block_raw, dict):
+            raise ValueError(f"blocks[{index}] must be a mapping")
+
+        rest_keys = sorted(_PER_BLOCK_REST_OVERRIDE_KEYS.intersection(block_raw))
+        if rest_keys:
+            raise ValueError(
+                f"blocks[{index}] contains per-block rest override key(s) "
+                f"{rest_keys}; per-block rest overrides are not supported"
+            )
+
+        block_id = _nonempty_string(
+            block_raw.get("block_id"), f"blocks[{index}].block_id"
+        )
+        if block_id in seen_block_ids:
+            raise ValueError(f"blocks[{index}].block_id '{block_id}' is duplicated")
+        seen_block_ids.add(block_id)
+
+        blocks.append(
+            ExerciseSessionBlockSpec(
+                block_id=block_id,
+                exercise_id=_nonempty_string(
+                    block_raw.get("exercise_id"), f"blocks[{index}].exercise_id"
+                ),
+                repeat_count=_positive_int(
+                    block_raw.get("repeat_count", 1),
+                    f"blocks[{index}].repeat_count",
+                ),
+                raw=deepcopy(block_raw),
+            )
+        )
+
+    return ExerciseSessionDefinition(
+        exercise_session_id=exercise_session_id,
+        version=version,
+        description=str(raw.get("description", "")),
+        rest_policy=rest_policy,
+        blocks=blocks,
+        raw=deepcopy(raw),
+        source_path=source_path,
+    )
+
+
 def _default_analysis_profiles_dir(definitions_dir: Path) -> Path:
     if definitions_dir.name == "exercises":
         return definitions_dir.parent / "analysis_profiles"
@@ -1122,6 +1308,76 @@ def _preset_names(value: Any) -> list[str]:
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return list(value)
     raise ValueError("analysis profile preset selection must be a string or list")
+
+
+def _optional_ref_mapping(raw: dict, field_name: str) -> dict[str, Any]:
+    value = raw.get(field_name)
+    if value in (None, ""):
+        return {}
+    if isinstance(value, str):
+        return {"id": value}
+    if isinstance(value, dict):
+        return dict(value)
+    raise ValueError(f"{field_name} must be a string or mapping")
+
+
+def _load_referenced_analysis_profile(
+    identity: dict,
+    *,
+    exercise_id: str,
+    analysis_profiles_dir: Path,
+) -> tuple[dict[str, Any], Path]:
+    ref = _optional_ref_mapping(identity, "analysis_profile_ref")
+    if ref:
+        profile_file_id = ref.get("profile_file_id") or ref.get("id")
+        profile_id = ref.get("profile_id") or exercise_id
+        if not profile_file_id:
+            raise ValueError(
+                f"[{exercise_id}] analysis_profile_ref.profile_file_id is required"
+            )
+        profile_path = analysis_profiles_dir / f"{profile_file_id}.yaml"
+        if not profile_path.exists():
+            raise FileNotFoundError(
+                f"Split exercise definition '{exercise_id}' references analysis "
+                f"profile file at: '{profile_path}'"
+            )
+        profile_file = _load_raw(profile_path)
+        profiles = profile_file.get("profiles")
+        if not isinstance(profiles, dict):
+            raise ValueError(
+                f"Analysis profile file '{profile_path}' must contain "
+                "a mapping field named 'profiles'"
+            )
+        profile = profiles.get(str(profile_id))
+        if not isinstance(profile, dict):
+            raise ValueError(
+                f"Analysis profile file '{profile_path}' does not "
+                f"contain profile_id='{profile_id}'"
+            )
+        profile = deepcopy(profile)
+        profile.setdefault("exercise_id", exercise_id)
+        return profile, profile_path
+
+    analysis_path = analysis_profiles_dir / f"{exercise_id}.yaml"
+    if not analysis_path.exists():
+        raise FileNotFoundError(
+            f"Split exercise definition '{exercise_id}' requires an "
+            f"analysis profile at: '{analysis_path}'"
+        )
+    return _load_raw(analysis_path), analysis_path
+
+
+def _referenced_protocol_path(
+    identity: dict,
+    *,
+    exercise_id: str,
+    protocol_dir: Path,
+    ref_field_name: str,
+    id_field_name: str,
+) -> Path:
+    ref = _optional_ref_mapping(identity, ref_field_name)
+    protocol_id = ref.get(id_field_name) or ref.get("id") or exercise_id
+    return protocol_dir / f"{protocol_id}.yaml"
 
 
 def _expand_analysis_profile_presets(
@@ -1297,6 +1553,36 @@ def _apply_authoring_canonical_view(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def load_exercise_session_definition(
+    exercise_session_id: str,
+    sessions_dir: Path | str | None = None,
+) -> ExerciseSessionDefinition:
+    """
+    Load a composed exercise session definition.
+
+    Session definitions order one or more existing exercise definitions and
+    provide one uniform planned rest value between blocks. Block-level rest
+    overrides are intentionally rejected until that policy is explicitly added.
+    """
+    exercise_session_id = _nonempty_string(exercise_session_id, "exercise_session_id")
+    resolved_sessions_dir = (
+        Path(sessions_dir)
+        if sessions_dir is not None
+        else _DEFAULT_EXERCISE_SESSIONS_DIR
+    )
+    yaml_path = resolved_sessions_dir / f"{exercise_session_id}.yaml"
+    if not yaml_path.exists():
+        raise FileNotFoundError(
+            f"Exercise session definition not found at: '{yaml_path}'"
+        )
+
+    return _parse_exercise_session_definition(
+        _load_raw(yaml_path),
+        requested_id=exercise_session_id,
+        source_path=yaml_path,
+    )
+
+
 def load_exercise_context(
     exercise_id: str | None,
     definitions_dir: Path | str,
@@ -1386,17 +1672,26 @@ def load_exercise_context(
             else _default_analysis_presets_path(definitions_dir)
         )
 
-        analysis_path = resolved_analysis_dir / f"{exercise_id}.yaml"
-        performance_path = resolved_performance_dir / f"{exercise_id}.yaml"
-        camera_path = resolved_camera_dir / f"{exercise_id}.yaml"
+        performance_path = _referenced_protocol_path(
+            identity,
+            exercise_id=exercise_id,
+            protocol_dir=resolved_performance_dir,
+            ref_field_name="performance_protocol_ref",
+            id_field_name="protocol_id",
+        )
+        camera_path = _referenced_protocol_path(
+            identity,
+            exercise_id=exercise_id,
+            protocol_dir=resolved_camera_dir,
+            ref_field_name="camera_protocol_ref",
+            id_field_name="protocol_id",
+        )
 
-        if not analysis_path.exists():
-            raise FileNotFoundError(
-                f"Split exercise definition '{exercise_id}' requires an "
-                f"analysis profile at: '{analysis_path}'"
-            )
-
-        analysis_profile = _load_raw(analysis_path)
+        analysis_profile, analysis_path = _load_referenced_analysis_profile(
+            identity,
+            exercise_id=exercise_id,
+            analysis_profiles_dir=resolved_analysis_dir,
+        )
         source_paths["analysis_profile"] = analysis_path
         if analysis_profile.get("presets"):
             analysis_profile = _expand_analysis_profile_presets(

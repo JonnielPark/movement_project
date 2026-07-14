@@ -2,13 +2,11 @@ exercise_id: squat
 version: 0.6.0
 performance_protocol:
   prescription:
-    target_sets: 3
+    target_sets: 1
     target_count_per_set: 10
     count_unit: repetition
     segmentation_reps_per_count: 1
-    rest_between_sets_s:
-    - 120
-    - 180
+    rest_between_sets_s: []
   counting:
     target_count: 10
     count_unit: repetition
@@ -21,7 +19,7 @@ performance_protocol:
   - none
   completion:
     allow_partial_completion: false
-    recommended_sets: 3
+    recommended_sets: 1
   participant_cues:
   - keep_hands_fixed
   - avoid_arm_swing

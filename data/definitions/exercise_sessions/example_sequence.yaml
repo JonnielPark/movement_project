@@ -1,0 +1,13 @@
+exercise_session_id: example_sequence
+version: 0.1.0
+description: Example composition showing how existing exercise definitions can be ordered.
+rest_policy:
+  rest_between_blocks_s: 120
+  per_block_override_allowed: false
+blocks:
+  - block_id: squat_example
+    exercise_id: squat
+    repeat_count: 1
+  - block_id: lunge_example
+    exercise_id: lunge
+    repeat_count: 1

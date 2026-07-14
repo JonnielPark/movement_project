@@ -1,0 +1,487 @@
+analysis_profile_id: korean_national_gymnastics
+version: 0.1.1
+status: draft
+generated_by: manual_session_scaffold
+description: Indexed draft analysis profiles for Korean National Gymnastics section definitions.
+index:
+- profile_id: korean_national_gymnastics_breathing_start
+  section_order: 1
+  section_name_ko: 숨쉬기
+- profile_id: korean_national_gymnastics_leg
+  section_order: 2
+  section_name_ko: 다리운동
+- profile_id: korean_national_gymnastics_arm
+  section_order: 3
+  section_name_ko: 팔운동
+- profile_id: korean_national_gymnastics_neck
+  section_order: 4
+  section_name_ko: 목운동
+- profile_id: korean_national_gymnastics_chest
+  section_order: 5
+  section_name_ko: 가슴운동
+- profile_id: korean_national_gymnastics_side
+  section_order: 6
+  section_name_ko: 옆구리운동
+- profile_id: korean_national_gymnastics_back_abdomen
+  section_order: 7
+  section_name_ko: 등배운동
+- profile_id: korean_national_gymnastics_trunk
+  section_order: 8
+  section_name_ko: 몸통운동
+- profile_id: korean_national_gymnastics_whole_body
+  section_order: 9
+  section_name_ko: 온몸운동
+- profile_id: korean_national_gymnastics_jumping
+  section_order: 10
+  section_name_ko: 뜀뛰기
+- profile_id: korean_national_gymnastics_limbs
+  section_order: 11
+  section_name_ko: 팔다리운동
+- profile_id: korean_national_gymnastics_breathing_cooldown
+  section_order: 12
+  section_name_ko: 숨고르기
+profiles:
+  korean_national_gymnastics_breathing_start:
+    exercise_id: korean_national_gymnastics_breathing_start
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: minimal
+      stability_requirement: low
+      main_load_regions: [trunk, shoulder]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, hip]
+      secondary_joints: [elbow, wrist]
+      critical_landmarks: [11, 12, 23, 24]
+      optional_landmarks: [13, 14, 15, 16]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: []
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_leg:
+    exercise_id: korean_national_gymnastics_leg
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: multidirectional
+      stability_requirement: medium
+      main_load_regions: [hip, knee, ankle]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [hip, knee, ankle]
+      secondary_joints: [foot, pelvis]
+      critical_landmarks: [23, 24, 25, 26, 27, 28]
+      optional_landmarks: [29, 30, 31, 32]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_arm:
+    exercise_id: korean_national_gymnastics_arm
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: minimal
+      stability_requirement: low
+      main_load_regions: [shoulder, elbow, wrist]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, elbow, wrist]
+      secondary_joints: [hip]
+      critical_landmarks: [11, 12, 13, 14, 15, 16]
+      optional_landmarks: [23, 24]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: []
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_neck:
+    exercise_id: korean_national_gymnastics_neck
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: minimal
+      stability_requirement: low
+      main_load_regions: [neck, shoulder]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [nose, shoulder]
+      secondary_joints: [hip]
+      critical_landmarks: [0, 11, 12]
+      optional_landmarks: [23, 24]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: []
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_chest:
+    exercise_id: korean_national_gymnastics_chest
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: minimal
+      stability_requirement: low
+      main_load_regions: [shoulder, trunk]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, elbow, wrist]
+      secondary_joints: [hip]
+      critical_landmarks: [11, 12, 13, 14, 15, 16]
+      optional_landmarks: [23, 24]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: []
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_side:
+    exercise_id: korean_national_gymnastics_side
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: medial_lateral
+      stability_requirement: medium
+      main_load_regions: [trunk, pelvis, shoulder]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, hip]
+      secondary_joints: [elbow, wrist, knee]
+      critical_landmarks: [11, 12, 23, 24]
+      optional_landmarks: [13, 14, 15, 16, 25, 26]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_back_abdomen:
+    exercise_id: korean_national_gymnastics_back_abdomen
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: anterior_posterior
+      stability_requirement: medium
+      main_load_regions: [trunk, hip, pelvis]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, hip, knee]
+      secondary_joints: [ankle]
+      critical_landmarks: [11, 12, 23, 24, 25, 26]
+      optional_landmarks: [27, 28]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_trunk:
+    exercise_id: korean_national_gymnastics_trunk
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: rotational
+      stability_requirement: medium
+      main_load_regions: [trunk, pelvis, shoulder]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, hip]
+      secondary_joints: [elbow, wrist, knee]
+      critical_landmarks: [11, 12, 23, 24]
+      optional_landmarks: [13, 14, 15, 16, 25, 26]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_whole_body:
+    exercise_id: korean_national_gymnastics_whole_body
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: multidirectional
+      stability_requirement: medium
+      main_load_regions: [shoulder, trunk, hip, knee, ankle]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, elbow, wrist, hip, knee, ankle]
+      secondary_joints: [foot]
+      critical_landmarks: [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
+      optional_landmarks: [29, 30, 31, 32]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_jumping:
+    exercise_id: korean_national_gymnastics_jumping
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: vertical
+      stability_requirement: medium
+      main_load_regions: [hip, knee, ankle, foot]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [hip, knee, ankle]
+      secondary_joints: [foot, shoulder]
+      critical_landmarks: [23, 24, 25, 26, 27, 28]
+      optional_landmarks: [11, 12, 29, 30, 31, 32]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_limbs:
+    exercise_id: korean_national_gymnastics_limbs
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: multidirectional
+      stability_requirement: medium
+      main_load_regions: [shoulder, elbow, wrist, hip, knee, ankle]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, elbow, wrist, hip, knee, ankle]
+      secondary_joints: [foot]
+      critical_landmarks: [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
+      optional_landmarks: [29, 30, 31, 32]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path, role_alignment]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: [com_displacement]
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
+  korean_national_gymnastics_breathing_cooldown:
+    exercise_id: korean_national_gymnastics_breathing_cooldown
+    version: 0.1.0
+    status: draft
+    generated_by: manual_session_scaffold
+    requires_review:
+    - segmentation
+    - landmarks
+    - feature_domains
+    - compensation_patterns
+    - quality_rules
+    - scoring_policy
+    biomechanical_focus:
+      expected_com_motion: minimal
+      stability_requirement: low
+      main_load_regions: [trunk, shoulder]
+      primary_constraints: []
+    landmarks:
+      model: mediapipe_pose_33
+      primary_joints: [shoulder, hip]
+      secondary_joints: [elbow, wrist]
+      critical_landmarks: [11, 12, 23, 24]
+      optional_landmarks: [13, 14, 15, 16]
+    compensation_patterns: []
+    feature_domains:
+      spatial: [range_of_motion, movement_path]
+      temporal: [tempo, rep_duration]
+      control: [stability]
+      biomechanical_proxy: []
+    quality_rules:
+      minimum_confident_landmark_ratio: 0.75
+      minimum_critical_landmark_ratio: 0.8
+      max_missing_gap_frames: 10
+      max_interpolation_gap_frames: 3
+      exclude_rep_if_critical_landmark_missing: true
+      exclude_rep_if_phase_missing: false
+      allow_partial_feature_output: true
