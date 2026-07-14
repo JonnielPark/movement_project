@@ -56,7 +56,7 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 
 ---
 
-## 구현 상태 (2026-07-07)
+## 구현 상태 (2026-07-14)
 
 ### 완료
 
@@ -65,7 +65,7 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | Pose I/O 및 설정 | `core/io.py`, `core/config.py` | CSV 로딩, 랜드마크/연결 정의 |
 | ① Validation | `stages/validation.py` | 구조적 무결성 리포트 |
 | ② Annotation | `stages/annotation.py` | 프레임 단위 메타데이터 병합; 촬영/수행 metadata 보존; performance/failure audit 정보를 annotation report로 요약 |
-| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` 로더 + 검증기 + generic 폴백; exercise identity / analysis profile / performance protocol / camera protocol split YAML; 재사용 analysis preset; legacy combined YAML 하위 호환 |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` 로더 + 검증기 + generic 폴백; exercise identity / analysis profile / performance protocol / camera protocol split YAML; 재사용 analysis preset; block 사이 공통 휴식을 가진 exercise-session 조합 YAML; legacy combined YAML 하위 호환 |
 | ④ Preprocessing | `stages/preprocessing.py` | 가시성 게이팅, 분절 일관성, 각도 한계, 속도 이상값, 좌·우 swap, 보간, 평활화 |
 | ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | 골반 중심 평행이동 + 몸통 길이 중앙값 척도; 선택 ⑤-1 analysis-evidence filter는 `normalization.canonicalization` 아래에 두며 기본 비활성화 |
 | ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` 반복 경계 검출 + 기존 `phase_segmentation` phase 라벨; 실패 지점 리포트 |
@@ -73,10 +73,10 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | ⑧ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑨ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3); movement quality score와 data confidence 분리 |
 | 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
-| 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 4개 운동 × 5–7개 규칙; 금지 어휘 검증 완료 |
+| 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 보존 중인 4개 운동 rule 파일; 금지 어휘 검증 완료; 국민체조 rule은 exercise-definition 검토 후 작성 |
 | 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑨ 결선; 선택 ⑤-1 `normalization.canonicalization`과 `support_plane_alignment` report 연결; legacy root `canonicalization`과 `floor_relative_correction`은 하위 호환 alias로 유지 |
 | 프로토콜 메타데이터 스키마 | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning audit, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
-| 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 현재 4대 운동 범위에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, 선택적 audit-reference 정책, performance/failure report 검증 완료 |
+| 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 보존 중인 운동 정의 예시에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, 선택적 audit-reference 정책, performance/failure report 검증 완료; 스쿼트와 국민체조는 정의 기반 확장성을 보여주기 위한 예시이지 framework 한계가 아님 |
 | 단위 테스트 | `tests/` | 최근 full run 153개 전체 통과 |
 
 ### 부분 완료
@@ -120,10 +120,11 @@ movement_project/
 │   │   ├── exercises/               # 운동 정체성 YAML + generic 폴백
 │   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
 │   │   ├── analysis_presets.yaml    # 재사용 analysis-profile block
+│   │   ├── exercise_sessions/       # exercise block 순서 조합 + 공통 휴식 정책
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
-│   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   │   └── interpretation_rules/    # 보존 중인 squat/lunge/pike_pushup/plank_shoulder_tap .yaml
 │   ├── protocols/
-│   │   ├── performance/             # 피험자 안내 기준 count/sequence protocol YAML
+│   │   ├── performance/             # 수행 기준 count/sequence protocol YAML
 │   │   └── camera/                  # 운동별 camera protocol YAML
 │   ├── registries/                  # authoring dropdown/template registry
 │   ├── camera/                      # camera_zones.yaml 촬영 구역 정의
@@ -268,11 +269,11 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.4.7 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.31 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
-| 1.2.7 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.0.8 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 1.0.3 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.8.5 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.42 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.5 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.1.2 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 1.1.2 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 
 ---
 
@@ -309,10 +310,16 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 
 따라서 본 파이프라인의 모든 생체역학적 프록시 지표는 절대적 힘·질량·길이 단위가 아니라, 사용자 신체 척도로 정규화한 상대값 또는 각도 기반 지표로 설계 및 산출된다 (예: `torso_length_ratio`, `degree`, `dimensionless_cv`, `dimensionless` 등).
 
-현재 대상 운동은 비기구 기반의 제자리 반복 운동(structured in-place bodyweight exercises)으로
-한정한다. 기구를 사용하는 운동이나 점프, 달리기, 방향전환처럼 고동적 또는 공간 이동이 큰
-운동으로 확장하려면 기구 위치, 외부 부하 metadata, 손-기구 접촉, 지면 접촉 이벤트, 공중
-phase, 전역 이동 경로, 더 복잡한 event segmentation과 camera protocol이 추가로 필요하다.
+현재 문서 예시는 single-block 반복 운동으로 스쿼트를, multi-block sequence 운동으로 국민체조를
+사용한다. 이들은 설명용 예시이지 고정 대상 운동이나 필수 사용 조건이 아니다. 본 framework의 핵심 범위는
+정의 기반 확장성이다. 즉 exercise definition, analysis profile, performance protocol,
+camera protocol, feature-availability policy, scoring policy가 정의되면 같은 pipeline으로 다른
+운동도 분석하고 점수화할 수 있다. 향후 점수 추적은 반복 실행 결과 위에 얹을 수 있으며,
+운동에 비종속적인 이 설계를 바꾸지 않는다.
+
+기구를 사용하는 운동이나 점프, 달리기, 방향전환처럼 고동적 또는 공간 이동이 큰 운동으로
+확장하려면 기구 위치, 외부 부하 metadata, 손-기구 접촉, 지면 접촉 이벤트, 공중 phase, 전역
+이동 경로, 더 복잡한 event segmentation과 camera protocol이 추가로 필요하다.
 
 이는 임상적 효능(clinical efficacy)의 직접 증명 이전에, 단안 카메라 환경의 물리적 한계를 우회하여 의료진의 임상적 추론을 일관되게 지원할 수 있는 신뢰성 있는 XAI 구조를 우선적으로 확보하기 위함이다.
 

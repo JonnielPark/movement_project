@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.40
-**최종 갱신:** 2026-07-09
+**문서 버전:** 1.4.47
+**최종 갱신:** 2026-07-14
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -13,16 +13,16 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.8.1 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.40 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.4.0 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.1.0 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 0.2.22 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
-| 1.1.0 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.8.5 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.46 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.1.5 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 0.2.26 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
+| 1.1.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 | 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.6.1 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.7.1 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 2.3.1 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization + 선택 ⑤-1 Canonicalization filter |
 | 2.3.1 | [05_1_canonicalization.md](pipeline/05_1_canonicalization.md) | 선택 ⑤-1 Canonicalization 상세 reference |
@@ -58,24 +58,42 @@
 특정 근육 활성의 직접 증거가 아니라 관찰 가능한 움직임에서 유도한 해석 가능한 경향성으로
 다룬다.
 
-현재 파이프라인의 우선 적용 범위는 비기구 기반의 제자리 반복 운동이다. 스쿼트, 런지,
-파이크 푸쉬업, 플랭크 숄더탭은 외부 기구나 넓은 공간 이동 추적 없이도 단안 3D pose에서
-반복 단위 관절·분절 움직임을 비교하기에 적합하다. 반대로 덤벨, 밴드, 바벨 같은 기구 사용
-운동은 기구 위치, 외부 부하 metadata, 손-기구 접촉 상태, 저항 방향을 추가로 기록해야 한다.
-점프, 달리기, 방향전환처럼 고동적이거나 공간 이동이 큰 운동은 지면 접촉 이벤트, 공중 phase,
-전역 이동 경로, tracking continuity, 더 복잡한 event segmentation 및 camera protocol 확장이
-필요하다. 따라서 현재 결과는 이 범위 안에서의 공학적 타당성과 강건성 검증으로 해석한다.
+운동 선택 자체는 framework claim의 중심이 아니라 설명용 예시다. 스쿼트는 single-block 반복 운동의
+예시로 사용하여 세팅, segmentation, feature extraction, biomechanical proxy/scoring,
+visualization 흐름을 보여준다. 국민체조는 단일 반복 운동을 넘어 multi-block sequence 운동으로
+확장할 수 있음을 보여주는 draft 예시로 둔다.
+
+이 예시들은 framework의 운동 한계나 필수 사용 조건을 정의하지 않는다. 핵심 설계는
+정의 기반 확장성이다. 즉 exercise definition, analysis profile, performance protocol,
+camera protocol, feature-availability policy, scoring policy가 정의되면 같은 pipeline으로 다른
+운동도 분석하고 점수화할 수 있어야 한다. 국민체조는 현재 되풀이 구간 취득 및 분석용
+exercise-session YAML과 section-level draft exercise definition을 가진다. 권장 촬영 조건은 정면 허리높이 recording
+(`Z1`, `H2`)으로 지정했지만, section/event segmentation, performance protocol,
+view-metric reliability, feature-availability policy, scoring eligibility는 여전히 section별
+검토가 필요하다. 국민체조는 상·하지, 다평면, sequence-level 움직임을 포함하므로 해당 항목들이
+승격되기 전까지 hidden stage-level branch가 아니라 검토된 draft YAML로 남겨야 한다.
+
+덤벨, 밴드, 바벨 같은 기구 사용 운동은 여전히 기구 위치, 외부 부하 metadata, 손-기구 접촉
+상태, 저항 방향을 추가로 기록해야 한다. 점프, 달리기, 방향전환처럼 고동적이거나 공간 이동이
+큰 운동은 지면 접촉 이벤트, 공중 phase, 전역 이동 경로, tracking continuity, 더 복잡한
+event segmentation 및 camera protocol 확장이 필요하다. 따라서 현재 결과는 이 범위 안에서의
+공학적 타당성과 강건성 검증으로 해석한다.
 
 ---
 
 ## 1. 핵심 설계: YAML 객체로서의 운동 정의 (Exercise Definitions as YAML Objects)
 
-각 운동은 `exercise_id`로 조립되는 `ExerciseContext`에서 로드한다. 현재 대상 운동은 split
+각 운동은 `exercise_id`로 조립되는 `ExerciseContext`에서 로드한다. 운동 정의 체계는 split
 YAML 산출물을 사용한다. Exercise definition은 운동 정체성만 유지하고, analysis,
 performance, camera 설정은 별도 파일에 둔다. loader는 하위 호환을 위해 legacy combined
 exercise YAML도 계속 지원하며, 후속 파이프라인 단계에는 기존과 같은 `ExerciseDefinition`
 객체를 반환한다. [exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md)를
 참조한다.
+
+더 긴 움직임 sequence는 `data/definitions/exercise_sessions/` 아래의
+`ExerciseSessionDefinition` artifact로 표현한다. Session definition은 기존 exercise block의 순서를
+정하고 block 사이에 하나의 공통 휴식 정책을 부여한다. 별도의 일반형/혼합형 운동 타입을 만들지
+않는다.
 
 split YAML 산출물에 정의되는 필드:
 
@@ -94,11 +112,15 @@ biomechanical_focus   계산할 프록시(proxy) 지표
 quality_rules         가시성 임계값, 최대 보간 갭 등
 
 data/protocols/performance/<exercise_id>.yaml
-performance_protocol  피험자 안내 기준 카운트와 좌우 수행 순서 규칙
+performance_protocol  수행 기준 카운트와 좌우 수행 순서 규칙
 
 data/protocols/camera/<exercise_id>.yaml
 camera_protocol       권장 촬영 zone/height와 경고 정책
 view_metric_reliability  zone별 metric-family reliability prior
+
+data/definitions/exercise_sessions/<exercise_session_id>.yaml
+blocks                기존 exercise_id를 순서대로 참조
+rest_policy           연속 block 사이의 공통 계획 휴식
 ```
 
 운동별 YAML이 없을 경우 일반 폴백(generic fallback) 정의(`generic.yaml`)가 로드된다.
@@ -112,7 +134,7 @@ view_metric_reliability  zone별 metric-family reliability prior
     Pose CSV           단안 3D 포즈 시계열
     Annotation 파일    (선택) 구간 및 반복 라벨
     Recording metadata (선택) session_id, set_index, camera zone/height
-    Exercise YAML      운동 정의
+    Exercise YAML      운동 정의; 선택적 운동 세션 정의
 
 단계
     ①  Validation           구조적 무결성 검사 — 데이터 미수정
@@ -155,7 +177,7 @@ view_metric_reliability  zone별 metric-family reliability prior
 |---|---|---|---|
 | ① Validation | Pose CSV | 필수 칼럼, 프레임 순서, 시간값, 랜드마크 좌표 구조, 결측 패턴을 검사한다. | Validation report |
 | ② Annotation | Pose DataFrame, Annotation CSV, recording metadata(선택) | 수동 어노테이션 정보를 프레임 단위로 병합하고 `exercise_id`, `execution_pattern`, `starting_side`, 초기 `phase`, 촬영 metadata, performance/failure audit 요약을 구성한다. | Annotation이 병합된 DataFrame, annotation report |
-| ③ Exercise Definition | `exercise_id`, split YAML 산출물 또는 legacy combined YAML | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, camera protocol metadata |
+| ③ Exercise Definition | `exercise_id`, split YAML 산출물 또는 legacy combined YAML; block 조합을 위한 선택 `exercise_session_id` | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. Session definition은 각 block의 정의를 바꾸지 않고 여러 exercise block을 순서화할 수 있다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, optional ExerciseSessionDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 의심 사례, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준 평행이동과 시퀀스 단위 몸통 길이 중앙값 척도화를 통해 신체 기준 `norm` 좌표 계열을 추가한다. Depth-evidence metadata는 z가 finite backend model depth인지 placeholder뿐인지 기록한다. | 정규화 포즈 데이터 = 전처리 포즈 데이터 + 신체 기준 좌표 + depth-evidence metadata |
 | ⑤-1 선택 Canonicalization | 정규화 포즈 데이터 | 선택 filter가 support-plane, movement-plane, protocol-height, `xy_depth_lift`, anthropometric prior를 이용해 analysis-space 좌표 계열을 방출할 수 있다. 이 좌표는 `norm`과 분리하며 availability, confidence, `quality_gravity`, sensitivity를 downstream 요약으로 노출한다. Raw burden/residual 진단값과 알고리즘/config 이력은 단계 report에 둔다. | 보정 포즈 데이터 = 정규화 포즈 데이터 + analysis-space 좌표 + availability/confidence/`quality_gravity` 요약 + canonicalization report |

@@ -1,7 +1,7 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.6.4
-**Last Updated:** 2026-06-29
+**Document Version:** 1.7.1
+**Last Updated:** 2026-07-14
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
@@ -36,7 +36,8 @@ branches whenever possible.
 
 ## 2. Split YAML Ownership
 
-The current target exercises use four coordinated YAML artifacts.
+The exercise-definition system uses exercise-level YAML artifacts plus an
+optional session-composition artifact.
 
 ```text
 data/definitions/exercises/<exercise_id>.yaml
@@ -46,19 +47,34 @@ data/definitions/analysis_profiles/<exercise_id>.yaml
     Analysis behavior: landmarks, angle definitions, segmentation settings,
     feature domains, biomechanical focus, compensation patterns, quality rules.
 
+data/definitions/analysis_profiles/<profile_file_id>.yaml
+    Optional indexed analysis-profile file for long sessions. The file begins
+    with an `index`, and section exercise YAMLs point to a profile entry with
+    `analysis_profile_ref`.
+
 data/definitions/analysis_presets.yaml
     Reusable analysis blocks for segmentation, landmark/angle sets, and quality
     rules. Presets reduce repeated YAML but must not hide exercise identity.
 
+data/definitions/exercise_sessions/<exercise_session_id>.yaml
+    Optional ordered composition of one or more existing exercise definitions.
+    It specifies block order, repeat count, and one session-level rest policy.
+
 data/protocols/performance/<exercise_id>.yaml
-    Participant-facing protocol: planned sets/counts, count unit, side sequence,
+    Performance protocol: planned sets/counts, count unit, side sequence,
     completion policy, cues, analysis-disrupting performance patterns.
 
 data/protocols/camera/<exercise_id>.yaml
     Recording protocol: recommended zones/heights and view-metric reliability.
+
+data/protocols/camera/<shared_protocol_id>.yaml
+    Optional shared camera protocol for session-style recordings. Section
+    exercise YAMLs point to it with `camera_protocol_ref`.
 ```
 
-The loader merges these artifacts into the runtime `ExerciseDefinition` shape.
+The exercise loader merges the exercise-level artifacts into the runtime
+`ExerciseDefinition` shape. The session loader reads `ExerciseSessionDefinition`
+artifacts without changing the meaning of each referenced exercise definition.
 Legacy combined YAML remains accepted only for backward compatibility; new work
 should use split artifacts.
 
@@ -80,29 +96,84 @@ feature_domains: ...
 Preset expansion happens before validation. Explicit fields in the exercise
 profile override the selected preset fields; dictionaries merge recursively,
 while lists and scalar values replace the preset value. Presets are allowed for
-repeated analysis mechanics only. `classification`, `support`, `phase_model`,
-participant-facing protocol, camera protocol, and scoring policy must remain in
-their own artifacts so future exercises can differ without hidden Python
-branches.
+repeated analysis mechanics only. Long session-style examples may keep many
+section profiles in one indexed profile file. The top-level `index` documents
+the profile order and section labels, while each `profiles` entry is still
+selected by the referenced section `exercise_id`; this is file organization, not
+a new movement-definition layer. `classification`, `support`, `phase_model`,
+performance protocol, camera protocol, and scoring policy must remain in their
+own artifacts so future exercises can differ without hidden Python branches.
 
 ---
 
 ## 3. Current And Future Exercise Coverage
 
-Current canonical exercise IDs:
+Illustrative canonical exercise ID currently used in examples:
 
 ```text
 squat
-lunge
-pike_pushup
-plank_shoulder_tap
 generic                  fallback only
 ```
 
-The schema must remain extensible beyond these four exercises. New exercises may
-introduce different laterality, posture, support, phase models, count units,
-camera zones, or feature availability, but they should not require new hardcoded
-pipeline branches unless a new analytical capability is genuinely needed.
+Retained canonical development/example artifacts:
+
+```text
+lunge
+pike_pushup
+plank_shoulder_tap
+```
+
+The examples use squat as a single-block repeated-exercise case. Lunge, pike push-up,
+and plank shoulder tap remain in the repository as prior development/example
+artifacts. None of these exercises defines the framework's scope.
+
+Korean National Gymnastics is introduced as a draft multi-block sequence example
+through `data/definitions/exercise_sessions/korean_national_gymnastics.yaml`.
+The current session is an acquisition-and-analysis definition that starts from
+the repeated pass of the routine. The initial pass through breathing-to-jumping
+is not acquired or analyzed, so those sections are not performed twice for this
+project session. The session composes section-level draft exercise definitions
+in the order below. It is still review-required runtime YAML: section/event
+models, count units, performance protocol, feature-availability policy, and
+scoring eligibility should be reviewed section by section before canonical
+promotion. The current draft sections use a frontal camera zone (`Z1`) at
+waist-height level (`H2`) as the recommended recording setup; view-metric
+reliability and section-specific observation purposes still require
+section-level review.
+
+```text
+01 breathing_start       숨쉬기
+02 leg                   다리운동
+03 arm                   팔운동
+04 neck                  목운동
+05 chest                 가슴운동
+06 side                  옆구리운동
+07 back_abdomen          등배운동
+08 trunk                 몸통운동
+09 whole_body            온몸운동
+10 jumping               뜀뛰기
+11 limbs                 팔다리운동
+12 breathing_cooldown    숨고르기
+```
+
+The sequence should be represented by composing reviewed section/event blocks
+rather than by creating a separate "mixed exercise" category.
+
+For this session, the section exercise YAML files share:
+
+```text
+analysis_profile_ref.profile_file_id = korean_national_gymnastics
+camera_protocol_ref.protocol_id    = korean_national_gymnastics
+```
+
+This keeps the file count readable for a long sequence while preserving
+section-level analysis-profile entries inside the indexed profile file.
+
+The schema must remain extensible beyond the current example artifacts.
+New exercises may introduce different laterality, posture, support, phase or
+section models, count units, camera zones, or feature availability, but they
+should not require new hardcoded pipeline branches unless a new analytical
+capability is genuinely needed.
 
 Future exercises should start as draft split YAML generated through the
 notebook-first authoring flow, then be reviewed and promoted to canonical YAML.
@@ -185,6 +256,54 @@ notes: string
 Not every field must be equally rich for every exercise. Missing or unavailable
 capabilities should be reported as unavailable or low confidence rather than
 silently treated as normal.
+
+### ExerciseSessionDefinition composition layer
+
+An `ExerciseDefinition` remains one analyzable movement block. A single-exercise
+example is represented as one block; a longer sequence is represented by an
+`ExerciseSessionDefinition` that orders several existing blocks. This avoids a
+separate general/mixed exercise split and keeps the framework exercise-agnostic:
+the pipeline analyzes whatever block definitions are provided.
+
+```yaml
+exercise_session_id: example_sequence
+version: 0.1.0
+description: Example composition of existing exercise definitions.
+rest_policy:
+  rest_between_blocks_s: 120
+  per_block_override_allowed: false
+blocks:
+  - block_id: squat_example
+    exercise_id: squat
+    repeat_count: 1
+  - block_id: lunge_example
+    exercise_id: lunge
+    repeat_count: 1
+```
+
+Field contract:
+
+```text
+exercise_session_id          Stable ID for the composed exercise session definition.
+                              It is distinct from recording metadata `session_id`.
+blocks                       Non-empty ordered list of analyzable blocks.
+blocks[].block_id            Unique ID within this exercise session definition.
+blocks[].exercise_id         Existing exercise definition referenced by the block.
+blocks[].repeat_count        Positive integer repeat count for the referenced block.
+rest_policy.rest_between_blocks_s
+                              Uniform planned rest in seconds between consecutive
+                              blocks. Use null when no planned rest is specified.
+rest_policy.per_block_override_allowed
+                              Must remain false for now. Per-block rest overrides
+                              are intentionally not supported yet.
+```
+
+The session definition is a composition and scheduling layer, not a new movement
+definition layer. Block-level analysis settings, segmentation, feature
+availability, camera protocol, performance protocol, and scoring policy remain
+owned by the referenced exercise artifacts. Future score tracking can aggregate
+block-level outputs under `exercise_session_id`, but the current schema should
+not embed per-block score rules or per-block rest overrides.
 
 ---
 
@@ -323,7 +442,7 @@ manual labels rather than silently accepting poor boundaries.
 
 ### performance_protocol
 
-`performance_protocol` describes participant-facing instructions and planned
+`performance_protocol` describes performance instructions and planned
 acquisition. It is separate from segmentation because one protocol count may map
 to one or more segmented atomic movements.
 
@@ -355,10 +474,14 @@ lunge
 
 plank_shoulder_tap
     Can segment each tap as an atomic movement while counting one left-right pair
-    as one participant-facing protocol count.
+    as one performance protocol count.
 
 static hold future exercise
     Can use count_unit: hold_seconds and a static_hold phase model.
+
+Korean National Gymnastics future draft
+    Should define reviewed section/event blocks before promotion. Do not reuse
+    squat repetition segmentation or score eligibility by assumption.
 ```
 
 Planned protocol values belong here. What actually happened during recording,
@@ -366,6 +489,11 @@ such as `set_index`, `actual_rep_count`, `failure_point_frame`, or
 `failure_reason`, belongs to ② Annotation or recording metadata. Partial
 completion should lower interpretation confidence or mark partial completion; it
 must not be converted directly into a movement-quality penalty.
+
+`rest_between_sets_s` belongs only to repeated sets inside one referenced
+exercise block. Planned rest between different blocks in a composed sequence
+belongs to `ExerciseSessionDefinition.rest_policy.rest_between_blocks_s`, and is
+currently one uniform session-level value.
 
 ### landmarks and angle_definitions
 
@@ -490,7 +618,7 @@ exercises.
    assumptions if posture, laterality, phase model, or count unit differ.
 3. Define primary landmarks, critical landmarks, and feature domains from the
    movement's observable mechanics.
-4. Define participant-facing protocol separately from segmentation units.
+4. Define performance protocol separately from segmentation units.
 5. Define camera protocol and view-metric reliability before interpreting
    low-confidence view-dependent features.
 6. Keep unsupported metrics as unavailable/not_assessed until implemented and tested.
@@ -531,6 +659,7 @@ Biomarkers without `source_fields` should not be produced.
 from movement.exercise_definition import (
     load_all_exercise_definitions,
     load_exercise_definition,
+    load_exercise_session_definition,
 )
 
 definition = load_exercise_definition(
@@ -539,4 +668,9 @@ definition = load_exercise_definition(
 )
 
 all_definitions = load_all_exercise_definitions("data/definitions/exercises")
+
+session = load_exercise_session_definition(
+    exercise_session_id="example_sequence",
+    sessions_dir="data/definitions/exercise_sessions",
+)
 ```

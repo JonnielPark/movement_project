@@ -1,0 +1,84 @@
+exercise_session_id: korean_national_gymnastics
+version: 0.1.2
+display_name: Korean National Gymnastics
+session_name_ko: 국민체조
+description: Draft repeat-pass acquisition and analysis session definition for Korean National Gymnastics.
+status: draft
+generated_by: manual_session_scaffold
+order_policy: fixed_repeat_pass_acquisition_analysis_order
+acquisition_and_analysis_scope:
+  starts_from: repeated_sequence
+  initial_pass_policy: not_acquired
+  note: Data acquisition and analysis both start from the repeated sequence; the initial pass is not part of this session.
+  analyzed_sections_ko:
+    - 숨쉬기
+    - 다리운동
+    - 팔운동
+    - 목운동
+    - 가슴운동
+    - 옆구리운동
+    - 등배운동
+    - 몸통운동
+    - 온몸운동
+    - 뜀뛰기
+    - 팔다리운동
+    - 숨고르기
+requires_review:
+- section_movement_definitions
+- section_event_models
+- performance_protocol
+- camera_protocol
+- feature_availability_policy
+- scoring_policy
+rest_policy:
+  rest_between_blocks_s: 0
+  per_block_override_allowed: false
+blocks:
+  - block_id: 01_breathing_start
+    exercise_id: korean_national_gymnastics_breathing_start
+    repeat_count: 1
+    section_name_ko: 숨쉬기
+  - block_id: 02_leg
+    exercise_id: korean_national_gymnastics_leg
+    repeat_count: 1
+    section_name_ko: 다리운동
+  - block_id: 03_arm
+    exercise_id: korean_national_gymnastics_arm
+    repeat_count: 1
+    section_name_ko: 팔운동
+  - block_id: 04_neck
+    exercise_id: korean_national_gymnastics_neck
+    repeat_count: 1
+    section_name_ko: 목운동
+  - block_id: 05_chest
+    exercise_id: korean_national_gymnastics_chest
+    repeat_count: 1
+    section_name_ko: 가슴운동
+  - block_id: 06_side
+    exercise_id: korean_national_gymnastics_side
+    repeat_count: 1
+    section_name_ko: 옆구리운동
+  - block_id: 07_back_abdomen
+    exercise_id: korean_national_gymnastics_back_abdomen
+    repeat_count: 1
+    section_name_ko: 등배운동
+  - block_id: 08_trunk
+    exercise_id: korean_national_gymnastics_trunk
+    repeat_count: 1
+    section_name_ko: 몸통운동
+  - block_id: 09_whole_body
+    exercise_id: korean_national_gymnastics_whole_body
+    repeat_count: 1
+    section_name_ko: 온몸운동
+  - block_id: 10_jumping
+    exercise_id: korean_national_gymnastics_jumping
+    repeat_count: 1
+    section_name_ko: 뜀뛰기
+  - block_id: 11_limbs
+    exercise_id: korean_national_gymnastics_limbs
+    repeat_count: 1
+    section_name_ko: 팔다리운동
+  - block_id: 12_breathing_cooldown
+    exercise_id: korean_national_gymnastics_breathing_cooldown
+    repeat_count: 1
+    section_name_ko: 숨고르기

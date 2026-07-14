@@ -1,12 +1,18 @@
 # Per-Exercise Clinical Rationale
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.1.3
+**Last Updated:** 2026-07-14
 **Korean Sync:** `docs/clinical/exercises/README.md` is the same-version Korean source.
 
-This folder stores biomechanical interpretation rationale for the four current
-validation exercises. Here, "clinical" means expert movement-observation context,
-not disease diagnosis, treatment-effect evidence, or patient classification.
+This folder stores biomechanical interpretation rationale for the current squat
+example and retained prior exercise-definition examples. Here,
+"clinical" means expert movement-observation context, not disease diagnosis,
+treatment-effect evidence, or patient classification.
+
+Squat is an illustrative single-block repeated-exercise example. Korean National
+Gymnastics is an illustrative draft multi-block sequence example represented by
+an exercise-session definition and section-level draft exercise definitions.
+These examples do not define the framework's exercise limits.
 
 These documents are not execution specifications. The execution source is YAML
 and code. Rationale text may inform future `compensation_patterns`,
@@ -17,12 +23,13 @@ the pipeline docs are updated first.
 
 ## 1. Document List
 
-| Exercise | Rationale | Exercise YAML | Performance protocol |
-|---|---|---|---|
-| Squat | [squat.md](squat.md) | [squat.yaml](../../../data/definitions/exercises/squat.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
-| Lunge | [lunge.md](lunge.md) | [lunge.yaml](../../../data/definitions/exercises/lunge.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
-| Pike Push-up | [pike_pushup.md](pike_pushup.md) | [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
-| Plank Shoulder Tap | [plank_shoulder_tap.md](plank_shoulder_tap.md) | [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
+| Exercise | Status | Rationale | Exercise YAML | Performance protocol |
+|---|---|---|---|---|
+| Squat | Illustrative single-block repeated-exercise example | [squat.md](squat.md) | [squat.yaml](../../../data/definitions/exercises/squat.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
+| Korean National Gymnastics | Illustrative draft multi-block sequence example | [korean_national_gymnastics.md](korean_national_gymnastics.md) | [korean_national_gymnastics.yaml](../../../data/definitions/exercise_sessions/korean_national_gymnastics.yaml) | pending section protocol |
+| Lunge | Retained prior example artifact | [lunge.md](lunge.md) | [lunge.yaml](../../../data/definitions/exercises/lunge.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
+| Pike Push-up | Retained prior example artifact | [pike_pushup.md](pike_pushup.md) | [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
+| Plank Shoulder Tap | Retained prior example artifact | [plank_shoulder_tap.md](plank_shoulder_tap.md) | [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
 
 ## 2. Promotion Rule
 

@@ -1,0 +1,52 @@
+exercise_id: korean_national_gymnastics_breathing_start
+display_name: Korean National Gymnastics - Breathing Start
+section_name_ko: 숨쉬기
+section_order: 1
+description: Draft section definition for the opening breathing section of Korean National Gymnastics.
+version: 0.1.0
+status: draft
+generated_by: manual_session_scaffold
+analysis_profile_ref:
+  profile_file_id: korean_national_gymnastics
+  profile_id: korean_national_gymnastics_breathing_start
+camera_protocol_ref:
+  protocol_id: korean_national_gymnastics
+requires_review:
+- section_movement_definition
+- phase_model
+- segmentation
+- landmarks
+- feature_domains
+- performance_protocol
+- scoring_policy
+tags:
+- korean_national_gymnastics
+- section
+- draft
+classification:
+  family: mobility
+  equipment: none
+  load_type: bodyweight
+  posture_type: standing
+  body_geometry: neutral_upright
+  kinetic_chain: mixed_chain
+  laterality: bilateral_symmetric
+  movement_template_id: kng_breathing_start_review_required
+  movement_pattern: kng_breathing_start_review_required
+  movement_pattern_source: manual
+  primary_plane: static
+  secondary_planes: []
+  complexity: whole_body
+support:
+  base_of_support: bilateral_feet
+  contact_points: [left_foot, right_foot]
+  support_surface: floor
+  weight_bearing_regions: [left_foot, right_foot]
+phase_model:
+  type: custom
+  expected_ratio: {}
+joint_actions:
+  primary: []
+  secondary: []
+primary_body_regions: [trunk, shoulder]
+notes: Draft placeholder. Review the section movement details before promoting to canonical use.

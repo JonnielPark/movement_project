@@ -60,16 +60,35 @@ def test_pike_pushup_allows_partial_completion_metadata():
     assert protocol.completion.recommended_sets == 3
 
 
-def test_target_exercises_recommend_three_validation_sets():
-    for exercise_id in ("squat", "lunge", "pike_pushup", "plank_shoulder_tap"):
+def test_target_exercises_load_expected_protocol_set_counts():
+    expected_sets = {
+        "squat": 1,
+        "lunge": 3,
+        "pike_pushup": 3,
+        "plank_shoulder_tap": 3,
+    }
+
+    for exercise_id, target_sets in expected_sets.items():
         definition = load_exercise_definition(exercise_id, DEFINITIONS_DIR)
 
         assert definition.performance_protocol is not None
         protocol = definition.performance_protocol
         assert protocol.side_sequence.mode in protocol.allowed_side_sequence_modes
-        assert protocol.prescription.target_sets == 3
+        assert protocol.prescription.target_sets == target_sets
         assert protocol.prescription.target_count_per_set == 10
-        assert protocol.completion.recommended_sets == 3
+        assert protocol.completion.recommended_sets == target_sets
+
+
+def test_squat_loads_example_single_set_protocol():
+    definition = load_exercise_definition("squat", DEFINITIONS_DIR)
+
+    protocol = definition.performance_protocol
+
+    assert protocol is not None
+    assert protocol.prescription.target_sets == 1
+    assert protocol.prescription.target_count_per_set == 10
+    assert protocol.prescription.rest_between_sets_s == []
+    assert protocol.completion.recommended_sets == 1
 
 
 def test_generic_definition_keeps_performance_protocol_optional():

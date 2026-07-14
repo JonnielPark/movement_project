@@ -61,7 +61,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-07-07)
+## Implementation Status (2026-07-14)
 
 ### Complete
 
@@ -70,7 +70,7 @@ Stage activation is controlled by the `enabled` flags in
 | Pose I/O and config | `core/io.py`, `core/config.py` | CSV loading, landmark / connection definitions |
 | ① Validation | `stages/validation.py` | Structural integrity report |
 | ② Annotation | `stages/annotation.py` | Frame-level metadata merge; filming/performance metadata preserved; performance/failure audit information summarized in the annotation report |
-| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` loader + validator + generic fallback; split exercise identity / analysis profile / performance protocol / camera protocol YAML; reusable analysis presets; legacy combined YAML remains supported |
+| ③ Exercise Definition | `definitions/exercise_definition.py` | `ExerciseContext` loader + validator + generic fallback; split exercise identity / analysis profile / performance protocol / camera protocol YAML; reusable analysis presets; exercise-session composition YAML with uniform between-block rest; legacy combined YAML remains supported |
 | ④ Preprocessing | `stages/preprocessing.py` | Confidence gating, segment consistency, angle bounds, velocity outliers, left-right swap, interpolation, smoothing |
 | ⑤ Normalization | `stages/normalization.py`, `stages/canonicalization.py`, `stages/floor_reference.py`, `stages/corrected_3d_hypothesis.py` | Hip-center translation + median torso-length scale; optional ⑤-1 analysis-evidence filters live under `normalization.canonicalization` and remain disabled by default |
 | ⑥ Segmentation | `stages/segmentation.py` | `rep_segmentation` repetition-boundary detection + existing `phase_segmentation` phase labels; failure-point report |
@@ -78,10 +78,10 @@ Stage activation is controlled by the `enabled` flags in
 | ⑧ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with confidence weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑨ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
 | Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
-| Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; four exercises × 5-7 rules; forbidden-vocabulary validation complete |
+| Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; retained four-exercise rule files; forbidden-vocabulary validation complete; Korean National Gymnastics rules pending exercise-definition review |
 | Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑨ connected; optional ⑤-1 `normalization.canonicalization` and `support_plane_alignment` report wired; legacy root `canonicalization` and `floor_relative_correction` kept as backward-compatible aliases |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning audit, protocol count/side-sequence metadata, MediaPipe-style input clarification |
-| Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for the current four-exercise scope: phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, optional audit-reference policy, and performance/failure reports |
+| Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for retained exercise-definition examples; squat and Korean National Gymnastics are illustrative examples for showing definition-driven extensibility, not fixed framework limits |
 | Unit tests | `tests/` | Latest full run passes 153/153 |
 
 ### Partial
@@ -125,10 +125,11 @@ movement_project/
 │   │   ├── exercises/               # exercise identity YAML + generic fallback
 │   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
 │   │   ├── analysis_presets.yaml    # reusable analysis-profile blocks
+│   │   ├── exercise_sessions/       # ordered exercise-block compositions + uniform rest policy
 │   │   ├── clinical/                # feature_meanings.yaml, fms_mapping.yaml
-│   │   └── interpretation_rules/    # squat/lunge/pike_pushup/plank_shoulder_tap .yaml
+│   │   └── interpretation_rules/    # retained squat/lunge/pike_pushup/plank_shoulder_tap .yaml
 │   ├── protocols/
-│   │   ├── performance/             # participant-facing count/sequence protocol YAML
+│   │   ├── performance/             # performance count/sequence protocol YAML
 │   │   └── camera/                  # per-exercise camera protocol YAML
 │   ├── registries/                  # authoring dropdown/template registries
 │   ├── camera/                      # camera_zones.yaml filming-zone definitions
@@ -278,11 +279,11 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 
 | Version | File | Content |
 |---|---|---|
-| 1.4.7 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.31 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
-| 1.2.7 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.0.8 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.0.3 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.8.5 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.42 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.5 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.1.2 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.1.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 
 ---
 
@@ -333,9 +334,18 @@ produced as body-scale-normalized relative values or angle-based metrics, not
 absolute force, mass, or length units (e.g., `torso_length_ratio`, `degree`,
 `dimensionless_cv`, `dimensionless`).
 
-The current target exercises are limited to structured in-place bodyweight
-exercises. Extending the framework to equipment-based exercises or highly dynamic
-and spatially traveling movements such as jumping, running, or change-of-direction
+The current documentation examples use bodyweight squat as a single-block
+repeated-exercise example and Korean National Gymnastics as a planned multi-block
+sequence example. These are illustrative examples, not fixed target exercises or
+required usage conditions. The framework's intended scope is
+definition-driven: when an exercise definition, analysis profile, performance
+protocol, camera protocol, feature-availability policy, and scoring policy are
+defined, the same pipeline can analyze and score other exercises. Future score
+tracking can be layered over repeated runs without changing this exercise-agnostic
+design.
+
+Extending the framework to equipment-based exercises or highly dynamic and
+spatially traveling movements such as jumping, running, or change-of-direction
 tasks would require additional components, including equipment position, external
 load metadata, hand-equipment contact, ground-contact events, flight phases,
 global travel paths, more complex event segmentation, and expanded camera protocols.

@@ -1,7 +1,7 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.8.4
-**최종 갱신:** 2026-07-09
+**문서 버전:** 1.8.5
+**최종 갱신:** 2026-07-14
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 일반 용어 사전이 아니다. 통상적인 의미로 충분히 이해되는 단계명, 좌표 shape,
@@ -55,6 +55,7 @@
 | 용어 | 본 연구에서의 고정 의미 |
 |---|---|
 | 운동 정의 (Exercise definition) | 운동 이름 자체가 아니라 운동 정체성 YAML 객체를 뜻한다. 목표 스키마에서는 이 동작이 무엇인지, 즉 classification, support, 주요 신체 영역, phase model, joint actions, 생체역학적 정체성을 기술한다. 마이그레이션 중에는 loader 호환성을 위해 기존 통합 YAML에 analysis와 protocol 필드가 남아 있을 수 있다. |
+| 운동 세션 정의 (Exercise session definition) | 하나 이상의 기존 운동 정의를 순서대로 조합한 객체. Block 순서, block 반복 횟수, block 사이의 단일 공통 휴식 정책을 지정한다. Recording metadata의 `session_id`와 구분되며, 일반형/혼합형 운동을 별도 category로 만들지 않는다. |
 | 운동 작성 스펙 (Exercise authoring spec) | notebook 또는 향후 UI에서 연구자의 선택값으로 만드는 작은 초안 객체. exercise definition, analysis profile, performance protocol, camera protocol YAML 산출물을 생성하는 입력이며, 파이프라인이 직접 소비하는 실행 기준 파일은 아니다. |
 | 분석 프로필 (Analysis profile) | 운동 정체성에서 분리된 운동별 분석 설정. segmentation 설정, landmark set, angle definition, 활성 feature domain, quality-rule override, compensation-pattern 초안 등을 포함한다. |
 | 운동 런타임 컨텍스트 (`ExerciseContext`) | 하나의 `exercise_id`에 대해 exercise definition과 관련 analysis, performance, camera YAML 산출물을 조합한 런타임 객체. 과도하게 큰 단일 exercise-definition YAML 객체를 파이프라인 전체에 전달하는 현재 구조의 목표 대체 형태다. |

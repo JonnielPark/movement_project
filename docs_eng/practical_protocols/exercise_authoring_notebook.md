@@ -1,7 +1,7 @@
 # Exercise Authoring Notebook
 
-**Document Version:** 0.2.25
-**Last Updated:** 2026-06-20
+**Document Version:** 0.2.26
+**Last Updated:** 2026-07-14
 **Korean Sync:** [docs/practical_protocols/exercise_authoring_notebook.md](../../docs/practical_protocols/exercise_authoring_notebook.md) is the matching Korean document.
 
 This document defines the temporary notebook-first workflow for adding new
@@ -49,6 +49,7 @@ Notebook atomic selections
 → draft YAML preview
 → draft bundle export
 → canonical loader-view preview
+→ optional exercise-session YAML preview/write
 → researcher review
 → canonical YAML install
 ```
@@ -76,6 +77,20 @@ The notebook supports three authoring modes:
 The current prototype implements `draft_bundle` and `canonical_loader_view`.
 `canonical_install` remains a manual promotion step until equivalence checks and
 review gates are stable.
+
+The notebook should also manage `ExerciseSessionDefinition` artifacts after one
+or more exercise definitions exist. Session authoring is not a new exercise
+definition step. It composes existing `exercise_id` blocks, assigns a positive
+`repeat_count` per block, and stores one uniform `rest_between_blocks_s` value
+under:
+
+```text
+data/definitions/exercise_sessions/<exercise_session_id>.yaml
+```
+
+The UI must not expose per-block rest overrides yet. Generated session YAML must
+set `rest_policy.per_block_override_allowed: false`, and the preview/write cell
+must validate the result with `load_exercise_session_definition()`.
 
 ## 3. Authoring Spec
 
@@ -463,6 +478,7 @@ Required cell flow:
 8. review checklist
 9. draft bundle write
 10. canonical loader-view preview
+11. optional exercise-session preview/write and loader validation
 ```
 
 Notebook cells must call `src/movement/definitions/exercise_authoring.py` rather
@@ -485,6 +501,14 @@ src/movement/definitions/exercise_authoring.py
     artifact_to_yaml()
     draft_artifact_paths()
     write_authoring_draft_artifacts()
+    ExerciseSessionAuthoringSpec
+    ExerciseSessionBlockAuthoringSpec
+    list_exercise_definition_ids()
+    list_exercise_session_ids()
+    validate_exercise_session_authoring_spec()
+    generate_exercise_session_artifact()
+    exercise_session_artifact_path()
+    write_exercise_session_artifact()
 
 data/registries/
     exercise_authoring_schema.yaml

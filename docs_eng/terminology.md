@@ -1,7 +1,7 @@
 # Terminology
 
-**Document Version:** 1.8.4
-**Last Updated:** 2026-07-09
+**Document Version:** 1.8.5
+**Last Updated:** 2026-07-14
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
 This document is not a general glossary. Pipeline documents and code docstrings cover
@@ -56,6 +56,7 @@ appear in an output, treat it as a documentation or code error.
 | Term | Fixed Meaning in This Study |
 |---|---|
 | Exercise definition | The exercise-identity YAML object, not the exercise name itself. The target schema should describe what the movement is: classification, support, primary body regions, phase model, joint actions, and biomechanical identity. During migration, legacy combined YAML may still contain analysis and protocol fields for loader compatibility. |
+| Exercise session definition | An ordered composition of one or more existing exercise definitions. It specifies block order, block repeat count, and one uniform rest policy between blocks. It is distinct from recording metadata `session_id` and does not create a separate general/mixed exercise category. |
 | Exercise authoring spec | A small draft object created by a notebook or future UI from researcher selections. It is used to generate exercise definition, analysis profile, performance protocol, and camera protocol YAML artifacts; it is not directly consumed as the execution source by the pipeline. |
 | Analysis profile | The exercise-specific analysis configuration separated from exercise identity, such as segmentation settings, landmark sets, angle definitions, active feature domains, quality-rule overrides, and compensation-pattern drafts. |
 | Exercise runtime context (`ExerciseContext`) | The runtime object assembled from the exercise definition plus related analysis, performance, and camera YAML artifacts for one `exercise_id`. It is the target replacement for passing one oversized exercise-definition YAML object through the pipeline. |
