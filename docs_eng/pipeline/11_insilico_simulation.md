@@ -1,7 +1,7 @@
-# 12. In-Silico Simulation
+# 11. In-Silico Simulation
 
-**Document Version:** 1.1.0
-**Last Updated:** 2026-05-21
+**Document Version:** 1.1.1
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/pipeline/11_insilico_simulation.md` is the same-version Korean source.
 
 Pipeline step ⑪ is an external robustness harness. It injects controlled

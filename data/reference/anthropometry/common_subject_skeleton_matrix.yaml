@@ -23,7 +23,7 @@ common_subject_skeleton_matrix:
       min_cm: 161, max_cm: 165, representative_height_cm: 163}, {id: 166-170cm, label: 166-170cm, min_cm: 166, max_cm: 170, representative_height_cm: 168}, {id: 171-175cm,
       label: 171-175cm, min_cm: 171, max_cm: 175, representative_height_cm: 173}, {id: 176-180cm, label: 176-180cm, min_cm: 176, max_cm: 180, representative_height_cm: 178},
     {id: 181cm+, label: 181cm+, min_cm: 181, max_cm: null, representative_height_cm: 181}]
-  profiles: [{profile_id: male_175cm, sex: male, height_cm: 175, height_bin: 171-175cm, description: Current p01 squat development profile; exact height is used only
+  profiles: [{profile_id: male_175cm, sex: male, height_cm: 175, height_bin: 171-175cm, description: Synthetic demo/reference profile; exact height is used only
         for researcher-readable nominal lengths., output_model_path: data/reference/anthropometry/common_subject_skeleton_male_175cm.yaml}]
   axes:
     sexes: [male, female]

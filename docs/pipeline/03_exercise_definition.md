@@ -1,7 +1,7 @@
 # 03. 운동 정의 (Exercise Definition)
 
-**문서 버전:** 1.7.1
-**최종 갱신:** 2026-07-14
+**문서 버전:** 1.7.2
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/pipeline/03_exercise_definition.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ③은 `exercise_id`로 exercise YAML artifact를 로드하고 `ExerciseContext`를
@@ -101,10 +101,11 @@ hidden Python branch 없이 달라질 수 있다.
 
 ## 3. 현재 및 향후 운동 범위 (Current And Future Exercise Coverage)
 
-현재 예시에서 사용하는 illustrative canonical exercise ID:
+현재 논문-facing 검증에서 사용하는 대상 exercise/session ID:
 
 ```text
 squat
+korean_national_gymnastics
 generic                  fallback only
 ```
 
@@ -116,15 +117,16 @@ pike_pushup
 plank_shoulder_tap
 ```
 
-예시는 스쿼트를 single-block 반복 운동 사례로 사용한다. Lunge, pike push-up, plank shoulder tap은
-선행 개발/예시 artifact로 repository에 남긴다. 이 운동들이 framework의 범위를 정의하지는 않는다.
+스쿼트는 수정 연구계획서 기준 single-block 반복 과제로 사용하며, 현재 수행 단위는 1세트 연속
+5회다. Lunge, pike push-up, plank shoulder tap은 선행 개발/예시 artifact로 repository에 남긴다.
+이 운동들은 현재 대상자 취득 과제가 아니며 framework의 범위를 정의하지도 않는다.
 
 국민체조는 `data/definitions/exercise_sessions/korean_national_gymnastics.yaml`을 통해 draft
-multi-block sequence 예시로 도입한다. 현재 session은 routine의 되풀이 구간부터 시작하는 취득 및
-분석용 session definition이다. 숨쉬기부터 뜀뛰기까지의 첫 진행은 취득하지도 분석하지도 않으므로,
-이 프로젝트 session에서는 해당 구간을 두 번 수행하지 않는다. 이 session은 아래 순서의
+multi-block sequence 과제로 도입한다. 현재 논문-facing 취득 단위는 참고 sequence의 시작부터
+마지막 팔다리/숨 고르기 구간까지 전체 1회 수행이다. 준비 cue는 setup/reference context로 기록할
+수 있지만, 되풀이 구간부터 시작하는 축약 session으로 다루지 않는다. 이 session은 아래 순서의
 section-level draft exercise definition을 조합한다. 다만 아직 review-required runtime YAML이며,
-canonical 승격 전에는 section/event model, count unit, performance protocol,
+최종 논문-facing 과제로 안정화하기 전에는 section/event model, count unit, performance protocol,
 feature-availability policy, scoring eligibility를 section별로 검토해야 한다. 현재 draft section의
 권장 촬영 조건은 정면 camera zone(`Z1`)과 허리높이 level(`H2`)로 지정한다. View-metric
 reliability와 section별 관찰 목적은 계속 section 단위 검토 대상으로 남긴다.

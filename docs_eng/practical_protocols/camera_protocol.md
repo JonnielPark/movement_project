@@ -1,7 +1,7 @@
 # Camera Filming Protocol per Exercise
 
-**Document Version:** 1.4.5
-**Last Updated:** 2026-07-14
+**Document Version:** 1.4.6
+**Last Updated:** 2026-09-09
 **Korean Sync:** [docs/practical_protocols/camera_protocol.md](../../docs/practical_protocols/camera_protocol.md) is the matching Korean document.
 
 This document defines minimum filming conditions for reproducible monocular pose
@@ -81,8 +81,8 @@ reliability rather than exclude the recording.
 
 | Exercise | Status | Recommended zone | Height | Main observation purpose |
 |---|---|---|---|---|
-| Squat | Illustrative single-block repeated-exercise example | Z2 / Z8 | H2 | knee tracking + hip-flexion depth |
-| Korean National Gymnastics | Planned illustrative multi-block sequence example | TBD after exercise-session, exercise-definition, and camera review | TBD | section/event visibility, whole-body sequence continuity, and view-metric availability |
+| Squat | Current dissertation-facing single-block repeated task | Z2 / Z8 | H2 | knee tracking + hip-flexion depth |
+| Korean National Gymnastics | Current dissertation-facing multi-block sequence task; section-level reliability under review | Z1 | H2 | section/event visibility, whole-body sequence continuity, and view-metric availability |
 | Lunge | Retained prior example artifact | Z3 / Z7 | H2 | anterior knee travel + sagittal trunk/lower-limb alignment |
 | Pike push-up | Retained prior example artifact | Z3 / Z7 | H1 | shoulder angle + inverted-V hip geometry |
 | Plank shoulder tap | Retained prior example artifact | Z2 / Z8 | H1 | pelvic rotation + lateral sway during weight shift |
@@ -154,8 +154,8 @@ confidence reliability are recorded.
 
 ```text
 set recording                  one take when possible
-single-block example           squat, 1 set, 10 repetitions
-multi-block example            Korean National Gymnastics draft; section/event labels pending authoring
+single-block target            squat, 1 set, 5 continuous repetitions
+multi-block target             one full Korean National Gymnastics sequence; section/event labels pending review
 multi-set storage              separate recording files allowed when future protocols need them
 session linkage                session_id + set_index
 exercise-session linkage       optional exercise_session_id for block order/rest
@@ -163,9 +163,10 @@ static calibration pose        not required
 normalization scale            sequence median torso length + per-frame hip center
 ```
 
-Ten continuous squat repetitions are an example unit for observing within-set
-trends. This does not diagnose fatigue. Korean National Gymnastics camera use
-remains a review item until the task is split into analyzable sections/events.
+Five continuous squat repetitions are the current dissertation-facing
+acquisition unit. This does not diagnose fatigue. Korean National Gymnastics
+camera use remains a review item until the full sequence is split into
+analyzable sections/events.
 
 ## 6. Pipeline Use
 

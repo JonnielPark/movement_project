@@ -1,7 +1,7 @@
 # 대상 운동별 촬영 프로토콜 (Camera Filming Protocol per Exercise)
 
-**문서 버전:** 1.4.5
-**최종 갱신:** 2026-07-14
+**문서 버전:** 1.4.6
+**최종 갱신:** 2026-09-09
 **영문 동기화:** [docs_eng/practical_protocols/camera_protocol.md](../../docs_eng/practical_protocols/camera_protocol.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 단안 포즈 분석을 재현 가능하게 만들기 위한 최소 촬영 조건을 정의한다.
@@ -74,8 +74,8 @@ joint actions, primary movement plane에서 권장 조합을 산출한다. 추�
 
 | Exercise | Status | 권장 zone | Height | 주 관찰 목적 |
 |---|---|---|---|---|
-| Squat | single-block 반복 운동 설명 예시 | Z2 / Z8 | H2 | knee tracking + hip-flexion depth |
-| 국민체조 | multi-block sequence 설명 예시 계획 | exercise-session, exercise-definition, camera review 후 확정 | 미정 | section/event visibility, whole-body sequence continuity, view-metric availability |
+| Squat | 현재 논문-facing single-block 반복 과제 | Z2 / Z8 | H2 | knee tracking + hip-flexion depth |
+| 국민체조 | 현재 논문-facing multi-block sequence 과제; section별 reliability 검토 중 | Z1 | H2 | section/event visibility, whole-body sequence continuity, view-metric availability |
 | Lunge | 보존 중인 선행 예시 artifact | Z3 / Z7 | H2 | anterior knee travel + sagittal trunk/lower-limb alignment |
 | Pike push-up | 보존 중인 선행 예시 artifact | Z3 / Z7 | H1 | shoulder angle + inverted-V hip geometry |
 | Plank shoulder tap | 보존 중인 선행 예시 artifact | Z2 / Z8 | H1 | pelvic rotation + lateral sway during weight shift |
@@ -146,8 +146,8 @@ Side-to-side scoring은 active-side provenance와 near/far confidence reliabilit
 
 ```text
 set recording                  가능하면 one take
-single-block example           스쿼트, 1세트, 10회 반복
-multi-block example            국민체조 draft; section/event label은 authoring 후 확정
+single-block target            스쿼트, 1세트, 연속 5회 반복
+multi-block target             국민체조 전체 sequence 1회; section/event label은 검토 후 확정
 multi-set storage              향후 프로토콜에 필요하면 세트별 별도 recording 허용
 session linkage                session_id + set_index
 exercise-session linkage       block 순서/rest를 위한 선택 exercise_session_id
@@ -155,8 +155,8 @@ static calibration pose        필요 없음
 normalization scale            sequence median torso length + per-frame hip center
 ```
 
-스쿼트 10회 연속 반복은 세트 내 trend 관찰을 보여주는 예시 단위다. 피로 진단을 의미하지 않는다.
-국민체조 camera use는 과제를 분석 가능한 section/event로 나누기 전까지 검토 항목으로 둔다.
+스쿼트 5회 연속 반복은 현재 논문-facing 취득 단위다. 피로 진단을 의미하지 않는다. 국민체조 camera
+use는 전체 sequence를 분석 가능한 section/event로 나누기 전까지 검토 항목으로 둔다.
 
 ## 6. 파이프라인 사용 (Pipeline Use)
 

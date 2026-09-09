@@ -1,6 +1,6 @@
 # 용어집 (Terminology)
 
-**문서 버전:** 1.8.5
+**문서 버전:** 1.8.6
 **최종 갱신:** 2026-07-14
 **영문 동기화:** `docs_eng/terminology.md`는 동일 버전의 영문 번역본이다.
 
@@ -98,6 +98,9 @@
 | 보수적 engineering range (Conservative engineering range) | aggregate anthropometric ratio 주변에 연구자가 넓게 정의한 tolerance. impossible skeleton behavior와 data-confidence 문제를 잡기 위한 것이며 population P5/P95 추정이 아니다. |
 | 개인별 empirical 인체계측 prior (Row-level empirical anthropometric prior) | 비식별 개인별 anthropometric row가 있어야 가능한 향후 upgrade. 같은 개인 안에서 segment/stature ratio를 계산한 뒤 P1/P99 또는 P5/P95를 요약한다. |
 | Depth residual correction | x/y evidence, segment-length plausibility, confidence, correction cap이 모두 허용할 때만 시도할 수 있는 bounded analysis-evidence depth-axis bounded 보정. raw 또는 base normalized coordinate를 덮어쓰지 않는다. Raw residual/burden 진단값은 ⑤-1 report 또는 audit export 안에 두며, 해당 evidence가 승격될 때 downstream payload는 `quality_gravity`를 사용한다. |
+| 운동정의 기반 correction prior (Exercise-defined correction prior) | 운동정의와 analysis profile이 어떤 보정 prior를 켜고 어떤 phase/support/joint-chain 조건에서 적용할지 선언하는 선택 규칙. 운동 이름별 Python 분기가 아니며, 좋은 자세 template fitting도 아니다. |
+| Bounded radial XY relaxation | 핀쿠션 또는 배럴형 왜곡 가능성을 캘리브레이션 없이 단정하지 않고, recording-view xy가 작은 radial 방향으로만 움직일 수 있게 허용하는 약한 analysis-evidence prior. `off`, `smartphone_nominal`, `strong_review`, `custom` 같은 preset으로 자유도를 제한하며, calibrated lens correction이 아니다. |
+| Prior 병합 정책 (Prior merge policy) | corrected-3D-hypothesis solver가 여러 prior를 동시에 사용할 때 hard gate, priority, weight를 분리해 적용하는 규칙. Hard gate는 weight보다 우선하며, correction burden/residual/confidence가 report에 남아야 한다. |
 | 관절 plausibility (Articulation plausibility) | 불가능한 joint-angle 또는 reverse-bending configuration을 다루는 별도 guard. data confidence를 낮추거나 feature를 unavailable로 표시하며, movement-quality를 직접 감점하지 않는다. |
 
 ---

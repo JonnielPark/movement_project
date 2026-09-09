@@ -5,15 +5,17 @@ import pytest
 from movement.io import load_participant_profile_yaml
 
 
-def test_load_p01_participant_profile_yaml():
+def test_load_demo_participant_profile_yaml():
     profile = load_participant_profile_yaml(
-        Path("data/participants/no_consent/p01.yaml")
+        Path("data/examples/participants/demo_squat_10rep.yaml")
     )
 
-    assert profile["participant_id"] == "p01"
+    assert profile["participant_id"] == "demo_squat_10rep_subject"
     assert profile["anthropometry"]["sex"] == "male"
     assert profile["anthropometry"]["height_bin"] == "171-175cm"
     assert profile["common_subject_skeleton"]["profile_id"] == "male_175cm"
+    assert profile["policy"]["synthetic"] is True
+    assert profile["policy"]["derived_from_real_participant"] is False
     assert profile["policy"]["used_for_scoring"] is False
     assert profile["policy"]["coordinate_rescale_from_height"] is False
 

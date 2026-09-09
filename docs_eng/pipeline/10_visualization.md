@@ -1,7 +1,7 @@
 # 10. Visualization
 
-**Document Version:** 1.1.2
-**Last Updated:** 2026-07-07
+**Document Version:** 1.1.3
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/pipeline/10_visualization.md` is the same-version Korean source.
 
 Pipeline step ⑩ is called outside the ①-⑨ runner. It renders pose data,
@@ -79,18 +79,19 @@ The optional `floor`/analysis-space coordinate modes are review tools and do not
 downstream promotion.
 
 For presentation review, `notebook/20_stage_checks/30_visualization_test.ipynb`
-builds a Plotly Play/Pause animation from the first detected rep start through
-the 10th detected rep end in recording-view orientation, prioritizing normalized
-(`norm`) coordinates. This keeps the intervening transition frames in the
-presentation playback so the duration stays closer to the recorded movement
-time. The notebook also exports an HTML playback file under
+builds a Plotly Play/Pause animation for the selected analysis interval or the
+first five squat repetitions under the current squat protocol in recording-view
+orientation, prioritizing normalized (`norm`) coordinates. This keeps the
+intervening transition frames in the presentation playback so the duration stays
+closer to the recorded movement time. The notebook also exports an HTML playback
+file under
 `data/processed/visualization/` so the interactive view can be opened separately
 or screen-recorded for slides.
 
 Because browser-based Plotly 3D animation is render-bound, the notebook may
 decimate rendered frames for presentation playback while preserving the first
 frame, last frame, and total timestamp duration. This reduces browser overhead
-without changing the source pose data used for the selected 10-rep interval.
+without changing the source pose data used for the selected analysis interval.
 
 ---
 
@@ -143,7 +144,7 @@ notebook/20_stage_checks/24_normalization_test.ipynb             raw/norm review
 notebook/20_stage_checks/25_canonicalization_test.ipynb          norm/canon analysis-evidence review
 notebook/20_stage_checks/27_feature_extraction_test.ipynb
                                                              feature + side-role context review
-notebook/20_stage_checks/30_visualization_test.ipynb             norm recording-view 10-rep
+notebook/20_stage_checks/30_visualization_test.ipynb             norm recording-view selected-interval
                                                              presentation playback
 ```
 

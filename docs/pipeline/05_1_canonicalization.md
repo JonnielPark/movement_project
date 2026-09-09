@@ -1,6 +1,6 @@
 # 05-1. Canonicalization
 
-**문서 버전:** 2.3.1
+**문서 버전:** 2.4.0
 **최종 갱신:** 2026-07-09
 **영문 동기화:** `docs_eng/pipeline/05_1_canonicalization.md`는 동일 버전의 영문 번역본이다.
 
@@ -579,6 +579,268 @@ Body-axis alignment는 의도적으로 활성화하지 않는다. 골반/어깨 
 실제 골반 회전, 체간 기울기, 횡단면 보상을 지울 수 있으므로, anthropometric skeleton prior가
 구체화된 뒤에만 재검토한다.
 
+### 5.7 운동정의 기반 Correction Prior 선택
+
+Corrected-3D-hypothesis solver는 하나의 고정 알고리즘이 아니라, 운동정의와 analysis profile이
+허용한 correction prior set을 읽어 실행하는 구조여야 한다. 운동정의는 운동 이름으로 특수 분기를
+만드는 것이 아니라, 어떤 support 조건과 joint-chain 제약, phase/event context, camera protocol이
+보정 가설에 사용될 수 있는지를 선언한다.
+
+예를 들어 squat는 다음 prior를 켤 수 있다:
+
+```yaml
+corrected_3d_hypothesis:
+  priors:
+    anthropometric_segment_length:
+      enabled: true
+      priority: primary
+      weight: 1.0
+    support_contact_lock:
+      enabled: true
+      priority: hard_gate
+      support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
+    joint_chain_motion:
+      enabled: true
+      priority: primary
+      chain: [hip, knee, ankle]
+    temporal_smoothness:
+      enabled: true
+      priority: secondary
+      weight: 0.6
+    radial_xy_relaxation:
+      enabled: true
+      preset: smartphone_nominal
+      priority: secondary
+      weight: 0.2
+```
+
+운동정의 기반 prior는 다음 원칙을 지켜야 한다:
+
+```text
+- support landmark를 무조건 고정하지 않는다. Confidence, phase/event, stability gate가 충분할 때만
+  support-contact prior를 적용한다.
+- true compensation일 수 있는 heel lift, pelvis rotation, trunk lean, support shift를 좋은 자세
+  template으로 지워서는 안 된다.
+- 운동정의는 prior를 선택하고 제한 조건을 제공한다. Canonicalization solver는 score-policy weight나
+  final-score contribution을 결정하지 않는다.
+- prior가 feature에서 사용되려면 해당 feature가 corrected_3d_hypothesis 또는 dual_domain_compare
+  evaluation_domain을 선언해야 한다.
+```
+
+### 5.8 Prior 병합 정책
+
+여러 prior가 동시에 켜질 수 있으므로 solver는 hard gate, priority, weight를 분리해 처리한다.
+초기 구현은 해석과 디버깅이 쉬운 priority-based coordinate descent를 사용하고, 충분한 review와
+test가 쌓인 뒤 bounded weighted objective로 확장할 수 있다.
+
+우선순위:
+
+```text
+Hard gate
+  raw/norm overwrite 금지
+  landmark confidence / swap-risk gate
+  correction cap 초과 reject
+  impossible segment length 또는 impossible articulation reject/not_assessed
+  support residual을 명백히 악화시키는 correction reject
+
+Primary constraint
+  anthropometric segment-length plausibility
+  exercise-defined support contact / support surface
+  exercise-defined joint-chain motion plausibility
+
+Secondary prior
+  norm_z 또는 previous iteration z와 가까운 해
+  temporal smoothness / anti-jump continuity
+  bounded radial xy relaxation
+
+Report-only diagnostic
+  correction burden
+  residual before/after
+  norm-vs-corrected sensitivity
+  prior별 confidence downgrade reason
+```
+
+초기 solver 순서:
+
+```text
+1. norm_xy를 기본 anchor로 두고 z-only anthropometric solution을 만든다.
+2. 두 z 후보가 있으면 norm_z 또는 이전 iteration z에 가까운 해를 선택한다.
+3. support/contact 및 joint-chain hard gate로 불가능한 해를 reject한다.
+4. radial_xy_relaxation이 켜져 있으면 radial direction의 작은 xy 후보만 만든다.
+5. 바뀐 xy에서 z solution을 다시 계산한다.
+6. segment/support/temporal residual과 correction burden이 개선되거나 허용 범위 안이면 채택한다.
+7. 개선되지 않거나 oscillation이 감지되면 이전 best solution을 유지한다.
+```
+
+향후 weighted objective를 사용할 때도 loss는 report 가능한 항으로 분해되어야 한다:
+
+```text
+loss =
+  w_segment  * segment_length_residual
++ w_support  * support_contact_or_surface_residual
++ w_chain    * joint_chain_motion_residual
++ w_temporal * temporal_jump_residual
++ w_xy       * xy_shift_penalty
++ w_z        * norm_z_or_previous_z_distance
+```
+
+각 weight는 config 또는 운동정의 profile에서 읽으며 Python에 hardcode하지 않는다. Hard gate는
+weight보다 우선하며, weight가 높아도 gate를 통과하지 못한 correction은 채택하지 않는다.
+
+### 5.9 Bounded Radial XY Relaxation 정책
+
+Pincushion-like distortion은 calibrated lens correction이 아니라 recording-view xy를 얼마나 풀어줄지
+정하는 약한 radial prior로만 사용한다. 이 prior는 단안 카메라 왜곡을 보정했다고 주장하지 않으며,
+인체계측/운동정의 제약이 더 잘 설명되는지 검토하기 위한 bounded xy 자유도다.
+
+설정 표면:
+
+```yaml
+radial_xy_relaxation:
+  enabled: false
+  preset: off                  # off | smartphone_nominal | strong_review | custom
+  model: radial_k1
+  direction: pincushion        # pincushion | barrel | auto_candidate
+  center_source: frame_center  # frame_center | metadata
+  max_xy_shift_torso: 0.02
+  radial_strength: 0.25
+  max_iterations: 5
+  convergence_epsilon: 0.001
+  accept_only_if_residual_improves: true
+```
+
+Preset 의미:
+
+```text
+off
+  xy correction 없음. norm_xy를 고정한다.
+
+smartphone_nominal
+  일반 스마트폰 촬영에서 가능한 작은 radial distortion을 약한 prior로 허용한다.
+  xy shift cap은 작게 유지하고, confidence는 high로 승격하지 않는다.
+
+strong_review
+  더 큰 왜곡 가능성을 검토하기 위한 review-only preset이다.
+  결과는 low-confidence 또는 not_assessed로 쉽게 낮아질 수 있다.
+
+custom
+  연구자가 `max_xy_shift_torso`, `radial_strength`, iteration parameter를 명시한다.
+```
+
+Radial xy relaxation guard:
+
+```text
+- radial direction의 작은 이동만 허용한다.
+- `max_xy_shift_torso`를 넘는 이동은 reject한다.
+- 바뀐 xy에서 z solution을 다시 계산한다.
+- segment residual이 개선되지 않으면 채택하지 않는다.
+- support/contact residual이나 temporal jump가 악화되면 reject하거나 lower confidence로 둔다.
+- correction magnitude는 movement-quality penalty가 아니라 data-confidence/provenance signal이다.
+```
+
+### 5.10 Confidence 승계와 Norm-vs-Corrected 비교 정책
+
+Corrected coordinate는 좌표값만 방출하면 안 된다. 각 prior와 merge 단계는 confidence, availability,
+`quality_gravity`, burden/residual provenance를 함께 남겨야 하며, 이 정보는 후속 단계에서 feature
+수준으로 승계되어야 한다.
+
+최소 report/audit field:
+
+```text
+frame
+rep_id
+phase
+coordinate_family
+prior_id
+iteration
+landmark_or_segment
+source_xy
+source_z
+corrected_xy
+corrected_z
+xy_shift_torso
+z_shift_torso
+segment_residual_before_torso
+segment_residual_after_torso
+support_residual_before_torso
+support_residual_after_torso
+temporal_residual_before_torso
+temporal_residual_after_torso
+correction_burden
+cap_fraction
+availability
+confidence
+quality_gravity
+accepted
+rejection_reason
+used_for_features_or_scores = false
+```
+
+Confidence 승계:
+
+```text
+canonicalization
+  corrected coordinate + prior별 availability/confidence/quality_gravity + burden/residual report
+
+feature extraction
+  feature value + coordinate_reference + inherited quality_gravity + evaluation_domain
+
+biomech proxy
+  proxy value + inherited evidence confidence + depth_dependency
+
+biomarker scoring
+  movement-quality score와 data-confidence를 분리한다.
+  corrected evidence의 nonzero score-policy weight는 별도 scoring policy 검토 후에만 허용한다.
+```
+
+Norm-vs-corrected 비교 surface:
+
+```text
+feature_id
+evaluation_domain
+norm_value
+corrected_value
+delta
+delta_abs
+correction_burden
+residual_improvement
+availability
+confidence
+quality_gravity
+score_policy_weight = 0 by default
+```
+
+이 비교는 corrected coordinate가 norm보다 정답임을 뜻하지 않는다. 보정이 얼마나 컸는지, 어떤 prior가
+작동했는지, residual이 얼마나 개선되었는지, 그리고 그 evidence를 downstream에서 어느 정도 신뢰할 수
+있는지 설명하기 위한 review surface다.
+
+### 5.11 논리 및 연구 범위 Gate
+
+본 정책은 다음 조건을 지킬 때 연구 범위 안에 있다:
+
+```text
+- 단안 pose 기반의 relative, dimensionless analysis evidence로만 해석한다.
+- raw/norm 좌표를 보존하고 additive corrected coordinate family만 추가한다.
+- camera calibration, lens calibration, calibrated world coordinate, absolute 3D reconstruction을
+  주장하지 않는다.
+- anthropometric prior는 Stage A에서 conservative engineering envelope로만 사용한다.
+- 운동정의 기반 prior는 impossible coordinate hypothesis를 reject하거나 confidence를 낮추는 용도이며,
+  좋은 자세 template으로 pose를 강제 fitting하지 않는다.
+- score-policy weight와 final-score contribution은 ⑤-1이 아니라 ⑨ Scoring policy에서 별도로 결정한다.
+```
+
+다음 표현은 금지한다:
+
+```text
+calibrated camera correction
+real 3D reconstruction
+absolute joint position recovery
+subject-specific skeleton fitting
+normal posture template fitting
+force/torque/strength inference
+clinical diagnosis or prognosis
+```
+
 ---
 
 ## 6. 인체계측 스켈레톤 Prior 정책 (Anthropometric Skeleton Prior Policy)
@@ -799,6 +1061,7 @@ unit = dimensionless_ratio
   추가한다.
 - confidence-weighted scale estimation과 torso-length outlier handling.
 - exercise definition field 기반 운동별 canonicalization prior 선택.
+- exercise-defined correction prior set, merge policy, radial_xy_relaxation preset, confidence propagation 구현.
 - corrected coordinate가 이후 scoring policy에서 nonzero score-policy weight를 받기 전 robustness evaluation.
 - local config가 더 이상 의존하지 않으면 legacy `floor_relative_correction` key 점진 축소.
 

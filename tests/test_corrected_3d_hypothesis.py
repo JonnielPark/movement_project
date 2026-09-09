@@ -1,7 +1,11 @@
 import pandas as pd
 
 from movement.stages.corrected_3d_hypothesis import (
+    Corrected3DCoordinateSolverConfig,
+    CorrectionPriorConfig,
+    RadialXYRelaxationConfig,
     SupportWidthStabilityConfig,
+    build_corrected_3d_coordinate_hypothesis,
     build_corrected_3d_hypothesis_evidence,
     build_support_width_stability_sensitivity_report,
     collect_corrected_3d_sensitivity_rows,
@@ -139,6 +143,148 @@ def test_corrected_3d_hypothesis_result_keeps_coordinates_as_analysis_evidence()
     assert "score_gravity" not in row
     assert "score_contribution_enabled" not in row
     assert "used_for_score" not in row
+
+
+def test_coordinate_solver_corrects_segment_z_without_changing_xy():
+    df = pd.DataFrame(
+        {
+            "frame": [0, 1],
+            "prox_norm_x": [0.0, 0.0],
+            "prox_norm_y": [0.0, 0.0],
+            "prox_norm_z": [0.0, 0.0],
+            "dist_norm_x": [0.6, 0.6],
+            "dist_norm_y": [0.0, 0.0],
+            "dist_norm_z": [0.0, 0.0],
+        }
+    )
+
+    corrected, ledger, report = build_corrected_3d_coordinate_hypothesis(
+        df,
+        landmarks=["prox", "dist"],
+        config=Corrected3DCoordinateSolverConfig(
+            enabled=True,
+            output_family="review",
+            segment_pairs=(("prox", "dist"),),
+            default_segment_length_torso=1.0,
+            max_depth_torso=1.0,
+            max_z_correction_torso=1.0,
+            correction_priors=(
+                CorrectionPriorConfig(
+                    name="anthropometric_segment_length",
+                    enabled=True,
+                    priority="primary",
+                ),
+            ),
+        ),
+    )
+
+    assert report["status"] == "applied"
+    assert report["applied_priors"] == ["anthropometric_segment_length"]
+    assert len(ledger) == 2
+    assert corrected["dist_review_x"].tolist() == df["dist_norm_x"].tolist()
+    assert corrected["dist_review_y"].tolist() == df["dist_norm_y"].tolist()
+    assert round(float(corrected.loc[0, "dist_review_z"]), 6) == 0.8
+    assert round(float(ledger.loc[0, "residual_after_torso"]), 6) == 0.0
+    assert "score_gravity" not in ledger.columns
+
+
+def test_coordinate_solver_radial_xy_relaxation_recomputes_z_solution():
+    df = pd.DataFrame(
+        {
+            "prox_norm_x": [-0.51],
+            "prox_norm_y": [0.0],
+            "prox_norm_z": [0.0],
+            "dist_norm_x": [0.51],
+            "dist_norm_y": [0.0],
+            "dist_norm_z": [0.0],
+        }
+    )
+
+    corrected, ledger, report = build_corrected_3d_coordinate_hypothesis(
+        df,
+        landmarks=["prox", "dist"],
+        config=Corrected3DCoordinateSolverConfig(
+            enabled=True,
+            output_family="review",
+            segment_pairs=(("prox", "dist"),),
+            default_segment_length_torso=1.0,
+            max_depth_torso=1.0,
+            max_z_correction_torso=1.0,
+            correction_priors=(
+                CorrectionPriorConfig(
+                    name="anthropometric_segment_length",
+                    enabled=True,
+                    priority="primary",
+                ),
+                CorrectionPriorConfig(
+                    name="radial_xy_relaxation",
+                    enabled=True,
+                    priority="secondary",
+                    weight=0.25,
+                ),
+            ),
+            radial_xy_relaxation=RadialXYRelaxationConfig(
+                enabled=True,
+                preset="custom",
+                direction="pincushion",
+                max_xy_shift_torso=0.02,
+                radial_strength=1.0,
+                max_iterations=1,
+            ),
+        ),
+    )
+
+    assert report["status"] == "applied"
+    assert "radial_xy_relaxation" in report["applied_priors"]
+    assert ledger.loc[0, "prior"] == "radial_xy_relaxation"
+    assert (
+        abs(float(corrected.loc[0, "prox_review_x"]) - df.loc[0, "prox_norm_x"])
+        <= 0.020001
+    )
+    assert (
+        abs(float(corrected.loc[0, "dist_review_x"]) - df.loc[0, "dist_norm_x"])
+        <= 0.020001
+    )
+    assert float(ledger.loc[0, "residual_after_torso"]) < float(
+        ledger.loc[0, "residual_before_torso"]
+    )
+
+
+def test_corrected_3d_hypothesis_builder_uses_enabled_coordinate_solver():
+    df = pd.DataFrame(
+        {
+            "prox_norm_x": [0.0, 0.0],
+            "prox_norm_y": [0.0, 0.0],
+            "prox_norm_z": [0.0, 0.0],
+            "dist_norm_x": [0.6, 0.6],
+            "dist_norm_y": [0.0, 0.0],
+            "dist_norm_z": [0.0, 0.0],
+        }
+    )
+
+    result = build_corrected_3d_hypothesis_evidence(
+        df,
+        landmarks=["prox", "dist"],
+        solver_config={
+            "output_family": "review",
+            "support_pair": ["prox", "dist"],
+            "coordinate_solver": {
+                "enabled": True,
+                "segment_pairs": [["prox", "dist"]],
+                "default_segment_length_torso": 1.0,
+                "max_depth_torso": 1.0,
+                "max_z_correction_torso": 2.0,
+            },
+        },
+    )
+
+    assert "dist_review_z" in result.analysis_coordinate_df.columns
+    assert result.readiness_provenance["coordinate_solver_status"] == "applied"
+    assert result.residual_report["coordinate_solver"]["status"] == "applied"
+    assert not result.burden_ledger.empty
+    sensitivity = result.norm_vs_corrected_sensitivity_report.iloc[0]
+    assert sensitivity["availability"] == "assessed"
+    assert sensitivity["quality_gravity"] > 0.0
 
 
 def test_pipeline_emits_corrected_3d_review_without_scoring_use():

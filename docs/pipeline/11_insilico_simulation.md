@@ -1,7 +1,7 @@
-# 12. 인실리코 시뮬레이션 (In-Silico Simulation)
+# 11. 인실리코 시뮬레이션 (In-Silico Simulation)
 
-**문서 버전:** 1.1.0
-**최종 갱신:** 2026-05-21
+**문서 버전:** 1.1.1
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/pipeline/11_insilico_simulation.md`는 동일 버전의 영문 번역본이다.
 
 파이프라인 단계 ⑪은 외부 robustness harness다. Synthetic 또는 reference pose data에 통제된

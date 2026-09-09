@@ -1,16 +1,17 @@
 # 운동별 상세 해석 문서 (Per-Exercise Clinical Rationale)
 
-**문서 버전:** 1.1.3
-**최종 갱신:** 2026-07-14
+**문서 버전:** 1.1.4
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/clinical/exercises/README.md`는 동일 버전의 영문 번역본이다.
 
-이 폴더는 현재 스쿼트 예시와 보존 중인 선행 운동 정의 예시의 생체역학적 해석 배경을
-보관한다. 여기서 "임상적"은 전문가의 동작 관찰 맥락을 뜻하며, 질환 진단, 치료 효과 입증,
-환자 분류를 의미하지 않는다.
+이 폴더는 현재 논문-facing 대상 운동인 스쿼트와 국민체조, 그리고 보존 중인 선행 운동 정의
+artifact의 생체역학적 해석 배경을 보관한다. 여기서 "임상적"은 전문가의 동작 관찰 맥락을
+뜻하며, 질환 진단, 치료 효과 입증, 환자 분류를 의미하지 않는다.
 
-스쿼트는 single-block 반복 운동 설명 예시다. 국민체조는 exercise-session definition과 section-level
-draft exercise definition으로 표현한 draft multi-block sequence 설명 예시다. 이 예시들이
-framework의 운동 범위를 정의하지는 않는다.
+스쿼트는 현재 연구계획서 기준 single-block 반복 과제이며, 국민체조는 전체 sequence 1회를
+section/event 단위로 나누기 위한 multi-block sequence 과제다. Lunge, pike push-up, plank
+shoulder tap은 framework 개발 중 남겨 둔 선행 artifact이며, 현재 대상자 취득 과제로 확장하지
+않는다.
 
 이 문서는 실행 명세가 아니다. 실행 기준은 YAML과 코드이다. 해석 문장은 pipeline 문서를
 먼저 갱신한 뒤에만 `compensation_patterns`, `analysis_disrupting_patterns`, feature registry,
@@ -22,8 +23,8 @@ scoring rule로 승격할 수 있다.
 
 | Exercise | Status | Rationale | Exercise YAML | Performance protocol |
 |---|---|---|---|---|
-| Squat | single-block 반복 운동 설명 예시 | [squat.md](squat.md) | [squat.yaml](../../../data/definitions/exercises/squat.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
-| 국민체조 | draft multi-block sequence 설명 예시 | [korean_national_gymnastics.md](korean_national_gymnastics.md) | [korean_national_gymnastics.yaml](../../../data/definitions/exercise_sessions/korean_national_gymnastics.yaml) | pending section protocol |
+| Squat | 현재 논문-facing single-block 반복 과제 | [squat.md](squat.md) | [squat.yaml](../../../data/definitions/exercises/squat.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
+| 국민체조 | 현재 논문-facing multi-block sequence 과제; section/event model 검토 중 | [korean_national_gymnastics.md](korean_national_gymnastics.md) | [korean_national_gymnastics.yaml](../../../data/definitions/exercise_sessions/korean_national_gymnastics.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
 | Lunge | 보존 중인 선행 예시 artifact | [lunge.md](lunge.md) | [lunge.yaml](../../../data/definitions/exercises/lunge.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
 | Pike Push-up | 보존 중인 선행 예시 artifact | [pike_pushup.md](pike_pushup.md) | [pike_pushup.yaml](../../../data/definitions/exercises/pike_pushup.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |
 | Plank Shoulder Tap | 보존 중인 선행 예시 artifact | [plank_shoulder_tap.md](plank_shoulder_tap.md) | [plank_shoulder_tap.yaml](../../../data/definitions/exercises/plank_shoulder_tap.yaml) | [exercise_performance_protocol.md](../../practical_protocols/exercise_performance_protocol.md) |

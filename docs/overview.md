@@ -1,7 +1,7 @@
 # 개요 (Overview)
 
-**문서 버전:** 1.4.47
-**최종 갱신:** 2026-07-14
+**문서 버전:** 1.4.49
+**최종 갱신:** 2026-09-09
 **영문 동기화:** [docs_eng/overview.md](../docs_eng/overview.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 분석 파이프라인(pipeline)의 전체 설계를 기술한다.
@@ -13,25 +13,25 @@
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.8.5 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.46 | [overview.md](overview.md) | 전체 파이프라인 개요 |
-| 1.4.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.1.5 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 1.8.6 | [terminology.md](terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.49 | [overview.md](overview.md) | 전체 파이프라인 개요 |
+| 1.4.6 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.1.6 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
 | 0.2.26 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | notebook 우선 운동 작성과 YAML 생성 계획 |
-| 1.1.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
-| 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
+| 1.1.4 | [clinical/exercises/README.md](clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.2.3 | [00_data_format.md](pipeline/00_data_format.md) | 입력 CSV 데이터 포맷 |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.7.1 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.7.2 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 2.3.1 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization + 선택 ⑤-1 Canonicalization filter |
-| 2.3.1 | [05_1_canonicalization.md](pipeline/05_1_canonicalization.md) | 선택 ⑤-1 Canonicalization 상세 reference |
+| 2.4.0 | [05_1_canonicalization.md](pipeline/05_1_canonicalization.md) | 선택 ⑤-1 Canonicalization 상세 reference |
 | 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.2.4 | [07_feature_extraction.md](pipeline/07_feature_extraction.md) | ⑦ Feature Extraction |
 | 1.2.0 | [08_biomechanical_proxy.md](pipeline/08_biomechanical_proxy.md) | ⑧ Biomech Proxy |
 | 1.2.0 | [09_biomarker_scoring.md](pipeline/09_biomarker_scoring.md) | ⑨ Biomarker Scoring |
-| 1.1.2 | [10_visualization.md](pipeline/10_visualization.md) | ⑩ Visualization |
-| 1.1.0 | [11_insilico_simulation.md](pipeline/11_insilico_simulation.md) | ⑪ In-silico Simulation |
+| 1.1.3 | [10_visualization.md](pipeline/10_visualization.md) | ⑩ Visualization |
+| 1.1.1 | [11_insilico_simulation.md](pipeline/11_insilico_simulation.md) | ⑪ In-silico Simulation |
 
 ---
 
@@ -42,9 +42,14 @@
 구성되며, 이 정보는 동일한 `ExerciseDefinition` 객체와 단계별 report를 통해 파이프라인
 전반에서 공유된다.
 
+이 저장소는 학위논문 분석 프레임워크의 설계, 구현, 검증, 사용 예시를 관리한다. IRB 행정,
+대상자 등록/동의/철회, 보상 연락처, 원본 영상 보관, 실제 참여자별 임상자료 관리는 범위 밖이다.
+실제 연구 운영에서 생성되는 참여자 유래 자료는 이 repository가 아니라 별도 접근통제 공간에서
+관리하며, 이 repository에는 synthetic/demo 또는 공개 가능한 aggregate artifact만 둔다.
+
 분석 원리는 절대 힘이나 절대 토크를 복원하는 것이 아니라, 개인 신체 척도로 정규화된 관절
 각도, 분절 궤적, 좌우 대칭성, CoM 안정성, moment-arm proxy, 상대 부하 전이, 보상 움직임
-보상 움직임 패턴을 반복(rep) 및 구간(phase) 단위로 산출하는 것이다. 이를 통해 단안 카메라 환경에서도
+패턴을 반복(rep) 및 구간(phase) 단위로 산출하는 것이다. 이를 통해 단안 카메라 환경에서도
 관찰 가능한 움직임을 생체역학적으로 해석 가능한 feature와 digital biomarker로 변환한다.
 
 따라서 결과물은 반복별/구간별 feature table, biomechanical proxy table, biomarker score,
@@ -58,20 +63,20 @@
 특정 근육 활성의 직접 증거가 아니라 관찰 가능한 움직임에서 유도한 해석 가능한 경향성으로
 다룬다.
 
-운동 선택 자체는 framework claim의 중심이 아니라 설명용 예시다. 스쿼트는 single-block 반복 운동의
-예시로 사용하여 세팅, segmentation, feature extraction, biomechanical proxy/scoring,
-visualization 흐름을 보여준다. 국민체조는 단일 반복 운동을 넘어 multi-block sequence 운동으로
-확장할 수 있음을 보여주는 draft 예시로 둔다.
+수정 연구계획서 기준의 현재 논문-facing 검증 범위는 스쿼트와 국민체조다. 스쿼트는 single-block
+반복 운동의 대표 과제로 1세트 연속 5회를 사용하여 세팅, segmentation, feature extraction,
+biomechanical proxy/scoring, visualization 흐름을 보여준다. 국민체조는 참고 sequence 시작부터
+마지막 팔다리/숨 고르기 구간까지 전체 1회 수행을 section/event 단위로 나누는 multi-block
+sequence 대표 과제로 둔다.
 
-이 예시들은 framework의 운동 한계나 필수 사용 조건을 정의하지 않는다. 핵심 설계는
-정의 기반 확장성이다. 즉 exercise definition, analysis profile, performance protocol,
-camera protocol, feature-availability policy, scoring policy가 정의되면 같은 pipeline으로 다른
-운동도 분석하고 점수화할 수 있어야 한다. 국민체조는 현재 되풀이 구간 취득 및 분석용
-exercise-session YAML과 section-level draft exercise definition을 가진다. 권장 촬영 조건은 정면 허리높이 recording
-(`Z1`, `H2`)으로 지정했지만, section/event segmentation, performance protocol,
-view-metric reliability, feature-availability policy, scoring eligibility는 여전히 section별
-검토가 필요하다. 국민체조는 상·하지, 다평면, sequence-level 움직임을 포함하므로 해당 항목들이
-승격되기 전까지 hidden stage-level branch가 아니라 검토된 draft YAML로 남겨야 한다.
+이 두 운동은 현재 논문 검증 범위를 정의하지만, framework의 장기적 운동 한계나 필수 사용 조건을
+정의하지 않는다. 핵심 설계는 정의 기반 확장성이다. 즉 exercise definition, analysis profile,
+performance protocol, camera protocol, feature-availability policy, scoring policy가 정의되면
+같은 pipeline으로 다른 운동도 분석할 수 있어야 한다. 다만 현 논문 검증에서는 다른 운동을
+대상자 취득 과제로 확장하지 않고, lunge/pike push-up/plank shoulder tap은 보존 중인 선행 개발
+artifact로 유지한다. 국민체조는 현재 section-level draft exercise definition과 공유 camera
+protocol을 가지며, section/event segmentation, performance protocol, view-metric reliability,
+feature-availability policy, scoring eligibility는 여전히 section별 검토가 필요하다.
 
 덤벨, 밴드, 바벨 같은 기구 사용 운동은 여전히 기구 위치, 외부 부하 metadata, 손-기구 접촉
 상태, 저항 방향을 추가로 기록해야 한다. 점프, 달리기, 방향전환처럼 고동적이거나 공간 이동이
@@ -180,7 +185,7 @@ rest_policy           연속 block 사이의 공통 계획 휴식
 | ③ Exercise Definition | `exercise_id`, split YAML 산출물 또는 legacy combined YAML; block 조합을 위한 선택 `exercise_session_id` | `ExerciseContext`를 로드하고 하위 호환 `ExerciseDefinition`을 반환한다. Session definition은 각 block의 정의를 바꾸지 않고 여러 exercise block을 순서화할 수 있다. 없을 경우 `generic.yaml`을 적용한다. `camera_protocol`은 촬영 권장 조건과 경고 정책의 메타데이터로 보존한다. | ExerciseContext, ExerciseDefinition, optional ExerciseSessionDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | 신뢰도 칼럼을 확인하고, 좌우 swap 의심 사례, 결측값, 짧은 gap, 급격한 좌표 변화를 보정하며 필요한 경우 smoothing을 적용한다. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | 골반 중심 기준 평행이동과 시퀀스 단위 몸통 길이 중앙값 척도화를 통해 신체 기준 `norm` 좌표 계열을 추가한다. Depth-evidence metadata는 z가 finite backend model depth인지 placeholder뿐인지 기록한다. | 정규화 포즈 데이터 = 전처리 포즈 데이터 + 신체 기준 좌표 + depth-evidence metadata |
-| ⑤-1 선택 Canonicalization | 정규화 포즈 데이터 | 선택 filter가 support-plane, movement-plane, protocol-height, `xy_depth_lift`, anthropometric prior를 이용해 analysis-space 좌표 계열을 방출할 수 있다. 이 좌표는 `norm`과 분리하며 availability, confidence, `quality_gravity`, sensitivity를 downstream 요약으로 노출한다. Raw burden/residual 진단값과 알고리즘/config 이력은 단계 report에 둔다. | 보정 포즈 데이터 = 정규화 포즈 데이터 + analysis-space 좌표 + availability/confidence/`quality_gravity` 요약 + canonicalization report |
+| ⑤-1 선택 Canonicalization | 정규화 포즈 데이터 | 선택 filter가 support-plane, movement-plane, protocol-height, `xy_depth_lift`, anthropometric prior, 운동정의 기반 correction prior, bounded radial xy relaxation을 이용해 analysis-space 좌표 계열을 방출할 수 있다. 이 좌표는 `norm`과 분리하며 availability, confidence, `quality_gravity`, sensitivity를 downstream 요약으로 노출한다. Raw burden/residual 진단값, prior별 correction burden, 알고리즘/config 이력은 단계 report에 둔다. | 보정 포즈 데이터 = 정규화 포즈 데이터 + analysis-space 좌표 + availability/confidence/`quality_gravity` 요약 + canonicalization report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | 관절 움직임 기반으로 반복 경계를 산출하고, 반복 내부 phase를 라벨링한다. 불확실한 구간은 실패 지점으로 기록하고 수동 개입 결과를 반영한다. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role 설정 | Feature extraction 내부에서 side-role context를 해석한 뒤 반복 단위 및 phase 단위의 range of motion, role alignment, movement path, tempo, variability, compensation feature를 계산하고 feature-registry coverage, compensation-pattern availability, analysis-disrupting pattern detectability를 보고한다. | FeatureRecord 목록, feature DataFrame, feature-role-context report, audit reports |
 | ⑧ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | CoM 궤적, 모멘트 암 프록시, load-shift 등 상대적 생체역학 지표를 계산한다. | BiomechRecord 목록 |
@@ -251,7 +256,8 @@ Review-only / 기본 비활성
 
 현재 범위 밖
     calibrated camera reprojection, Kalman filtering, full dashboard, Phantom 3D,
-    절대 torque/force estimation, 실제 환자군 validation.
+    절대 torque/force estimation, 실제 환자군 validation,
+    IRB 행정 또는 실제 참여자별 임상데이터 관리.
 ```
 
 상세 작업 순서는 로컬 실행 계획 문서인 [`code_revision_plan.md`](code_revision_plan.md)에

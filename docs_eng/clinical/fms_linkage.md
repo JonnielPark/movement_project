@@ -1,16 +1,18 @@
 # FMS Linkage Mapping
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-05-06  
+**Document Version:** 1.0.1
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/clinical/fms_linkage.md` is the same-version Korean source.
 
-This document does not reproduce FMS scoring text. It describes how
-`movement_project` feature/domain deductions parallel FMS-like movement
-observation categories, and defines dashboard-ready traffic-light labels.
+This document does not reproduce FMS scoring text. It is a retained/deferred
+crosswalk describing how `movement_project` feature/domain deductions may
+parallel FMS-like movement-observation categories. It is not an endpoint for the
+current dissertation-facing verification and not a participant-feedback screen.
 
 ## Principles
 
-- Green / Yellow / Red labels are support labels derived from `BiomarkerScoreRecord.final_score`; they are not FMS scores.
+- Green / Yellow / Red labels are optional support labels derived from `BiomarkerScoreRecord.final_score`; they are not FMS scores.
+- The current dissertation verification prioritizes feasibility, output availability, robustness, and interpretability summaries; FMS-like traffic-light output is not required.
 - The YAML stores feature links and citation-only references, not protected scoring text.
 - Medical conclusion or classification claims are intentionally avoided.
 - `data/definitions/clinical/fms_mapping.yaml` is the single source of truth.

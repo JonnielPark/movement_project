@@ -1,13 +1,13 @@
 # Korean National Gymnastics Rationale
 
-**Document Version:** 0.1.4
-**Last Updated:** 2026-07-14
+**Document Version:** 0.1.5
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/clinical/exercises/korean_national_gymnastics.md` is the same-version Korean source.
 
 This document summarizes the conventional Korean National Gymnastics sequence
-and how it is represented as a draft multi-block exercise-session example. It is
-not a diagnostic standard, not a health-effect claim, and not a code
-specification.
+and how it is represented as the current dissertation-facing multi-block
+exercise-session task. It is not a diagnostic standard, not a health-effect
+claim, and not a code specification.
 
 Related:
 
@@ -21,15 +21,17 @@ Related:
 
 ## 1. Study Role
 
-Korean National Gymnastics is used as an illustrative multi-block sequence
-example. Its role is methodological: it tests whether the framework can compose
-multiple reviewed exercise definitions into one ordered session without creating
-a separate "mixed exercise" category or hardcoded pipeline branch.
+Korean National Gymnastics is the current multi-block sequence task under the
+revised research plan. Its role is methodological: it tests whether the
+framework can compose multiple reviewed exercise definitions into one ordered
+session without creating a separate "mixed exercise" category or hardcoded
+pipeline branch.
 
-The exercise choice does not define the framework's scope. The same analysis
-architecture should remain driven by exercise definitions, analysis profiles,
-camera protocols, performance protocols, feature-availability policy, and scoring
-policy.
+The current dissertation verification treats one full Korean National Gymnastics
+sequence as a target movement. The exercise choice still does not define the
+framework's long-term scope. The same analysis architecture should remain driven
+by exercise definitions, analysis profiles, camera protocols, performance
+protocols, feature-availability policy, and scoring policy.
 
 ## 2. Conventional Sequence Context
 
@@ -39,15 +41,18 @@ sequence performed with music and verbal counting. The public sequence also
 includes a preparation cue, usually represented as marching in place, before the
 12 main movement sections.
 
-In the current project, preparation is treated as setup/reference context rather
-than an analyzable session block. Data acquisition and analysis both start from
-the repeated pass, and the initial pass through breathing-to-jumping is not part
-of this project session. The executable draft session follows the 12-block order
-listed in the current-analysis column below.
+The current dissertation-facing acquisition unit is one full performance from
+the reference-sequence beginning through the final limbs/breathing cooldown
+sections. A preparation or marching-in-place cue may be recorded as
+setup/reference context for section boundaries and body orientation, but it is
+not forced to become a movement-quality scoring block. The executable draft
+session follows the 12-block order listed in the current-analysis column below
+and should no longer be treated as a shortened session that starts only from the
+repeated pass.
 
 | Conventional order | Section ID | Korean section name | Conventional movement cue | Current analysis status |
 |---|---|---|---|---|
-| 0 | setup_reference | 준비 | marching in place | setup only; not acquired/analyzed as a session block |
+| 0 | setup_reference | 준비 | marching in place | recording/setup reference context; not a scoring block |
 | 1 | breathing_start | 숨쉬기 | raise arms forward and lower outward with breathing | analysis block 01 |
 | 2 | leg | 다리운동 | bend and extend the knees | analysis block 02 |
 | 3 | arm | 팔운동 | raise, swing, and circle the arms | analysis block 03 |
@@ -68,10 +73,10 @@ It does not define final segmentation, thresholds, or score eligibility.
 
 | Item | Current setting | Interpretation intent |
 |---|---|---|
-| Session type | ordered composition of 12 acquired/analyzed section definitions | validate repeat-pass sequencing and section provenance |
+| Session type | ordered composition of 12 section definitions inside one full sequence | validate section order and section provenance |
 | Classification | standing, mostly bilateral, multi-plane calisthenic sequence | preserve section-specific movement identity |
 | Segmentation | section/event model pending | avoid forcing every section into squat-like repetition logic |
-| Performance | repeat-pass acquisition/analysis session, `repeat_count: 1` per section | show composition rather than volume prescription |
+| Performance | one full sequence from the reference-sequence beginning through final limbs/breathing cooldown; section count units under review | review composition structure and section/event analyzability rather than prescribing exercise volume |
 | Rest | `rest_between_blocks_s: 0` in the draft session | continuous routine by default |
 | Camera | Z1, H2 | frontal waist-height whole-body coverage |
 | Biomech focus | relative joint/segment motion, timing, symmetry, stability | no absolute force/torque or clinical outcome inference |
@@ -87,7 +92,7 @@ section-level analysis entries separate under `profiles`.
 ## 4. Observation Targets
 
 ```text
-section order                 fixed progression across 12 acquired/analyzed blocks
+section order                 fixed progression across 12 acquired/analyzed blocks in the full sequence
 section boundary timing        start/end consistency per section
 tempo and smoothness           rhythm continuity within and across sections
 bilateral upper-limb symmetry  arm path and range consistency
@@ -134,7 +139,7 @@ validation.
 
 ## 7. Development Boundary
 
-Before Korean National Gymnastics becomes a canonical runtime example:
+Before Korean National Gymnastics becomes a stable dissertation-facing runtime task:
 
 ```text
 1. Review one section at a time and replace placeholder phase/event models.
@@ -145,6 +150,7 @@ Before Korean National Gymnastics becomes a canonical runtime example:
 6. Add tests for each promoted section model.
 ```
 
-Until those steps are complete, Korean National Gymnastics remains a useful
-composition example and a structured authoring target, not a finalized scoring
-exercise.
+Until those steps are complete, Korean National Gymnastics is inside the current
+dissertation scope as a sequence task, but it remains a structured analysis
+target requiring section/event authoring and feature-availability review, not a
+finalized scoring exercise.

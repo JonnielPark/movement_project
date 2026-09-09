@@ -8,6 +8,13 @@ the result as interpretable digital biomarkers.
 
 Repository: <https://github.com/JonnielPark/movement_project>
 
+This repository is a development notebook for the dissertation analysis
+framework: design documents, executable code, verification notebooks, and usage
+examples. It is not the workspace for IRB administration, participant
+registration/consent/withdrawal management, raw-video storage, compensation
+contacts, or participant-level clinical data management; those records belong in
+separate research-operation systems.
+
 ![Interpretable digital biomarker framework overview](docs/assets/framework_overview.png)
 
 *Figure. Conceptual overview of the monocular-vision movement-quality analysis
@@ -24,6 +31,15 @@ not as calibrated absolute 3D biomechanics. Camera angle, landmark confidence, a
 depth-estimation uncertainty are represented as explicit availability/confidence
 metadata, while detailed trace history is kept in stage reports or optional
 audit exports instead of being forced through every downstream payload.
+
+Under the revised research plan and prospective study protocol, the current
+dissertation-facing verification scope uses pose data from healthy-adult squat
+and Korean National Gymnastics recordings to review feasibility, output
+availability, robustness under observation-quality changes, and interpretability.
+Squat is the representative repeated task with five continuous repetitions, and
+Korean National Gymnastics is the representative whole-sequence task performed
+once and reviewed by section/event. This constrains the current dissertation
+verification scope without limiting the framework's longer-term extensibility.
 
 The intended biomarker strategy is therefore view-aware and reliability-weighted:
 features that are well supported by the selected recording view can contribute
@@ -61,7 +77,7 @@ Stage activation is controlled by the `enabled` flags in
 
 ---
 
-## Implementation Status (2026-07-14)
+## Implementation Status (2026-09-09)
 
 ### Complete
 
@@ -77,12 +93,12 @@ Stage activation is controlled by the `enabled` flags in
 | ⑦ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM, symmetry, shape, tempo, variability, CoM stability, compensation rules (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); rep-level + **phase-level** emission; registry coverage, compensation availability, and analysis-disrupting detectability audits; `summarize_phase_to_rep()` |
 | ⑧ Biomech Proxy | `biomech/` | CoM range/path, knee/hip moment arms with confidence weighting, **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑨ Biomarker Derivation | `biomarker/` | Z-score deduction, dynamic floor, configurable score bounds/domain weights, **YAML-based interpretation rules** (`biomarker/interpretation.py`, §7.3); movement quality score separated from data confidence |
-| Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + basic FMS-like traffic-light mapping |
+| Clinical mapping | clinical mapping docs, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 per-exercise feature × biomechanical meaning table + retained FMS-like support mapping; not a clinical endpoint for the current dissertation verification |
 | Interpretation rules | `data/definitions/interpretation_rules/` | §7.3 rule engine; retained four-exercise rule files; forbidden-vocabulary validation complete; Korean National Gymnastics rules pending exercise-definition review |
 | Pipeline runner | `pipeline.py` | Currently implemented stages ①-⑨ connected; optional ⑤-1 `normalization.canonicalization` and `support_plane_alignment` report wired; legacy root `canonicalization` and `floor_relative_correction` kept as backward-compatible aliases |
 | Protocol metadata schema | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, exercise YAML | CameraProtocol parser/validation, camera-zone warning audit, protocol count/side-sequence metadata, MediaPipe-style input clarification |
-| Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for retained exercise-definition examples; squat and Korean National Gymnastics are illustrative examples for showing definition-driven extensibility, not fixed framework limits |
-| Unit tests | `tests/` | Latest full run passes 153/153 |
+| Pipeline verification baseline | `segmentation.py`, `features/`, reporting records, `tests/` | Verification complete for retained exercise-definition examples; current dissertation-facing tasks are being realigned to five-repetition squat and one full Korean National Gymnastics sequence |
+| Unit tests | `tests/` | Existing baseline reports 153/153 passing; this pass verified Markdown consistency only |
 
 ### Partial
 
@@ -93,21 +109,21 @@ Stage activation is controlled by the `enabled` flags in
 | Robustness simulation evidence | `simulation/`, `scripts/` | Viewpoint variation, compensation injection, experiment runner, long-format outputs, robustness summaries (→ Task C) |
 | ⑩ Visualization | `reporting/visualization.py` | Dissertation-grade static figures: phase segmentation, load shift, robustness sensitivity, side-role context heatmap, radar, score breakdown (→ Task D) |
 
-### Plan (Before Defense)
+### Plan (Revised Research-Plan Alignment)
 
 | Task | Deliverable | Dissertation § |
 |---|---|---|
-| A — Confidence-aware zone reliability completion | Broader zone/role reliability mapping and remaining zone-dependent tests | §6-§8 |
-| B — Structured motion-attribution correction log | Correction log, false-correction metrics, ambiguous-repetition reporting | §8 |
-| C — Robustness simulation and experiment runner | Viewpoint/compensation simulation injectors, `scripts/run_robustness_experiment.py`, long-format outputs, robustness summaries | §8 |
-| D — Dissertation-grade reporting visualization | Six static figure functions, `save_figure()`, audit/caption metadata, `outputs/figures/` exports | §11 |
-| E — Clinical mapping integration and dashboard gate | FMS-like mapping coverage check, feature availability linkage, optional traffic-light/severity integration into reporting; dashboard decision gate | §7.4 |
-| F — Maintenance and repository hygiene | Focused test runs, full `python -m pytest` before handoff, cache/build cleanup, stable README development commands | Development hygiene |
-| G — Optional Confidence-aware scoring fallback | Feature availability policy and confidence notes if occlusion, left/right swap, or landmark jitter persist after preprocessing | Conditional after motion-attribution, robustness, and reporting |
-| H — Deferred canonicalization scoring-policy gate | Keep ⑤-1 analysis-space coordinates additive and downstream-neutral unless multi-recording evidence justifies nonzero scoring contribution | Conditional / deferred |
+| A — Research-scope document realignment | README, overview, practical protocol, and exercise rationale documents clearly separate dissertation analysis scope from repository boundaries | §1-§3 |
+| B — Squat protocol alignment | Unify squat performance as five continuous repetitions and review annotation/segmentation examples | §4-§8 |
+| C — Korean National Gymnastics full-sequence definition | Represent one full routine from reference-video beginning through final breathing/cooldown as section/event blocks | §4-§8 |
+| D — Analysis metadata boundary | Keep only reproducibility metadata such as pose backend, exercise protocol, camera condition, and feature availability; keep IRB operation records out of scope | §4-§8 |
+| E — Robustness simulation and output-rate summaries | Long-format robustness outputs and aggregate summaries for noise, occlusion, depth uncertainty, and view-condition changes | §8-§10 |
+| F — Dissertation-grade reporting visualization | Figures, output availability, quality/robustness summaries, and provenance-aware charts rather than participant-feedback screens | §10-§11 |
+| G — Maintenance and repository hygiene | Review no-real-participant-data-in-Git policy, focused tests, and full `python -m pytest` before handoff | Development hygiene |
 
-Dashboard / Phantom 3D work is deferred behind the Task E gate and is not an active
-implementation task unless selected as a dissertation output.
+Dashboard / Phantom 3D / participant-feedback screens are not required
+dissertation-facing outputs right now. They remain retained or deferred work
+unless explicitly selected as dissertation deliverables.
 
 ---
 
@@ -120,7 +136,9 @@ movement_project/
 ├── data/
 │   ├── pose/                        # joint-point time-series CSVs
 │   │   ├── sample/                  # synthetic/demo CSVs
-│   │   └── mediapipe/               # MediaPipe-extracted CSVs
+│   │   └── mediapipe/               # local MediaPipe exports; real participant-derived files must not be tracked
+│   ├── participants/                # local analysis metadata; real participant records must not be tracked
+│   ├── examples/participants/        # synthetic/demo participant profile YAML
 │   ├── definitions/                 # YAML-based analysis definitions
 │   │   ├── exercises/               # exercise identity YAML + generic fallback
 │   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
@@ -152,7 +170,7 @@ movement_project/
 │   ├── 10_manual_preparation/       # annotation/exercise authoring and review gates
 │   ├── 20_stage_checks/             # pipeline stage checks 20-31
 │   ├── 30_user_evaluation/          # end-to-end user recording evaluation
-│   └── 90_local_research_review/    # local p01 research review surfaces
+│   └── 90_local_research_review/    # researcher-local review surfaces; not the public usage path
 ├── scripts/                         # one-off utilities such as baseline computation
 ├── tests/
 │   ├── test_biomech_load_shift.py   # ⑧ load-shift slope sign + guards (17 cases)
@@ -226,8 +244,8 @@ from movement.pipeline import load_pipeline_config, run_pipeline
 import pandas as pd
 
 config = load_pipeline_config("configs/pipeline_default.yaml")
-df     = load_pose_csv("data/pose/sample/mediapipe_squat_synthetic.csv")
-ann_df = pd.read_csv("data/pose/sample/mediapipe_squat_synthetic_annotation.csv")
+df     = load_pose_csv("data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv")
+ann_df = pd.read_csv("data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv")
 
 df, report = run_pipeline(df, config, ann_df=ann_df)
 ```
@@ -279,11 +297,11 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 
 | Version | File | Content |
 |---|---|---|
-| 1.8.5 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.42 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
-| 1.4.5 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.1.2 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
-| 1.1.2 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.8.6 | [docs_eng/terminology.md](docs_eng/terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.49 | [docs_eng/overview.md](docs_eng/overview.md) | Framework overview and detailed document index |
+| 1.4.6 | [docs_eng/practical_protocols/camera_protocol.md](docs_eng/practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.1.6 | [docs_eng/practical_protocols/exercise_performance_protocol.md](docs_eng/practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.1.4 | [docs_eng/clinical/exercises/README.md](docs_eng/clinical/exercises/README.md) | Per-exercise clinical rationale documents |
 
 ---
 
@@ -291,23 +309,30 @@ inside `practical_protocols/`, `pipeline/`, and `clinical/` are tracked in the d
 
 This project does not analyze videos directly. It analyzes only **joint-point
 time series (CSV)** extracted from videos.
+This repository is also not a storage or management space for real
+clinical/participant data.
 
 **Can be committed.**
 
 - `data/pose/sample/` — synthetic/demo joint-point CSVs generated by code
-- `data/pose/mediapipe/` — joint-point CSVs extracted with MediaPipe
+- `data/examples/participants/` — synthetic/demo participant profile YAML
 - `data/definitions/` — exercise definitions, interpretation rules, clinical mapping YAML
+- `data/protocols/` — performance and filming protocol YAML
 - `data/camera/` — shared YAML for filming zones and height levels
-- `data/reference/` — reference statistics such as the synthetic-normal baseline
+- `data/reference/` — synthetic-normal baselines and public/aggregate reference artifacts
 
 **Do not commit (`.gitignore`).**
 
+- Raw video files and real participant-derived pose CSVs extracted from video
+- Participant-level analysis outputs, research IDs, or files with individual metadata
+- Researcher-local `p01`, `no_consent`, and temporary review artifacts
 - Pipeline outputs — `data/processed/`
 
-**Caution.** If a committable CSV contains direct identifiers such as subject
-name or birth date, replace them with anonymous IDs before committing. Store the
-anonymous ID ↔ real-name mapping only after documenting the sidecar path and
-matching `.gitignore` rule.
+**Caution.** Even de-identified pose CSVs should not be committed when they are
+derived from real participants. CSVs kept in Git should be limited to synthetic,
+demo, or explicitly public-cleared examples. Reproducibility metadata should be
+limited to non-identifying analysis conditions such as exercise name, pose
+backend, camera condition, protocol id, and feature availability.
 
 ---
 
@@ -334,15 +359,18 @@ produced as body-scale-normalized relative values or angle-based metrics, not
 absolute force, mass, or length units (e.g., `torso_length_ratio`, `degree`,
 `dimensionless_cv`, `dimensionless`).
 
-The current documentation examples use bodyweight squat as a single-block
-repeated-exercise example and Korean National Gymnastics as a planned multi-block
-sequence example. These are illustrative examples, not fixed target exercises or
-required usage conditions. The framework's intended scope is
-definition-driven: when an exercise definition, analysis profile, performance
-protocol, camera protocol, feature-availability policy, and scoring policy are
-defined, the same pipeline can analyze and score other exercises. Future score
-tracking can be layered over repeated runs without changing this exercise-agnostic
-design.
+Under the revised research plan, the current dissertation-facing analysis tasks
+are bodyweight squat and Korean National Gymnastics. Squat is analyzed as one set
+of five continuous repetitions, and Korean National Gymnastics is analyzed as
+one full sequence from the reference-sequence beginning through the final
+limbs/breathing cooldown sections. These two movements define the current
+verification scope, not the framework's long-term exercise limit. The core
+design remains definition-driven: when an exercise definition, analysis profile,
+performance protocol, camera protocol, feature-availability policy, and scoring
+policy are defined, the same pipeline can analyze other exercises. In the current
+dissertation verification, however, other exercises are not participant
+acquisition targets; lunge, pike push-up, and plank shoulder tap remain retained
+prior development artifacts.
 
 Extending the framework to equipment-based exercises or highly dynamic and
 spatially traveling movements such as jumping, running, or change-of-direction
@@ -350,9 +378,10 @@ tasks would require additional components, including equipment position, externa
 load metadata, hand-equipment contact, ground-contact events, flight phases,
 global travel paths, more complex event segmentation, and expanded camera protocols.
 
-This prioritizes a reliable XAI structure that can consistently support
-clinical reasoning under the physical limitations of monocular-camera data,
-before any direct demonstration of clinical efficacy.
+This prioritizes a reliable XAI structure that makes the physical limitations of
+monocular-camera data explicit while consistently supporting expert movement
+observation, before any direct demonstration of clinical efficacy or diagnostic
+performance.
 
 ---
 

@@ -51,10 +51,10 @@ from movement.stages.validation import harmonize_pose_schema, run_basic_validati
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_STAGE_CHECK_POSE_CSV = Path(
-    "data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv"
+    "data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv"
 )
 DEFAULT_STAGE_CHECK_ANNOTATION_CSV = Path(
-    "data/pose/mediapipe/no_consent/20260517/p01_squat_set1_annotation.csv"
+    "data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv"
 )
 DEFAULT_STAGE_CHECK_EXERCISE_ID = "squat"
 

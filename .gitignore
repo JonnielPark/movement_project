@@ -25,7 +25,10 @@ docs_eng/code_revision_plan.md
 # Pipeline outputs
 data/processed/
 data/dev_videos/
-data/pose/mediapipe/no_consent/
+
+# Local/private participant-derived analysis inputs
+data/pose/mediapipe/
+data/participants/
 
 # Local/private source data
 data/raw/

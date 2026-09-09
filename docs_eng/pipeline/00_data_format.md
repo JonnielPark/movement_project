@@ -1,7 +1,7 @@
 # 00. Data Format
 
-**Document Version:** 1.2.1
-**Last Updated:** 2026-06-20
+**Document Version:** 1.2.3
+**Last Updated:** 2026-09-10
 **Korean Sync:** `docs/pipeline/00_data_format.md` is the same-version Korean source.
 
 Input specification for monocular 3D pose time-series CSV files.
@@ -76,19 +76,24 @@ frame,timestamp,nose_x,nose_y,nose_z,nose_confidence,left_shoulder_x,...
 Sample file:
 
 ```text
-data/pose/sample/mediapipe_squat_synthetic.csv
+data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv
+data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv
+data/examples/participants/demo_squat_10rep.yaml
 ```
 
-## 5. Participant Profile YAML
+## 5. Participant Analysis Metadata YAML
 
-Participant information is optional de-identified analysis metadata. It should
-not contain direct identifiers such as name, birth date, contact information, or
-raw video references.
+Participant profile YAML is optional analysis metadata. It is not an IRB
+participant registry and not a consent/withdrawal record; it should contain only
+non-identifying execution conditions needed for reproducible pose analysis. It
+must not contain direct or linkable identifiers such as name, birth date, contact
+information, research number, or raw-video references.
 
 Recommended location:
 
 ```text
-data/participants/<scope>/<participant_id>.yaml
+data/private/participants/<scope>/<participant_id>.yaml       real participant-derived local metadata
+data/examples/participants/<example_id>.yaml                  synthetic/demo example
 ```
 
 Minimal schema:
@@ -96,7 +101,7 @@ Minimal schema:
 ```yaml
 participant_profile:
   schema_version: "0.1.0"
-  participant_id: p01
+  participant_id: demo_subject_001
   anthropometry:
     sex: male
     height_cm: 175
@@ -113,6 +118,9 @@ participant_profile:
 At the current stage, participant YAML is provenance and review input only.
 Height is not used to rescale pose coordinates into cm/m, and the common-subject
 skeleton is not a subject-specific body reconstruction.
+
+Real participant-derived profiles or pose CSVs must not be committed even when
+they are de-identified.
 
 ## 6. Coordinate And Unit Policy
 
@@ -131,8 +139,10 @@ Absolute force, torque, mass, or physical-length outputs are not used.
 ## 7. Data Locations
 
 ```text
-data/pose/          joint-point CSV input
-data/participants/  optional de-identified participant profile YAML
+data/pose/sample/   synthetic/demo joint-point CSV input
+data/examples/participants/ synthetic/demo participant profile YAML
+data/pose/mediapipe/ local pose-backend exports; real participant-derived files are not commit-ready
+data/private/       local/private analysis metadata and real participant-derived files; gitignored
 data/definitions/   exercise definitions and interpretation YAML
 data/protocols/     performance and camera protocol YAML
 data/reference/     reference statistics
@@ -140,4 +150,6 @@ data/processed/     pipeline outputs; gitignored
 ```
 
 Raw videos are not analysis inputs for this repository. Shareable inputs are
-de-identified joint-point CSVs.
+limited to synthetic/demo or explicitly public-cleared joint-point CSVs. Real
+participant-derived pose CSVs belong in a separate access-controlled store even
+when de-identified.

@@ -1,0 +1,29 @@
+participant_profile:
+  schema_version: "0.1.0"
+  participant_id: demo_squat_10rep_subject
+  display_label: synthetic squat 10-rep demo participant
+  data_scope: synthetic_demo
+  anthropometry:
+    sex: male
+    height_cm: 175
+    height_bin: 171-175cm
+    height_policy: nominal_demo_reference_only
+  common_subject_skeleton:
+    profile_id: male_175cm
+    matrix_path: data/reference/anthropometry/common_subject_skeleton_matrix.yaml
+    model_path: data/reference/anthropometry/common_subject_skeleton_male_175cm.yaml
+    selection_policy: aggregate_reference_demo_metadata_only
+  linked_recordings:
+    - session_id: synthetic_demo_squat_10rep_session
+      recording_id: mediapipe_squat_demo_10rep
+      pose_path: data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv
+      annotation_path: data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv
+      exercise_id: squat
+  policy:
+    synthetic: true
+    derived_from_real_participant: false
+    deidentified: true
+    contains_direct_identifiers: false
+    used_for_scoring: false
+    coordinate_rescale_from_height: false
+    note: Synthetic demo metadata for repository examples; not an IRB participant record.

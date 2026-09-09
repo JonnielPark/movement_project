@@ -1,10 +1,12 @@
 # 운동별 피처 x 임상적 의미 매핑 (Per-Exercise Feature x Clinical Meaning Mapping)
 
-**문서 버전:** 1.1.1
-**최종 갱신:** 2026-06-29
+**문서 버전:** 1.1.2
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/clinical/per_exercise_mapping.md`는 동일 버전의 영문 번역본이다.
 
-본 문서는 4개 검증 운동의 구현된 feature family와 해석 경계를 요약한다.
+본 문서는 구현되어 보존 중인 운동 artifact의 feature family와 해석 경계를 요약한다. 현재
+논문-facing 대상 운동은 스쿼트와 국민체조이며, lunge/pike push-up/plank shoulder tap은 선행
+개발 artifact로 유지한다.
 자세한 tooltip 문장은 [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml)에
 유지한다.
 
@@ -21,7 +23,7 @@ set            세트 전체를 포괄하는 1개 record
 ```
 
 Per-rep feature id는 metric id이지 repetition id가 아니다. 반복 식별자는 `rep_id` field에
-저장하므로 `temporal.tempo.rep_duration` 같은 metric을 rep 1, rep 10 또는 다른 확정 반복에서
+저장하므로 `temporal.tempo.rep_duration` 같은 metric을 rep 1, rep 5 또는 다른 확정 반복에서
 같은 baseline entry와 비교할 수 있다.
 
 Phase-level variant는 `spatial.range_of_motion`, `spatial.movement_path`, `temporal.tempo`,

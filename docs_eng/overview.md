@@ -1,7 +1,7 @@
 # Overview
 
-**Document Version:** 1.4.47
-**Last Updated:** 2026-07-14
+**Document Version:** 1.4.49
+**Last Updated:** 2026-09-09
 **Korean Sync:** [docs/overview.md](../docs/overview.md) is the matching Korean document.
 
 This document describes the overall design of the analysis pipeline.
@@ -13,25 +13,25 @@ For terminology definitions see [`terminology.md`](terminology.md).
 
 | Version | File | Content |
 |---|---|---|
-| 1.8.5 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
-| 1.4.46 | [overview.md](overview.md) | Overall pipeline overview |
-| 1.4.5 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
-| 1.1.5 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
+| 1.8.6 | [terminology.md](terminology.md) | Study-specific terms and clinical language principles |
+| 1.4.49 | [overview.md](overview.md) | Overall pipeline overview |
+| 1.4.6 | [practical_protocols/camera_protocol.md](practical_protocols/camera_protocol.md) | Camera filming protocol per exercise |
+| 1.1.6 | [practical_protocols/exercise_performance_protocol.md](practical_protocols/exercise_performance_protocol.md) | Exercise performance protocol per exercise |
 | 0.2.26 | [practical_protocols/exercise_authoring_notebook.md](practical_protocols/exercise_authoring_notebook.md) | Notebook-first exercise authoring and YAML generation plan |
-| 1.1.3 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
-| 1.1.0 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
+| 1.1.4 | [clinical/exercises/README.md](clinical/exercises/README.md) | Per-exercise clinical rationale documents |
+| 1.2.3 | [00_data_format.md](pipeline/00_data_format.md) | Input CSV data format |
 | 1.1.0 | [01_validation.md](pipeline/01_validation.md) | ① Validation |
 | 1.2.0 | [02_annotation.md](pipeline/02_annotation.md) | ② Annotation |
-| 1.7.1 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
+| 1.7.2 | [03_exercise_definition.md](pipeline/03_exercise_definition.md) | ③ Exercise Definition YAML |
 | 1.2.0 | [04_preprocessing.md](pipeline/04_preprocessing.md) | ④ Preprocessing |
 | 2.3.1 | [05_normalization.md](pipeline/05_normalization.md) | ⑤ Normalization + optional ⑤-1 Canonicalization filters |
-| 2.3.1 | [05_1_canonicalization.md](pipeline/05_1_canonicalization.md) | Detailed reference for optional ⑤-1 Canonicalization |
+| 2.4.0 | [05_1_canonicalization.md](pipeline/05_1_canonicalization.md) | Detailed reference for optional ⑤-1 Canonicalization |
 | 1.3.0 | [06_segmentation.md](pipeline/06_segmentation.md) | ⑥ Segmentation |
 | 1.2.4 | [07_feature_extraction.md](pipeline/07_feature_extraction.md) | ⑦ Feature Extraction |
 | 1.2.0 | [08_biomechanical_proxy.md](pipeline/08_biomechanical_proxy.md) | ⑧ Biomech Proxy |
 | 1.2.0 | [09_biomarker_scoring.md](pipeline/09_biomarker_scoring.md) | ⑨ Biomarker Scoring |
-| 1.1.2 | [10_visualization.md](pipeline/10_visualization.md) | ⑩ Visualization |
-| 1.1.0 | [11_insilico_simulation.md](pipeline/11_insilico_simulation.md) | ⑪ In-silico Simulation |
+| 1.1.3 | [10_visualization.md](pipeline/10_visualization.md) | ⑩ Visualization |
+| 1.1.1 | [11_insilico_simulation.md](pipeline/11_insilico_simulation.md) | ⑪ In-silico Simulation |
 
 ---
 
@@ -42,6 +42,14 @@ body-segment motion over time. The input consists of pose CSV files, optional
 annotation, recording metadata, and exercise-definition YAML; these data are shared
 through the same `ExerciseDefinition` object and per-stage reports across the
 pipeline.
+
+This repository manages the dissertation analysis framework's design,
+implementation, verification, and usage examples. IRB administration,
+participant registration/consent/withdrawal, compensation contacts, raw-video
+storage, and participant-level clinical data management are out of scope.
+Participant-derived records created during real research operations belong in a
+separate access-controlled space; this repository should contain only
+synthetic/demo data or public aggregate artifacts.
 
 The analytical principle is not to reconstruct absolute force or absolute torque,
 but to derive body-scale-normalized joint angles, segment trajectories, left/right
@@ -63,26 +71,27 @@ relative load shift, moment-arm proxy, and compensatory movement are treated as
 interpretable tendencies derived from observable motion, not direct evidence of
 activation in a specific muscle.
 
-Exercise choice is illustrative rather than central to the framework claim.
-Bodyweight squat is used as a single-block repeated-exercise example for demonstrating
-setup, segmentation, feature extraction, biomechanical proxy/scoring, and
-visualization. Korean National Gymnastics is kept as a draft multi-block
-sequence example for showing that the same pipeline can be extended beyond
-single repeated movements.
+Under the revised research plan, the current dissertation-facing verification
+scope is squat and Korean National Gymnastics. Bodyweight squat is the
+representative single-block repeated task, using one set of five continuous
+repetitions to demonstrate setup, segmentation, feature extraction,
+biomechanical proxy/scoring, and visualization. Korean National Gymnastics is the
+representative multi-block sequence task, captured as one full routine from the
+reference-sequence beginning through the final limbs/breathing cooldown sections
+and reviewed by section/event.
 
-These examples do not define the framework's exercise limits or required usage
-conditions. The core design is definition-driven: when an exercise
-definition, analysis profile, performance protocol, camera protocol,
-feature-availability policy, and scoring policy are defined, the same pipeline
-should be able to analyze and score other exercises. Korean National Gymnastics
-currently has a repeat-pass acquisition-and-analysis session YAML and
-section-level draft exercise definitions. Its recommended recording setup is
-frontal waist-height recording (`Z1`, `H2`), while section/event segmentation,
-performance protocol,
+These two exercises define the current dissertation verification scope, not the
+framework's long-term exercise limits or required usage conditions. The core
+design remains definition-driven: when an exercise definition, analysis profile,
+performance protocol, camera protocol, feature-availability policy, and scoring
+policy are defined, the same pipeline should be able to analyze other exercises.
+In the current dissertation verification, however, other exercises are not
+participant acquisition targets; lunge, pike push-up, and plank shoulder tap
+remain retained prior development artifacts. Korean National Gymnastics
+currently has section-level draft exercise definitions and a shared camera
+protocol, while section/event segmentation, performance protocol,
 view-metric reliability, feature-availability policy, and scoring eligibility
-still require section-level review. Because this task contains upper-/lower-limb,
-multi-plane, and sequence-level movement, its YAML should remain a reviewed draft
-rather than hidden stage-level branches until those items are promoted.
+still require section-level review.
 
 Equipment-based exercises with dumbbells, bands, or barbells would still require
 additional records for equipment position, external load metadata,
@@ -196,7 +205,7 @@ Output
 | ③ Exercise Definition | `exercise_id`, split YAML artifacts or legacy combined YAML; optional `exercise_session_id` for block composition | Loads an `ExerciseContext` and returns a backward-compatible `ExerciseDefinition`; session definitions can order multiple exercise blocks without changing each block's definition. Applies `generic.yaml` when no specific definition is available. `camera_protocol` is retained as metadata for filming recommendations and warning policy. | ExerciseContext, ExerciseDefinition, optional ExerciseSessionDefinition, camera protocol metadata |
 | ④ Preprocessing | Pose DataFrame, `quality_rules` | Checks confidence columns and corrects left/right swap-suspect frames, missing values, short gaps, and abrupt coordinate changes; applies smoothing when needed. | Preprocessed DataFrame, preprocessing report |
 | ⑤ Normalization | Preprocessed DataFrame | Adds the body-relative `norm` coordinate family by translating coordinates relative to the hip center and scaling them by the sequence-level median torso length. Depth-evidence metadata records whether z is finite backend model depth or only a placeholder. | Normalized pose data = preprocessed pose data + body-relative coordinates + depth-evidence metadata |
-| ⑤-1 Optional Canonicalization | Normalized pose data | Optional filters may emit analysis-space coordinate families using support-plane, movement-plane, protocol-height, `xy_depth_lift`, or anthropometric priors. These coordinates remain separate from `norm` and expose availability, confidence, `quality_gravity`, and sensitivity as downstream summaries; raw burden/residual diagnostics and algorithm/config history stay in the stage report. | Canonicalized pose data = normalized pose data + analysis-space coordinates + availability/confidence/`quality_gravity` summaries + canonicalization report |
+| ⑤-1 Optional Canonicalization | Normalized pose data | Optional filters may emit analysis-space coordinate families using support-plane, movement-plane, protocol-height, `xy_depth_lift`, anthropometric priors, exercise-defined correction priors, and bounded radial xy relaxation. These coordinates remain separate from `norm` and expose availability, confidence, `quality_gravity`, and sensitivity as downstream summaries; raw burden/residual diagnostics, prior-specific correction burden, and algorithm/config history stay in the stage report. | Canonicalized pose data = normalized pose data + analysis-space coordinates + availability/confidence/`quality_gravity` summaries + canonicalization report |
 | ⑥ Segmentation | Normalized DataFrame, `rep_segmentation`, `phase_segmentation` | Derives repetition boundaries from joint motion and labels phases inside each repetition. Uncertain ranges are recorded as failure points, and manual intervention results are incorporated. | `rep_id`, `phase`, SegmentationReport, SegmentationFailurePoint |
 | ⑦ Feature Extraction | Segmented DataFrame, `feature_domains`, `performance_protocol.analysis_disrupting_patterns`, side-role settings | Resolves side-role context inside feature extraction, then computes rep-level and phase-level range of motion, role alignment, movement path, tempo, variability, and compensation features; reports feature-registry coverage, compensation-pattern availability, and analysis-disrupting pattern detectability. | FeatureRecord list, feature DataFrame, feature-role-context report, audit reports |
 | ⑧ Biomech Proxy | Normalized/featured DataFrame, `biomechanical_focus` | Computes relative biomechanical indicators such as CoM trajectory, moment-arm proxies, and load shift. | BiomechRecord list |
@@ -272,7 +281,8 @@ Next design gate
 
 Out of current scope
     calibrated camera reprojection, Kalman filtering, full dashboard, Phantom 3D,
-    absolute torque/force estimation, and real patient-group validation.
+    absolute torque/force estimation, real patient-group validation, IRB
+    administration, and participant-level clinical data management.
 ```
 
 Detailed task ordering lives in

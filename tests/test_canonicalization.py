@@ -542,6 +542,28 @@ normalization:
     corrected_3d_hypothesis:
       enabled: true
       output_family: review
+      coordinate_solver:
+        enabled: true
+        source_family: norm
+        segment_pairs: [[left_hip, left_knee]]
+        default_segment_length_torso: 0.9
+        segment_lengths_torso:
+          left_hip|left_knee: 0.9
+        max_depth_torso: 0.8
+        max_z_correction_torso: 0.6
+        confidence_threshold: 0.55
+        correction_priors:
+          anthropometric_segment_length:
+            enabled: true
+            priority: primary
+          radial_xy_relaxation:
+            enabled: true
+            priority: secondary
+            weight: 0.25
+        radial_xy_relaxation:
+          enabled: true
+          preset: smartphone_nominal
+          max_xy_shift_torso: 0.02
     support_plane_alignment:
       enabled: true
       correction_transform: rigid_rotation
@@ -574,6 +596,35 @@ normalization:
         assert config.canonicalization.output_prefix == "canon"
         assert config.canonicalization.corrected_3d_hypothesis.enabled is True
         assert config.canonicalization.corrected_3d_hypothesis.output_family == "review"
+        assert (
+            config.canonicalization.corrected_3d_hypothesis.coordinate_solver_enabled
+            is True
+        )
+        assert config.canonicalization.corrected_3d_hypothesis.segment_pairs == [
+            ("left_hip", "left_knee")
+        ]
+        assert (
+            config.canonicalization.corrected_3d_hypothesis.segment_lengths_torso[
+                "left_hip|left_knee"
+            ]
+            == 0.9
+        )
+        assert (
+            config.canonicalization.corrected_3d_hypothesis.max_z_correction_torso
+            == 0.6
+        )
+        assert (
+            config.canonicalization.corrected_3d_hypothesis.correction_priors[
+                "radial_xy_relaxation"
+            ]["weight"]
+            == 0.25
+        )
+        assert (
+            config.canonicalization.corrected_3d_hypothesis.radial_xy_relaxation[
+                "preset"
+            ]
+            == "smartphone_nominal"
+        )
         assert config.canonicalization.support_plane_alignment.enabled is True
         assert config.canonicalization.support_plane_alignment.support_landmarks == [
             "left_heel",

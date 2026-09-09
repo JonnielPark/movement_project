@@ -1,7 +1,7 @@
 # 03. Exercise Definition
 
-**Document Version:** 1.7.1
-**Last Updated:** 2026-07-14
+**Document Version:** 1.7.2
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/pipeline/03_exercise_definition.md` is the same-version Korean source.
 
 Pipeline step ③ loads exercise YAML artifacts by `exercise_id`, assembles an
@@ -108,10 +108,11 @@ own artifacts so future exercises can differ without hidden Python branches.
 
 ## 3. Current And Future Exercise Coverage
 
-Illustrative canonical exercise ID currently used in examples:
+Target exercise/session IDs currently used for dissertation-facing verification:
 
 ```text
 squat
+korean_national_gymnastics
 generic                  fallback only
 ```
 
@@ -123,22 +124,25 @@ pike_pushup
 plank_shoulder_tap
 ```
 
-The examples use squat as a single-block repeated-exercise case. Lunge, pike push-up,
-and plank shoulder tap remain in the repository as prior development/example
-artifacts. None of these exercises defines the framework's scope.
+Squat is used as the revised research plan's single-block repeated task, with
+one set of five continuous repetitions as the current performance unit. Lunge,
+pike push-up, and plank shoulder tap remain in the repository as prior
+development/example artifacts. They are not participant acquisition targets in
+the current verification and do not define the framework's scope.
 
-Korean National Gymnastics is introduced as a draft multi-block sequence example
+Korean National Gymnastics is introduced as a draft multi-block sequence task
 through `data/definitions/exercise_sessions/korean_national_gymnastics.yaml`.
-The current session is an acquisition-and-analysis definition that starts from
-the repeated pass of the routine. The initial pass through breathing-to-jumping
-is not acquired or analyzed, so those sections are not performed twice for this
-project session. The session composes section-level draft exercise definitions
+The current dissertation-facing acquisition unit is one full performance from
+the reference-sequence beginning through the final limbs/breathing cooldown
+sections. A preparation cue may be recorded as setup/reference context, but the
+session should no longer be treated as a shortened routine that starts only from
+the repeated pass. The session composes section-level draft exercise definitions
 in the order below. It is still review-required runtime YAML: section/event
 models, count units, performance protocol, feature-availability policy, and
-scoring eligibility should be reviewed section by section before canonical
-promotion. The current draft sections use a frontal camera zone (`Z1`) at
-waist-height level (`H2`) as the recommended recording setup; view-metric
-reliability and section-specific observation purposes still require
+scoring eligibility should be reviewed section by section before it becomes a
+stable dissertation-facing task. The current draft sections use a frontal camera
+zone (`Z1`) at waist-height level (`H2`) as the recommended recording setup;
+view-metric reliability and section-specific observation purposes still require
 section-level review.
 
 ```text

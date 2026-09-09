@@ -1,11 +1,12 @@
 # 국민체조 상세 해석 배경 (Korean National Gymnastics Rationale)
 
-**문서 버전:** 0.1.4
-**최종 갱신:** 2026-07-14
+**문서 버전:** 0.1.5
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/clinical/exercises/korean_national_gymnastics.md`는 동일 버전의 영문 번역본이다.
 
-본 문서는 통상적으로 알려진 국민체조 sequence와 이를 draft multi-block exercise-session 예시로
-표현하는 방식을 요약한다. 진단 기준도 아니고, 건강 효과 주장도 아니며, 코드 명세도 아니다.
+본 문서는 통상적으로 알려진 국민체조 sequence와 이를 현재 논문-facing multi-block
+exercise-session 과제로 표현하는 방식을 요약한다. 진단 기준도 아니고, 건강 효과 주장도 아니며,
+코드 명세도 아니다.
 
 관련 문서:
 
@@ -19,13 +20,15 @@
 
 ## 1. 연구 내 역할 (Study Role)
 
-국민체조는 multi-block sequence 예시로 사용한다. 본 프로젝트에서의 역할은 방법론적이다.
-여러 개의 검토된 운동 정의를 하나의 순서 있는 session으로 조합할 수 있는지 확인하며, 별도의
-"혼합형 운동" category나 stage-level hardcoded branch를 만들기 위한 예시가 아니다.
+국민체조는 현재 수정 연구계획서 기준 multi-block sequence 과제다. 본 프로젝트에서의 역할은
+방법론적이다. 여러 개의 검토된 운동 정의를 하나의 순서 있는 session으로 조합할 수 있는지
+확인하며, 별도의 "혼합형 운동" category나 stage-level hardcoded branch를 만들기 위한 예시가
+아니다.
 
-운동 선택 자체가 framework의 범위를 정의하지 않는다. 같은 분석 구조는 exercise definition,
-analysis profile, camera protocol, performance protocol, feature-availability policy, scoring
-policy에 의해 구동되어야 한다.
+현재 논문 검증에서는 국민체조 전체 sequence 1회를 대상 운동으로 둔다. 다만 운동 선택 자체가
+framework의 장기적 범위를 정의하지는 않는다. 같은 분석 구조는 exercise definition, analysis
+profile, camera protocol, performance protocol, feature-availability policy, scoring policy에
+의해 구동되어야 한다.
 
 ## 2. 통상 Sequence 맥락 (Conventional Sequence Context)
 
@@ -33,14 +36,15 @@ policy에 의해 구동되어야 한다.
 음악과 구령에 맞추어 수행되는 것으로 알려져 있다. 공개된 순서에는 12개 본동작 전에
 준비 동작, 보통 제자리걷기로 설명되는 구간도 포함된다.
 
-현재 프로젝트에서는 준비 동작을 분석 block이 아니라 setup/reference context로 둔다. 데이터 취득과
-분석은 모두 되풀이 구간부터 시작하며, 숨쉬기부터 뜀뛰기까지의 첫 진행은 이 프로젝트 session에
-포함하지 않는다. 실행 가능한 draft session은 아래 current-analysis column의 12개 block 순서를
-따른다.
+현재 논문-facing 취득 단위는 참고 sequence의 시작부터 마지막 팔다리/숨 고르기 구간까지 전체
+1회 수행이다. 준비 또는 제자리걷기 cue는 section boundary와 body orientation을 확인하기 위한
+setup/reference context로 기록할 수 있지만, 그 자체를 movement-quality score block으로 강제하지
+않는다. 실행 가능한 draft session은 아래 current-analysis column의 12개 block 순서를 따르며,
+되풀이 구간부터 시작하는 축약 session으로 보지 않는다.
 
 | 통상 순서 | Section ID | 한글 종목명 | 통상 동작 cue | 현재 분석 상태 |
 |---|---|---|---|---|
-| 0 | setup_reference | 준비 | 제자리걷기 | setup only; session block으로 취득/분석하지 않음 |
+| 0 | setup_reference | 준비 | 제자리걷기 | recording/setup reference context; score block 아님 |
 | 1 | breathing_start | 숨쉬기 | 팔을 앞으로 들어 옆으로 내리며 숨쉬기 | analysis block 01 |
 | 2 | leg | 다리운동 | 무릎 굽혀 펴기 | analysis block 02 |
 | 3 | arm | 팔운동 | 팔을 들고 흔들며 앞뒤로 휘돌리기 | analysis block 03 |
@@ -61,10 +65,10 @@ policy에 의해 구동되어야 한다.
 
 | Item | Current setting | Interpretation intent |
 |---|---|---|
-| Session type | 12개 취득/분석 대상 section exercise definition의 ordered composition | 되풀이 구간 순서와 section provenance 검증 |
+| Session type | 전체 sequence 1회 안의 12개 section exercise definition ordered composition | section 순서와 section provenance 검증 |
 | Classification | standing, mostly bilateral, multi-plane calisthenic sequence | section별 movement identity 보존 |
 | Segmentation | section/event model pending | 모든 section을 squat-like repetition logic에 억지로 맞추지 않기 |
-| Performance | 되풀이 구간 취득/분석 session, section별 `repeat_count: 1` | 운동량 처방보다 조합 구조를 보여주는 예시 |
+| Performance | 참고 sequence 시작부터 마지막 팔다리/숨 고르기까지 전체 1회 수행; section별 count unit 검토 중 | 운동량 처방보다 조합 구조와 section/event 분석 가능성 검토 |
 | Rest | draft session에서 `rest_between_blocks_s: 0` | 기본값은 연속 수행 routine |
 | Camera | Z1, H2 | 정면 허리높이 전신 coverage |
 | Biomech focus | 상대 관절/분절 움직임, timing, symmetry, stability | 절대 force/torque 또는 임상 outcome 추론 금지 |
@@ -78,7 +82,7 @@ section별 analysis entry는 `profiles` 아래에 따로 유지된다.
 ## 4. 관찰 대상 (Observation Targets)
 
 ```text
-section order                 12개 취득/분석 block의 고정 진행 순서
+section order                 전체 sequence 안의 12개 취득/분석 block 고정 진행 순서
 section boundary timing        section별 시작/종료 일관성
 tempo and smoothness           section 내/section 간 rhythm continuity
 bilateral upper-limb symmetry  arm path와 range의 좌우 일관성
@@ -119,7 +123,7 @@ low-confidence 또는 report-only로 두는 것이 적절하다.
 
 ## 7. 개발 경계 (Development Boundary)
 
-국민체조를 canonical runtime 예시로 승격하기 전에:
+국민체조를 최종 논문-facing runtime 과제로 안정화하기 전에:
 
 ```text
 1. section을 하나씩 검토하며 placeholder phase/event model을 교체한다.
@@ -130,5 +134,5 @@ low-confidence 또는 report-only로 두는 것이 적절하다.
 6. 승격된 section model마다 테스트를 추가한다.
 ```
 
-그 전까지 국민체조는 유용한 composition 예시이자 구조화된 authoring target이지, 최종 점수화
-운동이 아니다.
+그 전까지 국민체조는 현재 논문 범위에 포함되는 sequence 과제이지만, 최종 점수화 운동이 아니라
+section/event authoring과 feature-availability 검토가 필요한 structured analysis target이다.

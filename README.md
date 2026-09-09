@@ -8,6 +8,11 @@
 
 저장소: <https://github.com/JonnielPark/movement_project>
 
+이 저장소는 박사학위 논문을 위한 분석 프레임워크의 개발 노트, 설계 문서, 실행 코드, 검증
+노트북, 사용 예시를 관리하는 공간이다. IRB 행정, 대상자 등록/동의/철회 관리, 원본 영상 보관,
+보상 연락처, 실제 참여자별 임상자료 관리는 이 저장소의 역할이 아니며 별도 연구 운영 공간에서
+관리한다.
+
 ![Interpretable digital biomarker framework overview](docs/assets/framework_overview.png)
 
 *그림. 단일 비전 기반 동작 품질 분석 프레임워크의 개념도. 그림의 6개 macro-stage는 아래
@@ -22,6 +27,13 @@
 의존하는 움직임 관찰 신호로 해석한다. 카메라 각도, landmark 가시성, depth 추정 불확실성은
 명시적 availability/confidence metadata로 표현하고, 세부 trace history는 모든 downstream
 payload에 강제로 싣지 않고 stage report 또는 선택적 audit export에 둔다.
+
+수정 연구계획서와 전향적 연구계획서 기준의 현재 논문-facing 검증 범위는 건강 성인에게서
+취득한 스쿼트와 국민체조 pose data를 사용해 프레임워크의 적용 가능성, 산출 가능성, 관측 품질
+변화에 대한 강건성, 해석 가능성을 확인하는 것이다. 이때 스쿼트는 연속 5회 반복 운동의 대표
+과제로, 국민체조는 전체 sequence 1회 수행을 section/event 단위로 나누는 대표 과제로 둔다.
+이는 현재 학위논문 검증 범위를 고정하는 것이며, framework 자체의 장기적 확장 가능성을 제한하는
+뜻은 아니다.
 
 따라서 목표 biomarker 전략은 view-aware reliability-weighted 분석이다. 선택한 촬영 view에서
 잘 관찰되는 feature는 강하게 반영하고, depth 의존도가 높거나 관찰 품질이 낮은 feature는
@@ -56,7 +68,7 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 
 ---
 
-## 구현 상태 (2026-07-14)
+## 구현 상태 (2026-09-09)
 
 ### 완료
 
@@ -72,12 +84,12 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | ⑦ Feature Extraction | `features/`, `features/side_role_context.py` | Side-role context resolution, ROM · 대칭(symmetry) · 형태(shape) · 템포 · 변동성 · CoM 안정성 · 보상 규칙 (`knee_valgus`, `lateral_pelvic_shift`, `excessive_trunk_flexion`, `heel_lift`, `pelvic_rotation`); 반복 단위 + **구간 단위** 방출; registry coverage, compensation availability, analysis-disrupting detectability audit; `summarize_phase_to_rep()` |
 | ⑧ Biomech Proxy | `biomech/` | CoM range/path · 무릎/엉덩이 모멘트 암(가시성 가중) · **load-shift OLS slope** (`biomech/load_shift.py`, §6.5) |
 | ⑨ Biomarker Derivation | `biomarker/` | Z-score 감점 · 동적 하한(dynamic floor) · 조정 가능 점수 범위/도메인 가중치 · **YAML 기반 해석 규칙** (`biomarker/interpretation.py`, §7.3); movement quality score와 data confidence 분리 |
-| 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 기본 FMS-like traffic-light mapping |
+| 임상 매핑 | 임상 매핑 문서, `data/definitions/clinical/`, `definitions/clinical.py` | §5.5/§5.6 운동별 피처 × 생체역학적 의미 표 + 보존 중인 FMS-like 보조 매핑; 현재 논문 검증의 임상 endpoint가 아님 |
 | 해석 규칙 | `data/definitions/interpretation_rules/` | §7.3 규칙 엔진; 보존 중인 4개 운동 rule 파일; 금지 어휘 검증 완료; 국민체조 rule은 exercise-definition 검토 후 작성 |
 | 파이프라인 러너 | `pipeline.py` | 현재 구현 단계 ①–⑨ 결선; 선택 ⑤-1 `normalization.canonicalization`과 `support_plane_alignment` report 연결; legacy root `canonicalization`과 `floor_relative_correction`은 하위 호환 alias로 유지 |
 | 프로토콜 메타데이터 스키마 | `definitions/exercise_definition.py`, `stages/annotation.py`, `features/side_role_context.py`, `pipeline.py`, 운동 YAML | CameraProtocol parser/validation, camera-zone warning audit, protocol count/side-sequence metadata, MediaPipe-style input 명확화 |
-| 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 보존 중인 운동 정의 예시에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, 선택적 audit-reference 정책, performance/failure report 검증 완료; 스쿼트와 국민체조는 정의 기반 확장성을 보여주기 위한 예시이지 framework 한계가 아님 |
-| 단위 테스트 | `tests/` | 최근 full run 153개 전체 통과 |
+| 파이프라인 검증 기준선 | `segmentation.py`, `features/`, reporting records, `tests/` | 보존 중인 운동 정의 예시에서 phase segmentation, feature registry coverage, compensation availability, analysis-disrupting detectability, 선택적 audit-reference 정책, performance/failure report 검증 완료; 현재 논문-facing 검증 과제는 스쿼트 5회와 국민체조 전체 sequence 1회로 재정렬 중 |
+| 단위 테스트 | `tests/` | 기존 기준선에서 full run 153개 전체 통과; 이번 작업에서는 Markdown 정합성만 검증 |
 
 ### 부분 완료
 
@@ -88,21 +100,20 @@ Pose CSV  +  annotation CSV  +  exercise YAML 산출물
 | Robustness simulation 근거 | `simulation/`, `scripts/` | viewpoint variation, compensation injection, 실험 러너, long-format output, robustness summary (→ Task C) |
 | ⑩ Visualization | `reporting/visualization.py` | 논문용 정적 figure: phase segmentation, load shift, robustness sensitivity, side-role context heatmap, radar, score breakdown (→ Task D) |
 
-### 계획 (방어 이전)
+### 계획 (수정 연구계획서 반영)
 
 | 과업 | 산출물 | 학위논문 § |
 |---|---|---|
-| A — Confidence-aware zone reliability 완성 | 더 넓은 zone/role reliability mapping과 남은 zone-dependent test | §6–§8 |
-| B — Structured motion-attribution correction log | Correction log, false-correction 지표, ambiguous-repetition report | §8 |
-| C — Robustness simulation and experiment runner | viewpoint/compensation simulation injector, `scripts/run_robustness_experiment.py`, long-format output, robustness summary | §8 |
-| D — 논문용 reporting visualization | 정적 figure 함수 6개, `save_figure()`, audit/caption metadata, `outputs/figures/` export | §11 |
-| E — Clinical mapping 통합과 dashboard 결정 게이트 | FMS-like mapping coverage 확인, feature availability 연결, 필요 시 traffic-light/severity reporting 통합, dashboard 결정 게이트 | §7.4 |
-| F — 유지보수와 저장소 정리 | 집중 변경 후 targeted test, 인계 전 full `python -m pytest`, cache/build 정리, 안정화된 README 개발 명령 | 개발 위생 |
-| G — 선택 확장: Confidence-aware scoring fallback | 전처리 이후에도 occlusion, left/right swap, landmark jitter가 반복될 경우 feature availability policy와 confidence note 추가 | motion-attribution, robustness, reporting 이후 조건부 |
-| H — 후위 canonicalization scoring-policy 게이트 | multi-recording 근거가 충분하기 전까지 ⑤-1 analysis-space 좌표를 additive/downstream-neutral 상태로 유지 | 조건부 / 후위 |
+| A — 연구 범위 문서 재정렬 | README, overview, practical protocol, exercise rationale에서 논문 검증 범위와 repository boundary 정리 | §1–§3 |
+| B — 스쿼트 프로토콜 정렬 | 스쿼트 수행 기준을 연속 5회 반복으로 통일하고 annotation/segmentation 예시 점검 | §4–§8 |
+| C — 국민체조 전체 sequence 정의 보강 | reference-video beginning부터 final breathing/cooldown까지 1회 수행을 section/event 단위로 표현 | §4–§8 |
+| D — 분석 metadata 경계 정리 | pose backend, exercise protocol, camera condition, feature availability 같은 분석 재현성 metadata만 유지; IRB 운영자료는 범위 밖으로 명시 | §4–§8 |
+| E — 강건성 simulation과 산출률 요약 | noise/occlusion/depth uncertainty/view condition에 대한 long-format robustness output과 aggregate summary | §8–§10 |
+| F — 논문용 reporting visualization | 개인별 결과 제공 화면이 아니라 figure, 산출률, 품질/강건성 요약, provenance-aware chart 중심 | §10–§11 |
+| G — 유지보수와 저장소 정리 | 실제 참여자 유래 데이터 비저장 원칙 점검, targeted test, 인계 전 full `python -m pytest` | 개발 위생 |
 
-Dashboard / Phantom 3D 작업은 Task E의 결정 게이트 뒤로 보류하며, 사용자가 학위논문 구현
-산출물로 채택하기 전까지는 활성 구현 과업으로 두지 않는다.
+Dashboard / Phantom 3D / 개인별 feedback 화면은 현재 논문-facing 필수 산출물이 아니다. 사용자가
+학위논문 구현 산출물로 명시적으로 채택하기 전까지는 보존 또는 후위 검토 과업으로 둔다.
 
 ---
 
@@ -115,7 +126,9 @@ movement_project/
 ├── data/
 │   ├── pose/                        # 관절 포인트 시계열 CSV
 │   │   ├── sample/                  # 합성/데모 CSV
-│   │   └── mediapipe/               # MediaPipe 추출 CSV
+│   │   └── mediapipe/               # 로컬 MediaPipe 추출 CSV; 실제 참여자 유래 파일은 git 추적 금지
+│   ├── participants/                # 로컬 분석 metadata; 실제 참여자 record는 git 추적 금지
+│   ├── examples/participants/        # 합성/데모 participant profile YAML
 │   ├── definitions/                 # YAML 기반 분석 정의
 │   │   ├── exercises/               # 운동 정체성 YAML + generic 폴백
 │   │   ├── analysis_profiles/       # segmentation, landmarks, features, quality rules
@@ -147,7 +160,7 @@ movement_project/
 │   ├── 10_manual_preparation/       # annotation/운동 정의 작성 및 검토 gate
 │   ├── 20_stage_checks/             # 파이프라인 단계별 검증 20-31
 │   ├── 30_user_evaluation/          # 사용자 recording 전체 평가
-│   └── 90_local_research_review/    # 로컬 p01 연구 리뷰 표면
+│   └── 90_local_research_review/    # 연구자 로컬 리뷰 표면; 공개 사용 경로 아님
 ├── scripts/                         # 일회성 유틸리티 (베이스라인 계산 등)
 ├── tests/
 │   ├── test_biomech_load_shift.py   # ⑧ load-shift slope 부호 + 가드 (17건)
@@ -219,8 +232,8 @@ from movement.pipeline import load_pipeline_config, run_pipeline
 import pandas as pd
 
 config = load_pipeline_config("configs/pipeline_default.yaml")
-df     = load_pose_csv("data/pose/sample/mediapipe_squat_synthetic.csv")
-ann_df = pd.read_csv("data/pose/sample/mediapipe_squat_synthetic_annotation.csv")
+df     = load_pose_csv("data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv")
+ann_df = pd.read_csv("data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv")
 
 df, report = run_pipeline(df, config, ann_df=ann_df)
 ```
@@ -269,31 +282,39 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 
 | 버전 | 파일 | 내용 |
 |---|---|---|
-| 1.8.5 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
-| 1.4.42 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
-| 1.4.5 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
-| 1.1.2 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
-| 1.1.2 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
+| 1.8.6 | [docs/terminology.md](docs/terminology.md) | 연구 특화 용어와 임상 표현 원칙 |
+| 1.4.49 | [docs/overview.md](docs/overview.md) | 프레임워크 개요 및 세부 문서 인덱스 |
+| 1.4.6 | [docs/practical_protocols/camera_protocol.md](docs/practical_protocols/camera_protocol.md) | 대상 운동별 촬영 프로토콜 |
+| 1.1.6 | [docs/practical_protocols/exercise_performance_protocol.md](docs/practical_protocols/exercise_performance_protocol.md) | 대상 운동별 수행 프로토콜 |
+| 1.1.4 | [docs/clinical/exercises/README.md](docs/clinical/exercises/README.md) | 운동별 상세 해석 문서 |
 
 ---
 
 ## 데이터 정책 (Data Policy)
 
 본 프로젝트는 영상 자체를 다루지 않고 영상에서 추출된 **관절 포인트 시계열(CSV)** 만 분석 대상으로 한다.
+또한 이 저장소는 실제 임상/참여자 데이터를 관리하는 공간이 아니다.
 
 **커밋 가능.**
 
 - `data/pose/sample/` — 코드로 임의 생성한 합성/데모 관절 포인트 CSV
-- `data/pose/mediapipe/` — MediaPipe로 추출한 관절 포인트 CSV
+- `data/examples/participants/` — 합성/데모 participant profile YAML
 - `data/definitions/` — 운동 정의, 해석 규칙, 임상 매핑 YAML
+- `data/protocols/` — 수행 및 촬영 프로토콜 YAML
 - `data/camera/` — 촬영 구역과 높이 수준에 대한 공통 YAML
-- `data/reference/` — 합성 정상 베이스라인 등 기준 통계
+- `data/reference/` — 합성 정상 베이스라인, 공개 가능한 집계 reference 등
 
 **커밋하지 않음 (`.gitignore`).**
 
+- 원본 영상 파일 및 영상에서 추출한 실제 참여자 유래 pose CSV
+- 실제 참여자별 분석 결과, 연구번호 또는 개인별 metadata가 포함된 파일
+- 연구자 로컬 리뷰용 `p01`, `no_consent`, 임시 실험 산출물
 - 파이프라인 산출물 — `data/processed/`
 
-**주의.** 커밋 가능한 CSV에 피험자 이름·생년월일 등 직접 식별자가 포함되어 있다면 익명 ID로 치환한 뒤 커밋한다. 식별 정보 사이드카가 필요해지면 먼저 경로와 `.gitignore` 규칙을 문서화한 뒤 추가한다.
+**주의.** 비식별 처리된 pose CSV라도 실제 참여자 유래 데이터라면 기본적으로 커밋하지 않는다.
+Git에 남길 수 있는 CSV는 synthetic/demo/public-cleared 예시에 한정한다. 분석 재현성에 필요한
+metadata는 운동명, pose backend, camera condition, protocol id, feature availability처럼 개인을
+식별하지 않는 실행 조건으로 제한한다.
 
 ---
 
@@ -310,18 +331,22 @@ README에서는 최상위 문서만 버전 추적한다. `practical_protocols/`,
 
 따라서 본 파이프라인의 모든 생체역학적 프록시 지표는 절대적 힘·질량·길이 단위가 아니라, 사용자 신체 척도로 정규화한 상대값 또는 각도 기반 지표로 설계 및 산출된다 (예: `torso_length_ratio`, `degree`, `dimensionless_cv`, `dimensionless` 등).
 
-현재 문서 예시는 single-block 반복 운동으로 스쿼트를, multi-block sequence 운동으로 국민체조를
-사용한다. 이들은 설명용 예시이지 고정 대상 운동이나 필수 사용 조건이 아니다. 본 framework의 핵심 범위는
-정의 기반 확장성이다. 즉 exercise definition, analysis profile, performance protocol,
-camera protocol, feature-availability policy, scoring policy가 정의되면 같은 pipeline으로 다른
-운동도 분석하고 점수화할 수 있다. 향후 점수 추적은 반복 실행 결과 위에 얹을 수 있으며,
-운동에 비종속적인 이 설계를 바꾸지 않는다.
+수정 연구계획서 기준의 현재 논문-facing 분석 과제는 스쿼트와 국민체조다. 스쿼트는 1세트
+연속 5회 반복을 대상으로 하며, 국민체조는 참고 sequence의 시작부터 마지막 팔다리/숨 고르기
+구간까지 전체 1회 수행을 대상으로 한다. 이 두 운동은 현재 검증 범위를 정의하지만, framework의
+장기적 운동 한계를 뜻하지는 않는다. 핵심 설계는 여전히 정의 기반 확장성이다. 즉 exercise
+definition, analysis profile, performance protocol, camera protocol, feature-availability
+policy, scoring policy가 정의되면 같은 pipeline으로 다른 운동도 분석할 수 있다. 다만 현 논문
+검증에서는 다른 운동을 대상자 취득 과제로 확장하지 않고, lunge/pike push-up/plank shoulder tap은
+보존 중인 선행 개발 artifact로만 유지한다.
 
 기구를 사용하는 운동이나 점프, 달리기, 방향전환처럼 고동적 또는 공간 이동이 큰 운동으로
 확장하려면 기구 위치, 외부 부하 metadata, 손-기구 접촉, 지면 접촉 이벤트, 공중 phase, 전역
 이동 경로, 더 복잡한 event segmentation과 camera protocol이 추가로 필요하다.
 
-이는 임상적 효능(clinical efficacy)의 직접 증명 이전에, 단안 카메라 환경의 물리적 한계를 우회하여 의료진의 임상적 추론을 일관되게 지원할 수 있는 신뢰성 있는 XAI 구조를 우선적으로 확보하기 위함이다.
+이는 임상적 효능(clinical efficacy) 또는 진단 성능의 직접 증명 이전에, 단안 카메라 환경의
+물리적 한계를 명시하면서도 전문가의 동작 관찰을 일관되게 보조할 수 있는 신뢰성 있는 XAI 구조를
+우선적으로 확보하기 위함이다.
 
 ---
 

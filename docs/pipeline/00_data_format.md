@@ -1,7 +1,7 @@
 # 00. 데이터 포맷 (Data Format)
 
-**문서 버전:** 1.2.1
-**최종 갱신:** 2026-06-20
+**문서 버전:** 1.2.3
+**최종 갱신:** 2026-09-10
 **영문 동기화:** `docs_eng/pipeline/00_data_format.md`는 동일 버전의 영문 번역본이다.
 
 단안 3D pose time-series CSV 입력 규격.
@@ -71,18 +71,22 @@ frame,timestamp,nose_x,nose_y,nose_z,nose_confidence,left_shoulder_x,...
 Sample file:
 
 ```text
-data/pose/sample/mediapipe_squat_synthetic.csv
+data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv
+data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv
+data/examples/participants/demo_squat_10rep.yaml
 ```
 
-## 5. Participant Profile YAML
+## 5. Participant Analysis Metadata YAML
 
-Participant 정보는 선택적인 de-identified analysis metadata다. 이름, 생년월일, 연락처,
-원본 영상 참조 같은 직접 식별자는 포함하지 않는다.
+Participant profile YAML은 선택적인 analysis metadata다. 이는 IRB 대상자 등록부나 동의/철회
+기록이 아니며, pose 분석 재현성에 필요한 비식별 실행 조건만 담는다. 이름, 생년월일, 연락처,
+연구번호, 원본 영상 참조 같은 직접 또는 연결 식별자는 포함하지 않는다.
 
 권장 위치:
 
 ```text
-data/participants/<scope>/<participant_id>.yaml
+data/private/participants/<scope>/<participant_id>.yaml       실제 참여자 유래 로컬 metadata
+data/examples/participants/<example_id>.yaml                  synthetic/demo 예시
 ```
 
 최소 schema:
@@ -90,7 +94,7 @@ data/participants/<scope>/<participant_id>.yaml
 ```yaml
 participant_profile:
   schema_version: "0.1.0"
-  participant_id: p01
+  participant_id: demo_subject_001
   anthropometry:
     sex: male
     height_cm: 175
@@ -107,6 +111,8 @@ participant_profile:
 현재 단계에서 participant YAML은 provenance와 review input일 뿐이다. Height는 pose 좌표를
 cm/m로 rescale하는 데 사용하지 않으며, common-subject skeleton은 subject-specific body
 reconstruction이 아니다.
+
+실제 참여자 유래 profile 또는 pose CSV는 비식별 처리되어 있어도 Git에 커밋하지 않는다.
 
 ## 6. 좌표와 단위 정책 (Coordinate And Unit Policy)
 
@@ -125,12 +131,16 @@ second
 ## 7. 데이터 위치 (Data Locations)
 
 ```text
-data/pose/          joint-point CSV input
-data/participants/  optional de-identified participant profile YAML
+data/pose/sample/   synthetic/demo joint-point CSV input
+data/examples/participants/ synthetic/demo participant profile YAML
+data/pose/mediapipe/ 로컬 pose-backend export; 실제 참여자 유래 파일은 commit 대상 아님
+data/private/       로컬/private 분석 metadata와 실제 참여자 유래 파일; gitignored
 data/definitions/   exercise definitions and interpretation YAML
 data/protocols/     performance and camera protocol YAML
 data/reference/     reference statistics
 data/processed/     pipeline outputs; gitignored
 ```
 
-Raw video는 이 repository의 analysis input이 아니다. 공유 가능한 입력은 비식별 joint-point CSV이다.
+Raw video는 이 repository의 analysis input이 아니다. 공유 가능한 입력은 synthetic/demo 또는
+명시적으로 공개 가능한 joint-point CSV로 제한한다. 실제 참여자 유래 pose CSV는 비식별 상태라도
+별도 접근통제 저장소에서 관리한다.

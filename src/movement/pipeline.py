@@ -428,7 +428,7 @@ ScoringConfig = BiomarkerConfig
 
 @dataclass
 class InputConfig:
-    path: str = "data/pose/sample/mediapipe_squat_synthetic.csv"
+    path: str = "data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv"
 
 
 @dataclass
@@ -559,6 +559,9 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
     can_movement = can.get("movement_plane_alignment", {})
     can_protocol_height = can.get("protocol_height_lateral_width_alignment", {}) or {}
     can_xy_depth = can.get("xy_depth_lift", {}) or {}
+    corrected_solver = corrected_3d.get("coordinate_solver", {}) or {}
+    if isinstance(corrected_solver, bool):
+        corrected_solver = {"enabled": corrected_solver}
     # floor_relative_correction is a legacy alias for the ⑤-1 support-plane prior.
     frc = can.get(
         "floor_relative_correction",
@@ -580,7 +583,10 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
 
     return PipelineConfig(
         input=InputConfig(
-            path=inp.get("path", "data/pose/sample/mediapipe_squat_synthetic.csv"),
+            path=inp.get(
+                "path",
+                "data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv",
+            ),
         ),
         validation=ValidationConfig(
             enabled=val.get("enabled", True),
@@ -797,6 +803,81 @@ def load_pipeline_config(path: Path | str) -> PipelineConfig:
                 ),
                 require_feature_domain_declaration=bool(
                     corrected_3d.get("require_feature_domain_declaration", True)
+                ),
+                coordinate_solver_enabled=bool(
+                    corrected_solver.get(
+                        "enabled",
+                        corrected_3d.get("coordinate_solver_enabled", False),
+                    )
+                ),
+                source_family=str(
+                    corrected_solver.get(
+                        "source_family",
+                        corrected_3d.get("source_family", "norm"),
+                    )
+                ),
+                segment_pairs=[
+                    (str(pair[0]), str(pair[1]))
+                    for pair in (
+                        corrected_solver.get(
+                            "segment_pairs",
+                            corrected_3d.get("segment_pairs", []),
+                        )
+                        or []
+                    )
+                    if isinstance(pair, (list, tuple)) and len(pair) == 2
+                ]
+                or Corrected3DHypothesisConfig().segment_pairs,
+                default_segment_length_torso=float(
+                    corrected_solver.get(
+                        "default_segment_length_torso",
+                        corrected_3d.get("default_segment_length_torso", 1.0),
+                    )
+                ),
+                segment_lengths_torso={
+                    str(key): float(value)
+                    for key, value in (
+                        corrected_solver.get(
+                            "segment_lengths_torso",
+                            corrected_3d.get("segment_lengths_torso", {}),
+                        )
+                        or {}
+                    ).items()
+                },
+                max_depth_torso=float(
+                    corrected_solver.get(
+                        "max_depth_torso",
+                        corrected_3d.get("max_depth_torso", 0.75),
+                    )
+                ),
+                max_z_correction_torso=float(
+                    corrected_solver.get(
+                        "max_z_correction_torso",
+                        corrected_3d.get("max_z_correction_torso", 0.50),
+                    )
+                ),
+                confidence_threshold=_float_with_alias(
+                    {
+                        **dict(corrected_3d),
+                        **dict(corrected_solver),
+                    },
+                    "confidence_threshold",
+                    "visibility_threshold",
+                    0.5,
+                ),
+                correction_priors=dict(
+                    corrected_solver.get(
+                        "correction_priors",
+                        corrected_3d.get("correction_priors", {}),
+                    )
+                    or {}
+                ),
+                radial_xy_relaxation=dict(
+                    corrected_solver.get(
+                        "radial_xy_relaxation",
+                        corrected_3d.get("radial_xy_relaxation", {}),
+                    )
+                    or {}
                 ),
             ),
         ),
@@ -1195,8 +1276,27 @@ def run_pipeline(
             solver_config={
                 "output_family": corrected_policy.output_family,
                 "support_pair": list(corrected_policy.support_pair),
+                "coordinate_solver": {
+                    "enabled": corrected_policy.coordinate_solver_enabled,
+                    "source_family": corrected_policy.source_family,
+                    "segment_pairs": [
+                        list(pair) for pair in corrected_policy.segment_pairs
+                    ],
+                    "default_segment_length_torso": (
+                        corrected_policy.default_segment_length_torso
+                    ),
+                    "segment_lengths_torso": dict(
+                        corrected_policy.segment_lengths_torso
+                    ),
+                    "max_depth_torso": corrected_policy.max_depth_torso,
+                    "max_z_correction_torso": (corrected_policy.max_z_correction_torso),
+                    "confidence_threshold": corrected_policy.confidence_threshold,
+                    "correction_priors": dict(corrected_policy.correction_priors),
+                    "radial_xy_relaxation": dict(corrected_policy.radial_xy_relaxation),
+                },
             },
         )
+        df = corrected_review.analysis_coordinate_df
         review_dict = corrected_review.as_dict()
         report["corrected_3d_hypothesis_review"] = review_dict
         report.setdefault("canonicalization", {}).setdefault(

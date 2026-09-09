@@ -1,6 +1,6 @@
 # Terminology
 
-**Document Version:** 1.8.5
+**Document Version:** 1.8.6
 **Last Updated:** 2026-07-14
 **Korean Sync:** `docs/terminology.md` is the same-version Korean source.
 
@@ -99,6 +99,9 @@ appear in an output, treat it as a documentation or code error.
 | Conservative engineering range | A researcher-defined wide tolerance around aggregate anthropometric ratios. It is used to catch impossible skeleton behavior and data-confidence problems, not to estimate population P5/P95. |
 | Row-level empirical anthropometric prior | A future upgrade that requires de-identified individual-level anthropometric rows so segment/stature ratios can be computed within each person before summarizing P1/P99 or P5/P95. |
 | Depth residual correction | A bounded analysis-evidence adjustment of the depth axis that may be attempted only when x/y evidence, segment-length plausibility, confidence, and correction caps allow it. It never overwrites raw or base normalized coordinates. Its raw residual/burden diagnostics stay inside ⑤-1 reports or audit exports; downstream payloads use `quality_gravity` when this evidence is promoted. |
+| Exercise-defined correction prior | A selection rule by which the exercise definition and analysis profile declare which correction priors may be enabled and under which phase, support, or joint-chain conditions. It is not exercise-name-specific Python branching and not good-posture template fitting. |
+| Bounded radial XY relaxation | A weak analysis-evidence prior that allows recording-view xy to move only a small amount in a radial direction without claiming uncalibrated pincushion or barrel distortion as fact. Presets such as `off`, `smartphone_nominal`, `strong_review`, and `custom` limit the allowed freedom; it is not calibrated lens correction. |
+| Prior merge policy | The rule by which a corrected-3D-hypothesis solver applies multiple priors by separating hard gates, priorities, and weights. Hard gates take precedence over weights, and correction burden, residuals, and confidence must remain report-visible. |
 | Articulation plausibility | A separate guard for impossible joint-angle or reverse-bending configurations. It downgrades data confidence or marks features unavailable; it is not a direct movement-quality penalty. |
 
 ---

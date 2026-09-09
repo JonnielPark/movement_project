@@ -56,14 +56,23 @@ manual_review
     needs human inspection before it is trusted downstream.
 
 local_research_review
-    Researcher-local surfaces for p01 or temporary investigations. These are not
-    part of the public evaluation path.
+    Researcher-local surfaces for private recordings or temporary investigations.
+    These are not part of the public evaluation path.
 ```
 
 ## New User Path
 
-1. Put a MediaPipe-style pose CSV under `data/pose/...`.
+1. Use a synthetic/demo MediaPipe-style pose CSV under `data/pose/sample/`, or
+   place private real-data exports in a local ignored path.
 2. If available, put a matching annotation CSV beside the pose CSV.
+
+The repository default demo pair is:
+
+```text
+data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv
+data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv
+data/examples/participants/demo_squat_10rep.yaml
+```
 3. Start with setup:
 
 ```text
@@ -103,8 +112,10 @@ tables, and visual review.
 30_user_evaluation/30_user_movement_evaluation.ipynb
 ```
 
-Edit the pose CSV path, optional annotation CSV path, participant YAML path, and
-`EXERCISE_ID` in that notebook's input cell.
+Edit the pose CSV path, optional annotation CSV path, optional local analysis
+metadata path, and `EXERCISE_ID` in that notebook's input cell. Real
+participant-derived pose CSVs and metadata should stay outside Git even when
+de-identified.
 
 ## Manual UI Direction
 
@@ -117,9 +128,11 @@ The widget UI must remain a preparation surface. Draft YAML requires researcher
 review before it is promoted to canonical files under `data/definitions/` or
 `data/protocols/`.
 
-## Current Defaults
+## Researcher-Local Defaults
 
-The local default notebooks use:
+The public setup, stage-check, and user-evaluation notebooks should use the
+synthetic demo pair above. Researcher-local notebooks may point to private p01
+review files when those files exist on the workstation:
 
 ```text
 data/pose/mediapipe/no_consent/20260517/p01_squat_set1_output_pose.csv
@@ -137,7 +150,9 @@ or coordinate rescaling.
 
 The p01 recording is real review data, not a clean synthetic baseline. Validation
 or phase-segmentation failures in stage notebooks should be read as data-quality
-or readiness provenance unless a structural assertion fails.
+or readiness provenance unless a structural assertion fails. These p01 paths are
+not the public usage path and should not be committed as participant-derived
+data.
 
 ## Outputs
 

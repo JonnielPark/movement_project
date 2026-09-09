@@ -9,7 +9,7 @@
 # Toggle each step with enabled: true / false
 
 input:
-  path: "data/pose/sample/mediapipe_squat_synthetic.csv"
+  path: "data/pose/sample/mediapipe_squat_demo_10rep_output_pose.csv"
 
 # ── ① Validation ─────────────────────────────────────────────────────────────
 validation:
@@ -19,8 +19,8 @@ validation:
 
 # ── ② Annotation ─────────────────────────────────────────────────────────────
 annotation:
-  enabled: false
-  path: "data/pose/sample/mediapipe_squat_synthetic_annotation.csv"
+  enabled: true
+  path: "data/pose/sample/mediapipe_squat_demo_10rep_annotation.csv"
 
 # ── ③ Exercise Definition Loading ────────────────────────────────────────────
 exercise_definition:
@@ -91,6 +91,58 @@ normalization:
       support_pair: [left_ankle, right_ankle]
       report_burden_before_feature_use: true
       require_feature_domain_declaration: true
+      coordinate_solver:
+        enabled: false
+        source_family: norm
+        segment_pairs:
+          - [left_hip, left_knee]
+          - [left_knee, left_ankle]
+          - [right_hip, right_knee]
+          - [right_knee, right_ankle]
+          - [left_shoulder, left_hip]
+          - [right_shoulder, right_hip]
+        default_segment_length_torso: 1.0
+        segment_lengths_torso: {}
+        max_depth_torso: 0.75
+        max_z_correction_torso: 0.50
+        confidence_threshold: 0.5
+        correction_priors:
+          anthropometric_segment_length:
+            enabled: true
+            priority: primary
+            weight: 1.0
+            report_only: false
+          support_contact_lock:
+            enabled: false
+            priority: hard_gate
+            weight: 1.0
+            report_only: true
+          joint_chain_motion:
+            enabled: false
+            priority: secondary
+            weight: 0.5
+            report_only: true
+          temporal_smoothness:
+            enabled: false
+            priority: secondary
+            weight: 0.25
+            report_only: true
+          radial_xy_relaxation:
+            enabled: false
+            priority: secondary
+            weight: 0.25
+            report_only: false
+        radial_xy_relaxation:
+          enabled: false
+          preset: off                  # off | smartphone_nominal | strong_review | custom
+          model: radial_k1
+          direction: pincushion        # pincushion | barrel | auto_candidate
+          center_source: frame_center  # frame_center | metadata
+          max_xy_shift_torso: 0.02
+          radial_strength: 0.25
+          max_iterations: 5
+          convergence_epsilon: 0.001
+          accept_only_if_residual_improves: true
     data_confidence:
       emit: true
       correction_magnitude_warn_torso: 0.15

@@ -1,16 +1,17 @@
 # FMS 연계 매핑
 
-**문서 버전:** 1.0.0  
-**최종 갱신:** 2026-05-06  
+**문서 버전:** 1.0.1
+**최종 갱신:** 2026-09-09
 **영문 동기화:** `docs_eng/clinical/fms_linkage.md`는 동일 버전의 영문 번역본이다.
 
 본 문서는 FMS 채점표를 복제하지 않는다. `movement_project`의 feature/domain 기반 감점이
-FMS식 움직임 관찰 항목과 어떤 방향으로 평행한지 설명하고, 대시보드가 사용할 수 있는
-traffic-light 보조 라벨을 정의한다.
+FMS식 움직임 관찰 항목과 어떤 방향으로 평행한지 설명하는 보존/후위 매핑이다. 현재
+논문-facing 검증의 endpoint도, 참여자에게 제공하는 개인별 결과 화면도 아니다.
 
 ## 원칙
 
-- Green / Yellow / Red는 FMS 점수가 아니라 `BiomarkerScoreRecord.final_score`의 보조 해석 라벨이다.
+- Green / Yellow / Red는 FMS 점수가 아니라 `BiomarkerScoreRecord.final_score`의 선택적 보조 해석 라벨이다.
+- 현재 논문 검증에서는 적용 가능성, 산출 가능성, 강건성, 해석 가능성 요약을 우선하며, FMS-like traffic-light는 필수 산출물이 아니다.
 - 원문 채점 문구를 복사하지 않고, 인용 정보와 feature 연결만 남긴다.
 - “진단”, “환자 분류”, “임상적으로 유의” 같은 표현은 사용하지 않는다.
 - 모든 매핑은 `data/definitions/clinical/fms_mapping.yaml`을 단일 소스로 사용한다.

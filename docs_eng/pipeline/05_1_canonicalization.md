@@ -1,6 +1,6 @@
 # 05-1. Canonicalization
 
-**Document Version:** 2.3.1
+**Document Version:** 2.4.0
 **Last Updated:** 2026-07-09
 **Korean Sync:** `docs/pipeline/05_1_canonicalization.md` is the same-version Korean source.
 
@@ -625,6 +625,278 @@ after the anthropometric skeleton prior is specified, because pelvis/shoulder
 axis alignment could suppress true pelvis rotation, trunk lean, or transverse
 compensation if applied too early.
 
+### 5.7 Exercise-Defined Correction Prior Selection
+
+The corrected-3D-hypothesis solver should not be one fixed algorithm. It should
+read and execute the correction prior set allowed by the exercise definition and
+analysis profile. The exercise definition must not create exercise-name-specific
+Python branches; it declares which support conditions, joint-chain constraints,
+phase/event contexts, and camera-protocol priors may be used by the coordinate
+hypothesis.
+
+For example, squat may enable:
+
+```yaml
+corrected_3d_hypothesis:
+  priors:
+    anthropometric_segment_length:
+      enabled: true
+      priority: primary
+      weight: 1.0
+    support_contact_lock:
+      enabled: true
+      priority: hard_gate
+      support_landmarks: [left_heel, right_heel, left_foot_index, right_foot_index]
+    joint_chain_motion:
+      enabled: true
+      priority: primary
+      chain: [hip, knee, ankle]
+    temporal_smoothness:
+      enabled: true
+      priority: secondary
+      weight: 0.6
+    radial_xy_relaxation:
+      enabled: true
+      preset: smartphone_nominal
+      priority: secondary
+      weight: 0.2
+```
+
+Exercise-defined priors must follow these principles:
+
+```text
+- Do not lock support landmarks unconditionally. Apply support-contact priors
+  only when confidence, phase/event context, and stability gates are sufficient.
+- Do not erase true compensation such as heel lift, pelvis rotation, trunk lean,
+  or support shift by fitting the pose to a good-movement template.
+- The exercise definition selects priors and constraints. The canonicalization
+  solver does not decide score-policy weight or final-score contribution.
+- A feature may use a prior's output only after declaring an evaluation_domain
+  such as corrected_3d_hypothesis or dual_domain_compare.
+```
+
+### 5.8 Prior Merge Policy
+
+Multiple priors may be enabled at the same time, so the solver must separate
+hard gates, priorities, and weights. The first implementation should use a
+priority-based coordinate descent solver because it is easier to review and
+debug. A bounded weighted objective may be introduced later after sufficient
+review and tests.
+
+Priority tiers:
+
+```text
+Hard gate
+  never overwrite raw/norm
+  landmark confidence / swap-risk gate
+  reject corrections above cap
+  reject or mark impossible segment length / articulation as not_assessed
+  reject corrections that clearly worsen support residuals
+
+Primary constraint
+  anthropometric segment-length plausibility
+  exercise-defined support contact / support surface
+  exercise-defined joint-chain motion plausibility
+
+Secondary prior
+  solution closest to norm_z or previous-iteration z
+  temporal smoothness / anti-jump continuity
+  bounded radial xy relaxation
+
+Report-only diagnostic
+  correction burden
+  residual before/after
+  norm-vs-corrected sensitivity
+  confidence downgrade reasons per prior
+```
+
+Initial solver order:
+
+```text
+1. Keep norm_xy as the default anchor and create a z-only anthropometric solution.
+2. If two z candidates exist, choose the one closest to norm_z or the previous iteration z.
+3. Reject impossible hypotheses through support/contact and joint-chain hard gates.
+4. If radial_xy_relaxation is enabled, create only small radial-direction xy candidates.
+5. Recompute the z solution for the changed xy candidate.
+6. Accept the candidate only if segment/support/temporal residuals and correction burden improve or remain within allowed gates.
+7. If there is no improvement or oscillation is detected, keep the previous best solution.
+```
+
+Even if a future weighted objective is introduced, the loss must remain
+decomposable for reports:
+
+```text
+loss =
+  w_segment  * segment_length_residual
++ w_support  * support_contact_or_surface_residual
++ w_chain    * joint_chain_motion_residual
++ w_temporal * temporal_jump_residual
++ w_xy       * xy_shift_penalty
++ w_z        * norm_z_or_previous_z_distance
+```
+
+Each weight is read from config or the exercise analysis profile and must not be
+hardcoded in Python. Hard gates take precedence over weights; a correction that
+does not pass a gate cannot be accepted even when its weight is high.
+
+### 5.9 Bounded Radial XY Relaxation Policy
+
+Pincushion-like distortion is not calibrated lens correction. It is only a weak
+radial prior that defines how much recording-view xy may relax. The prior does
+not claim to correct monocular camera distortion; it provides bounded xy freedom
+to test whether anthropometric and exercise-defined constraints become more
+plausible.
+
+Configuration surface:
+
+```yaml
+radial_xy_relaxation:
+  enabled: false
+  preset: off                  # off | smartphone_nominal | strong_review | custom
+  model: radial_k1
+  direction: pincushion        # pincushion | barrel | auto_candidate
+  center_source: frame_center  # frame_center | metadata
+  max_xy_shift_torso: 0.02
+  radial_strength: 0.25
+  max_iterations: 5
+  convergence_epsilon: 0.001
+  accept_only_if_residual_improves: true
+```
+
+Preset meaning:
+
+```text
+off
+  No xy correction. norm_xy is fixed.
+
+smartphone_nominal
+  Allows a weak radial prior for small distortion that may appear in ordinary
+  smartphone recordings. The xy shift cap remains small and confidence is never
+  promoted to high because of this prior.
+
+strong_review
+  Review-only preset for testing larger possible distortion. Results can easily
+  be downgraded to low-confidence or not_assessed.
+
+custom
+  The researcher explicitly sets max_xy_shift_torso, radial_strength, and
+  iteration parameters.
+```
+
+Radial xy relaxation guards:
+
+```text
+- Allow only small radial-direction movement.
+- Reject movement above max_xy_shift_torso.
+- Recompute the z solution after xy changes.
+- Do not accept the candidate unless segment residual improves.
+- Reject or lower confidence when support/contact residuals or temporal jumps worsen.
+- Correction magnitude is a data-confidence/provenance signal, not a movement-quality penalty.
+```
+
+### 5.10 Confidence Propagation And Norm-vs-Corrected Comparison Policy
+
+Corrected coordinates must never be emitted as coordinates alone. Each prior and
+merge step must emit confidence, availability, `quality_gravity`, and
+burden/residual provenance. That information must be inherited by downstream
+feature-level evidence.
+
+Minimum report/audit fields:
+
+```text
+frame
+rep_id
+phase
+coordinate_family
+prior_id
+iteration
+landmark_or_segment
+source_xy
+source_z
+corrected_xy
+corrected_z
+xy_shift_torso
+z_shift_torso
+segment_residual_before_torso
+segment_residual_after_torso
+support_residual_before_torso
+support_residual_after_torso
+temporal_residual_before_torso
+temporal_residual_after_torso
+correction_burden
+cap_fraction
+availability
+confidence
+quality_gravity
+accepted
+rejection_reason
+used_for_features_or_scores = false
+```
+
+Confidence propagation:
+
+```text
+canonicalization
+  corrected coordinate + prior availability/confidence/quality_gravity + burden/residual report
+
+feature extraction
+  feature value + coordinate_reference + inherited quality_gravity + evaluation_domain
+
+biomech proxy
+  proxy value + inherited evidence confidence + depth_dependency
+
+biomarker scoring
+  movement-quality score and data confidence stay separate.
+  nonzero score-policy weight for corrected evidence requires later scoring-policy review.
+```
+
+Norm-vs-corrected comparison surface:
+
+```text
+feature_id
+evaluation_domain
+norm_value
+corrected_value
+delta
+delta_abs
+correction_burden
+residual_improvement
+availability
+confidence
+quality_gravity
+score_policy_weight = 0 by default
+```
+
+This comparison does not mean the corrected coordinate is more correct than
+`norm`. It explains how much correction was applied, which priors fired, how
+much the residual improved, and how much downstream trust the evidence should
+carry.
+
+### 5.11 Logical And Research-Scope Gate
+
+This policy stays within the research scope only when all conditions hold:
+
+```text
+- Interpret it only as monocular-pose-based relative, dimensionless analysis evidence.
+- Preserve raw/norm and add only an additive corrected coordinate family.
+- Do not claim camera calibration, lens calibration, calibrated world coordinates, or absolute 3D reconstruction.
+- Use the anthropometric prior as a conservative engineering envelope at Stage A.
+- Use exercise-defined priors to reject impossible coordinate hypotheses or lower confidence, not to fit a good-posture template.
+- Score-policy weight and final-score contribution are decided later by ⑨ Scoring policy, not by ⑤-1.
+```
+
+Forbidden wording:
+
+```text
+calibrated camera correction
+real 3D reconstruction
+absolute joint position recovery
+subject-specific skeleton fitting
+normal posture template fitting
+force/torque/strength inference
+clinical diagnosis or prognosis
+```
+
 ---
 
 ## 6. Anthropometric Skeleton Prior Policy
@@ -854,6 +1126,8 @@ unit = dimensionless_ratio
   measurements become available.
 - confidence-weighted scale estimation and torso-length outlier handling.
 - Per-exercise canonicalization prior selection from exercise definition fields.
+- Implementation of exercise-defined correction prior sets, merge policy,
+  radial_xy_relaxation presets, and confidence propagation.
 - Robustness evaluation before any corrected coordinate receives nonzero
   score-policy weight in a later scoring policy.
 - Gradual de-emphasis of the legacy `floor_relative_correction` key once local

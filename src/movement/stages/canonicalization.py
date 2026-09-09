@@ -99,6 +99,25 @@ class Corrected3DHypothesisConfig:
     support_pair: tuple[str, ...] = ("left_ankle", "right_ankle")
     report_burden_before_feature_use: bool = True
     require_feature_domain_declaration: bool = True
+    coordinate_solver_enabled: bool = False
+    source_family: str = "norm"
+    segment_pairs: list[tuple[str, str]] = field(
+        default_factory=lambda: [
+            ("left_hip", "left_knee"),
+            ("left_knee", "left_ankle"),
+            ("right_hip", "right_knee"),
+            ("right_knee", "right_ankle"),
+            ("left_shoulder", "left_hip"),
+            ("right_shoulder", "right_hip"),
+        ]
+    )
+    default_segment_length_torso: float = 1.0
+    segment_lengths_torso: dict[str, float] = field(default_factory=dict)
+    max_depth_torso: float = 0.75
+    max_z_correction_torso: float = 0.50
+    confidence_threshold: float = 0.5
+    correction_priors: dict[str, Any] = field(default_factory=dict)
+    radial_xy_relaxation: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

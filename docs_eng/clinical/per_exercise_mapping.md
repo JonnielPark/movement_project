@@ -1,12 +1,14 @@
 # Per-Exercise Feature x Clinical Meaning Mapping
 
-**Document Version:** 1.1.1
-**Last Updated:** 2026-06-29
+**Document Version:** 1.1.2
+**Last Updated:** 2026-09-09
 **Korean Sync:** `docs/clinical/per_exercise_mapping.md` is the same-version Korean source.
 
 This document summarizes implemented feature families and interpretation
-boundaries for the four validation exercises. Detailed tooltip text is maintained
-in [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml).
+boundaries for retained exercise artifacts. The current dissertation-facing
+target exercises are squat and Korean National Gymnastics; lunge, pike push-up,
+and plank shoulder tap remain prior development artifacts. Detailed tooltip text
+is maintained in [`data/definitions/clinical/feature_meanings.yaml`](../../data/definitions/clinical/feature_meanings.yaml).
 
 The mapping is descriptive. It does not define diagnosis, treatment effect,
 patient classification, or protected scoring text.
@@ -24,7 +26,7 @@ set            one record spanning all reps in the set
 Per-rep feature ids are metric ids, not repetition ids. Repetition identity is
 stored in the `rep_id` field, so a metric such as
 `temporal.tempo.rep_duration` can be compared against the same baseline entry
-for rep 1, rep 10, or any other confirmed repetition.
+for rep 1, rep 5, or any other confirmed repetition.
 
 Phase-level variants may be emitted for `spatial.range_of_motion`, `spatial.movement_path`,
 `temporal.tempo`, and `control.stability`. Compensation features are rep-level

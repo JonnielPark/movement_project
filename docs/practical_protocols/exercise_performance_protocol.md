@@ -1,7 +1,7 @@
 # 대상 운동별 수행 프로토콜 (Exercise Performance Protocol per Exercise)
 
-**문서 버전:** 1.1.5
-**최종 갱신:** 2026-07-14
+**문서 버전:** 1.1.6
+**최종 갱신:** 2026-09-09
 **영문 동기화:** [docs_eng/practical_protocols/exercise_performance_protocol.md](../../docs_eng/practical_protocols/exercise_performance_protocol.md)는 동일 내용의 영문 번역본이다.
 
 본 문서는 데이터 취득을 위한 표준 수행 지침을 정의한다.
@@ -16,8 +16,8 @@ score-eligible feature/control-factor 구분은 `docs/clinical/exercises/`에 �
 ## 1. 공통 규칙 (Common Rules)
 
 ```text
-single-block example        스쿼트, 1세트, 10회 반복
-multi-block example         국민체조 draft; section/count protocol은 authoring 후 확정
+single-block target         스쿼트, 1세트, 연속 5회 반복
+multi-block target          국민체조 전체 sequence 1회; section/event protocol은 검토 후 확정
 recording structure         가능하면 세트별 one take
 rest                        운동 세션 rest는 현재 block 사이의 단일 공통 값으로 설정
 clothing                    관절이 보이도록 착용; landmark를 가리는 헐렁한 옷 회피
@@ -54,8 +54,8 @@ score-eligible feature가 될 수 있고, 포즈 데이터만으로 안정적으
 
 | Exercise | Status | Image | Camera | Count target | Participant cue | Analysis-disrupting patterns |
 |---|---|---|---|---|---|---|
-| Squat | single-block 반복 운동 설명 예시 | `assets/exercise_squat.png` | Z2/Z8, H2 | 1세트 × 10 reps | 발 어깨너비; 손 고정; 엉덩이를 뒤로 빼며 허벅지 수평에 가깝게 내려갔다가 일어남. | arm swing assist; heel lift/foot repositioning; knees inward/outward; inconsistent depth; excessive trunk folding |
-| 국민체조 | draft multi-block sequence 설명 예시; section performance protocol pending | pending | Z1, H2 | 되풀이 구간 취득/분석 session; section/count unit 미정 | 취득/분석 대상 되풀이 순서를 따름; section별 상세 cue는 검토 대기 | 검토 전에는 sequence/event note만 기록하고, 미검토 pattern을 penalty로 쓰지 않음 |
+| Squat | 현재 논문-facing single-block 반복 과제 | `assets/exercise_squat.png` | Z2/Z8, H2 | 1세트 × 5 reps | 발 어깨너비; 손 고정; 엉덩이를 뒤로 빼며 허벅지 수평에 가깝게 내려갔다가 일어남. | arm swing assist; heel lift/foot repositioning; knees inward/outward; inconsistent depth; excessive trunk folding |
+| 국민체조 | 현재 논문-facing multi-block sequence 과제; section/event model 검토 중 | pending | Z1, H2 | 참고 sequence 시작부터 마지막 팔다리/숨 고르기까지 전체 1회 | 참고 sequence의 전체 진행을 한 번 수행함; section별 상세 cue와 event label은 검토 대기 | 검토 전에는 sequence/event note와 feature availability만 기록하고, 미검토 pattern을 penalty로 쓰지 않음 |
 | Lunge | 보존 중인 선행 예시 artifact | `assets/exercise_lunge.png` | Z3/Z7, H2 | 보존 중인 YAML protocol | 한 발을 앞으로; 손은 pelvis/waist; 양 무릎이 약 90도에 가깝게 수직 하강; 몸을 돌리지 않고 앞발 교대. | changing step length; arm swing/trunk extension assist; excessive trunk flexion; body turn during side switch; unstable foot contact |
 | Pike push-up | 보존 중인 선행 예시 artifact | `assets/exercise_pike_pushup.png` | Z3/Z7, H1 | 보존 중인 YAML protocol | 엉덩이를 높인 inverted V; 정수리를 손 사이 바닥 쪽으로 내림; 어깨로 밀어 올라옴. | hips dropping; head forward beyond hands; excessive elbow flare; shallow/inconsistent depth; hand/foot repositioning |
 | Plank shoulder tap | 보존 중인 선행 예시 artifact | `assets/exercise_plank_shoulder_tap.png` | Z2/Z8, H1 | 보존 중인 YAML protocol | high plank; trunk/hips 고정; 반대쪽 어깨 tap; left+right tap = 1 protocol cycle. | pelvic rotation/shift; hips too high/low; hand/foot repositioning; wrong side order; hand lift without tap |
